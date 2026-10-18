@@ -7,6 +7,7 @@ status: "IN_PROGRESS"
 last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
 last_phx_ci_run_id: "bc2d2bf1-fc02-4b75-828c-4b3287725b25"
 blockers:
+  - "NEW F-02 PHASE_0_COMPLETE at source 1dacb1e5213dac74135f98bce43e4fe3b449e8bc, frozen Reviewer SHA 0a5b72cdf5ebc01650232595a1c3b4cd690953e8: F02-01 HIGH deauthorization leaves old active sync authority during persistence; F02-02 MODERATE competing initialize can publish obsolete runtime. BLOCKING production correction is assigned via F-05 WS07-S09G1-F05-20261017-001; there is no PHX-CI PASS for the corrective code, no F-03/F-04/F-06 or merge/release authorization."
   - "Historical independent review REJECT / DEC-340-01 MAJOR remains an accurate finding, but the owner has now explicitly ACCEPTED the residual context-spoofing risk under DEC-344; DEC-340-01 alone is NON-BLOCKING for BRAIN continued engineering and software-only integration consideration. It remains UNFIXED, and no new merge/release/activation is approved."
   - "New development main.js SHA observed but NOT release-approved. Exact-artifact release approval / immutable promotion gate remains pending; historical hash allowlist is unchanged."
   - "Prior G1-04/G1-05 source 9beb958afd20acb0c6d5fdf9e44010ff8a88b490 passed PHX-CI but was independently REJECTED for G1-06 legacy incomplete-pairing BASE reuse and G1-07 concurrent settings lost update. Corrective source aecd0b15497789869df8cb57094bcdec3a2bfe6d has new genuine PHX-CI PASS 11/11 (run 95725e97-1e5d-4883-a86f-a4370b49e932; evidence 5448e214dfc18d7d7f08cb78f5c9270b8d34a621; BVP 403/403; product 1007/1007). Separate independent reassessment remains PENDING; no merge authorization."
@@ -19,10 +20,21 @@ blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Submit dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md to separate PHX-CI test writer. They must independently inspect the current correction branch, return visual code-review recommendations to coder, own complete concurrency/fault/restart test-battery artifacts, and qualify the exact revised code via pinned local PHX-CI after recommendations are resolved. Implementer is prohibited from authoring PHX-CI test logic. Old PASS run bc2d2bf1-fc02-4b75-828c-4b3287725b25 remains historical proof only for rejected source 436afeee8897fc34764bbdddcdad0eea0be3365d. Do not request new independent review until genuine feature-level readiness. No master merge/release/activation/live Drive/vault/physical S09/Stage 3."
-updated_at: "2026-10-16"
+next_action: "Execute linked F-05 WS07-S09G1-F05-20261017-001 on fix/ws07-s09g1-f02-corrections-20261017-001: inspect and correct F02-01 deauthorization/active-sync pairing authority and F02-02 stale competing runtime initializer ownership in Builder-owned production. Close F-05 with exact correction commit and impact scope. Do not modify Tester-owned tests or execute software verification outside Tester-owned PHX-CI F-04. After source correction, preserve frozen F-02 and coordinate next authorized test/review gates under current three-agent protocol; no release, activation, physical S09 or Stage 3."
+updated_at: "2026-10-17"
 
 context:
+  orchestration_20261017_f02_f05:
+    phase0_handoff: "WS07-S09G1-F02-20261017-001"
+    phase0_status: "CLOSED_PHASE_0_COMPLETE_WITH_BLOCKING_FINDINGS"
+    phase0_review_sha: "0a5b72cdf5ebc01650232595a1c3b4cd690953e8"
+    phase0_report: "dev/reviews/ws07-s09g1-f02-20261017-001.md"
+    phase0_reviewed_source_sha: "1dacb1e5213dac74135f98bce43e4fe3b449e8bc"
+    phase0_findings: ["F02-01 HIGH deauthorization active run", "F02-02 MODERATE stale initializer runtime publication"]
+    correction_handoff: "WS07-S09G1-F05-20261017-001"
+    correction_status: "OPEN_BUILDER_OWNED"
+    correction_branch: "fix/ws07-s09g1-f02-corrections-20261017-001"
+    feature_phx_ci: "NOT_RUN_ON_CORRECTIVE_CANDIDATE"
   s09_g1_invariant_driven_round_20261016:
     rejected_reviewed_source_sha: "436afeee8897fc34764bbdddcdad0eea0be3365d"
     rejected_findings: ["F-01 delayed pairing reverses deauthorization", "F-02 stale relocation overwrites user exclusions"]
