@@ -154,3 +154,53 @@ test("F02-01/STATE-008: a new explicit Pair after stale result gets a fresh stat
   assert.equal(h.current().localChangeEnabled, false);
   assert.equal(h.current().periodicEnabled, false);
 });
+
+test("G1-07/PLAN-005: stale reconciliation callback cannot clear a newer exclusion-policy generation in either ordering", async () => {
+  for (const userEditsFirst of [true, false]) {
+    const h = await hostFixture();
+    await h.host.mutateSettings(latest => ({
+      ...latest,
+      remoteRootId: "root:policy",
+      pairingStateNamespace: "epoch:policy",
+      scopeReconcileRequired: true,
+      scopeReconcileGeneration: 5,
+      startupResumeEnabled: false,
+      localChangeEnabled: false,
+      periodicEnabled: false,
+    }));
+    const expected = {
+      deviceIdentity: h.current().deviceIdentity,
+      vaultIdentity: h.current().vaultIdentity,
+      remoteRootId: h.current().remoteRootId,
+      pairingStateNamespace: h.current().pairingStateNamespace,
+    };
+    const staleCompletion = () =>
+      (h.runtime as unknown as { completeFullReconciliation(
+        pairing: typeof expected, generation: number,
+      ): Promise<void> }).completeFullReconciliation(expected, 5);
+    const policyEdit = () => h.host.mutateSettings(latest => ({
+      ...latest,
+      userExclusionPatterns: ["private/**"],
+      scopeReconcileRequired: true,
+      scopeReconcileGeneration: 6,
+    }));
+    if (userEditsFirst) {
+      await policyEdit();
+      await staleCompletion();
+    } else {
+      await staleCompletion();
+      await policyEdit();
+    }
+    assert.equal(h.current().scopeReconcileGeneration, 6);
+    assert.equal(h.current().scopeReconcileRequired, true,
+      "older callback cannot declare a newer exclusion policy fully reconciled");
+    const reboot = new PluginDataRepository({
+      loadData: async () => h.disk(), dataFileExists: async () => true,
+      saveData: async () => { throw new Error("read-only restart"); },
+    });
+    const restored = await reboot.loadSettings();
+    assert.equal(restored.scopeReconcileGeneration, 6);
+    assert.equal(restored.scopeReconcileRequired, true);
+    assert.deepEqual(restored.userExclusionPatterns, ["private/**"]);
+  }
+});
