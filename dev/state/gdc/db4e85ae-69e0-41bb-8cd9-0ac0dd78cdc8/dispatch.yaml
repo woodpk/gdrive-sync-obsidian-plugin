@@ -6,9 +6,9 @@ OWNER_ROLE: TESTER
 ACTION: QUALIFY_CANDIDATE
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
-OWNER_GATE: REQUIRED
-OWNER_GATE_REASON: Owner-reserved promotion, installation, activation and physical S09 safety decisions remain separate; no such action authorized here.
-EXPECTED_STATE_BLOB_SHA: 9be08f83ab8f686d5808e9bd11394efcb80a2bfa
+OWNER_GATE: NOT_REQUIRED
+OWNER_GATE_REASON: Engineering correction acceptance only; promotion, installation, activation and physical S09 remain separately owner-governed.
+EXPECTED_STATE_BLOB_SHA: 3a68d668d515dc12169721d609a1d379e0ed58a9
 ORCHESTRATION_BASE_SHA: 2066a473103c2bb09dfd1889736092bba7b4976d
 AUTHORITY_REFS:
   - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, Adequacy Gate, transition integrity, historical adoption
