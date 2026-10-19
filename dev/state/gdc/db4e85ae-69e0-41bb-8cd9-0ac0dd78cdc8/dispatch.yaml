@@ -1,36 +1,38 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 1
-STATE: TESTER_QUALIFICATION_ACTIVE
-OWNER_ROLE: TESTER
-ACTION: QUALIFY_CANDIDATE
+STATE_VERSION: 2
+STATE: BUILDER_CORRECTION_ACTIVE
+OWNER_ROLE: BUILDER
+ACTION: CORRECT_PRODUCTION
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
-OWNER_GATE_REASON: Engineering correction acceptance only; promotion, installation, activation and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: 3a68d668d515dc12169721d609a1d379e0ed58a9
-ORCHESTRATION_BASE_SHA: 2066a473103c2bb09dfd1889736092bba7b4976d
+OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation, and physical S09 remain separately owner-governed.
+EXPECTED_STATE_BLOB_SHA: 48cb1a464fc84ccf3b36bb3b5184fd3550b1440a
+ORCHESTRATION_BASE_SHA: d3c9a8aa644d979e3a859f7932fcbca5190bd8ae
 AUTHORITY_REFS:
-  - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, Adequacy Gate, transition integrity, historical adoption
-  - Agent-Led Software Products Development Manual: Tester role, three-agent model, GDC
-  - Agent-Led Software Products Development Protocol: Tester qualification, PHX-CI exclusivity, GDC, evidence and script-audit rules
+  - Build Orchestration Communication Forms: CORRECT_PRODUCTION, transition integrity, Tester qualification correction loop
+  - Agent-Led Software Products Development Manual: Builder role and GDC
+  - Agent-Led Software Products Development Protocol: Builder correction and PHX-CI exclusivity
   - dev/planning/01-target-system/target-system-specification.md
   - dev/planning/02-workstreams/WS-07-brain-verification-platform/04-VERIFICATION-PLAN.md
 INPUT_REFS:
-  canonical_handoff: dev/state/handoffs/WS07-S09G1-F04-20261017-001.md
-  canonical_handoff_source_commit: cc78776d52e3b1d5b716a066907299e7af7b2e28
-  exact_legacy_combined_candidate_sha: 725fdd155d63c0496f9bc54b99b2de20f8951995
+  exact_failed_candidate_sha: 725fdd155d63c0496f9bc54b99b2de20f8951995
   accepted_production_base_sha: b1e2ebaee3077e34a4eefaf601ee8124078b7400
+  current_builder_production_sha: f92c488a5d8c2f511eb3f494d7c91b7717a66e45
   frozen_blind_review_sha: 0a5b72cdf5ebc01650232595a1c3b4cd690953e8
   existing_tester_test_commit_sha: 067edd206c649017d530baf33b6615df2713bb1e
-  existing_tester_test_tree_sha: 59a76184b3696c13294812daed1f1e50ebf5eb20
-  existing_production_correction_sha: f92c488a5d8c2f511eb3f494d7c91b7717a66e45
-  required_phx_ci_runtime_sha: 69c4aa077d4a1a46d1e85e59f39d36285be99e83
-DEFERRED_INPUT_REFS: N/A - historical F-03 authoring already consumed the prior frozen F-02 report; do not claim a new blind or independent Pass A/B checkpoint retroactively.
-BOUNDARY_RESULT: Tester independently reconciles inherited test coverage and the exact candidate with current GDC adequacy and provenance rules, performs only Tester-owned additional work, runs authoritative PHX-CI, preserves immutable source/test/evidence identities and classifies causal ownership; PASS with valid evidence routes to REVIEWER_ACCEPTANCE_ACTIVE, proven production defect routes to BUILDER_CORRECTION_ACTIVE, unresolved blocker routes to BLOCKED. Do not infer PASS from prior historical runs.
-ON_SUCCESS_STATE: REVIEWER_ACCEPTANCE_ACTIVE
+  phx_ci_run_id: bf21fd33-9253-459c-a0a9-ec7a7e2ff90a
+  phx_ci_evidence_commit_sha: 4018dfcc7caa6193b717c17a027eb52700f3ba49
+  operator_evidence_commit_sha: 835bd9699ac153c17c8403d3e47161a7867e8607
+  tester_causal_assessment_commit_sha: 3c9ede1efc2c2d0ae1e18b78a33d649a9c814b15
+  tester_causal_assessment_path: dev/test-results/gdc-db4e85ae-f04-causal-assessment.md
+DEFERRED_INPUT_REFS: N/A
+BOUNDARY_RESULT: Builder corrects demonstrated double invocation of scheduler.stop during one deauthorization in src/product/runtime.ts while preserving synchronous retirement, quiescence and durable namespace ordering. Do not change Tester-owned assertions, fixtures, or test files. Freeze exact production-only correction SHA/tree. Builder must assess whether this correction materially invalidates prior frozen blind assessment and route to REVIEWER_BLIND_ACTIVE if so; otherwise route to TESTER_QUALIFICATION_ACTIVE. Tester separately owns absent test-module import repairs and stale mock constructions, plus remaining test-failure causal analysis.
+ON_SUCCESS_STATE: TESTER_QUALIFICATION_ACTIVE
+ALTERNATE_SUCCESS_STATE: REVIEWER_BLIND_ACTIVE
 ON_BLOCKED_STATE: BLOCKED
-RESUME_STATE: TESTER_QUALIFICATION_ACTIVE
-OUTPUT_REFS: TBD_BY_TESTER
+RESUME_STATE: BUILDER_CORRECTION_ACTIVE
+OUTPUT_REFS: TBD_BY_BUILDER
 DISPOSITION: READY
-OUTPUT_NOTES: Adoption of pre-GDC mid-cycle F-04 OPEN; earlier F-02/F-03/F-05 handoffs are documented but are not represented as newly executed GDC states. Production/testing histories may be mixed under legacy combined candidate; Tester must validate production-only blind boundary and immutable qualification candidate rather than silently certify isolation.
+OUTPUT_NOTES: PHX-CI overall BLOCKED with test stage failure; canonical evidence published. No production correction is authorized for Tester. Do not rerun unchanged failed candidate.
