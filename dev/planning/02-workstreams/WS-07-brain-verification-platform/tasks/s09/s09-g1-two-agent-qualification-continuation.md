@@ -32,3 +32,7 @@ Physical S09A acceptance, live Drive/vault, installation/activation, master merg
 9. Architecture/ownership: Frozen repository guard and resource-lifetime tests; confirm normal successful adapter disposal after quiescence and scheduler exactly-once stop.
 10. End-to-end/fail-closed/destructive: Deterministic multi-component tests present; physical S09 deliberately separate and cannot be claimed from mocked tests. Expand destructive side-effect absence assertions.
 No entire test family has been shown absent; coverage depth and execution discovery require qualification. This table is not a substitute for requirement-by-assertion traceability or PHX-CI.
+
+## Builder test changes on this continuation branch
+- `tests/adversarial/s09-g1-runtime-authority-interleavings.test.ts`: strengthen F02-01 runtime teardown to assert exactly one scheduler stop and one local-dispose action; strengthen F02-02 successor initialization to assert raw adapters 1 and 2 each dispose exactly once even after repeated `disposeProduct()`. These tests address families 4, 5, 6 and 9 without relaxing historical oracles.
+- These test edits have NOT been compiled or executed. PHX-CI acceptance and full ten-family adequacy sign-off remain pending.
