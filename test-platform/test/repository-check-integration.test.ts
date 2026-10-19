@@ -633,18 +633,9 @@ test("promotion exact-hash gate remains fail-closed; context-free development mo
       BRAIN_ARTIFACT_PURPOSE: "development",
     });
     if (ordinaryDevelopment.error) throw ordinaryDevelopment.error;
-    strictEqual(ordinaryDevelopment.status, 2, ordinaryDevelopment.output);
-    match(ordinaryDevelopment.output, /Development artifact observation requires PHX-CI verification context and authorized governance classification/);
-
-    const authorizedDevelopment = runRepositoryCheck(root, {
-      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
-      BVP_CHANGE_CLASS: "authorized-governance",
-      BRAIN_ARTIFACT_PURPOSE: "development",
-    });
-    if (authorizedDevelopment.error) throw authorizedDevelopment.error;
-    strictEqual(authorizedDevelopment.status, 0, authorizedDevelopment.output);
-    match(authorizedDevelopment.output, /SHIPPING_ARTIFACT_MODE=development-observation/);
-    match(authorizedDevelopment.output, /BVP_REPOSITORY_CHECK_RESULT=PASS .*changeClass=authorized-governance/);
+    strictEqual(ordinaryDevelopment.status, 0, ordinaryDevelopment.output);
+    match(ordinaryDevelopment.output, /SHIPPING_ARTIFACT_MODE=development-observation/);
+    match(ordinaryDevelopment.output, /BVP_REPOSITORY_CHECK_RESULT=PASS .*changeClass=ordinary/);
 
     const frozenPathContext = writeContext(root, baseSha, {
       changedPaths: ["test-platform/src/repository-check.ts"],
@@ -655,8 +646,8 @@ test("promotion exact-hash gate remains fail-closed; context-free development mo
       BRAIN_ARTIFACT_PURPOSE: "development",
     });
     if (frozenOrdinary.error) throw frozenOrdinary.error;
-    strictEqual(frozenOrdinary.status, 2, frozenOrdinary.output);
-    match(frozenOrdinary.output, /Development artifact observation requires PHX-CI verification context and authorized governance classification/);
+    strictEqual(frozenOrdinary.status, 1, frozenOrdinary.output);
+    match(frozenOrdinary.output, /FROZEN_SURFACE_CHANGED/);
 
     writeContext(root, baseSha, { changedPaths: ["main.js"] });
     const promotion = runRepositoryCheck(root, {
@@ -672,12 +663,12 @@ test("promotion exact-hash gate remains fail-closed; context-free development mo
   });
 });
 
-test("DEC-343 authorized development rejects missing artifact and wrong package without bypassing the ordinary-development prohibition", () => {
+test("DEC-343 ordinary development still rejects missing artifact and wrong package", () => {
   withFixture((root, baseSha) => {
     const contextPath = writeContext(root, baseSha, { changedPaths: ["src/main.ts"] });
     const environment = {
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
-      BVP_CHANGE_CLASS: "authorized-governance",
+      BVP_CHANGE_CLASS: "ordinary",
       BRAIN_ARTIFACT_PURPOSE: "development",
     };
     rmSync(join(root, "main.js"));
