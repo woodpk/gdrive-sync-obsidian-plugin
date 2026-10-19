@@ -147,7 +147,7 @@ test("read-only legacy top-level recovery verifies the configured domain parent,
     remoteMutation: { kind: "reserved-folder-create", intentId: "intent:legacy", path: "top-level", reservedRemoteObjectId: "reserved-legacy" },
   } as unknown as Parameters<GoogleDriveAdapter["observeFolderCreateRecovery"]>[0];
   const observed = await adapter.observeFolderCreateRecovery(descriptor);
-  strictEqual(observed.status, "folder");
+  strictEqual(observed.status, "folder", `observed=${JSON.stringify(observed)}`);
   if (observed.status !== "folder") return;
   strictEqual(observed.parentRemoteObjectId, "content-domain-parent");
   strictEqual(observed.verifiedLegacyManagedRootParentId, configured.rootId);
@@ -170,7 +170,7 @@ test("legacy parent compatibility is never inferred for a nested folder", async 
     remoteMutation: { kind: "reserved-folder-create", intentId: "intent:nested", path: "nested/child", reservedRemoteObjectId: "reserved-nested" },
   } as unknown as Parameters<GoogleDriveAdapter["observeFolderCreateRecovery"]>[0];
   const observed = await adapter.observeFolderCreateRecovery(descriptor);
-  strictEqual(observed.status, "folder");
+  strictEqual(observed.status, "folder", `observed=${JSON.stringify(observed)}`);
   if (observed.status === "folder") {
     strictEqual(observed.verifiedLegacyManagedRootParentId, undefined);
     strictEqual(verifyRemoteFolderCreate(descriptor, observed).status, "conflict-preserved");
