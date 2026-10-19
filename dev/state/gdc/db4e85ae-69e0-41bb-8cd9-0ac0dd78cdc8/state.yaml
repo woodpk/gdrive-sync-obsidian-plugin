@@ -7,11 +7,11 @@ state: TESTER_QUALIFICATION_ACTIVE
 owner_role: TESTER
 action: QUALIFY_CANDIDATE
 state_version: 7
-handoff_count: 4
+handoff_count: 5
 handoff_count_basis: LIFETIME
 dispatch_path: dev/state/gdc/db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8/dispatch.yaml
 owner_gate: NOT_REQUIRED
 owner_gate_reason: This GDC accepts engineering correction only; promotion, release, activation, and physical S09 require separate owner authority.
 dependencies: []
-prior_state_blob_sha: 1423dd8bfd2e9948341f7b24117acf1e0c85cc41
+prior_state_blob_sha: 74a447e76d0e69988cda656407ec6f1ec9b6a711
 updated_at: 2026-10-19
