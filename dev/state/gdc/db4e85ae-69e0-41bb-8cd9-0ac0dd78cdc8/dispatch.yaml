@@ -1,38 +1,36 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 5
-STATE: BUILDER_CORRECTION_ACTIVE
-OWNER_ROLE: BUILDER
-ACTION: CORRECT_PRODUCTION
+STATE_VERSION: 6
+STATE: TESTER_QUALIFICATION_ACTIVE
+OWNER_ROLE: TESTER
+ACTION: QUALIFY_CANDIDATE
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
-OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation, and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: 1423dd8bfd2e9948341f7b24117acf1e0c85cc41
-ORCHESTRATION_BASE_SHA: b88a180adf3d08daa37913b7d96afa85b0a1c523
+OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation and physical S09 remain separately owner-governed.
+EXPECTED_STATE_BLOB_SHA: 74a447e76d0e69988cda656407ec6f1ec9b6a711
+ORCHESTRATION_BASE_SHA: 1d9aef7316688c1191dd2c51102b93a5712780e1
 AUTHORITY_REFS:
-  - Build Orchestration Communication Forms: CORRECT_PRODUCTION, correction ownership, transition integrity
-  - Agent-Led Software Products Development Manual: Builder role and GDC
-  - Agent-Led Software Products Development Protocol: Builder correction, PHX-CI exclusivity
+  - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, guarded transition and handoff-count
+  - Agent-Led Software Products Development Manual: Tester role and GDC
+  - Agent-Led Software Products Development Protocol: Tester qualification, test independence and PHX-CI
   - dev/planning/01-target-system/target-system-specification.md
   - dev/planning/02-workstreams/WS-07-brain-verification-platform/04-VERIFICATION-PLAN.md
 INPUT_REFS:
   original_failed_candidate_sha: 725fdd155d63c0496f9bc54b99b2de20f8951995
+  previous_qualification_candidate_sha: 4e683624d835bd28dccfff88666b51cd9c32265c
   accepted_production_base_sha: b1e2ebaee3077e34a4eefaf601ee8124078b7400
-  latest_builder_production_sha: c34ce1355919a1d08a71c422dd42c0ec1baf51ad
-  current_qualification_candidate_sha: 4e683624d835bd28dccfff88666b51cd9c32265c
-  candidate_tree_sha: da6dc74ee6ab3c215ef9ae15ff16989122ca502d
-  newly_identified_production_defect_artifact_commit_sha: 485a808897b15c419e76f3978e26c9e604377f0f
-  newly_identified_production_defect_path: dev/test-results/gdc-db4e85ae-local-adapter-lifetime-defect.md
-  current_tester_diagnosis_commit_sha: 139dcd9cca7d3a74f0e7232dc15839dd47c705a7
+  prior_builder_production_sha: c34ce1355919a1d08a71c422dd42c0ec1baf51ad
+  new_builder_production_correction_sha: 111d8d064b83a2f0dc19b218f28d2f63ed00fcd9
+  new_builder_production_tree_sha: f47e161132908ed0673bf2f2c458bf5519050e44
+  defect_assessment_commit_sha: 485a808897b15c419e76f3978e26c9e604377f0f
+  defect_assessment_path: dev/test-results/gdc-db4e85ae-local-adapter-lifetime-defect.md
   prior_phx_ci_run_id: bf21fd33-9253-459c-a0a9-ec7a7e2ff90a
-  prior_phx_ci_evidence_commit_sha: 4018dfcc7caa6193b717c17a027eb52700f3ba49
-DEFERRED_INPUT_REFS: No new blind review required unless correction materially invalidates frozen blind scope; Builder evaluates.
-BOUNDARY_RESULT: Builder fixes lifetime resource leak in src/product/runtime.ts: initializeOwned wraps rawLocal in CanonicalEvidenceLocalVault, which has no dispose method; disposeProduct calls this.local.dispose?.() and therefore never releases the successful rawLocal adapter. Preserve controller quiescence, OAuth retirement, and idempotent disposal. Builder MUST NOT modify Tester tests/fixtures or change assertions. Freeze exact Builder-only source SHA/tree and route back to Tester qualification; Tester separately owns the numerous missing import modules and other test failures. Do not request PHX-CI rerun of unchanged failed candidate.
-ON_SUCCESS_STATE: TESTER_QUALIFICATION_ACTIVE
-ALTERNATE_SUCCESS_STATE: REVIEWER_BLIND_ACTIVE
+DEFERRED_INPUT_REFS: No new blind review required unless materially expanded correction discovered. Do not represent inherited tests as freshly pre-built.
+BOUNDARY_RESULT: Tester independently incorporates the Builder-only local-adapter disposal correction into an exact verification candidate with Tester-owned tests and fixture/import repairs. Preserve underlying test assertions, run full authoritative PHX-CI and publish evidence; causally route newly demonstrated production defects back to Builder. Builder source correction defers raw adapter disposal until controller quiescence using separately retained callback, cleared on teardown, and changes only src/product/runtime.ts. No PHX-CI result is claimed for this correction.
+ON_SUCCESS_STATE: REVIEWER_ACCEPTANCE_ACTIVE
 ON_BLOCKED_STATE: BLOCKED
-RESUME_STATE: BUILDER_CORRECTION_ACTIVE
-OUTPUT_REFS: TBD_BY_BUILDER
+RESUME_STATE: TESTER_QUALIFICATION_ACTIVE
+OUTPUT_REFS: TBD_BY_TESTER
 DISPOSITION: READY
-OUTPUT_NOTES: Tester assembled immutable two-file correction candidate but has not asserted PHX-CI PASS. Causal new production defect is supported by source call chain and F02-02 failure.
+OUTPUT_NOTES: Builder production-only source/tree pinned; prior blind assessment judged not materially invalidated by this limited resource-lifetime fix; qualification and test-source completeness solely Tester-owned.
