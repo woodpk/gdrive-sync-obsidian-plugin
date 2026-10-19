@@ -36,3 +36,12 @@ No entire test family has been shown absent; coverage depth and execution discov
 ## Builder test changes on this continuation branch
 - `tests/adversarial/s09-g1-runtime-authority-interleavings.test.ts`: strengthen F02-01 runtime teardown to assert exactly one scheduler stop and one local-dispose action; strengthen F02-02 successor initialization to assert raw adapters 1 and 2 each dispose exactly once even after repeated `disposeProduct()`. These tests address families 4, 5, 6 and 9 without relaxing historical oracles.
 - These test edits have NOT been compiled or executed. PHX-CI acceptance and full ten-family adequacy sign-off remain pending.
+
+## Expanded adversarial assertions — Builder continuation
+Current owned test: `tests/adversarial/s09-g1-runtime-authority-interleavings.test.ts`.
+- **LIFE-002 / families 4, 5, 9:** an in-flight controller must quiesce before raw-adapter disposal; synchronous scheduler stop is exactly once. A second runtime disposal must not repeat adapter disposal.
+- **STATE-009/010/017 / families 4, 6, 7, 10:** failed deauthorization preserves durable old namespace; a later explicit successful retry persists an unpaired state visible on restart, without double-stopping the retired scheduler.
+- **F02-02 / families 4, 5, 9:** both superseded and succeeding raw adapters are released exactly once despite a repeated teardown.
+- **LIFE-002 / families 4, 9, 10:** injected `beginRuntimeDisposal` rejection still releases the underlying raw adapter and attention persistence from `finally`, clears stale authority, and avoids repeat cleanup.
+
+These new assertions are **UNEXECUTED** until qualified through PHX-CI. Existing test oracle semantics were preserved. Mandatory end-to-end physical iOS/Windows proof remains a separately authorized S09 gate. No declaration of comprehensive ten-family sufficiency before PHX-CI discovery and exact-candidate evidence.
