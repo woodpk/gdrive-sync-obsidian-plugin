@@ -174,6 +174,8 @@ test("F02-01: deauthorization revokes entry points immediately but waits for ato
   assert.equal(localDeletes, 0);
   assert.equal(remoteDeletes, 0);
   assert.ok(events.includes("local-dispose"));
+  assert.equal(events.filter(event => event === "stop").length, 1, "deauthorization must stop its scheduler exactly once");
+  assert.equal(events.filter(event => event === "local-dispose").length, 1, "local adapter lifetime must end exactly once");
   const restart = new PluginDataRepository({
     loadData: async () => h.persisted(), dataFileExists: async () => true,
     saveData: async () => { throw new Error("read-only restart"); },
