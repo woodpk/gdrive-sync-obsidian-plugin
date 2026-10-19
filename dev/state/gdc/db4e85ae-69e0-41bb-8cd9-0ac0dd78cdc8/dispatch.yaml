@@ -1,6 +1,6 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 3
+STATE_VERSION: 4
 STATE: TESTER_QUALIFICATION_ACTIVE
 OWNER_ROLE: TESTER
 ACTION: QUALIFY_CANDIDATE
@@ -8,8 +8,8 @@ WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
 OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation, and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: e1c553fb3b690c36d1940ed3bd1e5ebb30decff5
-ORCHESTRATION_BASE_SHA: 8a1821d1ca9750bc268b3c700a150483dc08b609
+EXPECTED_STATE_BLOB_SHA: 7507b4084f7bb81b38a61e3fd9fb5e5ede98162a
+ORCHESTRATION_BASE_SHA: 8583b25cabcc9764550f718c9a5e18bf93f6bd83
 AUTHORITY_REFS:
   - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, Tester adequacy, correction ownership, transition integrity
   - Agent-Led Software Products Development Manual: Tester role and GDC
