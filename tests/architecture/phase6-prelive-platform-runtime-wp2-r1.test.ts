@@ -54,6 +54,8 @@ test("R3-R1 runtime disposal waits for a blocked direct preview and rejects late
     let localDisposals = 0;
     let attentionDisposals = 0;
     Object.assign(runtime, {
+      // Object.create bypasses ProductRuntime field initializers; restore the real session collection.
+      oauthSessions: new Set(),
       scheduler: { stop: () => { schedulerStops += 1; } },
       controller,
       unsubscribe: () => undefined,
@@ -119,6 +121,8 @@ test("R3-R2 runtime disposal waits for direct manual conflict resolution and rej
     let localDisposals = 0;
     let attentionDisposals = 0;
     Object.assign(runtime, {
+      // Object.create bypasses ProductRuntime field initializers; restore the real session collection.
+      oauthSessions: new Set(),
       scheduler: { stop: () => { schedulerStops += 1; } },
       controller,
       unsubscribe: () => undefined,
