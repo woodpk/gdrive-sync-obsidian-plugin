@@ -1,15 +1,15 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 8
-STATE: TESTER_QUALIFICATION_ACTIVE
+STATE_VERSION: 9
+STATE: BLOCKED
 OWNER_ROLE: TESTER
 ACTION: QUALIFY_CANDIDATE
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
 OWNER_GATE_REASON: Engineering qualification only; promotion, release, installation, activation and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: c06e61e7698c4b151575d0a04509c77748731865
-ORCHESTRATION_BASE_SHA: d02f6083b2540b8e043af867e5cf8382c5d7c1bf
+EXPECTED_STATE_BLOB_SHA: 44b48824148f64bba6ad7cc92c8e5eec76dd810e
+ORCHESTRATION_BASE_SHA: fb5c369f08f2c5aade1b4abbf511bad4dd3f22bc
 AUTHORITY_REFS:
   - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, handoff-count, guarded transitions
   - Agent-Led Software Products Development Manual: Tester role and GDC
@@ -31,6 +31,6 @@ BOUNDARY_RESULT: Tester independently qualifies an exact source candidate with f
 ON_SUCCESS_STATE: REVIEWER_ACCEPTANCE_ACTIVE
 ON_BLOCKED_STATE: BLOCKED
 RESUME_STATE: TESTER_QUALIFICATION_ACTIVE
-OUTPUT_REFS: TBD_BY_TESTER
-DISPOSITION: READY
+OUTPUT_REFS: dev/test-results/gdc-db4e85ae-governance-change-class-assessment.md, commit 3b05596df149dbdfa339c2eb04f0ab984d95c574
+DISPOSITION: BLOCKED
 OUTPUT_NOTES: Builder restored frozen repository-check file exactly to accepted base; no Tester assertion, fixture, or test-file edits. Shipping hash remains development observation only and no promotion approval is asserted. Corrected source has not been PHX-CI qualified. This one-file repository-check restoration is a governance-boundary correction, not a new product behavior or scope change.
