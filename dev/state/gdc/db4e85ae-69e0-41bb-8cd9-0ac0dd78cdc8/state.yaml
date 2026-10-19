@@ -3,9 +3,9 @@ gdc_id: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
 repository: woodpk/gdrive-sync-obsidian-plugin
 workstream: WS-07-brain-verification-platform
 build_unit: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
-state: TESTER_QUALIFICATION_ACTIVE
-owner_role: TESTER
-action: QUALIFY_CANDIDATE
+state: BUILDER_CORRECTION_ACTIVE
+owner_role: BUILDER
+action: CORRECT_PRODUCTION
 state_version: 7
 handoff_count: 5
 handoff_count_basis: LIFETIME
