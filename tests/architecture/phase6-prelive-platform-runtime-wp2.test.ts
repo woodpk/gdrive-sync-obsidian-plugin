@@ -72,7 +72,7 @@ test("runtime teardown stops scheduler and awaits quiescence before resource dis
   const source = readFileSync(resolve(process.cwd(), "src/product/runtime.ts"), "utf8");
   const stop = source.indexOf("this.scheduler?.stop()");
   const quiesce = source.indexOf("await controller.beginRuntimeDisposal()");
-  const dispose = source.indexOf("disposable?.dispose?.()", quiesce);
+  const dispose = source.indexOf("disposeRawLocal?.()", quiesce);
   assert.ok(stop >= 0 && quiesce > stop && dispose > quiesce);
 });
 
