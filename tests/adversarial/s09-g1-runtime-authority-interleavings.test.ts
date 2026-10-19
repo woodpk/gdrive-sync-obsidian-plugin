@@ -249,9 +249,10 @@ test("F02-02: later initialize supersedes initializer suspended at adapter await
   } finally {
     firstAdapterGate.release();
     await h.runtime.disposeProduct();
+    await h.runtime.disposeProduct(); // disposal is idempotent across repeated shutdown requests
     Object.defineProperty(globalThis, "indexedDB", { value: originalIndexedDb, configurable: true, writable: true });
   }
-  assert.ok(disposed.includes("adapter:2"), "later teardown must release newest adapter");
+  assert.deepEqual(disposed, ["adapter:1", "adapter:2"], "each adapter, including the successfully published replacement, must be disposed exactly once");
 });
 
 test("F02-02: deauthorization while initialize awaits adapter prevents publication of either stale controller or old remote boundary", async () => {
