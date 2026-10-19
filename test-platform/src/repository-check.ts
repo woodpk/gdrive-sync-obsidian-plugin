@@ -181,7 +181,7 @@ const changeClass = rawChangeClass as ChangeClass;
 const context = readAuthoritativeContext();
 const artifactPurpose = process.env.BRAIN_ARTIFACT_PURPOSE?.trim() || "promotion";
 if (artifactPurpose !== "development" && artifactPurpose !== "promotion") fail("BRAIN_ARTIFACT_PURPOSE must be development or promotion");
-if (artifactPurpose === "development" && !context) fail("Development artifact observation requires PHX-CI verification context");
+if (artifactPurpose === "development" && (!context || changeClass !== "authorized-governance")) fail("Development artifact observation requires PHX-CI verification context and authorized governance classification");
 const developmentObservation = artifactPurpose === "development";
 
 if (context) {
