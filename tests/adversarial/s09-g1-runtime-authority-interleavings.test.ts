@@ -157,6 +157,8 @@ test("F02-01: deauthorization revokes entry points immediately but waits for ato
   assert.equal((await controller.request()).status, "rejected", "retired run must accept no new operation");
   await Promise.resolve();
   assert.equal(h.writes(), 0);
+  assert.equal(events.filter(event => event === "local-dispose").length, 0, "adapter must remain alive while the old controller is quiescing");
+  assert.equal(events.filter(event => event === "stop").length, 1, "scheduler retirement must be synchronous and unique");
 
   events.push("atomic-mutation-verified");
   events.push("old-epoch-state-committed");
@@ -214,6 +216,12 @@ test("F02-01: failed durable unpairing does not restore old run authority or sil
   await h.runtime.deauthorize();
   assert.equal(h.current().remoteRootId, "");
   assert.notEqual(h.current().pairingStateNamespace, "epoch:existing");
+  assert.equal(events.filter(event => event === "stop").length, 1, "retry must not stop an already detached scheduler");
+  const retried = new PluginDataRepository({
+    loadData: async () => h.persisted(), dataFileExists: async () => true,
+    saveData: async () => { throw new Error("read-only restart"); },
+  });
+  assert.equal((await retried.loadSettings()).remoteRootId, "", "explicit retry must survive a subsequent restart");
 });
 
 test("F02-02: later initialize supersedes initializer suspended at adapter await, retires its adapter, and is sole runtime owner", async () => {
