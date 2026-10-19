@@ -662,7 +662,10 @@ export class ProductRuntime {
     // Revoke old-epoch entry points synchronously at user intent, before any
     // awaited setting writes or earlier lifecycle operation can resume.
     ++this.runtimeGeneration;
-    this.scheduler?.stop();
+    // Detach after the immediate stop so queued disposal cannot stop it twice.
+    const scheduler = this.scheduler;
+    this.scheduler = undefined;
+    scheduler?.stop();
     const retiring = this.controller?.beginRuntimeDisposal();
     // Retain the rejection for the awaited transition without an unhandled
     // promise if an earlier queued initializer must finish first.
