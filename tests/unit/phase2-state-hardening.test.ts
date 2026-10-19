@@ -92,5 +92,5 @@ test("verified both-deleted transition removes prior base and records a durable 
   }
 });
 
-import "./workstreams/state/state-authority.test";
-import "./workstreams/state/state-authority-v1-1.test";
+import "./state/state-authority.test";
+import "./state/state-authority-v1-1.test";
