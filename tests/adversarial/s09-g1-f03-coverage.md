@@ -39,3 +39,24 @@ F-03 authoring only. All new tests run against the real runtime/persistence meth
 PHX-CI-only discovery: `tsconfig.test.json` compiles `tests/**/*.ts`; `package.json` `npm test` includes `node --test ".test-build/tests/**/*.test.js"`. The future F-04 Tester must bind the exact Builder-integrated production/test SHA, pinned PHX-CI runtime, selected/attempted/passed/failed/skipped module/case counts, and original canonical evidence. No test/build/typecheck, PHX-CI, live Drive/vault, physical S09, or acceptance executed in this F-03 session.
 
 **Expected handoff:** Builder inspects the exact test commit/tree, integrates test-owned commits without editing their assertions, persists/updates canonical handoff/current state, then issues a separate exact-candidate F-04. Any actual PHX-CI failure must route to F-05 with causal ownership rather than weakening expected outcomes.
+
+## GDC handoff 4 — Tester adequacy and mechanical import repair (2026-10-19)
+
+This addendum records assessment of the ten current Forms/Protocol adequacy families **without** representing historical F-03 as a new independent Pass A/B. The original `npm test` run (PHX-CI `bf21fd33-9253-459c-a0a9-ec7a7e2ff90a`) exposed obsolete relative side-effect imports left by the test-directory migration. Nine aggregators were repaired to reference the **existing committed substantive test modules** under `tests/{unit,integration,contracts,adversarial}/`. No assertion, test-case body, test data, or test oracle was deleted, rewritten, relaxed, or stubbed. This is not evidence of PHX-CI PASS; every restored substantive test remains required.
+
+| Governance adequacy family | Current relevant coverage and risk disposition |
+| --- | --- |
+| Nominal/success | Existing production/runtime init, pairing, local/Drive merge and controller scenario success checks; restored aggregation must execute in PHX-CI. |
+| Negative, malformed, unsupported, boundaries | Plugin-data malformed settings/absence and malformed state, Drive/API failures, invalid pairing and scope exclusions; verify all run. |
+| State transitions and forbidden transitions | G1 deauthorization, prohibited old-run admission, obsolete initialization, authoritative pairing epoch; relevant F03 tests preserved. |
+| Repetition, idempotency, retry, cancellation, recovery | Non-destructive repeated deauthorization, failed persistence retry, controller cancellation, crash/restarter regression; restored module imports are mandatory. |
+| Concurrency, races, ordering, stale authority | F02-01/02 deterministic gates, stale Pair/Create, exclusion-policy generations in opposing orderings; preserve all assertions. |
+| Persistence, restart, data integrity | PluginDataRepository reopen, persisted pairing namespace, crash/state authority, v1.1 journals and recovery; restored dependent suites. |
+| Identity, authorization, trust, security | Pairing identity/epoch, OAuth revocation, stale token handling, root/provenance, exclusion and authorization gates; no live credentials required. |
+| Public contracts, integration, compatibility | Google Drive response and configured-root contracts, controller and scoped adapter integration, preexisting compatibility suites. |
+| Architecture, ownership, invariants | PHX-CI-consumed BVP architecture guard, production-only source boundary, scheduler/controller/adapter lifecycle and zero destructive effects on unpair. |
+| End-to-end, fail-closed, destructive behavior | Deterministic multi-component sync/restart and destructive-safety scenarios; **physical S09, real Google Drive mutation, iOS termination and OS-level execution remain separately gated, NOT demonstrated by this repair**. |
+
+**Risk-driven methods:** Explicit deterministic fault injection and scheduled interleaving are material for pairing/teardown authority, stale async callbacks, durability boundaries, and destructive safety; those techniques already exist in inherited G1 tests. No arbitrary property/fuzz test count is imposed without new risk evidence. The reopened suites must run via PHX-CI, with special attention to runtime adapter quiescence, failed writes, stale results and root-observability discrepancies.
+
+**Remaining verification obligation:** PHX-CI must confirm the repaired imports actually compile/execute and investigate the remaining F02-02 and configured-root assertions. A nominal green test count alone does not satisfy this adequacy gate. The tester must verify each relevant family against authoritative requirements and report true gaps before acceptance. No existing substantive assertion may be modified solely to obtain PASS.
