@@ -57,6 +57,7 @@ export interface ProductRuntimeHost {
 
 export class ProductRuntime {
   private local?: LocalVaultPort;
+  private rawLocalDisposable?: () => void;
   private boundary?: ReturnType<typeof createObsidianGoogleDriveBoundary>;
   private state?: PersistentSynchronizationStateStore;
   private controller?: ProductController;
@@ -234,6 +235,9 @@ export class ProductRuntime {
     const localTransactions = new ScopedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope);
     const canonicalLocal = new CanonicalEvidenceLocalVault(scopedLocal, {}, localTransactions);
     this.local = canonicalLocal;
+    // Keep ownership of the underlying adapter; the scoped/canonical wrappers
+    // intentionally do not expose the adapter's optional disposal method.
+    this.rawLocalDisposable = () => (rawLocal as LocalVaultPort & { dispose?: () => void }).dispose?.();
 
     const vaultIdentity = contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity;
     const deviceIdentity = contractId<"DeviceIdentity">(current.deviceIdentity) as DeviceIdentity;
@@ -701,14 +705,15 @@ export class ProductRuntime {
     this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
     const attentionPersistence = this.attentionPersistence;
     this.attentionPersistence = undefined;
-    const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
+    const disposeRawLocal = this.rawLocalDisposable;
+    this.rawLocalDisposable = undefined;
     this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
     // Keep the old adapters and persistence alive until an in-flight run has
     // cancelled or safely completed its atomic operation and durable commit.
     try {
       if (controller) await controller.beginRuntimeDisposal();
     } finally {
-      disposable?.dispose?.();
+      disposeRawLocal?.();
       attentionPersistence?.dispose();
     }
   }
