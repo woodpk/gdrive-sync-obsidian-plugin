@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "gdcId": "db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8",
+  "exactCandidateSha": "11c39629d4c1be1e0bc6d7798c166f691119a7f7",
+  "acceptedBaseSha": "b1e2ebaee3077e34a4eefaf601ee8124078b7400",
+  "runtimeSha": "69c4aa077d4a1a46d1e85e59f39d36285be99e83",
+  "focusedTestCommand": "npm run test:bvp-root",
+  "phxCiExitCode": 201,
+  "operatorError": null,
+  "canonicalPublicationRequested": true,
+  "canonicalPublicationConfirmed": false,
+  "evidenceBranch": "evidence/gdc-db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8/operator-6c59a51393ee4177a89afd4c2404af8f"
+}

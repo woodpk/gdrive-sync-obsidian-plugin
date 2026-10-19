@@ -1,0 +1,45 @@
+**********************
+PowerShell transcript start
+Start time: 20261019124918
+Username: WDKNG-OFFICE\woodpk
+RunAs User: WDKNG-OFFICE\woodpk
+Configuration Name: 
+Machine: WDKNG-OFFICE (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -NoExit -ExecutionPolicy Bypass -File C:\Users\woodpk\AppData\Local\Programs\WebStorm\plugins\terminal\shell-integrations\powershell\powershell-integration.ps1
+Process ID: 57528
+PSVersion: 7.6.6
+PSEdition: Core
+GitCommitId: 7.6.6
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+RUN ROOT: C:\temp\6c59a51393ee4177a89afd4c2404af8f
+GDC: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
+CANDIDATE: 11c39629d4c1be1e0bc6d7798c166f691119a7f7
+RUNTIME: 69c4aa077d4a1a46d1e85e59f39d36285be99e83
+OPERATOR EVIDENCE BRANCH: evidence/gdc-db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8/operator-6c59a51393ee4177a89afd4c2404af8f
+
+SourceBuildHead          : 11c39629d4c1be1e0bc6d7798c166f691119a7f7
+VerificationCheckoutHead : 11c39629d4c1be1e0bc6d7798c166f691119a7f7
+EvidenceCommit           : f8b8c76d4aee00ec2927990284357c00e964cefe
+RepositoryIdentity       : woodpk/gdrive-sync-obsidian-plugin
+ProjectName              : gdrive-sync-obsidian-plugin
+Adapter                  : node-typescript
+Published                : True
+ControlCheckoutPreserved : True
+VerificationWorktree     : C:\temp\6c59a51393ee4177a89afd4c2404af8f\phx-e670c587c9ef4583\w
+LocalEvidenceBranch      :
+PublicationIssue         :
+CleanupIssue             :
+
+PHX-CI RESULT: BLOCKED (exit code 201)
+PHX-CI EXIT CODE: 201
+OPERATOR LOG: C:\temp\6c59a51393ee4177a89afd4c2404af8f\operator-terminal.log
+**********************
+PowerShell transcript end
+End time: 20261019125218
+**********************
