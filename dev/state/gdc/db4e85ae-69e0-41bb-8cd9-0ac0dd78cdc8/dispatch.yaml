@@ -1,36 +1,36 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 7
-STATE: BUILDER_CORRECTION_ACTIVE
-OWNER_ROLE: BUILDER
-ACTION: CORRECT_PRODUCTION
+STATE_VERSION: 8
+STATE: TESTER_QUALIFICATION_ACTIVE
+OWNER_ROLE: TESTER
+ACTION: QUALIFY_CANDIDATE
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
-OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: c739ace74727fdf17197e136ee8a76dd4ca3b1d1
-ORCHESTRATION_BASE_SHA: ab4394a037056c0022320a28dd4f357ef9573e99
+OWNER_GATE_REASON: Engineering qualification only; promotion, release, installation, activation and physical S09 remain separately owner-governed.
+EXPECTED_STATE_BLOB_SHA: c06e61e7698c4b151575d0a04509c77748731865
+ORCHESTRATION_BASE_SHA: d02f6083b2540b8e043af867e5cf8382c5d7c1bf
 AUTHORITY_REFS:
-  - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, guarded transition and handoff-count
+  - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, handoff-count, guarded transitions
   - Agent-Led Software Products Development Manual: Tester role and GDC
-  - Agent-Led Software Products Development Protocol: Tester qualification, test independence and PHX-CI
-  - dev/planning/01-target-system/target-system-specification.md
+  - Agent-Led Software Products Development Protocol: PHX-CI exclusivity, Test-Change Integrity, artifact promotion gate
+  - dev/authority/governance/locks/testing-platform-boundary.yaml
   - dev/planning/02-workstreams/WS-07-brain-verification-platform/04-VERIFICATION-PLAN.md
 INPUT_REFS:
-  original_failed_candidate_sha: 725fdd155d63c0496f9bc54b99b2de20f8951995
-  previous_qualification_candidate_sha: 4e683624d835bd28dccfff88666b51cd9c32265c
-  accepted_production_base_sha: b1e2ebaee3077e34a4eefaf601ee8124078b7400
-  prior_builder_production_sha: c34ce1355919a1d08a71c422dd42c0ec1baf51ad
-  new_builder_production_correction_sha: 111d8d064b83a2f0dc19b218f28d2f63ed00fcd9
-  new_builder_production_tree_sha: f47e161132908ed0673bf2f2c458bf5519050e44
-  defect_assessment_commit_sha: 485a808897b15c419e76f3978e26c9e604377f0f
-  defect_assessment_path: dev/test-results/gdc-db4e85ae-local-adapter-lifetime-defect.md
-  prior_phx_ci_run_id: bf21fd33-9253-459c-a0a9-ec7a7e2ff90a
-DEFERRED_INPUT_REFS: No new blind review required unless materially expanded correction discovered. Do not represent inherited tests as freshly pre-built.
-BOUNDARY_RESULT: Builder must resolve two PHX-CI repository-check failures without altering Tester assertions or bypassing controls: FROZEN_SURFACE_CHANGED test-platform/src/repository-check.ts and shipping main.js hash not on approved list. Preserve substantive typecheck, focused tests, full tests, build and artifacts PASS; determine authorized frozen-surface restoration and shipping artifact approval route.
-ON_SUCCESS_STATE: TESTER_QUALIFICATION_ACTIVE
+  failed_qualification_candidate_sha: 1bcf4cef2886fa5d595041b887c2bb6e10a4bd05
+  failed_qualification_tree_sha: 74cc58d75605a27c828efb83c84f1369f95cce1a
+  corrective_source_sha: f941bf7aea3b35c496374b9ddd596d4725e02ea6
+  corrective_tree_sha: a11008d056fe4583187d2ae806104291b06664f7
+  accepted_frozen_repository_check_blob_sha: b84d9fe301edce49d44c65448725243792f25c7d
+  prior_phx_ci_run_id: 28fb2dad-8771-49f2-9842-2cf39cb966fc
+  prior_phx_ci_evidence_commit_sha: edaef154bbf034fb1224c991e4ffdda7f97f4b97
+  prior_tester_assessment_sha: b86b4c53dae4848ae952080f336abab8a1b90d73
+  prior_artifact_sha256: 6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d
+DEFERRED_INPUT_REFS: Frozen blind review history remains deferred unless scope change materially invalidates its earlier assessment.
+BOUNDARY_RESULT: Tester independently qualifies an exact source candidate with frozen repository-check.ts restored byte-for-byte to the accepted baseline, owns any Test-Change Integrity analysis and PHX-CI execution, and records full immutable evidence. The prior run passed typecheck, focused tests, full tests, build and artifacts, but repository-check failed on a frozen-surface modification and shipping artifact hash. Builder has restored the one-line unauthorized relaxation of the development-observation guard. The unapproved main.js hash MUST NOT be added to the release allowlist or treated as release authorization. When permitted by current authority, use the PHX-CI development-observation path with BRAIN_ARTIFACT_PURPOSE=development, BVP_CHANGE_CLASS=authorized-governance, valid authoritative PHX-CI verification context, and original immutable candidate identities. Tester must audit whether that change-class selection is substantively authorized for the present source delta; if not, report BLOCKED rather than change governance or bypass controls. Only PHX-CI may issue a PASS. Route confirmed production defects to Builder separately.
+ON_SUCCESS_STATE: REVIEWER_ACCEPTANCE_ACTIVE
 ON_BLOCKED_STATE: BLOCKED
 RESUME_STATE: TESTER_QUALIFICATION_ACTIVE
-OUTPUT_REFS: TBD_BY_BUILDER
+OUTPUT_REFS: TBD_BY_TESTER
 DISPOSITION: READY
-OUTPUT_NOTES: Evidence PHX-CI run 28fb2dad-8771-49f2-9842-2cf39cb966fc candidate 1bcf4cef2886fa5d595041b887c2bb6e10a4bd05 evidence commit edaef154bbf034fb1224c991e4ffdda7f97f4b97 and Tester assessment b86b4c53dae4848ae952080f336abab8a1b90d73. No new PHX-CI run merely to repeat proven substantive tests.
+OUTPUT_NOTES: Builder restored frozen repository-check file exactly to accepted base; no Tester assertion, fixture, or test-file edits. Shipping hash remains development observation only and no promotion approval is asserted. Corrected source has not been PHX-CI qualified. This one-file repository-check restoration is a governance-boundary correction, not a new product behavior or scope change.
