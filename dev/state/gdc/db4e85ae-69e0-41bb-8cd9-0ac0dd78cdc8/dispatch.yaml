@@ -1,38 +1,38 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 4
-STATE: TESTER_QUALIFICATION_ACTIVE
-OWNER_ROLE: TESTER
-ACTION: QUALIFY_CANDIDATE
+STATE_VERSION: 5
+STATE: BUILDER_CORRECTION_ACTIVE
+OWNER_ROLE: BUILDER
+ACTION: CORRECT_PRODUCTION
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
 OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation, and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: 7507b4084f7bb81b38a61e3fd9fb5e5ede98162a
-ORCHESTRATION_BASE_SHA: 8583b25cabcc9764550f718c9a5e18bf93f6bd83
+EXPECTED_STATE_BLOB_SHA: 1423dd8bfd2e9948341f7b24117acf1e0c85cc41
+ORCHESTRATION_BASE_SHA: b88a180adf3d08daa37913b7d96afa85b0a1c523
 AUTHORITY_REFS:
-  - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, Tester adequacy, correction ownership, transition integrity
-  - Agent-Led Software Products Development Manual: Tester role and GDC
-  - Agent-Led Software Products Development Protocol: Tester qualification, PHX-CI exclusivity, GDC
+  - Build Orchestration Communication Forms: CORRECT_PRODUCTION, correction ownership, transition integrity
+  - Agent-Led Software Products Development Manual: Builder role and GDC
+  - Agent-Led Software Products Development Protocol: Builder correction, PHX-CI exclusivity
   - dev/planning/01-target-system/target-system-specification.md
   - dev/planning/02-workstreams/WS-07-brain-verification-platform/04-VERIFICATION-PLAN.md
 INPUT_REFS:
   original_failed_candidate_sha: 725fdd155d63c0496f9bc54b99b2de20f8951995
   accepted_production_base_sha: b1e2ebaee3077e34a4eefaf601ee8124078b7400
-  builder_production_correction_sha: c34ce1355919a1d08a71c422dd42c0ec1baf51ad
-  builder_production_correction_tree_sha: b6e3df6882a50d75ef99cd9c5bc94f4e9101eb20
-  builder_production_parent_sha: f92c488a5d8c2f511eb3f494d7c91b7717a66e45
-  frozen_blind_review_sha: 0a5b72cdf5ebc01650232595a1c3b4cd690953e8
-  existing_tester_test_commit_sha: 067edd206c649017d530baf33b6615df2713bb1e
+  latest_builder_production_sha: c34ce1355919a1d08a71c422dd42c0ec1baf51ad
+  current_qualification_candidate_sha: 4e683624d835bd28dccfff88666b51cd9c32265c
+  candidate_tree_sha: da6dc74ee6ab3c215ef9ae15ff16989122ca502d
+  newly_identified_production_defect_artifact_commit_sha: 485a808897b15c419e76f3978e26c9e604377f0f
+  newly_identified_production_defect_path: dev/test-results/gdc-db4e85ae-local-adapter-lifetime-defect.md
+  current_tester_diagnosis_commit_sha: 139dcd9cca7d3a74f0e7232dc15839dd47c705a7
   prior_phx_ci_run_id: bf21fd33-9253-459c-a0a9-ec7a7e2ff90a
   prior_phx_ci_evidence_commit_sha: 4018dfcc7caa6193b717c17a027eb52700f3ba49
-  tester_causal_assessment_commit_sha: 3c9ede1efc2c2d0ae1e18b78a33d649a9c814b15
-  tester_causal_assessment_path: dev/test-results/gdc-db4e85ae-f04-causal-assessment.md
-DEFERRED_INPUT_REFS: N/A - predecessor frozen blind assessment remains valid for this narrow correction; inherited pre-GDC authoring chronology must not be fabricated.
-BOUNDARY_RESULT: Tester owns repairs to Tester test-module imports and stale fixture/mock setup, classifies other failures, assembles an exact qualification candidate layering Tester-owned tests onto corrected Builder-only production, executes authoritative PHX-CI, publishes evidence, and routes causal production findings back to Builder. No unverified PASS or production file edits by Tester. Preserve frozen tests and requirements or justify expectation changes under Test-Change Integrity Rule.
-ON_SUCCESS_STATE: REVIEWER_ACCEPTANCE_ACTIVE
+DEFERRED_INPUT_REFS: No new blind review required unless correction materially invalidates frozen blind scope; Builder evaluates.
+BOUNDARY_RESULT: Builder fixes lifetime resource leak in src/product/runtime.ts: initializeOwned wraps rawLocal in CanonicalEvidenceLocalVault, which has no dispose method; disposeProduct calls this.local.dispose?.() and therefore never releases the successful rawLocal adapter. Preserve controller quiescence, OAuth retirement, and idempotent disposal. Builder MUST NOT modify Tester tests/fixtures or change assertions. Freeze exact Builder-only source SHA/tree and route back to Tester qualification; Tester separately owns the numerous missing import modules and other test failures. Do not request PHX-CI rerun of unchanged failed candidate.
+ON_SUCCESS_STATE: TESTER_QUALIFICATION_ACTIVE
+ALTERNATE_SUCCESS_STATE: REVIEWER_BLIND_ACTIVE
 ON_BLOCKED_STATE: BLOCKED
-RESUME_STATE: TESTER_QUALIFICATION_ACTIVE
-OUTPUT_REFS: TBD_BY_TESTER
+RESUME_STATE: BUILDER_CORRECTION_ACTIVE
+OUTPUT_REFS: TBD_BY_BUILDER
 DISPOSITION: READY
-OUTPUT_NOTES: Builder corrected double scheduler.stop call by detaching scheduler synchronously after entrypoint stop. Exactly src/product/runtime.ts changed (+4/-1) from parent production source; no tests changed. Source-level review indicates narrow corrective flow does not materially invalidate prior blind risk assessment. Corrected production has NOT passed PHX-CI; previous failed test results remain historical.
+OUTPUT_NOTES: Tester assembled immutable two-file correction candidate but has not asserted PHX-CI PASS. Causal new production defect is supported by source call chain and F02-02 failure.
