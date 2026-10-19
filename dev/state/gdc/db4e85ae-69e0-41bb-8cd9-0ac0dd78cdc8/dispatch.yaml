@@ -1,15 +1,15 @@
 SCHEMA_VERSION: 2
 GDC_ID: db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8
-STATE_VERSION: 6
-STATE: TESTER_QUALIFICATION_ACTIVE
-OWNER_ROLE: TESTER
-ACTION: QUALIFY_CANDIDATE
+STATE_VERSION: 7
+STATE: BUILDER_CORRECTION_ACTIVE
+OWNER_ROLE: BUILDER
+ACTION: CORRECT_PRODUCTION
 WORKSTREAM: WS-07-brain-verification-platform
 BUILD_UNIT: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 OWNER_GATE: NOT_REQUIRED
 OWNER_GATE_REASON: Engineering correction only; promotion, installation, activation and physical S09 remain separately owner-governed.
-EXPECTED_STATE_BLOB_SHA: 74a447e76d0e69988cda656407ec6f1ec9b6a711
-ORCHESTRATION_BASE_SHA: 1d9aef7316688c1191dd2c51102b93a5712780e1
+EXPECTED_STATE_BLOB_SHA: c739ace74727fdf17197e136ee8a76dd4ca3b1d1
+ORCHESTRATION_BASE_SHA: ab4394a037056c0022320a28dd4f357ef9573e99
 AUTHORITY_REFS:
   - Build Orchestration Communication Forms: QUALIFY_CANDIDATE, guarded transition and handoff-count
   - Agent-Led Software Products Development Manual: Tester role and GDC
@@ -27,10 +27,10 @@ INPUT_REFS:
   defect_assessment_path: dev/test-results/gdc-db4e85ae-local-adapter-lifetime-defect.md
   prior_phx_ci_run_id: bf21fd33-9253-459c-a0a9-ec7a7e2ff90a
 DEFERRED_INPUT_REFS: No new blind review required unless materially expanded correction discovered. Do not represent inherited tests as freshly pre-built.
-BOUNDARY_RESULT: Tester independently incorporates the Builder-only local-adapter disposal correction into an exact verification candidate with Tester-owned tests and fixture/import repairs. Preserve underlying test assertions, run full authoritative PHX-CI and publish evidence; causally route newly demonstrated production defects back to Builder. Builder source correction defers raw adapter disposal until controller quiescence using separately retained callback, cleared on teardown, and changes only src/product/runtime.ts. No PHX-CI result is claimed for this correction.
-ON_SUCCESS_STATE: REVIEWER_ACCEPTANCE_ACTIVE
+BOUNDARY_RESULT: Builder must resolve two PHX-CI repository-check failures without altering Tester assertions or bypassing controls: FROZEN_SURFACE_CHANGED test-platform/src/repository-check.ts and shipping main.js hash not on approved list. Preserve substantive typecheck, focused tests, full tests, build and artifacts PASS; determine authorized frozen-surface restoration and shipping artifact approval route.
+ON_SUCCESS_STATE: TESTER_QUALIFICATION_ACTIVE
 ON_BLOCKED_STATE: BLOCKED
 RESUME_STATE: TESTER_QUALIFICATION_ACTIVE
-OUTPUT_REFS: TBD_BY_TESTER
+OUTPUT_REFS: TBD_BY_BUILDER
 DISPOSITION: READY
-OUTPUT_NOTES: Builder production-only source/tree pinned; prior blind assessment judged not materially invalidated by this limited resource-lifetime fix; qualification and test-source completeness solely Tester-owned.
+OUTPUT_NOTES: Evidence PHX-CI run 28fb2dad-8771-49f2-9842-2cf39cb966fc candidate 1bcf4cef2886fa5d595041b887c2bb6e10a4bd05 evidence commit edaef154bbf034fb1224c991e4ffdda7f97f4b97 and Tester assessment b86b4c53dae4848ae952080f336abab8a1b90d73. No new PHX-CI run merely to repeat proven substantive tests.
