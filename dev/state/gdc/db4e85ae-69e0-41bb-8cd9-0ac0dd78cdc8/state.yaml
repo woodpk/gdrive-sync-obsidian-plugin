@@ -6,10 +6,12 @@ build_unit: S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION
 state: TESTER_QUALIFICATION_ACTIVE
 owner_role: TESTER
 action: QUALIFY_CANDIDATE
-state_version: 3
+state_version: 4
+handoff_count: 2
+handoff_count_basis: LIFETIME
 dispatch_path: dev/state/gdc/db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8/dispatch.yaml
 owner_gate: NOT_REQUIRED
 owner_gate_reason: This GDC accepts engineering correction only; promotion, release, activation, and physical S09 require separate owner authority.
 dependencies: []
-prior_state_blob_sha: 48cb1a464fc84ccf3b36bb3b5184fd3550b1440a
+prior_state_blob_sha: e1c553fb3b690c36d1940ed3bd1e5ebb30decff5
 updated_at: 2026-10-19
