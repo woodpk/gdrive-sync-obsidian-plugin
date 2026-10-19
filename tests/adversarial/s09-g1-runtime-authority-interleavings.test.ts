@@ -146,7 +146,7 @@ test("F02-01: deauthorization revokes entry points immediately but waits for ato
   const oauth = { clearTokens: () => { events.push("tokens-clear"); }, retirePendingOperations: () => undefined };
   const local = { dispose: () => events.push("local-dispose"), trash: async () => { localDeletes++; } };
   const drive = { trash: async () => { remoteDeletes++; } };
-  Object.assign(h.runtime as unknown as RuntimeInternals, { controller, scheduler, boundary: { oauth, drive }, local });
+  Object.assign(h.runtime as unknown as RuntimeInternals, { controller, scheduler, boundary: { oauth, drive }, local, rawLocalDisposable: local.dispose });
   const previousKey = pairingStorageKey("brain-google-drive-sync", h.original);
   const unpair = h.runtime.deauthorize();
   assert.equal(cancellationAccepted, true, "cancel intent must precede the first asynchronous wait");
