@@ -299,3 +299,20 @@ test("F02-02: deauthorization while initialize awaits adapter prevents publicati
     Object.defineProperty(globalThis, "indexedDB", { value: originalIndexedDb, configurable: true, writable: true });
   }
 });
+
+
+test("LIFE-002: failed controller quiescence still releases raw adapter and attention persistence exactly once", async () => {
+  const h = await harness();
+  const events: string[] = [];
+  Object.assign(h.runtime as unknown as RuntimeInternals, {
+    controller: { beginRuntimeDisposal: async () => { events.push("quiesce"); throw new Error("injected quiescence failure"); } },
+    scheduler: { stop: () => events.push("stop") },
+    rawLocalDisposable: () => events.push("raw-local-dispose"),
+    attentionPersistence: { dispose: () => events.push("attention-dispose") },
+  });
+  await assert.rejects(h.runtime.disposeProduct(), /injected quiescence failure/);
+  assert.deepEqual(events, ["stop", "quiesce", "raw-local-dispose", "attention-dispose"]);
+  assert.equal(h.runtime.productController(), undefined, "a rejected disposal must not restore stale controller authority");
+  await h.runtime.disposeProduct();
+  assert.deepEqual(events, ["stop", "quiesce", "raw-local-dispose", "attention-dispose"], "retry may not dispose retired resources again");
+});
