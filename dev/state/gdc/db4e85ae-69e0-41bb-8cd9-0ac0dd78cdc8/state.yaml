@@ -8,8 +8,8 @@ owner_role: TESTER
 action: QUALIFY_CANDIDATE
 state_version: 1
 dispatch_path: dev/state/gdc/db4e85ae-69e0-41bb-8cd9-0ac0dd78cdc8/dispatch.yaml
-owner_gate: REQUIRED
-owner_gate_reason: Physical S09 activation, release, and promotion remain separately owner-governed; this GDC does not authorize them.
+owner_gate: NOT_REQUIRED
+owner_gate_reason: This GDC accepts engineering correction only; promotion, release, activation, and physical S09 require separate owner authority.
 dependencies: []
 prior_state_blob_sha: null
 updated_at: 2026-10-18
