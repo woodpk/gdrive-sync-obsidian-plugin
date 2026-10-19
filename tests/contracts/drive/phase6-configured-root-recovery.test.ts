@@ -136,6 +136,7 @@ test("read-only legacy top-level recovery verifies the configured domain parent,
   const adapter = new GoogleDriveAdapter({} as never, {} as never, {} as never, undefined, () => configured);
   const seams = adapter as unknown as Record<string, unknown>;
   seams["guardPairedAccount"] = async () => ({ ok: true, value: undefined });
+  seams["validateManagedRoot"] = async (identity: ManagedRemoteIdentity) => ({ ok: true, value: { status: "valid", identity } });
   seams["getFile"] = async () => ({ ok: true, value: { id: "reserved-legacy", name: "top-level", mimeType: "application/vnd.google-apps.folder", parents: ["content-domain-parent"], trashed: false } });
   seams["rootForFile"] = async () => ({ ok: true, value: configured.rootId });
   seams["domainRoots"] = async () => ({ ok: true, value: { content: { id: "content-domain-parent" }, config: { id: "config-domain-parent" } } });
@@ -159,6 +160,7 @@ test("legacy parent compatibility is never inferred for a nested folder", async 
   const adapter = new GoogleDriveAdapter({} as never, {} as never, {} as never, undefined, () => configured);
   const seams = adapter as unknown as Record<string, unknown>;
   seams["guardPairedAccount"] = async () => ({ ok: true, value: undefined });
+  seams["validateManagedRoot"] = async (identity: ManagedRemoteIdentity) => ({ ok: true, value: { status: "valid", identity } });
   seams["getFile"] = async () => ({ ok: true, value: { id: "reserved-nested", mimeType: "application/vnd.google-apps.folder", parents: ["content-domain-parent"], trashed: false } });
   seams["rootForFile"] = async () => ({ ok: true, value: configured.rootId });
   seams["domainRoots"] = async () => ({ ok: true, value: { content: { id: "content-domain-parent" }, config: { id: "config-domain-parent" } } });
