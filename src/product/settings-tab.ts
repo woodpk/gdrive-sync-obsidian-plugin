@@ -12,7 +12,7 @@ import { defaultLocalExclusionRules } from "../local/exclusions";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import type { BrainSyncSettings } from "./plugin-data";
 import { PreparedOAuthLaunchDiagnostic } from "./oauth-prepared-launch-diagnostic";
-import { resolveSyncPlanErrorsPath, withManagedSyncPlanErrorsExclusion } from "./sync-plan-errors-path";
+import { resolveSyncPlanErrorsPath, userExclusionsWithoutManaged } from "./sync-plan-errors-path";
 
 export interface ProductSettingsHost {
   readonly app: App;
@@ -22,7 +22,7 @@ export interface ProductSettingsHost {
   authenticationButtonPressed(): number;
   authenticate(attemptId: number): Promise<void>;
   createManagedRemote(): Promise<void>;
-  pairManagedRemote(): Promise<void>;
+  pairManagedRemote(remoteRootId: string): Promise<void>;
   clearAuthenticationAndPairing(): Promise<void>;
   diagnosticsSummary(): DiagnosticSummary;
   copyDiagnosticLog(): Promise<void>;
@@ -152,11 +152,12 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
           new Notice(`Prepared authorization could not launch: ${error instanceof Error ? error.message : String(error)}`);
         }
       }));
-    new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. Additional devices must deliberately confirm the same identity when pairing.").addText(text => text.setValue(settings.vaultIdentity).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
-    new Setting(containerEl).setName("Managed remote root ID").setDesc("Stable Google Drive folder ID for explicit pairing. A folder name alone is never sufficient.").addText(text => text.setValue(settings.remoteRootId).onChange(async value => this.host.updateSettings({ remoteRootId: value.trim() })));
-    new Setting(containerEl).setName("Create managed BRAIN Sync remote").addButton(button => button.setButtonText("Create").onClick(() => this.host.createManagedRemote()));
-    new Setting(containerEl).setName("Validate and pair existing remote").addButton(button => button.setButtonText("Pair").onClick(() => this.host.pairManagedRemote()));
-    new Setting(containerEl).setName("Deauthorize this device").setDesc("Clears authentication and local pairing only. It never deletes local or shared vault content.").addButton(button => button.setButtonText("Deauthorize").setWarning().onClick(() => this.host.clearAuthenticationAndPairing()));
+    new Setting(containerEl).setName("BRAIN vault identity").setDesc("Stable non-secret identity. Deauthorize the existing remote (even if first sync is incomplete) before changing pairing.").addText(text => text.setValue(settings.vaultIdentity).setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onChange(async value => this.host.updateSettings({ vaultIdentity: value.trim() })));
+    let pendingRemoteRootId = settings.remoteRootId;
+    new Setting(containerEl).setName("Managed remote root ID").setDesc("Draft root ID is validated by Pair before it is saved. Deauthorize an existing remote (including an incomplete first sync) before replacing it.").addText(text => text.setValue(settings.remoteRootId).setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onChange(value => { pendingRemoteRootId = value.trim(); }));
+    new Setting(containerEl).setName("Create managed BRAIN Sync remote").addButton(button => button.setButtonText("Create").setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onClick(async () => { await this.host.createManagedRemote(); this.display(); }));
+    new Setting(containerEl).setName("Validate and pair existing remote").addButton(button => button.setButtonText("Pair").setDisabled(settings.firstSyncCompleted || Boolean(settings.remoteRootId)).onClick(async () => { await this.host.pairManagedRemote(pendingRemoteRootId); if (this.host.settings().remoteRootId) this.display(); }));
+    new Setting(containerEl).setName("Deauthorize this device").setDesc("Clears authentication and local pairing only. It never deletes local or shared vault content.").addButton(button => button.setButtonText("Deauthorize").setWarning().onClick(async () => { await this.host.clearAuthenticationAndPairing(); this.display(); }));
 
     containerEl.createEl("h3", { text: "Automatic synchronization" });
     this.toggle(containerEl, "Startup / resume", "Run after vault readiness or app resume.", settings.startupResumeEnabled, value => ({ startupResumeEnabled: value }));
@@ -181,12 +182,9 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
         .onChange(value => { pendingErrorsDirectory = value; }))
       .addButton(button => button.setButtonText("Apply").onClick(async () => {
           try {
-            const updated = withManagedSyncPlanErrorsExclusion(this.host.settings(), pendingErrorsDirectory);
-            await this.host.updateSettings({
-              syncPlanErrorsDirectory: updated.syncPlanErrorsDirectory,
-              managedSyncPlanErrorsExclusion: updated.managedSyncPlanErrorsExclusion,
-              userExclusionPatterns: updated.userExclusionPatterns,
-            });
+            // Carry only the user's directory intent. The runtime must derive managed exclusions
+            // from the latest committed state at the transaction boundary.
+            await this.host.updateSettings({ syncPlanErrorsDirectory: pendingErrorsDirectory });
             this.display();
           } catch (error) {
             new Notice(error instanceof Error ? error.message : String(error));
@@ -196,13 +194,10 @@ export class BrainSyncSettingsTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Additional exclusion patterns")
       .setDesc("One path/glob-like pattern per line. The exact sync-plan-errors.csv entry is managed automatically and cannot be removed.")
-      .addTextArea(area => area.setValue(settings.userExclusionPatterns.join("\n")).onChange(async value => {
+      .addTextArea(area => area.setValue(userExclusionsWithoutManaged(settings).join("\n")).onChange(async value => {
         const patterns = value.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
-        const updated = withManagedSyncPlanErrorsExclusion({ ...this.host.settings(), userExclusionPatterns: patterns });
-        await this.host.updateSettings({
-          userExclusionPatterns: updated.userExclusionPatterns,
-          managedSyncPlanErrorsExclusion: updated.managedSyncPlanErrorsExclusion,
-        });
+        // The editor owns user rules only; managed paths are reconstructed transactionally.
+        await this.host.updateSettings({ userExclusionPatterns: patterns });
       }));
     const exclusions = containerEl.createEl("ul");
     for (const rule of defaultLocalExclusionRules()) exclusions.createEl("li", { text: `${rule.pattern} — ${rule.description}` });

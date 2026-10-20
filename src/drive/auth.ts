@@ -130,6 +130,8 @@ function hasExactRequiredDriveScope(scope: string): boolean {
 export class GoogleOAuthSession {
   static readonly TOKEN_SECRET_ID = "brain-gdrive-oauth-tokens";
   private transaction?: OAuthTransaction;
+  // Deauthorization invalidates all in-flight PKCE and token-refresh continuations.
+  private revocationGeneration = 0;
   private diagnostics?: DiagnosticLogger;
   private accessFailure?: OAuthAccessTokenFailure;
   constructor(
@@ -142,6 +144,9 @@ export class GoogleOAuthSession {
   setDiagnosticLogger(logger: DiagnosticLogger | undefined): void { this.diagnostics = logger; }
 
   async beginAuthorization(ttlMs = DEFAULT_TRANSACTION_TTL_MS): Promise<OAuthAuthorizationRequest> {
+    // A new authorization intent retires earlier preparations and token refreshes.
+    this.retirePendingOperations();
+    const generation = this.revocationGeneration;
     const diagnostics = this.diagnostics;
     diagnostics?.debug("oauth.transaction", "transaction-preparation-started", {
       operation: "begin-authorization",
@@ -160,6 +165,7 @@ export class GoogleOAuthSession {
       diagnostics?.trace("oauth.transaction", "pkce-verifier-generation-complete", { stage: "verifier-generation" });
       diagnostics?.trace("oauth.transaction", "pkce-sha256-start", { stage: "challenge-generation" });
       const challenge = base64Url(await sha256(verifier));
+      if (generation !== this.revocationGeneration) throw new Error("OAuth authorization attempt retired by token revocation.");
       diagnostics?.trace("oauth.transaction", "pkce-sha256-complete", { stage: "challenge-generation" });
       const expiresAtMs = this.now() + ttlMs;
       this.transaction = { state, verifier, expiresAtMs };
@@ -200,6 +206,7 @@ export class GoogleOAuthSession {
   }
 
   async completeAuthorization(input: OAuthCallbackInput): Promise<OAuthCompletion> {
+    let generation = this.revocationGeneration;
     const tx = this.transaction;
     this.transaction = undefined;
     if (!tx) return { ok: false, reason: "missing-transaction" };
@@ -253,9 +260,15 @@ export class GoogleOAuthSession {
         },
       };
     }
+    if (generation !== this.revocationGeneration) return { ok: false, reason: "missing-transaction" };
     const previous = this.tokens();
     const previousRefreshToken = previous && hasExactRequiredDriveScope(previous.scope) ? previous.refreshToken : undefined;
-    if (previous && !hasExactRequiredDriveScope(previous.scope)) this.clearTokens();
+    if (previous && !hasExactRequiredDriveScope(previous.scope)) {
+      // Revoke older refresh operations, but allow this already-validated,
+      // current OAuth exchange to install its correctly scoped replacement.
+      this.clearTokens();
+      generation = this.revocationGeneration;
+    }
     const tokens: OAuthTokens = {
       accessToken: parsed.access_token,
       refreshToken: parsed.refresh_token ?? previousRefreshToken,
@@ -271,13 +284,25 @@ export class GoogleOAuthSession {
         diagnostic: { phase: "token-exchange", classification: "scope-grant-not-exact-drive-file", httpStatus: response.status },
       };
     }
+    if (generation !== this.revocationGeneration) return { ok: false, reason: "missing-transaction" };
+    // A successful new authorization supersedes older in-flight refresh results.
+    this.retirePendingOperations();
     this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(tokens));
     this.accessFailure = undefined;
     return { ok: true };
   }
 
   tokens(): OAuthTokens | undefined { return decodeTokens(this.secrets.get(GoogleOAuthSession.TOKEN_SECRET_ID)); }
-  clearTokens(): void { this.secrets.delete(GoogleOAuthSession.TOKEN_SECRET_ID); this.accessFailure = "authentication-required"; }
+  /** Retire old requests when the runtime is replaced, without deleting valid stored tokens. */
+  retirePendingOperations(): void {
+    ++this.revocationGeneration;
+    this.transaction = undefined;
+  }
+  clearTokens(): void {
+    this.retirePendingOperations();
+    this.secrets.delete(GoogleOAuthSession.TOKEN_SECRET_ID);
+    this.accessFailure = "authentication-required";
+  }
   accessTokenFailure(): OAuthAccessTokenFailure | undefined { return this.accessFailure; }
 
   invalidateAccessToken(): void {
@@ -289,6 +314,7 @@ export class GoogleOAuthSession {
   }
 
   async accessToken(): Promise<string | undefined> {
+    const generation = this.revocationGeneration;
     const current = this.tokens();
     if (!current) { this.accessFailure = "authentication-required"; return undefined; }
     if (!hasExactRequiredDriveScope(current.scope)) { this.clearTokens(); return undefined; }
@@ -301,12 +327,14 @@ export class GoogleOAuthSession {
     try {
       response = await this.fetcher(GOOGLE_TOKEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
     } catch {
-      this.accessFailure = "transient";
+      if (generation === this.revocationGeneration) this.accessFailure = "transient";
       return undefined;
     }
+    if (generation !== this.revocationGeneration) return undefined;
     let parsed: TokenResponse | undefined;
     try { parsed = tokenResponse(JSON.parse(await response.text())); }
     catch { parsed = undefined; }
+    if (generation !== this.revocationGeneration) return undefined;
     if (!parsed) { this.accessFailure = "transient"; return undefined; }
     if (!response.ok || !parsed.access_token || !parsed.expires_in) {
       if (parsed.error === "invalid_grant") {
@@ -324,6 +352,7 @@ export class GoogleOAuthSession {
       scope: parsed.scope ?? current.scope,
     };
     if (!hasExactRequiredDriveScope(refreshed.scope)) { this.clearTokens(); return undefined; }
+    if (generation !== this.revocationGeneration) return undefined;
     this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(refreshed));
     this.accessFailure = undefined;
     return refreshed.accessToken;

@@ -1,0 +1,139 @@
+import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
+import test from "node:test";
+import type { BinaryContentSource, ContentEvidence, LocalMutationTransaction, LocalTransactionalMutationPort, ManagedRemoteIdentity, ObservationToken, PersistenceRevision, ReliableRemoteMutationPort, RemoteObjectId, SemanticStateGeneration, StateLoadContext, VaultPath } from "../../src/contracts";
+import { contractId } from "../../src/contracts";
+import { ThreeWayConflictResolver } from "../../src/core/conflict-resolver";
+import { DeterministicSynchronizationPlanner } from "../../src/core/planner";
+import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
+import { enterSynchronizationLifecycle, InMemoryRunLeasePort } from "../../src/core/run-coordinator";
+import { BoundedAuditHistory, MemoryAuditPersistence } from "../../src/product/audit-history";
+import { CONFIG_REMOTE_NAMESPACE, ProductPathScope, ScopedLocalVault } from "../../src/product/path-scope";
+import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "../../src/product/plugin-data";
+import { ProductController } from "../../src/product/product-controller";
+import { ProductSynchronizationExecutor } from "../../src/product/production-executor";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
+import { ProductSnapshotAssembler } from "../../src/product/snapshot-assembler";
+import { createInitialAuthorityState, MemoryStateByteStorage, PersistentSynchronizationStateStore } from "../../src/state/persistent-state-store";
+import { sha256Text } from "../../src/util/sha256";
+
+const id=<T extends string>(v:string)=>contractId<T>(v),vp=(v:string)=>id<"VaultPath">(v) as VaultPath,rid=(v:string)=>id<"RemoteObjectId">(v) as RemoteObjectId;
+const ev=(t:string):ContentEvidence=>({hash:sha256Text(t),sizeBytes:new TextEncoder().encode(t).byteLength});
+const src=(t:string):BinaryContentSource=>({sizeBytes:new TextEncoder().encode(t).byteLength,async *openChunks(){yield new TextEncoder().encode(t);}});
+async function txt(s:BinaryContentSource){let out="";const d=new TextDecoder();for await(const c of s.openChunks())out+=d.decode(c,{stream:true});return out+d.decode();}
+const vault=id<"VaultIdentity">("vault:g2:surface"),device=id<"DeviceIdentity">("device:g2:surface"),root=rid("root:g2:surface"),identity:ManagedRemoteIdentity={rootId:root,vaultIdentity:vault,protocolVersion:id<"ProtocolVersion">("1")};
+
+async function loadRuntimeClass(){
+  const shimDir=".test-build/node_modules/obsidian";
+  await mkdir(shimDir,{recursive:true});
+  await writeFile(`${shimDir}/index.js`,`class Notice { constructor(message) { this.message = message; } }\nmodule.exports = { Notice, Platform: { isDesktopApp: false, isMobile: true }, requestUrl: async () => { throw new Error("requestUrl should not execute in this harness"); } };\n`,`utf8`);
+  const module=await import("../../src/product/runtime");
+  return module.ProductRuntime;
+}
+async function runtimeHarness(){
+  const ProductRuntime=await loadRuntimeClass();
+  let settings:BrainSyncSettings={...DEFAULT_SETTINGS,oauthClientId:"client",oauthRedirectUri:"https://example.test/callback",vaultIdentity:String(vault),deviceIdentity:String(device),remoteRootId:String(root)};
+  const saved:BrainSyncSettings[]=[],notifications:string[]=[];
+  const secretStorage={getSecret:()=>null,setSecret:()=>undefined,deleteSecret:()=>undefined};
+  const plugin={registerObsidianProtocolHandler:()=>undefined};
+  let auditRecords:any[]=[];let attentionRecords:any[]=[];
+  const data={load:async()=>auditRecords,save:async(records:readonly any[])=>{auditRecords=[...records];},loadSyncAttention:async()=>attentionRecords,saveSyncAttention:async(records:readonly any[])=>{attentionRecords=[...records];}};
+  const files=new Map<string,string>(),folders=new Set<string>();
+  const adapter={
+    exists:async(path:string)=>files.has(path)||folders.has(path),
+    read:async(path:string)=>{const value=files.get(path);if(value===undefined)throw new Error(`missing ${path}`);return value;},
+    write:async(path:string,value:string)=>{files.set(path,value);},
+    rename:async(from:string,to:string)=>{const value=files.get(from);if(value===undefined)throw new Error(`missing ${from}`);files.delete(from);files.set(to,value);},
+    remove:async(path:string)=>{files.delete(path);},
+    mkdir:async(path:string)=>{folders.add(path);},
+    stat:async(path:string)=>folders.has(path)?{type:"folder",ctime:0,mtime:0,size:0}:files.has(path)?{type:"file",ctime:0,mtime:0,size:files.get(path)!.length}:null,
+  };
+  const app={secretStorage,vault:{adapter,on:()=>({}),offref:()=>undefined}};
+  const host={app:app as never,plugin:plugin as never,settings:()=>settings,data:data as never,saveSettings:async(next:BrainSyncSettings)=>{settings=next;saved.push(next);},mutateSettings:async(update:(latest:BrainSyncSettings)=>BrainSyncSettings)=>{const next=update(settings);settings=next;saved.push(next);return next;},notify:(message:string)=>notifications.push(message)};
+  const runtime=new ProductRuntime(host);
+  return{runtime,host,saved,notifications,settings:()=>settings};
+}
+
+test("G2 scenario 6 Phase5 runtime pairing consumes validated managed-root identity and refuses invalid pairing",async()=>{for(const valid of [true,false]){const h=await runtimeHarness(),calls:string[]=[];await h.host.saveSettings({...h.settings(),remoteRootId:""});const boundary={drive:{pairManagedRoot:async(r:RemoteObjectId,v:unknown)=>{calls.push(`${String(r)}:${String(v)}`);return{ok:true as const,value:valid?{status:"valid" as const,identity}:{status:"identity-mismatch" as const}};}},oauth:{}};Object.assign(h.runtime as unknown as Record<string,unknown>,{boundary});let initialized=0;(h.runtime as unknown as {initialize:()=>Promise<void>}).initialize=async()=>{initialized++;};if(valid){const paired=await h.runtime.pairManagedRemote(String(root));assert.equal(paired.rootId,root);assert.equal(initialized,1);assert.equal(h.settings().firstSyncCompleted,false);assert.equal(h.settings().localChangeEnabled,false);}else{await assert.rejects(()=>h.runtime.pairManagedRemote(String(root)),/Pairing refused/);assert.equal(initialized,0);}assert.deepEqual(calls,[`${String(root)}:${String(vault)}`]);}});
+
+test("G2 scenario 50 Phase5 deauthorization and disposal clear authority without local or Drive deletion",async()=>{const h=await runtimeHarness();let clear=0,stop=0,controllerDisposal=0,dispose=0,localTrash=0,remoteTrash=0;const boundary={oauth:{clearTokens:()=>{clear++;}},drive:{trash:async()=>{remoteTrash++;return{ok:true as const,value:undefined};}}};const scheduler={stop:()=>{stop++;}};let controllerRetired=false;const controller={beginRuntimeDisposal:async()=>{if(!controllerRetired){controllerRetired=true;controllerDisposal++;}}};const local={dispose:()=>{dispose++;},trash:async()=>{localTrash++;}};Object.assign(h.runtime as unknown as Record<string,unknown>,{boundary,scheduler,controller,local,rawLocalDisposable:local.dispose});await h.runtime.deauthorize();assert.equal(clear,1);assert.equal(stop,1);assert.equal(controllerDisposal,1);assert.equal(dispose,1);assert.equal(localTrash,0);assert.equal(remoteTrash,0);assert.equal(h.settings().remoteRootId,"");assert.equal(h.settings().startupResumeEnabled,false);assert.equal(h.settings().localChangeEnabled,false);assert.equal(h.settings().periodicEnabled,false);});
+
+async function makeController(options:{local:any;drive:any;pathIncluded?:(p:VaultPath)=>boolean;auditLimit?:number;reliableRemoteMutationPort?:ReliableRemoteMutationPort;localTransactionalMutationPort?:LocalTransactionalMutationPort}){enterSynchronizationLifecycle("active");const rawStore=new PersistentSynchronizationStateStore(new MemoryStateByteStorage()),context:StateLoadContext={expectation:"new-installation",expectedVaultIdentity:vault,expectedDeviceIdentity:device};const seeded=await rawStore.saveTrusted(createInitialAuthorityState({persistenceRevision:id<"StateRevision">("persistence:g2:surface:0") as unknown as PersistenceRevision,semanticGeneration:id<"SemanticStateGeneration">("semantic:g2:surface:0") as SemanticStateGeneration,vaultIdentity:vault,deviceIdentity:device}));assert.equal(seeded.status,"saved");const store=new SynchronizationStateAuthorityAdapter(rawStore),assembler=new ProductSnapshotAssembler(options.local,options.drive,store,context,async()=>identity,options.pathIncluded);const conflicts=new ThreeWayConflictResolver({readText:async()=>undefined});const audit=new BoundedAuditHistory(new MemoryAuditPersistence(),options.auditLimit??50);let controller!:ProductController;const executor=new ProductSynchronizationExecutor(options.local,options.drive,store,context,()=>controller.currentRunEvidence());controller=new ProductController({vaultIdentity:vault,deviceIdentity:device,stateContext:context,stateStore:store,authorityStore:store,snapshotAssembler:assembler,executor,...(options.reliableRemoteMutationPort?{reliableRemoteMutationPort:options.reliableRemoteMutationPort}:{}),...(options.localTransactionalMutationPort?{localTransactionalMutationPort:options.localTransactionalMutationPort}:{}),conflictResolver:conflicts,plannerForTrigger:t=>new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner(conflicts,undefined,{trigger:t})),leasePort:new InMemoryRunLeasePort(),audit,holderId:"g2-surface"});return{controller,store,context,audit};}
+
+test("G2 scenarios 44 and 45 repeated path-local failure stays isolated while safe work commits and real activity produces bounded audit records",async()=>{const bad=vp("bad.md"),good=vp("good.md"),badId=rid("rid:bad"),goodId=rid("rid:good"),remote=new Map([[String(bad),{path:bad,id:badId,text:"bad"}],[String(good),{path:good,id:goodId,text:"good"}]]),local=new Map<string,string>();let badAttempts=0,rawCreateCalls=0;const hardenedLocalCreates:string[]=[];const localPort={enumerate:async()=>({entries:[...local].map(([p,t])=>({status:"present" as const,side:"local" as const,path:vp(p),entityKind:"file" as const,content:ev(t),stability:"stable" as const,observationToken:id<"ObservationToken">(`tok:${p}`)})),completeness:{status:"complete" as const}}),observe:async(p:VaultPath)=>{if(p===bad){badAttempts++;return{status:"unknown" as const,side:"local" as const,path:p,reason:"Blocked local path (invalid-name): bad.md"};}return local.has(String(p))?{status:"present" as const,side:"local" as const,path:p,entityKind:"file" as const,content:ev(local.get(String(p))!),stability:"stable" as const,observationToken:id<"ObservationToken">(`tok:${String(p)}`)}:{status:"absent" as const,side:"local" as const,path:p};},createFile:async()=>{rawCreateCalls++;throw new Error("raw LOCAL create must not execute");},validatePath:async(p:VaultPath)=>({status:"compatible" as const,normalizedComparisonPath:String(p)})} as never;const drive={validateManagedRoot:async()=>({ok:true as const,value:{status:"valid" as const,identity}}),getStartCursor:async()=>({ok:true as const,value:id<"ChangeCursor">("cursor:surface")}),listForReconciliation:async()=>({ok:true as const,value:{entries:[...remote.values()].map(x=>({path:x.path,entityKind:"file" as const,remoteObjectId:x.id,content:ev(x.text),trashed:false})),completeness:{status:"complete" as const}}}),download:async(r:RemoteObjectId)=>{const x=[...remote.values()].find(v=>v.id===r)!;return{ok:true as const,value:{remoteObjectId:r,content:src(x.text),evidence:ev(x.text)}};},observe:async(_r:RemoteObjectId,p:VaultPath)=>{const x=remote.get(String(p));return x?{ok:true as const,value:{status:"present" as const,side:"remote" as const,path:p,entityKind:"file" as const,remoteObjectId:x.id,content:ev(x.text),stability:"stable" as const}}:{ok:true as const,value:{status:"absent" as const,side:"remote" as const,path:p}};}} as never;const staged=new Map<string,string>();const localTransactionalMutationPort:LocalTransactionalMutationPort={stageAndVerify:async(transaction,content)=>{hardenedLocalCreates.push(String(transaction.path));const text=await txt(content),actual=ev(text);assert.equal(actual.hash,transaction.expectedNewEvidence.hash);assert.equal(actual.sizeBytes,transaction.expectedNewEvidence.sizeBytes);staged.set(String(transaction.transactionId),text);return{status:"staged-verified" as const,transaction:{...transaction,stage:"staged-verified"} as LocalMutationTransaction};},commitVerifiedStage:async transaction=>{const text=staged.get(String(transaction.transactionId));if(text===undefined)return{status:"outcome-unknown" as const,reason:"fixture stage is missing",transaction};local.set(String(transaction.path),text);staged.delete(String(transaction.transactionId));return{status:"committed" as const,transaction:{...transaction,stage:"completed"} as LocalMutationTransaction,resultingObservationToken:id<"ObservationToken">(`tok:${String(transaction.path)}:committed`) as ObservationToken};},recover:async transaction=>({status:"blocked" as const,reason:"fixture has no interrupted local transaction",transaction})};const h=await makeController({local:localPort,drive,auditLimit:4,localTransactionalMutationPort});for(let i=0;i<2;i++){const p=await h.controller.previewManual();assert.ok(p);const result=await h.controller.request({kind:"execute-plan",planId:p.planId});assert.equal(result.status,"accepted");}assert.equal(badAttempts,2);assert.equal(rawCreateCalls,0);assert.deepEqual(hardenedLocalCreates,["good.md"]);assert.equal(local.get("good.md"),"good");const records=await h.controller.readAuditHistory();assert.equal(records.length<=4,true);assert.equal(records.some(r=>r.event==="operation-completed"&&String(r.path)==="good.md"),true);assert.equal(records.some(r=>r.event==="operation-failed"&&String(r.path)==="bad.md"),true);assert.equal(JSON.stringify(records).includes("good\""),false);});
+
+test("G2 scenario 47 Phase5 runtime-owned notification subscription suppresses ordinary progress and delivers recovery",async()=>{const h=await runtimeHarness(),previousIndexedDb=globalThis.indexedDB;Object.defineProperty(globalThis,"indexedDB",{value:{} as IDBFactory,configurable:true,writable:true});const local={activeConfigurationDirectory:async()=>vp(".obsidian"),onLifecycle:()=>()=>undefined,onChange:()=>()=>undefined,dispose:()=>undefined} as never;Object.assign(h.runtime as unknown as Record<string,unknown>,{createLocalAdapter:async()=>local});try{await h.runtime.initialize();const controller=h.runtime.productController();assert.ok(controller);await controller.request({kind:"pause"});assert.deepEqual(h.notifications,[]);await controller.request({kind:"resume"});assert.deepEqual(h.notifications,[]);await h.host.saveSettings({...h.settings(),recoveryInProgress:true});await controller.runAutomatic("periodic");assert.equal(h.notifications.length,1);assert.match(h.notifications[0],/recovery/i);}finally{await h.runtime.disposeProduct();Object.defineProperty(globalThis,"indexedDB",{value:previousIndexedDb,configurable:true,writable:true});}});
+
+test("G2 scenario 48 allowlisted portable configuration synchronizes through reserved domain while device-local and unknown configuration stay excluded",async()=>{const config=vp(".obsidian"),physical=new Map<string,string>([[".obsidian/app.json",'{"theme":"dark"}'],[".obsidian/workspace.json","device"],[".obsidian/plugins/example/data.json","unknown"]]),created:string[]=[];const raw={enumerate:async()=>({entries:[],completeness:{status:"complete" as const}}),observe:async(p:VaultPath)=>{const t=physical.get(String(p));return t===undefined?{status:"absent" as const,side:"local" as const,path:p}:{status:"present" as const,side:"local" as const,path:p,entityKind:"file" as const,content:ev(t),stability:"stable" as const,observationToken:id<"ObservationToken">(`tok:${String(p)}`)};},readFile:async(p:VaultPath)=>({content:src(physical.get(String(p))!),evidence:ev(physical.get(String(p))!),stability:"stable" as const}),validatePath:async(p:VaultPath)=>({status:"compatible" as const,normalizedComparisonPath:String(p)}),activeConfigurationDirectory:async()=>config,onChange:()=>()=>undefined,onLifecycle:()=>()=>undefined} as never;const scope=new ProductPathScope(config,()=>({userExclusionPatterns:[]})),local=new ScopedLocalVault(raw,scope);const remote=new Map<string,{id:RemoteObjectId;e:ContentEvidence}>();let rawCreateCalls=0;const drive={validateManagedRoot:async()=>({ok:true as const,value:{status:"valid" as const,identity}}),getStartCursor:async()=>({ok:true as const,value:id<"ChangeCursor">("config-cursor")}),listForReconciliation:async()=>({ok:true as const,value:{entries:[...remote].map(([p,x])=>({path:vp(p),entityKind:"file" as const,remoteObjectId:x.id,content:x.e,trashed:false})),completeness:{status:"complete" as const}}}),observe:async(_r:RemoteObjectId,p:VaultPath)=>{const x=remote.get(String(p));return x?{ok:true as const,value:{status:"present" as const,side:"remote" as const,path:p,entityKind:"file" as const,remoteObjectId:x.id,content:x.e,stability:"stable" as const}}:{ok:true as const,value:{status:"absent" as const,side:"remote" as const,path:p}};},create:async()=>{rawCreateCalls++;throw new Error("raw Drive create must not execute");}} as never;let reservation=0;const reliableRemoteMutationPort:ReliableRemoteMutationPort={reserveFileCreateIdentity:async(_managed,intentId,path,intendedContent)=>({ok:true as const,value:{kind:"reserved-file-create" as const,intentId,reservedRemoteObjectId:rid(`rid:reserved:${++reservation}:${String(path)}`),path,intendedContent}}),reserveFolderCreateIdentity:async()=>{throw new Error("folder creation is not used by scenario 48");},createReserved:async(reserved,content)=>{if(reserved.kind!=="reserved-file-create"||!content)return{status:"outcome-unknown" as const,reason:"scenario 48 requires file content"};const text=await txt(content),actual=ev(text);assert.equal(actual.hash,reserved.intendedContent.hash);assert.equal(actual.sizeBytes,reserved.intendedContent.sizeBytes);created.push(String(reserved.path));const e:ContentEvidence={hash:reserved.intendedContent.hash,sizeBytes:reserved.intendedContent.sizeBytes};remote.set(String(reserved.path),{id:reserved.reservedRemoteObjectId,e});return{status:"verified-effect" as const,applicationProof:{kind:"reserved-create" as const,remoteObjectId:reserved.reservedRemoteObjectId,path:reserved.path,verifiedContent:reserved.intendedContent}};},updateExisting:async()=>{throw new Error("update is not used by scenario 48");},moveExisting:async()=>{throw new Error("move is not used by scenario 48");},trashExisting:async()=>{throw new Error("trash is not used by scenario 48");}};const h=await makeController({local:local as never,drive,pathIncluded:p=>scope.isManagedLogical(p),reliableRemoteMutationPort});const p=await h.controller.previewManual();assert.ok(p);const result=await h.controller.request({kind:"execute-plan",planId:p.planId});assert.equal(result.status,"accepted",result.status==="rejected"?result.reason:undefined);assert.deepEqual(created,[`${CONFIG_REMOTE_NAMESPACE}/app.json`]);assert.equal(created.some(x=>/workspace|plugins\/example/.test(x)),false);assert.equal(rawCreateCalls,0);});
+
+test("G1-07 real runtime reconciliation callback cannot undo an interleaved UI settings change", async () => {
+  const ProductRuntime = await loadRuntimeClass();
+  for (const runtimeFirst of [false, true]) {
+    const initial: BrainSyncSettings = {
+      ...DEFAULT_SETTINGS, deviceIdentity: "device:concurrent", vaultIdentity: "vault:concurrent",
+      remoteRootId: "root:concurrent", firstSyncCompleted: true,
+      periodicEnabled: true, scopeReconcileRequired: true,
+    };
+    let disk: unknown = { settings: initial, audit: [], syncAttention: [] };
+    let writes = 0;
+    let beginFirstWrite!: () => void;
+    let unblockFirstWrite!: () => void;
+    const firstWriteEntered = new Promise<void>(resolve => { beginFirstWrite = resolve; });
+    const firstWriteRelease = new Promise<void>(resolve => { unblockFirstWrite = resolve; });
+    const repository = new PluginDataRepository({
+      loadData: async () => disk,
+      dataFileExists: async () => true,
+      saveData: async next => {
+        writes++;
+        if (writes === 1) { beginFirstWrite(); await firstWriteRelease; }
+        disk = structuredClone(next);
+      },
+    });
+    let active = await repository.loadSettings();
+    const host = {
+      app: {} as never, plugin: {} as never, data: repository,
+      settings: () => active,
+      mutateSettings: async (transform: (settings: BrainSyncSettings) => BrainSyncSettings) => {
+        active = await repository.mutateSettings(transform);
+        return active;
+      },
+      notify: () => undefined,
+    };
+    const runtime = new ProductRuntime(host);
+    const boundPairing = {
+      deviceIdentity: initial.deviceIdentity, vaultIdentity: initial.vaultIdentity,
+      remoteRootId: initial.remoteRootId, pairingStateNamespace: initial.pairingStateNamespace,
+    };
+    const markComplete = () =>
+      (runtime as unknown as { completeFullReconciliation(
+        expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+      ): Promise<void> }).completeFullReconciliation(boundPairing);
+    const disablePeriodic = () => host.mutateSettings(current => ({ ...current, periodicEnabled: false }));
+    const first = runtimeFirst ? markComplete() : disablePeriodic();
+    await firstWriteEntered;
+    const second = runtimeFirst ? disablePeriodic() : markComplete();
+    unblockFirstWrite();
+    await Promise.all([first, second]);
+    const restarted = new PluginDataRepository({
+      loadData: async () => disk, dataFileExists: async () => true,
+      saveData: async () => { throw new Error("read-only restart"); },
+    });
+    const durable = await restarted.loadSettings();
+    assert.equal(durable.periodicEnabled, false, "runtime must not re-enable periodic sync");
+    assert.equal(durable.scopeReconcileRequired, false, "runtime completion flag must persist");
+    assert.equal(writes, 2);
+
+    // A late callback from R1 must not clear R2's reconciliation marker.
+    await host.mutateSettings(latest => ({
+      ...latest, remoteRootId: "", pairingStateNamespace: "epoch:deauthorized",
+      firstSyncCompleted: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+    }));
+    await host.mutateSettings(latest => ({
+      ...latest, remoteRootId: "root:R2", pairingStateNamespace: "epoch:R2", scopeReconcileRequired: true,
+    }));
+    await assert.rejects(markComplete, /different pairing/u);
+    const afterStaleCallback = await repository.loadSettings();
+    assert.equal(afterStaleCallback.remoteRootId, "root:R2");
+    assert.equal(afterStaleCallback.scopeReconcileRequired, true);
+  }
+});

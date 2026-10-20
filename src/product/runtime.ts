@@ -26,7 +26,7 @@ import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
 import { automaticNetworkDecision } from "./network-policy";
-import type { BrainSyncSettings, PluginDataRepository } from "./plugin-data";
+import { assertNewPairingAllowed, pairingStorageKey, type BrainSyncSettings, type PluginDataRepository } from "./plugin-data";
 import { IndexedDbTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
 import { SyncAttentionLedger, type SyncAttentionRecord } from "./sync-attention-ledger";
 import { SyncPlanErrorsCsvPersistence, syncPlanErrorsOperationalPaths } from "./sync-plan-errors-csv";
@@ -51,12 +51,13 @@ export interface ProductRuntimeHost {
   readonly diagnostics?: DiagnosticLogger;
   settings(): BrainSyncSettings;
   data: PluginDataRepository;
-  saveSettings(settings: BrainSyncSettings): Promise<void>;
+  mutateSettings(update: (latest: BrainSyncSettings) => BrainSyncSettings): Promise<BrainSyncSettings>;
   notify(message: string): void;
 }
 
 export class ProductRuntime {
   private local?: LocalVaultPort;
+  private rawLocalDisposable?: () => void;
   private boundary?: ReturnType<typeof createObsidianGoogleDriveBoundary>;
   private state?: PersistentSynchronizationStateStore;
   private controller?: ProductController;
@@ -67,12 +68,42 @@ export class ProductRuntime {
   private readonly operationalExclusions = new Set<string>();
   private unsubscribeSurface?: () => void;
   private readonly notifications = new MeaningfulNotificationFilter();
+  // Invalidates every suspended initialization after deauthorization/disposal.
+  private runtimeGeneration = 0;
+  // Only one initialize/deauthorization transition may own and publish runtime
+  // resources at a time. Failures must not poison later lifecycle requests.
+  private lifecycleTail: Promise<void> = Promise.resolve();
+  private serializeLifecycle<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.lifecycleTail.then(operation, operation);
+    this.lifecycleTail = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
+  // Retain token sessions until revocation, including sessions with in-flight exchanges.
+  private readonly oauthSessions = new Set<ReturnType<typeof createObsidianGoogleDriveBoundary>["oauth"]>();
 
   constructor(private readonly host: ProductRuntimeHost) {}
   productController(): ProductController | undefined { return this.controller; }
   googleBoundary(): ReturnType<typeof createObsidianGoogleDriveBoundary> | undefined { return this.boundary; }
 
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
+    const generation = ++this.runtimeGeneration;
+    const opening = this.host.settings();
+    return this.serializeLifecycle(async () => {
+      if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
+      this.assertInitializationPairing(this.host.settings(), opening);
+      await this.initializeOwned(generation, opening);
+    });
+  }
+
+  private async initializeOwned(generation: number, opening: BrainSyncSettings): Promise<void> {
+    const assertActive = () => {
+      if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
+      this.assertInitializationPairing(this.host.settings(), opening);
+    };
+    const assertLatestActive = (latest: BrainSyncSettings) => {
+      if (generation !== this.runtimeGeneration) throw new Error("Runtime initialization was retired.");
+      this.assertInitializationPairing(latest, opening);
+    };
     const diagnostics = this.host.diagnostics ?? NOOP_DIAGNOSTICS;
     diagnostics.trace("runtime", "initialize-enter", { stage: "runtime-initialize" });
     let settings = this.host.settings();
@@ -85,13 +116,18 @@ export class ProductRuntime {
       vaultIdentityPresent: Boolean(settings.vaultIdentity),
       remoteRootPresent: Boolean(settings.remoteRootId),
     });
-    await this.disposeProduct();
+    await this.disposeProduct(false);
+    assertActive();
     diagnostics.trace("runtime", "initialize-dispose-complete", { stage: "dispose-previous-runtime" });
     if (!settings.deviceIdentity) {
       diagnostics.trace("runtime", "device-identity-generation-start", { stage: "device-identity" });
       const generated = generateDeviceIdentity();
-      settings = { ...settings, deviceIdentity: String(generated) };
-      await this.host.saveSettings(settings);
+      await this.host.mutateSettings(latest => {
+        assertLatestActive(latest);
+        return latest.deviceIdentity ? latest : { ...latest, deviceIdentity: String(generated) };
+      });
+      assertActive();
+      settings = this.host.settings();
       diagnostics.trace("runtime", "device-identity-generation-complete", { stage: "device-identity", deviceIdentityPresent: true });
     } else {
       diagnostics.trace("runtime", "device-identity-ready", { stage: "device-identity", deviceIdentityPresent: true });
@@ -101,7 +137,11 @@ export class ProductRuntime {
       reconciled.syncPlanErrorsDirectory !== this.host.settings().syncPlanErrorsDirectory ||
       reconciled.managedSyncPlanErrorsExclusion !== this.host.settings().managedSyncPlanErrorsExclusion ||
       !exclusionsEqual(reconciled.userExclusionPatterns, this.host.settings().userExclusionPatterns)
-    ) await this.host.saveSettings(reconciled);
+    ) await this.host.mutateSettings(latest => {
+      assertLatestActive(latest);
+      return withManagedSyncPlanErrorsExclusion(latest);
+    });
+    assertActive();
     let current = this.host.settings();
     const errorsPath = resolveSyncPlanErrorsPath(current.syncPlanErrorsDirectory).path;
     const pendingRelocation = current.syncPlanErrorsRelocation;
@@ -118,15 +158,23 @@ export class ProductRuntime {
     });
     try {
       const legacy = await this.host.data.loadSyncAttention();
+      assertActive();
       const initialized = pendingRelocation
         ? await this.attentionPersistence.initializePendingRelocation(pendingRelocation, errorsPath, legacy)
         : await this.attentionPersistence.initialize(legacy);
-      if (initialized.migratedLegacyRecords) await this.host.data.saveSyncAttention([]);
+      assertActive();
+      if (initialized.migratedLegacyRecords) {
+        await this.host.data.saveSyncAttention([]);
+        assertActive();
+      }
       if (pendingRelocation) {
         await this.recoverSyncPlanErrorsRelocation(pendingRelocation, errorsPath);
+        assertActive();
         current = this.host.settings();
       }
     } catch (error) {
+      // A retired initializer must not continue into a new pairing or OAuth runtime.
+      assertActive();
       void error;
       diagnostics.error("sync.controller", "sync-plan-errors-csv-initialization-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
       this.host.notify("BRAIN sync plan errors file is unavailable; safe synchronization may continue, but attention persistence needs review.");
@@ -157,6 +205,7 @@ export class ProductRuntime {
         : undefined,
     });
     this.boundary.oauth.setDiagnosticLogger(this.host.diagnostics);
+    this.oauthSessions.add(this.boundary.oauth);
     diagnostics.trace("runtime", "oauth-boundary-create-exit", { stage: "oauth-boundary", runtimeInitialized: true });
     if (!current.vaultIdentity || !current.remoteRootId) {
       diagnostics.info("runtime", "runtime-initialized", { result: "oauth-ready" });
@@ -166,8 +215,16 @@ export class ProductRuntime {
 
     diagnostics.trace("runtime", "local-adapter-create-enter", { stage: "local-adapter" });
     const rawLocal = await this.createLocalAdapter();
+    try { assertActive(); } catch (error) {
+      (rawLocal as LocalVaultPort & { dispose?: () => void }).dispose?.();
+      throw error;
+    }
     diagnostics.trace("runtime", "local-adapter-create-exit", { stage: "local-adapter", result: Platform.isDesktopApp ? "desktop-adapter" : "mobile-adapter" });
     const configurationDirectory = await rawLocal.activeConfigurationDirectory();
+    try { assertActive(); } catch (error) {
+      (rawLocal as LocalVaultPort & { dispose?: () => void }).dispose?.();
+      throw error;
+    }
     diagnostics.trace("runtime", "configuration-directory-ready", { stage: "path-scope" });
     const scope = new ProductPathScope(
       configurationDirectory,
@@ -178,17 +235,26 @@ export class ProductRuntime {
     const localTransactions = new ScopedLocalTransactionalMutationPort(this.host.app.vault.adapter, rawLocal, scope);
     const canonicalLocal = new CanonicalEvidenceLocalVault(scopedLocal, {}, localTransactions);
     this.local = canonicalLocal;
+    // Keep ownership of the underlying adapter; the scoped/canonical wrappers
+    // intentionally do not expose the adapter's optional disposal method.
+    this.rawLocalDisposable = () => (rawLocal as LocalVaultPort & { dispose?: () => void }).dispose?.();
 
     const vaultIdentity = contractId<"VaultIdentity">(current.vaultIdentity) as VaultIdentity;
     const deviceIdentity = contractId<"DeviceIdentity">(current.deviceIdentity) as DeviceIdentity;
     const remoteRootId = contractId<"RemoteObjectId">(current.remoteRootId) as RemoteObjectId;
+    const boundPairing = {
+      deviceIdentity: current.deviceIdentity,
+      vaultIdentity: current.vaultIdentity,
+      remoteRootId: current.remoteRootId,
+      pairingStateNamespace: current.pairingStateNamespace,
+    };
     const stateContext: StateLoadContext = {
       expectation: current.firstSyncCompleted || current.recoveryInProgress ? "existing-pairing" : "new-installation",
       expectedVaultIdentity: vaultIdentity,
       expectedDeviceIdentity: deviceIdentity,
     };
     const durableState = new PersistentSynchronizationStateStore(
-      new IndexedDbStateByteStorage(`brain-google-drive-sync:${current.vaultIdentity}:${current.deviceIdentity}`),
+      new IndexedDbStateByteStorage(pairingStorageKey("brain-google-drive-sync", current)),
       1,
       undefined,
       this.host.diagnostics,
@@ -209,7 +275,7 @@ export class ProductRuntime {
       this.state,
     );
     const textVersions = new ProductTextVersionStore(
-      new IndexedDbTextVersionPersistence(`brain-google-drive-sync-text:${current.vaultIdentity}:${current.deviceIdentity}`),
+      new IndexedDbTextVersionPersistence(pairingStorageKey("brain-google-drive-sync-text", current)),
       this.local,
       this.boundary.drive,
     );
@@ -246,26 +312,25 @@ export class ProductRuntime {
       },
       recoveryActive: () => this.host.settings().recoveryInProgress,
       onRecoveryGateChanged: async (active, backupId) => {
-        const live = this.host.settings();
-        const changed: BrainSyncSettings = {
-          ...live,
-          recoveryInProgress: active,
-          recoveryBackupId: backupId ?? (active ? live.recoveryBackupId : ""),
-          ...(active ? { startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false } : {}),
-        };
-        await this.host.saveSettings(changed);
+        await this.host.mutateSettings(latest => {
+          this.assertBoundPairing(latest, boundPairing);
+          return {
+            ...latest,
+            recoveryInProgress: active,
+            recoveryBackupId: backupId ?? (active ? latest.recoveryBackupId : ""),
+            ...(active ? { startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false } : {}),
+          };
+        });
         this.scheduler?.refresh();
       },
-      onFullReconciliationCompleted: async () => {
-        const live = this.host.settings();
-        if (live.scopeReconcileRequired) await this.host.saveSettings({ ...live, scopeReconcileRequired: false });
-      },
+      readScopeReconcileGeneration: () => this.host.settings().scopeReconcileGeneration ?? 0,
+      onFullReconciliationCompleted: generation => this.completeFullReconciliation(boundPairing, generation),
       onTrustedBaselineEstablished: async () => {
-        const live = this.host.settings();
-        if (!live.firstSyncCompleted) {
-          await this.host.saveSettings({ ...live, firstSyncCompleted: true });
-          this.scheduler?.refresh();
-        }
+        await this.host.mutateSettings(latest => {
+          this.assertBoundPairing(latest, boundPairing);
+          return latest.firstSyncCompleted ? latest : { ...latest, firstSyncCompleted: true };
+        });
+        this.scheduler?.refresh();
       },
       diagnostics: this.host.diagnostics,
       attentionLedger: this.attention,
@@ -293,6 +358,44 @@ export class ProductRuntime {
     diagnostics.trace("runtime", "initialize-exit", { result: "product-ready" });
   }
 
+  /** In-flight initialization must retain the epoch in which it started. */
+  private assertInitializationPairing(latest: BrainSyncSettings, opening: BrainSyncSettings): void {
+    if (latest.vaultIdentity !== opening.vaultIdentity ||
+        latest.remoteRootId !== opening.remoteRootId ||
+        latest.pairingStateNamespace !== opening.pairingStateNamespace ||
+        (opening.deviceIdentity && latest.deviceIdentity !== opening.deviceIdentity)) {
+      throw new Error("Runtime initialization authority changed; refusing stale initialization.");
+    }
+  }
+
+  /** A retired runtime must not publish completion state into a new pairing. */
+  private assertBoundPairing(
+    latest: BrainSyncSettings,
+    expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+  ): void {
+    if (latest.deviceIdentity !== expected.deviceIdentity ||
+        latest.vaultIdentity !== expected.vaultIdentity ||
+        latest.remoteRootId !== expected.remoteRootId ||
+        latest.pairingStateNamespace !== expected.pairingStateNamespace) {
+      throw new Error("Runtime completion belongs to a different pairing; refusing settings mutation.");
+    }
+  }
+
+  /** The run completion marker must never replay a stale full-settings snapshot. */
+  private async completeFullReconciliation(
+    expected: Pick<BrainSyncSettings, "deviceIdentity" | "vaultIdentity" | "remoteRootId" | "pairingStateNamespace">,
+    observedGeneration = this.host.settings().scopeReconcileGeneration ?? 0,
+  ): Promise<void> {
+    await this.host.mutateSettings(latest => {
+      this.assertBoundPairing(latest, expected);
+      // A policy edit after snapshot acquisition requires another complete
+      // reconciliation; never clear its marker using an older run's receipt.
+      return (latest.scopeReconcileGeneration ?? 0) === observedGeneration
+        ? { ...latest, scopeReconcileRequired: false }
+        : latest;
+    });
+  }
+
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
     if (previous.auditRetention !== next.auditRetention) await this.audit?.setLimit(next.auditRetention);
     if (previous.periodicEnabled !== next.periodicEnabled || previous.periodicIntervalMinutes !== next.periodicIntervalMinutes || previous.firstSyncCompleted !== next.firstSyncCompleted || previous.recoveryInProgress !== next.recoveryInProgress) this.scheduler?.refresh();
@@ -307,30 +410,40 @@ export class ProductRuntime {
       this.protectSyncPlanErrorsPath(nextPath);
       try {
         if (!this.attentionPersistence) throw new Error("Sync plan errors persistence is unavailable for relocation.");
-        const pending = withManagedSyncPlanErrorsExclusion({
-          ...next,
-          syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
-          managedSyncPlanErrorsExclusion: priorPath,
-          syncPlanErrorsRelocation: relocation,
-        }, previous.syncPlanErrorsDirectory);
-        await this.host.saveSettings(pending);
-        await this.attentionPersistence.relocate(nextPath, async () => {
-          const transitioned = withManagedSyncPlanErrorsExclusion({
-            ...this.host.settings(),
-            syncPlanErrorsDirectory: next.syncPlanErrorsDirectory,
-            managedSyncPlanErrorsExclusion: nextPath,
+        await this.host.mutateSettings(latest => {
+          if (latest.syncPlanErrorsRelocation || latest.syncPlanErrorsDirectory !== previous.syncPlanErrorsDirectory) {
+            throw new Error("Sync plan errors relocation state changed before journaling.");
+          }
+          return withManagedSyncPlanErrorsExclusion({
+            ...latest,
+            syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
+            managedSyncPlanErrorsExclusion: priorPath,
             syncPlanErrorsRelocation: relocation,
-          }, next.syncPlanErrorsDirectory);
-          await this.host.saveSettings(transitioned);
+          }, previous.syncPlanErrorsDirectory);
+        });
+        await this.attentionPersistence.relocate(nextPath, async () => {
+          await this.host.mutateSettings(latest => {
+            if (latest.syncPlanErrorsRelocation?.sourcePath !== relocation.sourcePath ||
+                latest.syncPlanErrorsRelocation?.destinationPath !== relocation.destinationPath) {
+              throw new Error("Sync plan errors relocation journal changed before transition.");
+            }
+            return withManagedSyncPlanErrorsExclusion({
+              ...latest,
+              syncPlanErrorsDirectory: next.syncPlanErrorsDirectory,
+              managedSyncPlanErrorsExclusion: nextPath,
+              syncPlanErrorsRelocation: relocation,
+            }, next.syncPlanErrorsDirectory);
+          });
         });
         await this.finalizeSyncPlanErrorsRelocation(relocation);
-      } catch {
+      } catch (error) {
         this.host.diagnostics?.error("sync.controller", "sync-plan-errors-csv-relocation-failed", { stage: "attention-ledger", classification: "attention-ledger-persistence-failure", result: "failed" });
         this.host.notify("BRAIN sync plan errors file could not be moved; the durable relocation journal keeps both locations excluded for restart recovery.");
+        throw error;
       }
     }
     if (!exclusionsEqual(userExclusionsWithoutManaged(previous), userExclusionsWithoutManaged(next))) {
-      if (!next.scopeReconcileRequired) await this.host.saveSettings({ ...this.host.settings(), scopeReconcileRequired: true });
+      await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: true }));
       this.controller?.noteChangeDuringRun();
     }
   }
@@ -381,14 +494,19 @@ export class ProductRuntime {
     if (!this.attentionPersistence) throw new Error("Sync plan errors persistence is unavailable for relocation recovery.");
     if (activePath === relocation.sourcePath) {
       await this.attentionPersistence.relocate(relocation.destinationPath, async () => {
-        const live = this.host.settings();
         const destinationDirectory = directoryForSyncPlanErrorsPath(relocation.destinationPath);
-        await this.host.saveSettings(withManagedSyncPlanErrorsExclusion({
-          ...live,
-          syncPlanErrorsDirectory: destinationDirectory,
-          managedSyncPlanErrorsExclusion: relocation.destinationPath,
-          syncPlanErrorsRelocation: relocation,
-        }, destinationDirectory));
+        await this.host.mutateSettings(latest => {
+          if (latest.syncPlanErrorsRelocation?.sourcePath !== relocation.sourcePath ||
+              latest.syncPlanErrorsRelocation?.destinationPath !== relocation.destinationPath) {
+            throw new Error("Sync plan errors relocation journal changed during recovery.");
+          }
+          return withManagedSyncPlanErrorsExclusion({
+            ...latest,
+            syncPlanErrorsDirectory: destinationDirectory,
+            managedSyncPlanErrorsExclusion: relocation.destinationPath,
+            syncPlanErrorsRelocation: relocation,
+          }, destinationDirectory);
+        });
       });
     } else if (activePath === relocation.destinationPath) {
       await this.attentionPersistence.cleanupRelocationSource(relocation.sourcePath);
@@ -399,19 +517,21 @@ export class ProductRuntime {
   }
 
   private async finalizeSyncPlanErrorsRelocation(relocation: SyncPlanErrorsRelocationJournal): Promise<void> {
-    const live = this.host.settings();
     const destinationDirectory = directoryForSyncPlanErrorsPath(relocation.destinationPath);
-    if (resolveSyncPlanErrorsPath(live.syncPlanErrorsDirectory).path !== relocation.destinationPath) {
-      throw new Error("Sync plan errors destination is not the configured active location.");
-    }
-    const finalSettings = withManagedSyncPlanErrorsExclusion({
-      ...live,
-      syncPlanErrorsDirectory: destinationDirectory,
-      managedSyncPlanErrorsExclusion: relocation.destinationPath,
-      syncPlanErrorsRelocation: null,
-      userExclusionPatterns: live.userExclusionPatterns.filter(pattern => pattern !== relocation.sourcePath),
-    }, destinationDirectory);
-    await this.host.saveSettings(finalSettings);
+    await this.host.mutateSettings(latest => {
+      if (resolveSyncPlanErrorsPath(latest.syncPlanErrorsDirectory).path !== relocation.destinationPath ||
+          latest.syncPlanErrorsRelocation?.sourcePath !== relocation.sourcePath ||
+          latest.syncPlanErrorsRelocation?.destinationPath !== relocation.destinationPath) {
+        throw new Error("Sync plan errors destination or journal changed before finalization.");
+      }
+      return withManagedSyncPlanErrorsExclusion({
+        ...latest,
+        syncPlanErrorsDirectory: destinationDirectory,
+        managedSyncPlanErrorsExclusion: relocation.destinationPath,
+        syncPlanErrorsRelocation: null,
+        userExclusionPatterns: latest.userExclusionPatterns.filter(pattern => pattern !== relocation.sourcePath),
+      }, destinationDirectory);
+    });
     this.unprotectSyncPlanErrorsPath(relocation.sourcePath);
     this.protectSyncPlanErrorsPath(relocation.destinationPath);
   }
@@ -476,57 +596,126 @@ export class ProductRuntime {
   }
 
   async createManagedRemote(): Promise<ManagedRemoteIdentity> {
+    let settings = this.host.settings();
+    assertNewPairingAllowed(settings);
     const boundary = this.boundary;
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
-    let settings = this.host.settings();
     let vaultIdentity = settings.vaultIdentity;
     if (!vaultIdentity) {
-      vaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
-      settings = { ...settings, vaultIdentity };
-      await this.host.saveSettings(settings);
+      const proposedVaultIdentity = `vault:${globalThis.crypto.randomUUID()}`;
+      const initialAuthority = settings;
+      settings = await this.host.mutateSettings(latest => {
+        this.assertBoundPairing(latest, initialAuthority);
+        assertNewPairingAllowed(latest);
+        return latest.vaultIdentity ? latest : { ...latest, vaultIdentity: proposedVaultIdentity };
+      });
+      vaultIdentity = settings.vaultIdentity;
     }
+    // Capture the complete authority epoch BEFORE asynchronous Drive work. An
+    // unpaired state after deauthorization is not equivalent to the prior epoch.
+    const initiatingAuthority = settings;
     const result = await boundary.drive.createManagedRoot(contractId<"VaultIdentity">(vaultIdentity) as VaultIdentity, PROTOCOL_VERSION);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
-    await this.host.saveSettings({
-      ...this.host.settings(), remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
-      firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
-      startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+    if (String(result.value.vaultIdentity) !== vaultIdentity) {
+      throw new Error("Created remote returned a different vault identity; refusing pairing.");
+    }
+    const committed = await this.host.mutateSettings(latest => {
+      this.assertBoundPairing(latest, initiatingAuthority);
+      assertNewPairingAllowed(latest);
+      return {
+        ...latest, remoteRootId: String(result.value.rootId), vaultIdentity: String(result.value.vaultIdentity),
+        pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
+        firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
+        startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+      };
     });
     await this.initialize();
+    this.assertBoundPairing(this.host.settings(), committed);
     return result.value;
   }
 
-  async pairManagedRemote(): Promise<ManagedRemoteIdentity> {
-    const boundary = this.boundary;
+  async pairManagedRemote(proposedRemoteRootId: string): Promise<ManagedRemoteIdentity> {
     const settings = this.host.settings();
+    assertNewPairingAllowed(settings);
+    const boundary = this.boundary;
     if (!boundary) throw new Error("Configure and authenticate Google OAuth first.");
-    if (!settings.vaultIdentity || !settings.remoteRootId) throw new Error("Enter the expected BRAIN vault identity and stable Drive remote root ID.");
+    const proposed = proposedRemoteRootId.trim();
+    if (!settings.vaultIdentity.trim() || !proposed) throw new Error("Enter the expected BRAIN vault identity and stable Drive remote root ID.");
     const expected = contractId<"VaultIdentity">(settings.vaultIdentity) as VaultIdentity;
-    const root = contractId<"RemoteObjectId">(settings.remoteRootId) as RemoteObjectId;
+    const root = contractId<"RemoteObjectId">(proposed) as RemoteObjectId;
     const result = await boundary.drive.pairManagedRoot(root, expected);
     if (!result.ok) throw new Error(driveSignalMessage(result.signal));
     if (result.value.status !== "valid") throw new Error(`Pairing refused: ${result.value.status}`);
-    await this.host.saveSettings({ ...settings, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
+    // Full preflight identity must survive the asynchronous Drive validation.
+    const validatedIdentity = result.value.identity;
+    if (String(validatedIdentity.vaultIdentity) !== settings.vaultIdentity ||
+        String(validatedIdentity.rootId) !== proposed) {
+      throw new Error("Validated remote identity differs from the requested pairing.");
+    }
+    const committed = await this.host.mutateSettings(latest => {
+      this.assertBoundPairing(latest, settings);
+      assertNewPairingAllowed(latest);
+      return { ...latest, remoteRootId: String(validatedIdentity.rootId), pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`, firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false };
+    });
     await this.initialize();
-    return result.value.identity;
+    this.assertBoundPairing(this.host.settings(), committed);
+    return validatedIdentity;
   }
 
-  async deauthorize(): Promise<void> {
-    this.boundary?.oauth.clearTokens();
-    const settings = this.host.settings();
-    await this.host.saveSettings({ ...settings, remoteRootId: "", firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false, startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false });
-    await this.disposeProduct();
+  deauthorize(): Promise<void> {
+    // Revoke old-epoch entry points synchronously at user intent, before any
+    // awaited setting writes or earlier lifecycle operation can resume.
+    ++this.runtimeGeneration;
+    // Detach after the immediate stop so queued disposal cannot stop it twice.
+    const scheduler = this.scheduler;
+    this.scheduler = undefined;
+    scheduler?.stop();
+    const retiring = this.controller?.beginRuntimeDisposal();
+    // Retain the rejection for the awaited transition without an unhandled
+    // promise if an earlier queued initializer must finish first.
+    if (retiring) void retiring.catch(() => undefined);
+    if (this.boundary?.oauth && !this.oauthSessions.has(this.boundary.oauth)) {
+      this.boundary.oauth.clearTokens();
+    }
+    for (const session of this.oauthSessions) session.clearTokens();
+    this.oauthSessions.clear();
+    return this.serializeLifecycle(async () => {
+      // Old-pairing operations and their atomic/durable completions must
+      // quiesce BEFORE the unpairing namespace is made persistent.
+      if (retiring) await retiring;
+      await this.disposeProduct(false);
+      await this.host.mutateSettings(latest => ({
+        ...latest, remoteRootId: "", pairingStateNamespace: `pairing-${globalThis.crypto.randomUUID()}`,
+        firstSyncCompleted: false, recoveryInProgress: false, recoveryBackupId: "", scopeReconcileRequired: false,
+        startupResumeEnabled: false, localChangeEnabled: false, periodicEnabled: false,
+      }));
+    });
   }
 
-  async disposeProduct(): Promise<void> {
+  async disposeProduct(retire = true): Promise<void> {
+    if (retire) ++this.runtimeGeneration;
+    // Each superseded boundary retains references to an OAuth session. Stop
+    // pending exchanges/refreshes without deleting still-valid stored tokens.
+    for (const session of this.oauthSessions) session.retirePendingOperations();
     this.scheduler?.stop(); this.scheduler = undefined;
     const controller = this.controller;
-    if (controller) await controller.beginRuntimeDisposal();
-    this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
+    // Remove live references synchronously: a competing initialize must not be
+    // cleared when an older controller's asynchronous disposal finally resolves.
     this.controller = undefined;
-    this.attentionPersistence?.dispose(); this.attentionPersistence = undefined;
-    const disposable = this.local as (LocalVaultPort & { dispose?: () => void }) | undefined;
-    disposable?.dispose?.(); this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
+    this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
+    const attentionPersistence = this.attentionPersistence;
+    this.attentionPersistence = undefined;
+    const disposeRawLocal = this.rawLocalDisposable;
+    this.rawLocalDisposable = undefined;
+    this.local = undefined; this.boundary = undefined; this.state = undefined; this.audit = undefined; this.attention = undefined;
+    // Keep the old adapters and persistence alive until an in-flight run has
+    // cancelled or safely completed its atomic operation and durable commit.
+    try {
+      if (controller) await controller.beginRuntimeDisposal();
+    } finally {
+      disposeRawLocal?.();
+      attentionPersistence?.dispose();
+    }
   }
 
   private async createLocalAdapter(): Promise<LocalVaultPort> {

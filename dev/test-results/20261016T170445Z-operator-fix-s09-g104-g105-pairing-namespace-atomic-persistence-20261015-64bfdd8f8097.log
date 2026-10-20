@@ -1,0 +1,60 @@
+phx-ci standardized local verification
+Run name: operator-fix-s09-g104-g105-pairing-namespace-atomic-persistence-20261015
+Source branch: fix/s09-g104-g105-pairing-namespace-atomic-persistence-20261015
+Source build HEAD: 64bfdd8f8097c0342f02e6eace4f934f40f09a59
+Verification checkout HEAD: 64bfdd8f8097c0342f02e6eace4f934f40f09a59
+Base SHA: b1e2ebaee3077e34a4eefaf601ee8124078b7400
+Control repository: C:\temp\ff3b288100594175922bfc23270d2667\source
+Verification worktree: C:\temp\246085eb6aa040fca1b09d7820521f22\phx-6306addd6d91406c\w
+Framework HEAD: 69c4aa077d4a1a46d1e85e59f39d36285be99e83
+Framework version: 0.2.0-dev.2
+Task version: 3.53.1
+Task executable: C:\Users\woodpk\.dotnet\tools\task.exe
+Started UTC: 2026-10-16T17:04:49.1251313Z
+
+===== task ci output =====
+
+task: [run:start] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Start-VerificationRun.ps1" -ProjectRoot "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -ArtifactsPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/artifacts.json" -EvidencePath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/generated-evidence/_ca-output.md" -EvidenceRoot "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/generated-evidence" -RunId "85d6c61a-9c0d-4923-b8a9-99878036497b"
+verificationRun=85d6c61a-9c0d-4923-b8a9-99878036497b
+task: [windows:preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage preflight -WorkingDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -FailureClassification "ENVIRONMENT FAILURE" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -TempRoot "C:/temp/246085eb6aa040fca1b09d7820521f22"
+os=Microsoft Windows NT 10.0.26200.0
+powershell=7.6.6
+task=3.53.1
+taskExecutable=C:\Users\woodpk\.dotnet\tools\task.exe
+pathWithSpaces=PASS
+task: [adapter-preflight] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-preflight" -WorkingDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -TempRoot "C:/temp/246085eb6aa040fca1b09d7820521f22" -Optional
+node=v22.23.2
+npm=10.9.8
+nodeExecutable=C:\Program Files\nodejs\node.exe
+npmExecutable=C:\Program Files\nodejs\npm.cmd
+task: [adapter-project-files] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage "node-project-files" -WorkingDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -FailureClassification "REPOSITORY-GATE FAILURE" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -TempRoot "C:/temp/246085eb6aa040fca1b09d7820521f22" -Optional
+package.json=present
+package-lock.json=present
+task: [install] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage install -WorkingDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -FailureClassification "TOOLCHAIN FAILURE" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -TempRoot "C:/temp/246085eb6aa040fca1b09d7820521f22"
+
+added 16 packages, and audited 17 packages in 12s
+
+found 0 vulnerabilities
+task: [typecheck] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Invoke-RecordedStage.ps1" -Stage typecheck -WorkingDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -FailureClassification "PRODUCT FAILURE" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -TempRoot "C:/temp/246085eb6aa040fca1b09d7820521f22"
+
+> brain-google-drive-sync@0.1.18 typecheck
+> tsc --noEmit
+
+src/product/runtime.ts(571,61): error TS2339: Property 'identity' does not exist on type 'ManagedRemoteValidation'.
+  Property 'identity' does not exist on type '{ readonly status: "missing-root"; }'.
+test/phase6-alpha-plan-errors-stability.test.ts(438,38): error TS2345: Argument of type '{ app: App; plugin: never; settings: () => BrainSyncSettings; data: never; saveSettings: (next: typeof initial) => Promise<void>; notify: () => undefined; }' is not assignable to parameter of type 'ProductRuntimeHost'.
+  Property 'mutateSettings' is missing in type '{ app: App; plugin: never; settings: () => BrainSyncSettings; data: never; saveSettings: (next: typeof initial) => Promise<void>; notify: () => undefined; }' but required in type 'ProductRuntimeHost'.
+test/phase6-alpha-plan-errors-stability.test.ts(498,5): error TS2561: Object literal may only specify known properties, but 'saveSettings' does not exist in type 'ProductRuntimeHost'. Did you mean to write 'settings'?
+test/phase6-alpha-plan-errors-stability.test.ts(498,25): error TS7006: Parameter 'next' implicitly has an 'any' type.
+task: [evidence:render] pwsh -NoProfile -File "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/common/Write-Evidence.ps1" -FrameworkRoot "C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83" -ProjectRoot "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w" -ProjectName "gdrive-sync-obsidian-plugin" -RecordsDirectory "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/records" -ArtifactsPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/artifacts.json" -EvidencePath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/generated-evidence/_ca-output.md" -RequiredStages "preflight;node-preflight;node-project-files;install;typecheck;test-focused;test;build;repository-check;check;artifacts" -ToolVersionsPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/tool-versions.json" -RunIdentityPath "C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/w/.phx-ci/run.json" -ExpectedHead "64bfdd8f8097c0342f02e6eace4f934f40f09a59" -ExpectedBaseSha "b1e2ebaee3077e34a4eefaf601ee8124078b7400"
+
+PHX-CI RUN RESULT
+Change-set verification: BLOCKED
+Repository verification: BLOCKED
+Overall verification: BLOCKED
+evidence: C:/temp/246085eb6aa040fca1b09d7820521f22/phx-6306addd6d91406c/generated-evidence/_ca-output.md (BLOCKED; run 85d6c61a-9c0d-4923-b8a9-99878036497b)
+task: Failed to run task "ci": task: Failed to run task "typecheck": exit status 2
+
+===== task ci finished =====
+Task exit code: 201
+Ended UTC: 2026-10-16T17:05:43.9856202Z

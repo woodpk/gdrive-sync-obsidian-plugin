@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin } from "obsidian";
+import { Notice, Platform, Plugin, normalizePath } from "obsidian";
 import { formatOAuthDiagnosticSuffix, type OAuthCallbackInput, type OAuthCompletion } from "./drive/auth";
 import { openAuthorizationInExternalBrowser, registerGoogleOAuthReturn } from "./drive/oauth-return";
 import { runDelayedExternalBrowserProbe, runDirectExternalBrowserProbe } from "./diagnostics/browser-probes";
@@ -11,10 +11,12 @@ import { DEFAULT_SETTINGS, PluginDataRepository, type BrainSyncSettings } from "
 import { createProductionVerificationControl, type ProductionVerificationControl } from "./product/live-validation-control-seam";
 import { ProductRuntime } from "./product/runtime";
 import { BrainSyncSettingsTab } from "./product/settings-tab";
+import { userExclusionsWithoutManaged, withManagedSyncPlanErrorsExclusion } from "./product/sync-plan-errors-path";
 import { copySyncAttentionCsv, shareSyncAttentionCsv } from "./product/sync-attention-ledger";
 
 export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private currentSettings: BrainSyncSettings = { ...DEFAULT_SETTINGS };
+  private settingsUpdateChain: Promise<void> = Promise.resolve();
   private dataRepository?: PluginDataRepository;
   private diagnostics?: DiagnosticLogger;
   private runtime?: ProductRuntime;
@@ -23,7 +25,11 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   private lastOAuthDiagnosticText = "No Google OAuth completion result is available for this plugin lifetime.";
 
   async onload(): Promise<void> {
-    this.dataRepository = new PluginDataRepository({ loadData: () => this.loadData(), saveData: data => this.saveData(data) });
+    this.dataRepository = new PluginDataRepository({
+      loadData: () => this.loadData(),
+      dataFileExists: () => this.app.vault.adapter.exists(normalizePath(`${this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`}/data.json`)),
+      saveData: data => this.saveData(data),
+    });
     this.currentSettings = await this.dataRepository.loadSettings();
     this.diagnostics = new DiagnosticLogger({
       persistence: this.dataRepository,
@@ -42,7 +48,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       diagnostics: this.diagnostics,
       settings: () => this.currentSettings,
       data: this.dataRepository,
-      saveSettings: settings => this.replaceSettings(settings),
+      mutateSettings: update => this.mutateSettings(update),
       notify: message => new Notice(message),
     });
     registerGoogleOAuthReturn(
@@ -65,7 +71,7 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
       authenticationButtonPressed: () => this.authenticationButtonPressed(),
       authenticate: attemptId => this.authenticate(attemptId),
       createManagedRemote: () => this.createManagedRemote(),
-      pairManagedRemote: () => this.pairManagedRemote(),
+      pairManagedRemote: remoteRootId => this.pairManagedRemote(remoteRootId),
       clearAuthenticationAndPairing: () => this.deauthorize(),
       diagnosticsSummary: () => this.diagnosticsSummary(),
       copyDiagnosticLog: () => this.copyDiagnosticLog(),
@@ -118,26 +124,63 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
   }
 
 
-  private async replaceSettings(settings: BrainSyncSettings): Promise<void> {
-    const durable = { ...settings, userExclusionPatterns: [...settings.userExclusionPatterns] };
-    await this.dataRepository?.saveSettings(durable);
+  /** Runtime callbacks and UI patches publish only a successfully committed snapshot. */
+  private async mutateSettings(update: (latest: BrainSyncSettings) => BrainSyncSettings): Promise<BrainSyncSettings> {
+    if (!this.dataRepository) throw new Error("BRAIN settings repository is unavailable.");
+    const durable = await this.dataRepository.mutateSettings(update);
     this.currentSettings = durable;
+    return durable;
   }
 
   private async updateSettings(patch: Partial<BrainSyncSettings>): Promise<void> {
-    const previous = { ...this.currentSettings, userExclusionPatterns: [...this.currentSettings.userExclusionPatterns] };
-    const next = { ...this.currentSettings, ...patch };
-    if (!next.firstSyncCompleted || next.recoveryInProgress) {
-      next.startupResumeEnabled = false;
-      next.localChangeEnabled = false;
-      next.periodicEnabled = false;
+    // Queue entire UI changes (including follow-up runtime effects), not just
+    // host saveData. Two concurrent onChange handlers must never capture the
+    // same stale settings document and later undo one another.
+    const write = this.settingsUpdateChain.then(() => this.applySettingsPatch(patch));
+    this.settingsUpdateChain = write.catch(() => undefined);
+    await write;
+  }
+
+  private async applySettingsPatch(patch: Partial<BrainSyncSettings>): Promise<void> {
+    // UI intent never owns the relocation journal or derived managed-path metadata.
+    if (patch.managedSyncPlanErrorsExclusion !== undefined || patch.syncPlanErrorsRelocation !== undefined) {
+      throw new Error("Managed sync-plan-errors metadata cannot be set by a UI patch.");
     }
+    if (patch.syncPlanErrorsDirectory !== undefined &&
+        Object.keys(patch).some(key => key !== "syncPlanErrorsDirectory")) {
+      throw new Error("Relocation must be submitted as a directory-only intent.");
+    }
+    const previous = { ...this.currentSettings, userExclusionPatterns: [...this.currentSettings.userExclusionPatterns] };
+    const next = { ...previous, ...patch };
     const relocatingSyncPlanErrors = previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory;
     if (relocatingSyncPlanErrors) {
       if (!this.runtime) throw new Error("Sync plan errors persistence is unavailable for relocation.");
       await this.runtime.applySettingsChange(previous, next);
     } else {
-      await this.replaceSettings(next);
+      await this.mutateSettings(latest => {
+        let changed = { ...latest, ...patch };
+        if (patch.userExclusionPatterns !== undefined) {
+          // Rebuild managed exclusions from durable state, not a stale text-area
+          // snapshot captured before other UI/runtime commits.
+          changed = withManagedSyncPlanErrorsExclusion(changed);
+          const before = userExclusionsWithoutManaged(latest);
+          const after = userExclusionsWithoutManaged(changed);
+          if (before.length !== after.length || before.some((value, index) => value !== after[index])) {
+            changed.scopeReconcileRequired = true;
+            const generation = latest.scopeReconcileGeneration ?? 0;
+            if (!Number.isSafeInteger(generation) || generation >= Number.MAX_SAFE_INTEGER) {
+              throw new Error("Scope reconciliation version is invalid or exhausted; refusing unsafe policy edit.");
+            }
+            changed.scopeReconcileGeneration = generation + 1;
+          }
+        }
+        if (!changed.firstSyncCompleted || changed.recoveryInProgress) {
+          changed.startupResumeEnabled = false;
+          changed.localChangeEnabled = false;
+          changed.periodicEnabled = false;
+        }
+        return changed;
+      });
     }
     this.diagnostics?.configure({
       level: this.currentSettings.diagnosticLogLevel,
@@ -239,8 +282,8 @@ export default class BrainGoogleDriveSyncPlugin extends Plugin {
     try { if (!this.runtime) return; const identity = await this.runtime.createManagedRemote(); this.bindStatus(); new Notice(`Created managed BRAIN Sync remote ${String(identity.rootId)}.`); }
     catch (error) { this.noticeError("Managed remote creation failed", error); }
   }
-  private async pairManagedRemote(): Promise<void> {
-    try { if (!this.runtime) return; const identity = await this.runtime.pairManagedRemote(); this.bindStatus(); new Notice(`Validated BRAIN Sync pairing for ${String(identity.vaultIdentity)}.`); }
+  private async pairManagedRemote(remoteRootId: string): Promise<void> {
+    try { if (!this.runtime) return; const identity = await this.runtime.pairManagedRemote(remoteRootId); this.bindStatus(); new Notice(`Validated BRAIN Sync pairing for ${String(identity.vaultIdentity)}.`); }
     catch (error) { this.noticeError("Managed remote pairing failed", error); }
   }
   private async deauthorize(): Promise<void> {

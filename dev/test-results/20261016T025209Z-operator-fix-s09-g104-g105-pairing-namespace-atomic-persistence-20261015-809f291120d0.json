@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "9eb098b3-c71e-42f2-bf67-ea8d67b08425",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/temp/9a27b9d755b84a81b060b2e35adbd1bb/phx-7b8579570bf042a9/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "809f291120d080107947bd8f5b1c757ff582fd03",
+    "verifiedTree": "79aa1208d108e7349111d03120ab25b28bcee59d",
+    "expectedHead": "809f291120d080107947bd8f5b1c757ff582fd03",
+    "baseSha": "b1e2ebaee3077e34a4eefaf601ee8124078b7400"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-16T02:52:14.1685228Z",
+  "endedAt": "2026-10-16T02:52:43.7424052Z",
+  "stages": [
+    {
+      "runId": "9eb098b3-c71e-42f2-bf67-ea8d67b08425",
+      "startedAt": "2026-10-16T02:52:15.06522Z",
+      "result": "PASS",
+      "name": "preflight",
+      "exitCode": 0,
+      "classification": "NONE",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "endedAt": "2026-10-16T02:52:16.2650502Z",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/temp/9a27b9d755b84a81b060b2e35adbd1bb'",
+      "stderr": ""
+    },
+    {
+      "exitCode": 0,
+      "result": "PASS",
+      "stderr": "",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/temp/9a27b9d755b84a81b060b2e35adbd1bb/phx-7b8579570bf042a9/w' -OutputPath 'C:/temp/9a27b9d755b84a81b060b2e35adbd1bb/phx-7b8579570bf042a9/w/.phx-ci/tool-versions.json'",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "runId": "9eb098b3-c71e-42f2-bf67-ea8d67b08425",
+      "classification": "NONE",
+      "endedAt": "2026-10-16T02:52:19.4141129Z",
+      "startedAt": "2026-10-16T02:52:17.1776487Z",
+      "name": "node-preflight"
+    },
+    {
+      "endedAt": "2026-10-16T02:52:21.1627205Z",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/temp/9a27b9d755b84a81b060b2e35adbd1bb/phx-7b8579570bf042a9/w'",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "result": "PASS",
+      "stderr": "",
+      "name": "node-project-files",
+      "startedAt": "2026-10-16T02:52:20.1931758Z",
+      "runId": "9eb098b3-c71e-42f2-bf67-ea8d67b08425",
+      "classification": "NONE",
+      "exitCode": 0
+    },
+    {
+      "runId": "9eb098b3-c71e-42f2-bf67-ea8d67b08425",
+      "startedAt": "2026-10-16T02:52:21.9973163Z",
+      "command": "npm ci",
+      "exitCode": 0,
+      "stderr": "",
+      "endedAt": "2026-10-16T02:52:30.3291689Z",
+      "name": "install",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 7s\n\nfound 0 vulnerabilities\n",
+      "classification": "NONE",
+      "result": "PASS"
+    },
+    {
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\ntest/phase5-group-d-surface-lifecycle-integration.test.ts(57,668): error TS2554: Expected 1 arguments, but got 0.\r\ntest/phase5-group-d-surface-lifecycle-integration.test.ts(57,894): error TS2554: Expected 1 arguments, but got 0.\r\ntest/s09-g106-legacy-pairing-planner-integration.test.ts(113,77): error TS2345: Argument of type 'BrainSyncSettings' is not assignable to parameter of type '{ deviceIdentity: string; vaultIdentity: string; remoteRootId: string; pairingStateNamespace: string; firstSyncCompleted: boolean; oauthClientId: string; oauthRedirectUri: string; recoveryInProgress: boolean; ... 17 more ...; diagnosticRetention: number; }'.\r\n  Types of property 'pairingStateNamespace' are incompatible.\r\n    Type 'string | undefined' is not assignable to type 'string'.\r\n      Type 'undefined' is not assignable to type 'string'.\r\n",
+      "endedAt": "2026-10-16T02:52:41.8853266Z",
+      "startedAt": "2026-10-16T02:52:31.2743734Z",
+      "exitCode": 2,
+      "runId": "9eb098b3-c71e-42f2-bf67-ea8d67b08425",
+      "result": "FAIL",
+      "stderr": "",
+      "classification": "PRODUCT FAILURE",
+      "name": "typecheck",
+      "command": "npm run typecheck"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}

@@ -6,7 +6,7 @@
   "main": "main.js",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test .test-build/test/*.test.js",
+    "test": "tsc -p tsconfig.test.json && node --test \".test-build/tests/**/*.test.js\"",
     "test:bvp-root": "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/*.test.js",
     "test:bvp-architecture-guard": "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/architecture-guard.test.js",
     "test:bvp-architecture-metrics": "tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/architecture-metrics.test.js",

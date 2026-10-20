@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "e8adb542-d2c2-42d9-918a-fd1c0151568c",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test-focused' did not execute because required stage 'typecheck' failed first."
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": null,
+      "exitCode": null,
+      "classification": "PRODUCT FAILURE",
+      "reason": "Stage 'test' did not execute because required stage 'typecheck' failed first."
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/phx-747af176dff04d40/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "eceb42a87d87b00997a9ab1a11f9d11a95fe4166",
+    "verifiedTree": "597e8a86d971d123e7ddeb9fe964e569f8269654",
+    "expectedHead": "eceb42a87d87b00997a9ab1a11f9d11a95fe4166",
+    "baseSha": "b1e2ebaee3077e34a4eefaf601ee8124078b7400"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-10-14T23:29:57.5508369Z",
+  "endedAt": "2026-10-14T23:30:22.3074860Z",
+  "stages": [
+    {
+      "endedAt": "2026-10-14T23:29:59.6966555Z",
+      "result": "PASS",
+      "exitCode": 0,
+      "stderr": "",
+      "name": "preflight",
+      "startedAt": "2026-10-14T23:29:58.5446352Z",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:/'",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "classification": "NONE",
+      "runId": "e8adb542-d2c2-42d9-918a-fd1c0151568c"
+    },
+    {
+      "name": "node-preflight",
+      "endedAt": "2026-10-14T23:30:02.5187141Z",
+      "runId": "e8adb542-d2c2-42d9-918a-fd1c0151568c",
+      "exitCode": 0,
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:/phx-747af176dff04d40/w' -OutputPath 'C:/phx-747af176dff04d40/w/.phx-ci/tool-versions.json'",
+      "result": "PASS",
+      "startedAt": "2026-10-14T23:30:00.4882007Z",
+      "classification": "NONE",
+      "stderr": ""
+    },
+    {
+      "stderr": "",
+      "classification": "NONE",
+      "runId": "e8adb542-d2c2-42d9-918a-fd1c0151568c",
+      "exitCode": 0,
+      "startedAt": "2026-10-14T23:30:03.2650039Z",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "endedAt": "2026-10-14T23:30:04.1333114Z",
+      "name": "node-project-files",
+      "result": "PASS",
+      "command": "& 'C:/Users/woodpk/AppData/Local/PHX-CI/runtimes/69c4aa077d4a1a46d1e85e59f39d36285be99e83/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:/phx-747af176dff04d40/w'"
+    },
+    {
+      "name": "install",
+      "stderr": "npm notice\nnpm notice New major version of npm available! 10.9.8 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice\n",
+      "classification": "NONE",
+      "endedAt": "2026-10-14T23:30:12.0601511Z",
+      "command": "npm ci",
+      "exitCode": 0,
+      "runId": "e8adb542-d2c2-42d9-918a-fd1c0151568c",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 5s\n\nfound 0 vulnerabilities\n",
+      "startedAt": "2026-10-14T23:30:05.1046778Z",
+      "result": "PASS"
+    },
+    {
+      "stderr": "",
+      "command": "npm run typecheck",
+      "classification": "PRODUCT FAILURE",
+      "endedAt": "2026-10-14T23:30:20.6881172Z",
+      "name": "typecheck",
+      "stdout": "\n> brain-google-drive-sync@0.1.18 typecheck\n> tsc --noEmit\n\ntest/phase6-alpha-mixed-plan-isolation.test.ts(186,227): error TS2345: Argument of type '{ loadData: () => Promise<undefined>; saveData: (payload: unknown) => Promise<void>; }' is not assignable to parameter of type 'PluginDataHost'.\r\n  Property 'dataFileExists' is missing in type '{ loadData: () => Promise<undefined>; saveData: (payload: unknown) => Promise<void>; }' but required in type 'PluginDataHost'.\r\ntest/phase6-alpha-mixed-plan-isolation.test.ts(188,448): error TS2345: Argument of type '{ loadData: () => Promise<undefined>; saveData: (payload: unknown) => Promise<void>; }' is not assignable to parameter of type 'PluginDataHost'.\r\n  Property 'dataFileExists' is missing in type '{ loadData: () => Promise<undefined>; saveData: (payload: unknown) => Promise<void>; }' but required in type 'PluginDataHost'.\r\ntest/phase6-alpha-plan-errors-stability-rejection.test.ts(191,49): error TS2345: Argument of type '{ loadData: () => Promise<{ settings: { syncPlanErrorsRelocation: { sourcePath: string; destinationPath: string; }; }; }>; saveData: () => Promise<undefined>; }' is not assignable to parameter of type 'PluginDataHost'.\r\n  Property 'dataFileExists' is missing in type '{ loadData: () => Promise<{ settings: { syncPlanErrorsRelocation: { sourcePath: string; destinationPath: string; }; }; }>; saveData: () => Promise<undefined>; }' but required in type 'PluginDataHost'.\r\ntest/phase6-alpha-plan-errors-stability.test.ts(527,47): error TS2345: Argument of type '{ loadData: () => Promise<{ settings: { syncPlanErrorsRelocation: { sourcePath: string; destinationPath: string; }; }; }>; saveData: () => Promise<undefined>; }' is not assignable to parameter of type 'PluginDataHost'.\r\n  Property 'dataFileExists' is missing in type '{ loadData: () => Promise<{ settings: { syncPlanErrorsRelocation: { sourcePath: string; destinationPath: string; }; }; }>; saveData: () => Promise<undefined>; }' but required in type 'PluginDataHost'.\r\n",
+      "startedAt": "2026-10-14T23:30:12.7978981Z",
+      "exitCode": 2,
+      "result": "FAIL",
+      "runId": "e8adb542-d2c2-42d9-918a-fd1c0151568c"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": null,
+  "repositoryGateResult": null,
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}

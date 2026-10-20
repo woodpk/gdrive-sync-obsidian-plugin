@@ -586,7 +586,7 @@ test("DEC-339 shipping acceptance retains exactly the three pre-existing owner-a
   match(source, /approvedProductionMainSha256\.has\(actualSha256\)/);
 });
 
-test("PHX-CI-scoped development artifact observation retains safety checks without historical hash acceptance", () => {
+test("PHX-CI-scoped authorized-governance development artifact observation retains safety checks without historical hash acceptance", () => {
   withFixture((root, baseSha) => {
     const contextPath = writeContext(root, baseSha, { changedPaths: ["main.js"] });
     const environment = {
@@ -616,7 +616,7 @@ test("PHX-CI-scoped development artifact observation retains safety checks witho
   });
 });
 
-test("promotion exact-hash gate remains fail-closed; unqualified development mode is rejected", () => {
+test("promotion exact-hash gate remains fail-closed; context-free development mode is rejected", () => {
   withFixture((root, baseSha) => {
     const local = runRepositoryCheck(root, {
       BRAIN_ARTIFACT_PURPOSE: "development",
@@ -627,22 +627,61 @@ test("promotion exact-hash gate remains fail-closed; unqualified development mod
     match(local.output, /Development artifact observation requires PHX-CI verification context/);
 
     const contextPath = writeContext(root, baseSha, { changedPaths: ["main.js"] });
-    const noGovernance = runRepositoryCheck(root, {
+    const ordinaryDevelopment = runRepositoryCheck(root, {
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BVP_CHANGE_CLASS: "ordinary",
       BRAIN_ARTIFACT_PURPOSE: "development",
     });
-    if (noGovernance.error) throw noGovernance.error;
-    strictEqual(noGovernance.status, 2, noGovernance.output);
-    match(noGovernance.output, /authorized governance classification/);
+    if (ordinaryDevelopment.error) throw ordinaryDevelopment.error;
+    strictEqual(ordinaryDevelopment.status, 0, ordinaryDevelopment.output);
+    match(ordinaryDevelopment.output, /SHIPPING_ARTIFACT_MODE=development-observation/);
+    match(ordinaryDevelopment.output, /BVP_REPOSITORY_CHECK_RESULT=PASS .*changeClass=ordinary/);
 
+    const frozenPathContext = writeContext(root, baseSha, {
+      changedPaths: ["test-platform/src/repository-check.ts"],
+    });
+    const frozenOrdinary = runRepositoryCheck(root, {
+      PHX_VERIFICATION_CONTEXT_PATH: frozenPathContext,
+      BVP_CHANGE_CLASS: "ordinary",
+      BRAIN_ARTIFACT_PURPOSE: "development",
+    });
+    if (frozenOrdinary.error) throw frozenOrdinary.error;
+    strictEqual(frozenOrdinary.status, 1, frozenOrdinary.output);
+    match(frozenOrdinary.output, /FROZEN_SURFACE_CHANGED/);
+
+    writeContext(root, baseSha, { changedPaths: ["main.js"] });
     const promotion = runRepositoryCheck(root, {
       PHX_VERIFICATION_CONTEXT_PATH: contextPath,
-      BVP_CHANGE_CLASS: "authorized-governance",
+      BVP_CHANGE_CLASS: "ordinary",
       BRAIN_ARTIFACT_PURPOSE: "promotion",
     });
     if (promotion.error) throw promotion.error;
     strictEqual(promotion.status, 1, promotion.output);
     match(promotion.output, /SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement/);
     match(promotion.output, /SHIPPING_ARTIFACT_IDENTITY_RESULT=FAIL violations=1/);
+    match(promotion.output, /BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0/);
+  });
+});
+
+test("DEC-343 ordinary development still rejects missing artifact and wrong package", () => {
+  withFixture((root, baseSha) => {
+    const contextPath = writeContext(root, baseSha, { changedPaths: ["src/main.ts"] });
+    const environment = {
+      PHX_VERIFICATION_CONTEXT_PATH: contextPath,
+      BVP_CHANGE_CLASS: "ordinary",
+      BRAIN_ARTIFACT_PURPOSE: "development",
+    };
+    rmSync(join(root, "main.js"));
+    const missing = runRepositoryCheck(root, environment);
+    if (missing.error) throw missing.error;
+    strictEqual(missing.status, 1, missing.output);
+    match(missing.output, /Required shipping artifact is missing/);
+
+    writeText(root, "main.js", 'console.log("ordinary development artifact");\n');
+    writeText(root, "package.json", '{"name":"wrong-package"}\n');
+    const invalidPackage = runRepositoryCheck(root, environment);
+    if (invalidPackage.error) throw invalidPackage.error;
+    strictEqual(invalidPackage.status, 1, invalidPackage.output);
+    match(invalidPackage.output, /Unexpected package identity/);
   });
 });
