@@ -128,7 +128,8 @@ function published(attempt = initial()): string {
     runId: attempt.phxRunId,
     status: attempt.exitCode === 0 ? "COMPLETE" : "BLOCKED",
     verification: {
-      changeSet: { status: attempt.exitCode === 0 ? "PASS" : "FAIL" },
+      changeSet: { stage: "test-focused", status: attempt.exitCode === 0 ? "PASS" : "FAIL", exitCode: attempt.exitCode },
+      repository: { stage: "test", status: "PASS", exitCode: 0 },
       overall: { status: attempt.exitCode === 0 ? "PASS" : "BLOCKED" },
     },
     repository: { verifiedHead: sourceCommit },
