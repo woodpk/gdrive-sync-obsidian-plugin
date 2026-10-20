@@ -9,13 +9,14 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, join, resolve, sep, win32 } from "node:path";
+import { isAbsolute, join, resolve, win32 } from "node:path";
 
 import { decodeScenarioCheckpoint } from "../../src/scenario/scenario-checkpoint";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
 
 const MARKER = "BVP-PHXCI-BRIDGE-V1";
 const MAX_FRAME_BYTES = 96 * 1024;
+const MAX_PUBLISHED_EVIDENCE_BYTES = 2 * 1024 * 1024;
 const MAX_RESULT_BYTES = 48 * 1024;
 const MAX_CHECKPOINT_BYTES = 32 * 1024;
 const HEX40 = /^[a-f0-9]{40}$/i;
@@ -24,9 +25,9 @@ const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SAFE_BATTERY = /^[a-z0-9][a-z0-9-]{0,127}$/;
 const ALLOWED_RESUME: ReadonlySet<string> = new Set([
-  "human-confirmation", "canonical-evidence",
+  "human-confirmation", "external-observation", "production-result", "canonical-evidence",
 ]);
-const SENSITIVE_KEY = /(?:^|[_-])(access.?token|refresh.?token|authorization.?code|client.?secret|password|passcode|api.?key|credential|private.?key|note.?body|vault.?content|content.?body|secret)(?:$|[_-])/i;
+const SENSITIVE_KEY = /access.?token|refresh.?token|authorization.?code|client.?secret|password|passcode|api.?key|credential|private.?key|note.?body|vault.?content|content.?body|secret/i;
 const SENSITIVE_VALUE = /(?:PERSONAL_VAULT|BEGIN (?:RSA |OPENSSH )?PRIVATE KEY|Bearer\s+\S+|ya29\.[^\s]+|(?:password|refresh.?token|access.?token|secret)\s*[:=])/i;
 
 export type BridgeMode = "initial" | "checkpoint-resume" | "verified-late-receipt";
@@ -178,6 +179,7 @@ function validateAttempt(attempt: BridgeAttempt): void {
       attempt.predecessor.phxRunId === attempt.phxRunId) fail("resume-attempt-chain-invalid");
   }
   if (![0, 1, 3].includes(attempt.exitCode)) fail("exit-code-invalid");
+  if (attempt.mode === "verified-late-receipt" && attempt.exitCode === 3) fail("recovery-checkpoint-exclusive");
   if (attempt.exitCode === 3) {
     if (!attempt.checkpointJson || Buffer.byteLength(attempt.checkpointJson, "utf8") > MAX_CHECKPOINT_BYTES) {
       fail("checkpoint-missing-or-oversize");
@@ -259,7 +261,7 @@ export async function loadPublishedBridgeAttempt(
     fail("publication-source-drift");
   }
   const raw = await git.readBlobAtCommit(ref.commitSha, ref.historyPath);
-  if (Buffer.byteLength(raw, "utf8") > MAX_FRAME_BYTES * 4) fail("publication-evidence-oversize");
+  if (Buffer.byteLength(raw, "utf8") > MAX_PUBLISHED_EVIDENCE_BYTES) fail("publication-evidence-oversize");
   let obj: Record<string, unknown>;
   try { obj = record(JSON.parse(raw)); } catch { fail("publication-evidence-malformed"); }
   if (obj.runId !== expected.phxRunId) fail("publication-run-mismatch");
@@ -359,6 +361,7 @@ interface BridgeRequest {
   readonly ownerPhysicalApproval: { readonly approved: true; readonly scope: string };
   readonly prior?: PublishedAttemptRef;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
+  readonly previousExpectation?: BridgeExpectation;
 }
 function cliArgument(name: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -415,12 +418,23 @@ export async function main(): Promise<void> {
       request.prior.historyPath !== request.expectation.predecessor.historyPath) fail("resume-predecessor-mismatch");
     // The prior attempt has a DIFFERENT PHX run ID but the same logical BVP
     // identity and same source/install identity.
-    const previous: BridgeExpectation = {
+    // Later checkpoints require an explicit, immutable prior-chain description;
+    // never guess an intermediate predecessor or rewrite history.
+    const previous: BridgeExpectation = request.previousExpectation ?? {
       ...request.expectation, phxRunId: request.expectation.predecessor.phxRunId,
       attemptIndex: request.expectation.predecessor.attemptIndex,
-      mode: request.expectation.predecessor.attemptIndex === 1 ? "initial" : request.expectation.mode,
-      predecessor: undefined,
+      mode: "initial", predecessor: undefined,
     };
+    if (previous.bvpRunId !== request.expectation.bvpRunId ||
+      previous.sourceCommit !== request.expectation.sourceCommit ||
+      previous.scenarioDigest !== request.expectation.scenarioDigest ||
+      previous.artifactSha256 !== request.expectation.artifactSha256 ||
+      !sameDeviceIds(previous.deviceIds, request.expectation.deviceIds) ||
+      previous.phxRunId !== request.expectation.predecessor.phxRunId ||
+      previous.attemptIndex !== request.expectation.predecessor.attemptIndex ||
+      (previous.attemptIndex > 1 && !request.previousExpectation)) {
+      fail("resume-predecessor-identity-mismatch");
+    }
     recovered = await loadPublishedBridgeAttempt(gitEvidencePort(root), request.prior, previous);
     if (recovered.exitCode !== 3 && request.expectation.mode === "checkpoint-resume") {
       fail("resume-previous-checkpoint-not-blocked");
