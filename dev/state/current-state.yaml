@@ -8,7 +8,7 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: REVIEWER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR01"
 handoff-source-sha: ""
-active_build_unit_status: "TDD_TESTS_FIRST_PENDING"
+active_build_unit_status: "TDD_TESTS_AND_IMPLEMENTATION_COMMITTED_PHXCI_PENDING"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -82,8 +82,16 @@ s09_fixed_phxci_consumer_bridge:
   unit_1: "S09-BR01_ONE_IMPLEMENTATION_FILE_test-platform/test/batteries/phxci-physical-bridge.ts"
   unit_2: "S09-BR02_TEST_FILES_ONLY_under_test-platform/test"
   review_gate: "AFTER_BR02_NOT_AN_ADDITIONAL_BUILD_UNIT"
-  implementation_status: "S09_BR01_TDD_TEST_AUTHORSHIP_FIRST"
-  first_step: "AUTHOR_REQUIREMENT_DRIVEN_TESTS_BEFORE_IMPLEMENTATION_IN_DISTINCT_TEST_FIRST_COMMIT"
+  implementation_status: "S09_BR01_IMPLEMENTED_UNVERIFIED"
+  first_step: "COMPLETE_TDD_TEST_COMMIT_8b79e6eaf774f28a16456346cd10224806587e5f_BEFORE_IMPL"
+  implementation_file: "test-platform/test/batteries/phxci-physical-bridge.ts"
+  initial_test_file: "test-platform/test/phxci-physical-bridge.test.ts"
+  initial_test_commit: "8b79e6eaf774f28a16456346cd10224806587e5f"
+  latest_implementation_commit: "165a5af1d324706ad42a35d7303b1b60292f5cee"
+  test_cases_authored: 12
+  initial_red_executed: false
+  authoritative_phx_ci_qualification: "NOT_RUN"
+  independent_reviewer: "NOT_ENGAGED"
   accepted_s09_g1_handoff_count: 6
   physical_authorization: "NOT_GRANTED"
   existing_s09_g1_handoff_count: 6
@@ -111,7 +119,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "OWNER TDD OVERRIDE: S09-BR01 starts by authoring and committing requirements-derived executable tests BEFORE its one-file BRAIN adapter implementation; an expected-RED baseline is optionally executed through real PHX-CI only and cannot count as PASS. After tests, implement test-platform/test/batteries/phxci-physical-bridge.ts only and obtain substantive PHX-CI PASS; S09-BR02 adds/adversarially hardens tests and qualifies full two-invocation integration through pinned PHX-CI. Initial new feature handoff-count is 0; S09G1 prior completed handoff-count 6 preserved separately. Reviewer only after feature qualification. No changes to PHX-CI, BRAIN pin, installed devices, live Drive/vault, release or Stage 3."
+next_action: "S09-BR01 has test-first TDD source commit 8b79e6eaf774f28a16456346cd10224806587e5f and single adapter implementation latest 165a5af1d324706ad42a35d7303b1b60292f5cee. NEXT: invoke the original pinned PHX-CI runtime 69c4aa077d4a1a46d1e85e59f39d36285be99e83 against the exact current BRAIN planning branch with focused test command npm run test:bvp-root, no live physical execution. Diagnose any failures, correct code/tests and rerun ONLY via PHX-CI; do not claim PASS without original published evidence. Then S09-BR02 must add test hardening and obtain substantive PHX-CI PASS before final independent Reviewer blind review and handoff. No PHX-CI modifications, pin changes, physical devices, installed products, live Drive/vault, release or Stage 3. Handoff-count remains 0 until a genuine qualified cross-role handoff."
 updated_at: "2026-10-20"
 
 context:
