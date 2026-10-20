@@ -12,7 +12,7 @@
 
 The Owner expressly prohibits ANY modification to PHX-CI in this effort. PHX-CI may be called only through its existing approved, pinned, immutable runtime. Do not alter or fork PHX-CI source, scripts, taskfiles, schema, runtime manifest or hashes, package/version, or BRAIN's `phx-ci.json` framework SHA. Do not install or select a newer runtime. If the existing interface is insufficient, this work returns BLOCKED with concrete evidence; it does NOT request an implicit PHX-CI extension. No other system can publish an authoritative verification result.
 
-The Owner delegated BRAIN-side detailed design and planning. This document specifies a BRAIN-only implementation to qualify through existing PHX-CI, but is not PHX-CI PASS, independent Reviewer acceptance, release/install authorization or permission to execute a live battery.
+The Owner delegated BRAIN-side detailed design, planning and software implementation under existing Build Unit, PHX-CI and Reviewer gates. This document specifies a BRAIN-only implementation to qualify through existing PHX-CI, but is not PHX-CI PASS, independent Reviewer acceptance, release/install authorization or permission to execute a live battery.
 
 ## 2. In-scope result
 
@@ -77,7 +77,7 @@ Each child has no more than one new contract family, is restricted to BRAIN, and
 
 | Unit | Scope | Primary writable surface | Exit gate |
 | --- | --- | --- | --- |
-| BR-01 | Freeze output transport, identity, privacy/size limits; prove pinned PHX evidence shape and BL0CKED retention nonphysically | `test-platform/test/batteries/**` tests/adapter contract; this plan | PHX-CI-only no-device contract tests and original evidence; no PHX edits |
+| BR-01 | Freeze output transport, identity, privacy/size limits; prove pinned PHX evidence shape and BLOCKED retention nonphysically | `test-platform/test/batteries/**` tests/adapter contract; this plan | PHX-CI-only no-device contract tests and original evidence; no PHX edits |
 | BR-02 | Implement bounded stdout evidence encoder/decoder and immutable Git predecessor locator/reconstitution | `test-platform/test/batteries/**` | Negative malformed/stale/tampered/oversize/no-publication tests |
 | BR-03 | Implement controlled initial/resume/recovery CLI adapter; preserve suite and existing BVP runner semantics | `test-platform/test/batteries/**`; `package.json` only if needed and approved | PHX-only normal/checkpoint/late-receipt integration tests |
 | BR-04 | Verify 10-family adequacy; exact-source PHX-CI full verification; independent final Reviewer and software-only closeout | tests under `test-platform/test/**`, evidence only through PHX-CI | PHX-CI substantive PASS + independent Reviewer verdict |
