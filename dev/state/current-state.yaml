@@ -8,10 +8,48 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
 handoff-source-sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"
+active_build_unit_status: "CLOSEOUT_COMPLETE"
+s09_g1_feature_closeout:
+  status: "CLOSEOUT_COMPLETE"
+  scope: "SOFTWARE_FEATURE_ONLY"
+  workstream: "WS-07-brain-verification-platform"
+  build_unit: "S09_G1_PLUGIN_DATA_INTEGRITY_MITIGATION"
+  accepted_source_sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"
+  accepted_source_tree: "4c92e604228ae8a383bbb077a5535aa5e104607f"
+  builder_qualification:
+    status: "PASS"
+    run_id: "ba2e1467-ded5-48bb-9d86-4ee2de7b2f42"
+    required_stages_passed: 11
+    original_evidence_commit: "18e2b38ec8da83395146dafbd6bdae1f3bdfbd20"
+    canonical_original_files: "dev/test-results/ba2e1467-ded5-48bb-9d86-4ee2de7b2f42/"
+  independent_acceptance:
+    verdict: "PASS WITH MINOR FINDINGS"
+    reviewed_at: "2026-10-20"
+    final_report: "dev/reviews/s09-g1-20261020-review-brain-09-final.md"
+    final_report_commit: "b45ed296b88e8423fa45a4ac29c2f478a01d9d7d"
+    frozen_source_review: "dev/reviews/s09-g1-20261020-review-brain-09-blind-source.md"
+    source_review_commit: "036bc85cadc85f00a7eec203e230f696df125f42"
+  retained_minor_findings:
+    - id: "M-01"
+      disposition: "RETAINED_INFORMATION_ISOLATION_LIMITATION"
+      detail: "Prior administrative-status exposure prevents a claim of perfectly fresh-session zero-prior-exposure blindness; Reviewer disclosed limitation, assessed source then evidence and accepted with minor findings."
+    - id: "M-02"
+      disposition: "PRE_EXISTING_OWNER_ACCEPTED_RESIDUAL_RISK"
+      detail: "DEC-340-01 unauthenticated standalone verification-context spoofing remains unfixed; Owner accepted this narrowly under DEC-344 for genuine PHX-CI software qualification/review."
+    - id: "M-03"
+      disposition: "SEPARATE_PHYSICAL_RUNTIME_GATES_PENDING"
+      detail: "Physical Windows/iOS/Google Drive and historical data.json incident acceptance remain unverified and require separate Owner authorization."
+  integration_into_master: "NOT_AUTHORIZED_NOT_PERFORMED"
+  production_artifact_release_approval: "NOT_GRANTED"
+  live_or_physical_s09_authorization: "NOT_GRANTED"
+  stage_3_authorization: "NOT_GRANTED"
 status: "IN_PROGRESS"
-last_accepted_source_sha: "5861b8b2861f9c38ea659be7c7cfcf78527da4d7"
-last_phx_ci_run_id: "bc2d2bf1-fc02-4b75-828c-4b3287725b25"
+last_accepted_source_sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"  # software feature review acceptance only; master remains separate
+last_phx_ci_run_id: "ba2e1467-ded5-48bb-9d86-4ee2de7b2f42"
 blockers:
+  - "No Owner authorization for S09 G1 master integration, artifact identity release/promotion, installation/activation or live Google Drive/vault synchronization."
+  - "Physical S09 Windows/iOS acceptance, historical data.json incident resolution and Stage 3 remain separately gated; PHX-CI deterministic PASS is not physical proof."
+historical_blockers:
   - "CURRENT STATUS 2026-10-19: Exact SHA 9c100e4702190fe5e7908ea76f2f10068dc6e548/tree 4c92e604228ae8a383bbb077a5535aa5e104607f was fully PHX-CI-qualified, run ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 PASS 11/11, original publication 18e2b38ec8da83395146dafbd6bdae1f3bdfbd20. Canonical run-ID path dev/test-results/ba2e1467-ded5-48bb-9d86-4ee2de7b2f42/ contains byte-identical original JSON/MD/log. Older blocker strings below describe historical candidate states, not current validation. Independent Reviewer final acceptance remains PENDING; first Reviewer return cbfb6d02a377ca0f4709d22550ad1edf45a987bb did not inspect the later PASS and reported blindness contamination."
   - "Latest two-agent Builder qualification run 54f67c16-5c50-4b78-ab69-06e7135e39fa (evidence f46ec63378a1c71d27908bbfac2c21beb24a419b) BLOCKED at test-focused (401/403), despite full test PASS (1292/1292). DEC-343 locked authority resolves the two failing expectations: ordinary development observation is authorized under a PHX-CI verification context. Interim test alteration was reverted; the expressly approved frozen repository-check correction is restored at blob 62cf545c87c549de8a6a262dc4b6e91355298f05. Corrected candidate still requires full PHX-CI; no shipping release digest has been approved."
   - "Current two-agent reconciliation (2026-10-19): S09 G1 Builder qualification INCOMPLETE. PHX-CI 28fb2dad-8771-49f2-9842-2cf39cb966fc was BLOCKED (repository-check); test/build PASS on historical candidate only. Frozen test-platform/src/repository-check.ts restored at f941bf7aea3b35c496374b9ddd596d4725e02ea6, which has no full PHX-CI PASS. Historical F-04/GDC records are preserved as history, not current execution instructions. Ten-family adequacy audit and exact-candidate verification remain required."
@@ -28,8 +66,8 @@ blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "S09 G1 exact-source Builder qualification is PHX-CI PASS at production and test candidate 9c100e4702190fe5e7908ea76f2f10068dc6e548, tree 4c92e604228ae8a383bbb077a5535aa5e104607f, run ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 (11/11 stages PASS; evidence commit 18e2b38ec8da83395146dafbd6bdae1f3bdfbd20). Published original files are also addressed by dev/test-results/ba2e1467-ded5-48bb-9d86-4ee2de7b2f42/{result.json,result.md,terminal.log}. The prior 28fb2dad and 54f67c16 failures remain historical only. The first Reviewer attempt cbfb6d02a377ca0f4709d22550ad1edf45a987bb was CORRECTION REQUIRED due to missed latest evidence and compromised blind intake; new fresh independent Reviewer must conduct blind source pass using neutral authority and exact qualified source SHA, then inspect existing canonical evidence and ten-family adequacy for final verdict. No merge/release/live activation/physical S09/Stage 3 without separate approval."
-updated_at: "2026-10-19"
+next_action: "S09 G1 SOFTWARE FEATURE CLOSEOUT COMPLETE on immutable source 9c100e4702190fe5e7908ea76f2f10068dc6e548; PHX-CI run ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 PASS 11/11; independent Reviewer PASS WITH MINOR FINDINGS at dev/reviews/s09-g1-20261020-review-brain-09-final.md, commit b45ed296b88e8423fa45a4ac29c2f478a01d9d7d. Retain M-01, M-02, M-03 with exact scope. Human Owner must separately authorize any master integration, artifact promotion/release, install/activation, live Drive/vault or physical S09 or Stage 3; do not begin these or advance an unapproved next Build Unit. No redundant PHX-CI run for this documentation-only closeout. Handoff-count 6 remains current, BUILDER recipient."
+updated_at: "2026-10-20"
 
 context:
   orchestration_20261017_f02_f05:
