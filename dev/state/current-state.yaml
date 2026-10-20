@@ -48,6 +48,20 @@ s09_g1_feature_closeout:
   production_artifact_release_approval: "NOT_GRANTED"
   live_or_physical_s09_authorization: "NOT_GRANTED"
   stage_3_authorization: "NOT_GRANTED"
+s09_physical_readiness_gate:
+  status: "PREPARED_NONEXECUTABLE"
+  preparation_source_master_sha: "d37edb9a1219a30616ea465fb8b0d7cda8d1ec03"
+  planning_path: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-physical-readiness-gate-20261020.md"
+  plan_publication_commit: "35506d0a0d4551398da1d3249281df541e762330"
+  activation_of_s09a_through_s09v: "PROHIBITED_BY_CURRENT_DECOMPOSITION"
+  windows_ios_build_and_device_bindings: "UNBOUND"
+  phx_ci_physical_adapter: "NOT_ESTABLISHED_AND_SCRIPT_README_REPORTS_BLOCKED"
+  disposable_test_vault_and_drive_root: "UNBOUND"
+  owner_physical_execution_authorization: "NOT_GRANTED"
+  prior_s09a_canary: "HISTORICAL_EVIDENCE_ONLY_NO_AUTOMATIC_RERUN"
+  prior_data_json_incident_root_cause: "UNPROVED"
+  readiness: "BLOCKED_FOR_PHYSICAL_EXECUTION"
+  permitted_next_action: "READ_ONLY_S08_PHX_CI_ADAPTER_AND_EVIDENCE_DEPENDENCY_INVENTORY"
 status: "IN_PROGRESS"
 last_accepted_source_sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"  # software feature review acceptance only; master remains separate
 last_phx_ci_run_id: "ba2e1467-ded5-48bb-9d86-4ee2de7b2f42"
@@ -71,7 +85,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Software-only S09 G1 PR #153 is MERGED into master at 067857effe1d930b25db4dd7879601a0f918e1b2, preserving independently accepted exact source 9c100e4702190fe5e7908ea76f2f10068dc6e548, PHX-CI PASS ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 and Reviewer PASS WITH MINOR FINDINGS. Proceed with read-only requirements/dependency grounding for S09 physical readiness and any next approved nonphysical Build Unit. WS-07 03-BUILD-DECOMPOSITION explicitly forbids reactivating preplanned S09A-S09V task prompts or rerunning the historical S09A canary. A new executable physical contract, physical Obsidian/Google Drive operation, release hash, installation, activation or Stage 3 requires separate human Owner authorization; do not initiate. Retain M-01, M-02, M-03. Handoff-count 6 remains; no new agent transfer."
+next_action: "Next WS-07 readiness stage is PREPARED_NONEXECUTABLE at dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-physical-readiness-gate-20261020.md (publication 35506d0a0d4551398da1d3249281df541e762330). Perform read-only S08/PHX-CI physical adapter and historical evidence inventory, then if necessary ground a separate software-only adapter Build Unit. Do not reactivate S09A-S09V preplanned task contracts, rerun the S09A canary or operate installed Obsidian, Google Drive, vaults, artifacts, OAuth or physical S09 without separate Owner authorization and exact device/root/build/PHX-CI bindings. S09 G1 reviewed software is already merged into master by PR #153 at 067857effe1d930b25db4dd7879601a0f918e1b2. Stage 3 remains not started. Handoff-count 6 persists for closed S09 G1; planning does not increment it."
 updated_at: "2026-10-20"
 
 context:
