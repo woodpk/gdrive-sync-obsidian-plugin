@@ -71,3 +71,24 @@ Before *any* physical action, the operator must receive: exact device, action, e
 **Current readiness: PREPARATION DOCUMENTED; PHYSICAL EXECUTION BLOCKED.** No new live testing, installation, Drive/vault mutation, PHX-CI execution, release approval or Stage 3 took place while preparing this contract.
 
 The next permissible engineering action is a **read-only S08/PHX-CI adapter capability and physical-evidence dependency inventory**, then (only if needed) a separately grounded software-only adapter Build Unit; this is *not* activation of S09A. Any real physical execution requires the explicit Owner approvals and complete bindings above.
+
+## 7. Read-only S08 / PHX-CI adapter inventory — 2026-10-20
+
+This inventory used GitHub source/document inspection only; **no executable validation, deployment or device interaction**.
+
+| Surface inspected | Direct observation | Disposition |
+| --- | --- | --- |
+| `woodpk/phx-ci` verified product runtime pin `69c4aa077d4a1a46d1e85e59f39d36285be99e83` | Generic `scripts/Invoke-PhxCi.ps1`, `scripts/Invoke-PhxCiVerification.ps1`, and Node/.NET/Python adapters; no physical/BVP-named adapter script in that pinned tree | Physical battery PHX-CI coordinator **NOT ESTABLISHED** by pinned runtime |
+| `woodpk/phx-ci` repository `master` inspected at `381a30dc930998279bfbc788581ad8a50dacf120` | Generic adapters/front doors present; no physical/BVP-named adapter script in inspected tree | Newer branch presence **does not** count as approved or deployed runtime |
+| Pinned PHX-CI `docs/node-adapter.md` | Stage overrides permit selected *software* commands, with semantic stage preservation; the generic Node adapter is not itself a physical checkpointed battery operator | A focused test command is **not** a substitute for PHX-CI-owned live execution, checkpoint provenance and original-attempt publication |
+| BRAIN `test-platform/src/live-device/*` | `build-validation-artifact.ts` constructs a distinct validation build identity; `device-command-agent.ts` and `live-scenario-executor.ts` model addressed device commands, observed receipts, controller leases and checkpoint/resume | S08 building blocks **EXIST**, but existence of code does not establish an authorized live run path |
+| BRAIN `test-platform/scenarios/live/s09a-dual-device-readiness.ts`, `s09a-ios-initial-sync.ts` | Registered live scenarios require observed devices; the iOS scenario contains a write-bearing local canary and production synchronization step | **DO NOT EXECUTE** under the present preparation-only authorization |
+| BRAIN `dev/scripts/README.md` | The legacy battery wrappers are fail-closed and explicitly state that live physical execution is BLOCKED until an approved PHX-CI-coordinated path exists | Confirms current physical-execution blocker |
+| BRAIN `dev/scripts/Invoke-PHXCI-S09A-Deploy.ps1` | Historical deploy/staging script embeds an old task branch, absolute local repository/vault paths and an already-obsolete build identity; script explicitly stages into a local plugin directory | **DO NOT REUSE OR INVOKE** for current S09; no new artifact installation approval |
+| Physical records and S09A planning | Historical Windows timeout, later receipt, separate request-attribution canary, unbound iOS/load/pairing and unproven physical data.json incident | Overall physical S09 readiness **NOT ACCEPTED** |
+
+### P1 engineering design boundary (prospective, not an executable assignment)
+
+If an executable adapter is truly absent, the **next nonphysical engineering work unit** is a bounded PHX-CI ownership/integration design: identify the host repository that owns the coordinator; require existing `ScenarioDefinition` and `LiveScenarioExecutor` rather than duplicating scenario logic; specify per-attempt immutable evidence, checkpoint freezing, authorized resume with no repeated effects, version/source/device identity gates, secret redaction, and rejection of direct standalone battery launchers. The prospective adapter's test plan must satisfy the applicable ten-family coverage and Test-Change Integrity; any code change must receive PHX-CI qualification and independent final Reviewer assessment. No adapter implementation is authorized by this planning file, and no new CI-verifier script may be invented outside governing scope.
+
+The plan remains **PREPARED / BLOCKED** until an actual approved adapter and physical fixture/Owner bindings are established. The accepted S09 G1 source/PHX-CI evidence is unchanged by this inventory.
