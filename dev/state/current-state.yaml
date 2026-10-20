@@ -39,7 +39,12 @@ s09_g1_feature_closeout:
     - id: "M-03"
       disposition: "SEPARATE_PHYSICAL_RUNTIME_GATES_PENDING"
       detail: "Physical Windows/iOS/Google Drive and historical data.json incident acceptance remain unverified and require separate Owner authorization."
-  integration_into_master: "NOT_AUTHORIZED_NOT_PERFORMED"
+  integration_into_master: "MERGED_SOFTWARE_ONLY_OWNER_AUTHORIZED"
+  integration_pr: 153
+  integration_master_commit: "067857effe1d930b25db4dd7879601a0f918e1b2"
+  integration_source_branch_tip: "9ae67f8ba705511eea2dc543a579b91aec19c7a2"
+  integration_source_exact_qualified_sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"
+  integration_scope: "SOFTWARE_ONLY_NO_RELEASE_OR_ACTIVATION"
   production_artifact_release_approval: "NOT_GRANTED"
   live_or_physical_s09_authorization: "NOT_GRANTED"
   stage_3_authorization: "NOT_GRANTED"
@@ -47,7 +52,7 @@ status: "IN_PROGRESS"
 last_accepted_source_sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"  # software feature review acceptance only; master remains separate
 last_phx_ci_run_id: "ba2e1467-ded5-48bb-9d86-4ee2de7b2f42"
 blockers:
-  - "No Owner authorization for S09 G1 master integration, artifact identity release/promotion, installation/activation or live Google Drive/vault synchronization."
+  - "S09 G1 software-only master integration is complete (PR #153); artifact identity promotion/release, installation/activation and live Google Drive/vault synchronization remain unauthorized."
   - "Physical S09 Windows/iOS acceptance, historical data.json incident resolution and Stage 3 remain separately gated; PHX-CI deterministic PASS is not physical proof."
 historical_blockers:
   - "CURRENT STATUS 2026-10-19: Exact SHA 9c100e4702190fe5e7908ea76f2f10068dc6e548/tree 4c92e604228ae8a383bbb077a5535aa5e104607f was fully PHX-CI-qualified, run ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 PASS 11/11, original publication 18e2b38ec8da83395146dafbd6bdae1f3bdfbd20. Canonical run-ID path dev/test-results/ba2e1467-ded5-48bb-9d86-4ee2de7b2f42/ contains byte-identical original JSON/MD/log. Older blocker strings below describe historical candidate states, not current validation. Independent Reviewer final acceptance remains PENDING; first Reviewer return cbfb6d02a377ca0f4709d22550ad1edf45a987bb did not inspect the later PASS and reported blindness contamination."
@@ -66,7 +71,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "S09 G1 SOFTWARE FEATURE CLOSEOUT COMPLETE on immutable source 9c100e4702190fe5e7908ea76f2f10068dc6e548; PHX-CI run ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 PASS 11/11; independent Reviewer PASS WITH MINOR FINDINGS at dev/reviews/s09-g1-20261020-review-brain-09-final.md, commit b45ed296b88e8423fa45a4ac29c2f478a01d9d7d. Retain M-01, M-02, M-03 with exact scope. Human Owner must separately authorize any master integration, artifact promotion/release, install/activation, live Drive/vault or physical S09 or Stage 3; do not begin these or advance an unapproved next Build Unit. No redundant PHX-CI run for this documentation-only closeout. Handoff-count 6 remains current, BUILDER recipient."
+next_action: "Software-only S09 G1 PR #153 is MERGED into master at 067857effe1d930b25db4dd7879601a0f918e1b2, preserving independently accepted exact source 9c100e4702190fe5e7908ea76f2f10068dc6e548, PHX-CI PASS ba2e1467-ded5-48bb-9d86-4ee2de7b2f42 and Reviewer PASS WITH MINOR FINDINGS. Proceed with read-only requirements/dependency grounding for S09 physical readiness and any next approved nonphysical Build Unit. WS-07 03-BUILD-DECOMPOSITION explicitly forbids reactivating preplanned S09A-S09V task prompts or rerunning the historical S09A canary. A new executable physical contract, physical Obsidian/Google Drive operation, release hash, installation, activation or Stage 3 requires separate human Owner authorization; do not initiate. Retain M-01, M-02, M-03. Handoff-count 6 remains; no new agent transfer."
 updated_at: "2026-10-20"
 
 context:
