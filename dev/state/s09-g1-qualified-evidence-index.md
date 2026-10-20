@@ -28,7 +28,22 @@ The following are named executable tests/assertions on the exact qualified sourc
 | 9 Architecture/ownership/invariants | runtime authority tests: exactly-once scheduler stop, obsolete/successor raw adapter disposal exactly once, resource-finally cleanup after controller failure; BVP repository check enforces shipping and frozen-boundary controls |
 | 10 End-to-end/fail-closed/destructive | `tests/adversarial/plugin-data-integrity-regression.test.ts`: malformed persisted data cannot be overwritten; runtime deauthorization: zero local/remote delete effects; older `test-platform` deterministic scenarios cover modeled destructive safeguards; physical S09 separately pending |
 
-## Reviewer-return adjudication
+## Historical Reviewer-return adjudication (superseded by final acceptance)
 First final-review report at `dev/reviews/ws07-s09g1-final-assessment-20261019-08.md` commit `cbfb6d02a377ca0f4709d22550ad1edf45a987bb` stated missing original PHX-CI PASS, relying on older runs `28fb2dad` and `54f67c16`. Latest original evidence refutes that premise for the exact reviewed SHA. The same report identifies double-disposal as an *unproven risk*, not a confirmed defect. ProductController idempotent disposal plus deterministic tests are subject to fresh Reviewer judgment; no source correction was justified solely by that suggestion.
 
 Prior review Pass 1 was contaminated by Builder narrative. Send a NEW reviewer neutral-only feature/requirements and exact source SHA. Reviewer's blind Pass 1 must NOT read this document, tests, historical reports or PHX-CI evidence before frozen blind assessment. Only after Pass 1 may it inspect these records. No new PHX-CI execution required for unchanged exact source/tests; historical failed runs remain immutable.
+
+## Independent final acceptance and Builder closeout — 2026-10-20
+
+**CLOSEOUT COMPLETE for the bounded software feature only.** Exact qualified/accepted code-and-test SHA remains `9c100e4702190fe5e7908ea76f2f10068dc6e548`; tree `4c92e604228ae8a383bbb077a5535aa5e104607f`.
+
+- Frozen first-pass source report: `dev/reviews/s09-g1-20261020-review-brain-09-blind-source.md`, published at `036bc85cadc85f00a7eec203e230f696df125f42`.
+- Final Reviewer acceptance: **PASS WITH MINOR FINDINGS**, `dev/reviews/s09-g1-20261020-review-brain-09-final.md`, review commit `b45ed296b88e8423fa45a4ac29c2f478a01d9d7d`.
+- Reviewer independently examined meaningful executable assertions for all ten mandatory families and original PHX-CI run `ba2e1467-ded5-48bb-9d86-4ee2de7b2f42`, **11/11 PASS**: 403/403 focused and 1,292/1,292 full tests (overlapping populations, not additive). Observed `main.js` SHA-256 `6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d` is **not release approved**.
+- **M-01 (retained):** Earlier administrative historical-status exposure means the frozen source assessment cannot claim perfectly fresh-session blindness; Reviewer disclosed and accepted as minor rather than concealing the limitation.
+- **M-02 (retained):** DEC-340-01 standalone context-spoofing vulnerability remains present and risk-accepted for genuine PHX-CI software verification under DEC-344; no vulnerability fix or release authorization implied.
+- **M-03 (retained):** Historical data.json incident acceptance, physical S09 Windows/iOS/Drive activity, installation/activation and Stage 3 remain outside this software review and require separate authorization.
+- No production, test or script file changes follow the qualified code-and-test SHA in this closeout. The original immutable PHX-CI evidence is preserved unchanged under the run-ID directory above. No requalification run is needed for closeout-only documentation.
+- No merge to `master`, artifact promotion, installation, physical battery, live Google Drive/vault operation, or Stage 3 was performed or authorized.
+
+Current scoped closeout authority: `dev/state/current-state.yaml` → `s09_g1_feature_closeout`. Historical REJECT/BLOCKED records remain evidence of earlier candidates; they do not supersede the accepted exact-source PASS.
