@@ -150,9 +150,9 @@ function gitPort(text: string = published(), paths: readonly string[] = ["dev/_c
       return text;
     },
     async isAncestor(ancestor, descendant) {
-      strictEqual(ancestor, priorCommit);
-      strictEqual(descendant, currentCommit);
-      return true;
+      if (ancestor === priorCommit && descendant === currentCommit) return true;
+      if (ancestor === sourceCommit && descendant === sourceCommit) return true;
+      return false;
     },
     async changedPaths() { return paths; },
   };

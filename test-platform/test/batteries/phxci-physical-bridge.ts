@@ -268,11 +268,20 @@ export async function loadPublishedBridgeAttempt(
   const repository = record(obj.repository), verification = record(obj.verification);
   const overall = record(verification.overall);
   if (typeof repository.verifiedHead !== "string" ||
-    !HEX40.test(repository.verifiedHead) ||
-    (repository.verifiedHead !== expected.sourceCommit &&
-      (await git.changedPaths(expected.sourceCommit, repository.verifiedHead)).some(p =>
-        p !== "dev/_ca-output.md" && p !== "dev/_ca-output.json" &&
-        !p.startsWith("dev/test-results/")))) fail("publication-source-mismatch");
+    !HEX40.test(repository.verifiedHead)) fail("publication-source-mismatch");
+  if (repository.verifiedHead !== expected.sourceCommit) {
+    // Matching filenames do not authorize an unrelated commit: prove ancestry
+    // BEFORE accepting any evidence-only descendant as source-equivalent.
+    if (!(await git.isAncestor(expected.sourceCommit, repository.verifiedHead))) {
+      fail("publication-source-not-ancestor");
+    }
+    const sourceChanged = await git.changedPaths(expected.sourceCommit, repository.verifiedHead);
+    if (sourceChanged.some(p =>
+      p !== "dev/_ca-output.md" && p !== "dev/_ca-output.json" &&
+      !(p.startsWith("dev/test-results/") && !p.includes("..") && !p.includes("\\")))) {
+      fail("publication-source-mismatch");
+    }
+  }
   if (!Array.isArray(obj.stages)) fail("publication-stage-missing");
   const stages = obj.stages.filter((v: unknown) => {
     try { return record(v).name === "test-focused"; } catch { return false; }
