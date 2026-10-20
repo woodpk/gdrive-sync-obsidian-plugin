@@ -480,3 +480,16 @@ Each primary BVP stage also ends with a separate integrated PHX-CI acceptance ta
 ## Prospective DEC-339 verification unit — design only, not executable
 
 Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After D339-01 freezes contracts, plan **D339-07** PHX-CI-owned deterministic/fault, negative safety, equivalence and comparable-workload scenarios, integrated with WS-02/03/05 units; **D339-08** is the later integrated PHX-CI + independent review/controlled rollout gate. Do not reactivate S09A–V preplanned prompts, rerun the completed S09A canary, bypass the frozen BVP architecture guard, or add scenario-specific PowerShell verification. Existing physical S09A Windows/iOS acceptance remains open.
+
+## S09 fixed-PHX-CI consumer bridge — software-only prerequisite (Owner direction 2026-10-20)
+
+This newly scoped prerequisite **does not replace or activate** S09A–S09V. It preserves accepted S09 G1 closeout and existing S08 engine. PHX-CI is a pinned **read-only external tool**. No changes to PHX-CI or to BRAIN `phx-ci.json` / `Taskfile.phx-ci.yml`. Source/compatibility feasibility is to be proven through existing PHX focused stage and canonical evidence publication; any unproven unsupported capability BLOCKS rather than expanding PHX-CI work.
+
+| Child | Bound BRAIN responsibility | Gate |
+| --- | --- | --- |
+| S09-BR01 | Freeze minimal stdout-checkpoint/attempt transport; demonstrate safe PHX nonzero/BLOCKED evidence publication and immutable retrieval using PHX-CI only (no devices) | Actual first-attempt PHX evidence readback; byte/hash, privacy/size and no source drift |
+| S09-BR02 | Implement BRAIN attempt framing, exact prior-PHX-evidence commit/path lookup, source/identity/privacy verification and secure checkpoint/result reconstruction | PHX-CI negative/forged/stale/missing/oversize/concurrency tests |
+| S09-BR03 | Integrate existing BVP live runner through bounded BRAIN CLI; preserve `npm run test:bvp-root` as focused coverage; checkpoint/resume and late recovery stay exclusive | Two-run PHX-CI simulated integration, no replay, original exit 3 |
+| S09-BR04 | Full ten-family test adequacy and traceability; PHX-CI original PASS; independent final Reviewer assessment and software-only closeout | Complete fixed-runtime PHX-CI + Reviewer; physical scope STILL BLOCKED |
+
+The durable scope contract is `tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md`. These are **PLANNED / NOT-YET-DISPATCHED** Build Units; before each assignment bind exact predecessor SHA, current interfaces, and allowed writable paths. Do not change frozen governance, create a scenario PowerShell verifier, widen LOC budgets or bypass the source-readiness review. Scope-only BRAIN implementation may proceed after proper Build Unit dispatch; **no physical invocation** absent later explicit Owner approval.

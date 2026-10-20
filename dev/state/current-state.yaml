@@ -67,6 +67,22 @@ s09_physical_readiness_gate:
   integration_path_assessment: "DETERMINISTIC_BVP_ALREADY_IN_PHX_CI_LIVE_BVP_CORE_EXISTS"
   integration_path_review_commit: "24119d8168f96218b2f0331b0e342ac108ac5fd4"
   permitted_next_action: "PROSPECTIVE_SOFTWARE_ONLY_PHX_CI_PHYSICAL_ADAPTER_OWNERSHIP_DESIGN_UNTIL_EXECUTION_GATES_ARE_BOUND"
+s09_fixed_phxci_consumer_bridge:
+  scope: "BRAIN_ONLY_NO_PHX_CI_CHANGES_DEC_345"
+  status: "OWNER_DIRECTED_PLANNING_PUBLISHED_SOFTWARE_NOT_YET_BUILT_OR_VERIFIED"
+  owner_decision: "DEC-345"
+  design_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md"
+  source_assessment: "dev/research/s09-phxci-fixed-runtime-evidence-transport-assessment-2026-10-20.md"
+  design_method: "BOUNDED_BVP_CHECKPOINT_RESULT_IN_EXISTING_PHX_TEST_FOCUSED_STDOUT_EVIDENCE"
+  transport_status: "SOURCE_SUPPORTED_HYPOTHESIS_NOT_YET_PROVEN_IN_PHX_CI_EXECUTION"
+  phx_framework_changes: "ABSOLUTELY_PROHIBITED"
+  pinned_phx_ci_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+  consumer_phx_pin_change: "PROHIBITED"
+  implementation_work_units: ["S09-BR01", "S09-BR02", "S09-BR03", "S09-BR04"]
+  implementation_status: "NOT_STARTED"
+  physical_authorization: "NOT_GRANTED"
+  existing_s09_g1_handoff_count: 6
+  retained_s09_g1_closeout: "UNCHANGED"
 status: "IN_PROGRESS"
 last_accepted_source_sha: "9c100e4702190fe5e7908ea76f2f10068dc6e548"  # software feature review acceptance only; master remains separate
 last_phx_ci_run_id: "ba2e1467-ded5-48bb-9d86-4ee2de7b2f42"
@@ -90,7 +106,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "BVP deterministic automated tests ARE ALREADY integrated with PHX-CI and passed original 11-stage run. BVP physical device runner, scenarios, relay and late-receipt safety core also EXIST. Detailed read-only tracing in dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-physical-readiness-gate-20261020.md (review commit 24119d8168f96218b2f0331b0e342ac108ac5fd4) found the specific missing or unproven connection: published pinned PHX-CI has no approved physical attempt/checkpoint/resume + immutable multi-attempt evidence coordination; ordinary focused test nonzero exit only FAILS. NEXT: design the smallest PHX-CI-owned physical adapter integration as a separately bounded software-only work unit; DO NOT rebuild BVP platform or directly execute physical batteries. Physical device identities, disposable vault/root, installation, OAuth, release, physical operation, Stage 3 still require separate Owner permission and exact binding. Retain S09 G1 accepted master integration and handoff-count 6."
+next_action: "DEC-345: PHX-CI fixed/unmodified. BRAIN-only WS-07 S09-BR01 through BR04 software consumer bridge design documented under owning workstream; verify a bounded checkpoint/result can round-trip through the pinned PHX-CI focused stage stdout and immutable published PHX result JSON, then implement and qualify the BRAIN adapter without altering PHX-CI, BRAIN's pinned phx-ci.json, BVP runner or deterministic test coverage. Before dispatch, rebind exact source, writable paths and acceptance gates. If fixed interface cannot prove privacy, continuity or publication, BLOCKED, no workaround publisher. Preserve S09G1 software closeout/handoff-count 6; S09 physical work, installation, auth, live Drive/vault, release and Stage 3 remain unauthorized."
 updated_at: "2026-10-20"
 
 context:

@@ -231,3 +231,11 @@ The BVP does not require:
 - replacement of existing product diagnostics/audit features that serve real users;
 - replacement of useful ordinary production/unit tests unrelated to the legacy harness;
 - preservation of the old C/D/E/F implementation shape merely for historical continuity.
+
+## Owner-directed S09 fixed-PHX-CI consumer bridge scope (2026-10-20)
+
+The BRAIN Builder may design and build a **BRAIN-only**, thin consumer of the **existing pinned** PHX-CI focused-test stage to run the existing BVP live battery CLI under PHX-CI. This is a prospective nonphysical software integration prerequisite for S09 physical acceptance, not an automatic activation of S09A–S09V.
+
+**Locked exclusion:** the Owner prohibits all changes to `woodpk/phx-ci`, its runtime, adapter, schemas, taskfiles, evidence publisher, and BRAIN's exact `phx-ci.json` pin. PHX-CI remains sole validation authority and sole canonical publisher. The bridge may reuse PHX-CI's stage stdout already present in historical evidence for bounded BVP checkpoint/result transport if actual PHX-CI tests establish it works. No new independent verifier, second evidence system, or standalone BVP Git publisher is authorized. All physical device/account/vault/Drive activity remains separately BLOCKED.
+
+See DEC-345, the fixed-runtime read-only research under `dev/research/` and the detailed `tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md`.
