@@ -129,6 +129,13 @@ function parseResult(attempt: BridgeAttempt): void {
   try { parsed = record(JSON.parse(attempt.resultJson)); }
   catch { fail("result-invalid-json"); }
   inspectSensitive(parsed);
+  // Only documented BVP runner envelope fields can be transported.
+  // Reject plausible-looking arbitrary top-level narrative/data attachments.
+  for (const key of Object.keys(parsed)) {
+    if (!["battery", "result", "checkpoint", "recovery"].includes(key)) {
+      fail("result-unexpected-field");
+    }
+  }
   const battery = record(parsed.battery);
   const result = record(parsed.result);
   if (battery.name !== attempt.battery || result.scenarioId !== attempt.scenarioId) fail("result-identity-mismatch");
@@ -140,6 +147,8 @@ function parseResult(attempt: BridgeAttempt): void {
   // results are accepted as resumable/certifiable physical execution.
   if (attempt.exitCode !== 1) {
     const evidence = record(result.evidence), machine = record(evidence.machine);
+    const verdict = record(machine.verdict);
+    if (verdict.status !== result.status) fail("result-machine-verdict-mismatch");
     const live = record(machine.liveIdentity);
     if (machine.scenarioId !== attempt.scenarioId ||
       machine.executionMode !== "live" ||
@@ -264,9 +273,19 @@ export async function loadPublishedBridgeAttempt(
   if (Buffer.byteLength(raw, "utf8") > MAX_PUBLISHED_EVIDENCE_BYTES) fail("publication-evidence-oversize");
   let obj: Record<string, unknown>;
   try { obj = record(JSON.parse(raw)); } catch { fail("publication-evidence-malformed"); }
+  if (obj.schemaVersion !== "1") fail("publication-evidence-schema-unsupported");
   if (obj.runId !== expected.phxRunId) fail("publication-run-mismatch");
   const repository = record(obj.repository), verification = record(obj.verification);
   const overall = record(verification.overall);
+  const changeSet = record(verification.changeSet);
+  const repositoryVerification = record(verification.repository);
+  // The focused and independent full-test dimensions are PHX-CI's sole
+  // verification authority; an inner stdout frame can NEVER override either.
+  if (repositoryVerification.status !== "PASS" ||
+      repositoryVerification.stage !== "test" ||
+      repositoryVerification.exitCode !== 0) {
+    fail("publication-repository-verification-not-pass");
+  }
   if (typeof repository.verifiedHead !== "string" ||
     !HEX40.test(repository.verifiedHead)) fail("publication-source-mismatch");
   if (repository.verifiedHead !== expected.sourceCommit) {
@@ -293,6 +312,11 @@ export async function loadPublishedBridgeAttempt(
   const attempt = decodeBridgeAttempt(stage.stdout, expected);
   if (stage.exitCode !== attempt.exitCode ||
     stage.result !== (attempt.exitCode === 0 ? "PASS" : "FAIL")) fail("publication-stage-exit-mismatch");
+  if (changeSet.stage !== "test-focused" ||
+    changeSet.status !== (attempt.exitCode === 0 ? "PASS" : "FAIL") ||
+    changeSet.exitCode !== attempt.exitCode) {
+    fail("publication-change-set-verification-mismatch");
+  }
   if (attempt.exitCode === 0) {
     if (obj.status !== "COMPLETE" || overall.status !== "PASS") fail("publication-status-mismatch");
   } else {
