@@ -162,3 +162,11 @@ The test-case matrix, failure classifiers, exact source/evidence requirements an
 Add focused adversarial mutation/fault-injection tests of frame parsing, proof checking, source comparison, checkpoint digest validation, relay lease and BVP result correlation. Document every N/A decision against a specific behavior; do not use blanket exemptions or relax expected outcomes to get green tests.
 
 **Evidence proofs required:** (a) source-pinned first run's actual Git-published PHX result JSON contains the bounded serialized checkpoint and original BVP result in `test-focused.stdout`; (b) second run obtains exact immutable prior commit/path and validates it before executing; (c) first run remains BLOCKED and untouched; (d) second successful run passes all required PHX gates; (e) both full PHX evidence commits are verifiable; (f) impossible/unsupported scenarios remain BLOCKED. PHX publisher's configured history layout is derived from the pinned runtime, not invented. Simulated proof does not establish real Windows/iOS acceptance or permission for S09 physical canaries.
+
+### Two-unit authorship and qualification attribution (2026-10-20)
+
+- **S09-BR01 — implementation:** exactly one proposed BRAIN-side adapter file, `test-platform/test/batteries/phxci-physical-bridge.ts`; existing PHX-CI regression gates apply even before new tests are added. The adapter must not write another verifier, change the PHX-CI runtime, or replace the deterministic focused suite.
+- **S09-BR02 — testing:** new/updated test files beneath `test-platform/test/**`, with coverage of all ten test families above. The final combined software candidate must pass original pinned PHX-CI verification and simulated checkpoint→published BLOCKED→fresh verification→resume/eligible PASS without activating physical devices.
+- **Independent final Reviewer acceptance** follows BR02 qualification; it is not a Build Unit. Defects requiring adapter edits return to BR01 as bounded corrections, followed by renewed verification. There is no S09-BR03/BR04.
+
+**Scope status:** PLANNED / NONEXECUTABLE; physical S09A–S09V stays separately gated.

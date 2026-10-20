@@ -78,7 +78,10 @@ s09_fixed_phxci_consumer_bridge:
   phx_framework_changes: "ABSOLUTELY_PROHIBITED"
   pinned_phx_ci_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
   consumer_phx_pin_change: "PROHIBITED"
-  implementation_work_units: ["S09-BR01", "S09-BR02", "S09-BR03", "S09-BR04"]
+  implementation_work_units: ["S09-BR01", "S09-BR02"]
+  unit_1: "S09-BR01_ONE_IMPLEMENTATION_FILE_test-platform/test/batteries/phxci-physical-bridge.ts"
+  unit_2: "S09-BR02_TEST_FILES_ONLY_under_test-platform/test"
+  review_gate: "AFTER_BR02_NOT_AN_ADDITIONAL_BUILD_UNIT"
   implementation_status: "NOT_STARTED"
   physical_authorization: "NOT_GRANTED"
   existing_s09_g1_handoff_count: 6
@@ -106,7 +109,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "DEC-345: PHX-CI fixed/unmodified. BRAIN-only WS-07 S09-BR01 through BR04 software consumer bridge design documented under owning workstream; verify a bounded checkpoint/result can round-trip through the pinned PHX-CI focused stage stdout and immutable published PHX result JSON, then implement and qualify the BRAIN adapter without altering PHX-CI, BRAIN's pinned phx-ci.json, BVP runner or deterministic test coverage. Before dispatch, rebind exact source, writable paths and acceptance gates. If fixed interface cannot prove privacy, continuity or publication, BLOCKED, no workaround publisher. Preserve S09G1 software closeout/handoff-count 6; S09 physical work, installation, auth, live Drive/vault, release and Stage 3 remain unauthorized."
+next_action: "DEC-345: PHX-CI is fixed/unmodified. Two BRAIN-only Build Units: S09-BR01 writes the single adapter implementation file test-platform/test/batteries/phxci-physical-bridge.ts, then S09-BR02 writes test file(s) under test-platform/test and qualifies the integrated consumer bridge via pinned PHX-CI, including bounded stdout checkpoint/result publication, immutable recovery and simulated two-invocation continuation. Independent Reviewer acceptance is a final gate, NOT a third Build Unit. Rebind current exact source and narrow writable path(s) before dispatch; require PHX-CI verification per unit; return implementation defects to BR01 for bounded correction. No PHX-CI changes or BRAIN pin/config modifications, no additional implementation files without new Owner scope approval; S09G1 closeout/handoff-count 6 preserved and physical/install/Drive/vault/release/Stage 3 still unauthorized."
 updated_at: "2026-10-20"
 
 context:
