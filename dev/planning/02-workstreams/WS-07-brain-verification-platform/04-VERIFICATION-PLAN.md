@@ -165,8 +165,10 @@ Add focused adversarial mutation/fault-injection tests of frame parsing, proof c
 
 ### Two-unit authorship and qualification attribution (2026-10-20)
 
-- **S09-BR01 — implementation:** exactly one proposed BRAIN-side adapter file, `test-platform/test/batteries/phxci-physical-bridge.ts`; existing PHX-CI regression gates apply even before new tests are added. The adapter must not write another verifier, change the PHX-CI runtime, or replace the deterministic focused suite.
-- **S09-BR02 — testing:** new/updated test files beneath `test-platform/test/**`, with coverage of all ten test families above. The final combined software candidate must pass original pinned PHX-CI verification and simulated checkpoint→published BLOCKED→fresh verification→resume/eligible PASS without activating physical devices.
+- **S09-BR01 — test-first implementation:** author requirements-derived executable test file(s) under `test-platform/test/**` and commit them before creating the single proposed BRAIN-side adapter file, `test-platform/test/batteries/phxci-physical-bridge.ts`; existing PHX-CI regression gates apply even before new tests are added. The adapter must not write another verifier, change the PHX-CI runtime, or replace the deterministic focused suite.
+- **S09-BR02 — test hardening:** additional/adversarial test files and test-oracle integrity review beneath `test-platform/test/**`, with coverage of all ten test families above. The final combined software candidate must pass original pinned PHX-CI verification and simulated checkpoint→published BLOCKED→fresh verification→resume/eligible PASS without activating physical devices.
 - **Independent final Reviewer acceptance** follows BR02 qualification; it is not a Build Unit. Defects requiring adapter edits return to BR01 as bounded corrections, followed by renewed verification. There is no S09-BR03/BR04.
 
 **Scope status:** PLANNED / NONEXECUTABLE; physical S09A–S09V stays separately gated.
+
+**Initial TDD RED state:** The first committed BR01 tests intentionally reference an absent adapter and must not be mistaken for a qualified software candidate. If an expected-RED baseline is executed, only use PHX-CI and preserve its actual BLOCKED original evidence. No standalone `tsc`, `node --test`, Task, or script is acceptance. This is an internal Builder iteration; no cross-role handoff or new Build Unit is created.
