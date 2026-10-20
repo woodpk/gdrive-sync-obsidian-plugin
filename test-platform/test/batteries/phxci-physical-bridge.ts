@@ -170,6 +170,7 @@ function validateAttempt(attempt: BridgeAttempt): void {
     stringField(value, SAFE_ID, "device-identity");
   }
   if (new Set(labels.map(k => attempt.deviceIds[k])).size !== labels.length) fail("device-identity-duplicate");
+  if (attempt.mode === "verified-late-receipt" && attempt.exitCode === 3) fail("recovery-checkpoint-exclusive");
   if (attempt.mode === "initial") {
     if (attempt.attemptIndex !== 1 || attempt.predecessor) fail("initial-attempt-predecessor-invalid");
   } else {
@@ -179,7 +180,6 @@ function validateAttempt(attempt: BridgeAttempt): void {
       attempt.predecessor.phxRunId === attempt.phxRunId) fail("resume-attempt-chain-invalid");
   }
   if (![0, 1, 3].includes(attempt.exitCode)) fail("exit-code-invalid");
-  if (attempt.mode === "verified-late-receipt" && attempt.exitCode === 3) fail("recovery-checkpoint-exclusive");
   if (attempt.exitCode === 3) {
     if (!attempt.checkpointJson || Buffer.byteLength(attempt.checkpointJson, "utf8") > MAX_CHECKPOINT_BYTES) {
       fail("checkpoint-missing-or-oversize");
