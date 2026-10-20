@@ -57,6 +57,7 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
 ] as const;
 
 const S09_LATE_COMPLETION_RECOVERY = [
+  "phxci-physical-bridge-adversarial.test.js",
   "phxci-physical-bridge.test.js",
   "s09a-attribution-live-guard.test.js",
   "s09a-late-completion-recovery.test.js",
