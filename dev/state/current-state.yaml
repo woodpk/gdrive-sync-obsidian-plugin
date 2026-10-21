@@ -8,7 +8,7 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "576f3cfcca9a24c8851456a5487448542cfd0c91"
-active_build_unit_status: "SCOPE_A_PHXCI_R2_TYPECHECK_BLOCKED_R3_CORRECTED_REVERIFY_PENDING"
+active_build_unit_status: "SCOPE_A_PHXCI_R3_PASS_ACTUAL_RUNNER_TWO_PUBLICATION_PROOF_PENDING"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -191,7 +191,17 @@ s09_fixed_phxci_consumer_bridge:
   correction_phx_r2_exact_failure: "test-platform/test/batteries/battery-registry.ts(178,7) TS2322 requiredEvidence string[] incompatible readonly ScenarioResumeEvidence[]"
   correction_phx_r3_literal_type_fix: "2fdc157289ba58b2230ecce3c2e7ea0a90a0f9df"
   correction_phx_r3_bounded_git_evidence_buffer_fix: "fb60e8b67e890cbd204ee761de6396fd09c1fb97"
-  correction_phx_r3_status: "NOT_RUN_NO_SUCCESS_CLAIM"
+  correction_phx_r3_status: "PASS_11_OF_11_VERIFIED_437_FOCUSED_ALL_PRODUCT_PASS"
+  correction_phx_r3_source_commit: "8d38131f9ee3811febde52cce60afdf9acf30175"
+  correction_phx_r3_run_id: "56d22a3c-45ef-44be-9ec9-03b9c9c03143"
+  correction_phx_r3_evidence_commit: "876566f2ec74a79a4f7dabe4d08e878b973d5308"
+  correction_phx_r3_evidence_path: "dev/test-results/20261021T101544Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-8d38131f9ee3.json"
+  correction_phx_r3_focused_tests: "437_PASS_0_FAIL"
+  correction_phx_r3_stages: "ALL_11_PASS"
+  correction_phx_r3_test_only_actual_runner_proof: "NOT_RUN_TWO_GENUINE_PHX_INVOCATIONS_REQUIRED"
+  correction_phx_r3_proof_stage_1: "PENDING_EXPECTED_BLOCKED_EXIT_3_WITH_PUBLISHED_IMMUTABLE_CHECKPOINT"
+  correction_phx_r3_proof_stage_2: "PENDING_EXPECTED_PASS_WITH_ORIGINAL_CHECKPOINT_AND_NO_PRE_EFFECT_REPLAY"
+  correction_phx_r3_no_device_or_live_vault: true
   correction_red_test_additions: "8_REVIEWER_FINDING_REGRESSIONS_COMMITTED_FIRST"
   correction_scope_impl_paths: ["test-platform/test/batteries/phxci-physical-bridge.ts", "test-platform/src/live-device/validation-entrypoint.ts", "test-platform/src/live-device/device-command-agent.ts", "test-platform/src/live-device/drive-mailbox.ts", "test-platform/src/live-device/live-scenario-executor.ts", "test-platform/test/batteries/run-live-battery.ts"]
   correction_test_simulation_file: "test-platform/test/batteries/phxci-actual-runner-probe.ts"
@@ -247,7 +257,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "S09 Scope A correction PHX-CI R2 tested 12761b8f5bd5143a908479bfb84866db45610a80, run 4e9304ab-1a44-46f8-94b8-4a080cc2a785, original evidence b1e6496d1639e7deb33ca55267780da517dfa3f7, overall BLOCKED: repository PASS, focused stage tsc EXIT2 for the typed test-only simulated battery requiredEvidence string[] vs readonly ScenarioResumeEvidence[]. A bounded exact literal-type correction was published as 2fdc157289ba58b2230ecce3c2e7ea0a90a0f9df; immutable evidence read Git maxBuffer was aligned to the preexisting 2MiB report cap in fb60e8b67e890cbd204ee761de6396fd09c1fb97. R3 NOT YET RUN. NEXT: run unchanged pinned PHX-CI in authorized development mode on exact new branch source with npm run test:bvp-root; inspect actual original stage evidence, fix any remaining failures without weakening tests, PHX-CI, architecture guard or budgets. Then perform two separate actual bridge.main->existing BVP run-live-battery->nonphysical device fixture PHX-CI invocations and verify original BLOCKED published checkpoint followed by eligible PASS/no replay. No physical devices, live vault/Drive, install/release, merge, Stage3. Per-feature handoff-count stays 2 and Reviewer handoff is unauthorized until qualification."
+next_action: "S09 Scope A R3 real PHX-CI PASS confirmed source 8d38131f9ee3811febde52cce60afdf9acf30175 run 56d22a3c-45ef-44be-9ec9-03b9c9c03143, original immutable evidence commit 876566f2ec74a79a4f7dabe4d08e878b973d5308 record dev/test-results/20261021T101544Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-8d38131f9ee3.json. All 11 stages PASS; 437/437 BVP tests PASS; full product PASS. NEXT: under unchanged pinned PHX-CI, run first NONPHYSICAL actual bridge-main→existing BVP-run-live-battery→test-only simulated-device worker in PHX test-focused stage after npm run test:bvp-root; synthetic physical-device-free checkpoint deliberately exits 3, PHX overall BLOCKED with original evidence published. Verify frame and exact checkpoint in original report, then second fresh PHX-CI invocation against evidence-only descendant and SAME isolated simulation attempt root, exact source, previous run ID/path/commit; verify no replay and original evidence continuity and PASS. This F05 proof is outstanding; no final acceptance or Reviewer handoff until genuine two-run proof. Keep handoff-count 2 and owner BUILDER. No PHX/pin, physical S09, installation, live Drive/vault, release/merge or Stage 3."
 updated_at: "2026-10-20"
 
 context:
