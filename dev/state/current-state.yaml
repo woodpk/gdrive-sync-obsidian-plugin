@@ -8,7 +8,7 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "51d75e63eac1f3a37ef998cf599f039dce7feb2f"
-active_build_unit_status: "S09_BR02_SOFTWARE_ONLY_SINGLE_CONTROLLER_CLOSEOUT_COMPLETE_OWNER_GATES_PENDING"
+active_build_unit_status: "S09_BR02_ACCEPTED_SOFTWARE_MASTER_MERGED_PHYSICAL_PREPARATION_NOT_AUTHORIZED"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -293,8 +293,21 @@ s09_fixed_phxci_consumer_bridge:
   closeout_original_checkpoint_commit: "51d75e63eac1f3a37ef998cf599f039dce7feb2f"
   closeout_phxci_pin_unchanged: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
   closeout_phxci_revalidation_required_for_docs_only: false
-  closeout_next_action_authority: "OWNER_DECISION_REQUIRED_FOR_ANY_INTEGRATION_RELEASE_INSTALLATION_PHYSICAL_OR_STAGE3"
-  closeout_master_integration_authorized: false
+  closeout_next_action_authority: "SOFTWARE_MASTER_INTEGRATION_COMPLETE_OWNER_DECISION_REQUIRED_FOR_PHYSICAL_INSTALLATION_RELEASE_OR_STAGE3"
+  closeout_master_integration_authorized: true
+  closeout_master_integration_completed: true
+  closeout_master_integration_owner_authorization: "EXPLICIT_USER_MESSAGE_2026_10_21_SOFTWARE_ONLY_MERGE"
+  closeout_master_integration_pr: 154
+  closeout_master_integration_pr_url: "https://github.com/woodpk/gdrive-sync-obsidian-plugin/pull/154"
+  closeout_master_merge_commit: "59037ba35c1b3daf60a4dddf1047151a9a5806c2"
+  closeout_master_merge_first_parent: "684675e079d4cc9199f83d6c60b900a0f033153d"
+  closeout_master_merge_second_parent: "a4db1c5757e0647e40b58e2bb951816edf2c64e6"
+  closeout_master_merge_tree: "b01753284466dd53f28e7364335d77e2fee30be9"
+  closeout_master_merge_tree_matches_source_branch: true
+  closeout_master_merge_revalidation_required_for_unchanged_source: false
+  closeout_deterministic_operator: "PINNED_PHXCI_FOCUSED_NPM_RUN_TEST_BVP_ROOT"
+  closeout_historical_standalone_bvp_powershell_scripts_disabled: true
+  closeout_live_physical_execution_authorized: false
   closeout_activation_authorized: false
   closeout_physical_execution_authorized: false
   closeout_live_drive_or_vault_authorized: false
@@ -357,7 +370,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "S09-BR01/BR02 corrective software-only, single-Windows-controller nonphysical feature has been independently ACCEPTED with bounded findings and Builder administrative closeout completed on 2026-10-21. Reviewer final verdict PASS WITH BOUNDED FINDINGS at dev/reviews/s09-br02-20261021-review-brain-09-r3-final.md immutable 9f66cecb88a1066c7f2452d5f00ea149bfeee850, frozen source assessment commit b7648ab77eb7f8f85ee0b1f9bbc9e31c7d396f1a; accepted source 51d75e63eac1f3a37ef998cf599f039dce7feb2f, tree 3c362f4ef9cae621415deedf892f83bace20a574. Original PHX-CI R4 qualification 538f331b-9436-4c25-9e97-1cd286ce1de3 (448/448 focused, 11/11 PASS) and actual-runner checkpoint 6658c44e-058a-4696-aa1d-bcc3b372d3b8 (BLOCKED intentional, immutable report at 51d75e63...) to resume 4323c021-1c8f-4c35-a3e3-79148d5f39c2 (PASS 11/11, original evidence f88896b7d89b165c5c5ccd31c3a3f394c8c468d7) remain unchanged. HIGH findings R2-01 and R2-02 CLOSED solely for accepted scope. Bounded findings M-01 local machine only (no multi-controller exclusion), M-02 future physical observation privacy schema fail-closed, M-03 review source-only frozen but continuing session. Last role transfer Reviewer→Builder handoff-count 6 at state c27e9c3660f2eb507b704958119dd85087cc6560; current administrative closeout is not a new handoff. Next step: await an explicit separate Owner-governed decision for any master integration, distributed controller strategy, physical S09, installation or activation, personal Google Drive/vault access, artifact/release approval or Stage 3. Do not modify verified source/tests, PHX-CI pin/framework, frozen architecture guards or original evidence; no repeat qualification for documents alone."
+next_action: "Owner expressly authorized master integration 2026-10-21, and PR #154 was merged with ancestry-preserving commit 59037ba35c1b3daf60a4dddf1047151a9a5806c2 (first parent 684675e079d4cc9199f83d6c60b900a0f033153d; second parent a4db1c5757e0647e40b58e2bb951816edf2c64e6). Merged tree b01753284466dd53f28e7364335d77e2fee30be9 matches approved branch tree; original reviewed source 51d75e63eac1f3a37ef998cf599f039dce7feb2f and PHX-CI evidence remain immutable. S09-BR02 accepted and software-only master integration COMPLETE. Next allowed action is operator preparation for deterministic BVP PHX-CI tests without real devices/vault/Drive; use pinned runtime SHA 69c4aa077d4a1a46d1e85e59f39d36285be99e83 with focused npm run test:bvp-root and, if publishing, separate verification branch instead of writing run evidence onto master. Legacy dev/scripts/Invoke-BVP-{Battery,Deterministic-Battery}.ps1 are intentionally fail-closed and MUST NOT be invoked. Physical Windows/iOS S09 run, installed artifacts/activation, distributed multi-controller coordination, live Google Drive/vault, credentials, managed roots, release artifact/hash or Stage3 remain UNAUTHORIZED absent separate owner binding; physical evidence privacy must fail closed. Per-feature handoff count remains 6, BUILDER recipient; no new handoff for administrative merge. Software code and original PHX evidence unchanged."
 updated_at: "2026-10-20"
 
 context:
