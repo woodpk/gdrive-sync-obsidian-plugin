@@ -8,7 +8,7 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "576f3cfcca9a24c8851456a5487448542cfd0c91"
-active_build_unit_status: "OWNER_SCOPE_A_AUTHORIZED_CORRECTIVE_IMPLEMENTATION_PHXCI_PENDING"
+active_build_unit_status: "SCOPE_A_PHXCI_R1_BLOCKED_TWO_FOCUSED_FAILURES_CORRECTED_R2_PENDING"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -169,8 +169,19 @@ s09_fixed_phxci_consumer_bridge:
   correction_scope_status: "OWNER_SCOPE_A_AUTHORIZED_DEVICE_MEASURED_INSTALLED_FILE_OBSERVATION_IMPLEMENTED_PHXCI_UNVERIFIED"
   correction_owner_approval: "SCOPE_A_AUTHORIZED_2026_10_20"
   correction_precise_scope_doc_commit: "26e35869a13ca143b96b01c4bf198e807cdfab26"
-  correction_source_latest: "b4ba2e84188a8e132a8b55a1039f82eeda129287"
-  correction_source_phx_ci_status: "NOT_YET_EXECUTED"
+  correction_source_latest: "faa98b17ad944201fdd62b009e6ca5ff1a61c749"
+  correction_source_phx_ci_status: "R1_BLOCKED_EVIDENCE_PUBLISHED_R2_CORRECTIONS_PENDING"
+  correction_phx_r1_source_sha: "f089fc2ccc0e61de05cd8b4372ad62b5fc8db5c4"
+  correction_phx_r1_run_id: "39ae79f2-222d-43a1-8f16-a909ea7d7e48"
+  correction_phx_r1_evidence_commit: "79b9b71e3bdaf8a784d6ad6fc5e64d8bcfcb42d9"
+  correction_phx_r1_report: "dev/test-results/20261021T095257Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-f089fc2ccc0e.json"
+  correction_phx_r1_focused: "435_PASS_2_FAIL_OF_437"
+  correction_phx_r1_repo: "PASS"
+  correction_phx_r1_failures: ["LIVE_DEVICE_LOC_784_OVER_FROZEN_750", "SYNTHETIC_BR02_BATTERY_LEAKED_INTO_PHYSICAL_REGISTRY"]
+  correction_phx_r2_fixed_commit: "faa98b17ad944201fdd62b009e6ca5ff1a61c749"
+  correction_phx_r2_loc_expected_static: 745
+  correction_phx_r2_registry: "TEST_ONLY_SIMULATION_REQUIRES_GENUINE_PHX_CONTEXT_AND_EXPLICIT_SIMULATION_FLAG"
+  correction_phx_r2_status: "NOT_EXECUTED_NEEDS_PINNED_PHX_CI"
   correction_red_test_additions: "8_REVIEWER_FINDING_REGRESSIONS_COMMITTED_FIRST"
   correction_scope_impl_paths: ["test-platform/test/batteries/phxci-physical-bridge.ts", "test-platform/src/live-device/validation-entrypoint.ts", "test-platform/src/live-device/device-command-agent.ts", "test-platform/src/live-device/drive-mailbox.ts", "test-platform/src/live-device/live-scenario-executor.ts", "test-platform/test/batteries/run-live-battery.ts"]
   correction_test_simulation_file: "test-platform/test/batteries/phxci-actual-runner-probe.ts"
@@ -226,7 +237,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Owner explicitly authorized SCOPE A (2026-10-20). Builder under Reviewer count2 published 8 RED regressions before bounded implementation. Precise Scope A doc commit 26e35869a13ca143b96b01c4bf198e807cdfab26 authorizes six exact implementation files and tests only under test-platform/test. Current candidate source before this state commit b4ba2e84188a8e132a8b55a1039f82eeda129287 adds device-side Obsidian adapter measured main.js/manifest.json SHA256, authenticated result field preservation, controller correlation, real scenario/digest/labels check, nested privacy and C temp GUID isolation, test-only simulated actual BVP runner checkpoint probe. NO NEW PHXCI QUALIFICATION YET. NEXT: run original pinned PHX-CI with npm run test:bvp-root in authorized development mode; inspect canonical immutable evidence, diagnose all failures, correct and rerun as needed. Then perform two separate genuine PHX-CI focused-stage actual bridge.main->existing run-live-battery->simulated-device fixture attempts (checkpoint exit3 published BLOCKED then restored original evidence, eligible PASS) retaining original synthetic subproof. No live device, Drive/vault, installation, shipping release, master merge, PHX/pin/authority-lock changes. Reviewer handoff only after verified all conditions, handoff-count remains 2 until genuine transfer."
+next_action: "Owner Scope A corrective PHX-CI R1 actual run 39ae79f2-222d-43a1-8f16-a909ea7d7e48 at f089fc2ccc0e61de05cd8b4372ad62b5fc8db5c4 BLOCKED, original evidence commit 79b9b71e3bdaf8a784d6ad6fc5e64d8bcfcb42d9 and report dev/test-results/20261021T095257Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-f089fc2ccc0e.json. Focused 435/437 (2 failures): frozen live device LOC 784 > 750 and test-only simulated BR02 battery wrongly exposed by physical registry; repository PASS. Corrective source faa98b17ad944201fdd62b009e6ca5ff1a61c749 restored physical registry invariants, gated synthetic fixture on true PHX-CI context + simulation env, compacted existing device logic to static estimated 745 LOC without relaxing frozen architecture or tests. NEXT: rerun original pinned PHX-CI on exact new current branch source using npm run test:bvp-root, BRAIN_ARTIFACT_PURPOSE=development, BVP_CHANGE_CLASS=ordinary; preserve/publish original evidence; diagnose and correct any failures. Subsequent genuine PHX-CI two-invocation actual bridge->BVP runner->simulated-device proof still required before independent final reviewer. Handoff-count stays 2, BUILDER controls; no PHX modification, pin, physical devices, live vault/Drive, release, Stage3, master merge."
 updated_at: "2026-10-20"
 
 context:
