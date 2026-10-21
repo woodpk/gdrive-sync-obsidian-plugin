@@ -3,8 +3,9 @@
  * BEFORE the bounded corrective BR01 implementation.
  * Only PHX-CI may execute these tests as part of the approved BVP battery.
  */
-import { doesNotThrow, throws } from "node:assert/strict";
+import { doesNotThrow, strictEqual, throws } from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { getLiveBattery } from "./batteries/battery-registry";
@@ -124,4 +125,23 @@ test("R2-02 no unreviewed nonsecret-looking private installation observation dev
     devices:{"device:personal-jane-phone":{artifactSha256:SHA64,manifestSha256:SHA64}}};
   throws(()=>encodeBridgeAttempt({...c,resultJson:JSON.stringify(j)}),
     /privacy|identity|device|manifest|unapproved/i);
+});
+
+test("R2-01 independent-process concurrent authority claim cannot dispatch",()=>{
+  isolate(scope=>{
+    const first=claimBridgeAttemptAuthority(expectation("1837af59-0cd3-4433-a607-f6248d54b2aa"),scope);
+    try {
+      const other=expectation("2837af59-0cd3-4433-a607-f6248d54b2aa");
+      const compiled=join(__dirname,"batteries","phxci-physical-bridge.js");
+      const program="const {claimBridgeAttemptAuthority}=require("+JSON.stringify(compiled)+");"+
+        "try{claimBridgeAttemptAuthority("+JSON.stringify(other)+","+
+        JSON.stringify(scope)+");process.exit(0)}catch(e){process.exit("+
+        "/attempt|authority|active|writer|lease/.test(String(e))?4:8)}";
+      const child=spawnSync(process.execPath,["-e",program],{
+        encoding:"utf8",windowsHide:true,timeout:15000,maxBuffer:1024*64,
+      });
+      if(child.error)throw child.error;
+      strictEqual(child.status,4,"separate process must be fenced while holder still owns lease");
+    }finally{first.finish("blocked");}
+  });
 });
