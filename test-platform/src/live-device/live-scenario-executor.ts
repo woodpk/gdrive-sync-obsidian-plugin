@@ -41,9 +41,7 @@ export function liveCommandId(runId:string,scenarioId:string,index:number,sub:nu
 function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string,artifact?:string,manifest?:string):boolean{
   return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&(artifact===undefined||result.validationBuild.artifactSha256===artifact)&&(manifest===undefined||result.validationBuild.manifestSha256===manifest)&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
 }
-function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
-  return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;
-}
+function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;}
 function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
   if(result.status!=="completed")return fail(result.status==="rejected"?"blocked":"failed",result.classification);
   if(result.kind!=="production-execute")return{status:"completed",value:result};
@@ -52,12 +50,7 @@ function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
   if(terminal==="blocked"||terminal==="deferred"||terminal==="recovery-required")return fail("blocked",result.classification);
   return fail("failed",result.classification||"production-terminal-not-complete");
 }
-function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string|undefined{
-  const prior=new Set<string>();
-  for(let i=0;i<index;i++){const step=scenario.steps[i]!;if("captureAs" in step&&typeof step.captureAs==="string")prior.add(step.captureAs);}
-  for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;if("inputRef" in step&&typeof step.inputRef==="string"&&prior.has(step.inputRef))return step.inputRef;if("observationRef" in step&&typeof step.observationRef==="string"&&prior.has(step.observationRef))return step.observationRef;}
-  return undefined;
-}
+function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string|undefined{const prior=new Set<string>();for(let i=0;i<index;i++){const step=scenario.steps[i]!;if("captureAs" in step&&typeof step.captureAs==="string")prior.add(step.captureAs);}for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;if("inputRef" in step&&typeof step.inputRef==="string"&&prior.has(step.inputRef))return step.inputRef;if("observationRef" in step&&typeof step.observationRef==="string"&&prior.has(step.observationRef))return step.observationRef;}return undefined;}
 
 export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOptions):Promise<LiveScenarioExecutor>{
   const labels=Object.keys(options.deviceIds),deviceIdentities=labels.map(label=>options.deviceIds[label]!).sort();
