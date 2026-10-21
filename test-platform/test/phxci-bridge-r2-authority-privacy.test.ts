@@ -54,6 +54,8 @@ test("R2-01 second writer targeting same device is rejected even across separate
 });
 test("R2-01 duplicate predecessor cannot be consumed by another continuation after first release",()=>{
   isolate(scope=>{
+    const initial=claimBridgeAttemptAuthority(expectation("9372f01d-8113-4105-93a1-448df8b6b6fa",1),scope);
+    initial.finish("blocked");
     const first=claimBridgeAttemptAuthority(expectation("a672f01d-8113-4105-93a1-448df8b6b6fa",2),scope);
     first.finish("blocked");
     throws(()=>claimBridgeAttemptAuthority(expectation("b672f01d-8113-4105-93a1-448df8b6b6fa",2),scope),
