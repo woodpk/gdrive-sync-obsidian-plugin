@@ -8,7 +8,7 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "576f3cfcca9a24c8851456a5487448542cfd0c91"
-active_build_unit_status: "INDEPENDENT_REVIEW_CORRECTION_REQUIRED_BUILDER"
+active_build_unit_status: "CORRECTION_TESTS_FIRST_COMMITTED_OWNER_SCOPE_DECISION_REQUIRED"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -69,7 +69,7 @@ s09_physical_readiness_gate:
   permitted_next_action: "PROSPECTIVE_SOFTWARE_ONLY_PHX_CI_PHYSICAL_ADAPTER_OWNERSHIP_DESIGN_UNTIL_EXECUTION_GATES_ARE_BOUND"
 s09_fixed_phxci_consumer_bridge:
   scope: "BRAIN_ONLY_NO_PHX_CI_CHANGES_DEC_345"
-  status: "S09_BR02_COMPLETE_SOFTWARE_ONLY_PHXCI_PASS_REVIEWER_PENDING"
+  status: "REVIEW_CORRECTION_REQUIRED_OWNER_SCOPE_DECISION_F01_INSTALLED_IDENTITY"
   owner_decision: "DEC-345"
   design_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md"
   source_assessment: "dev/research/s09-phxci-fixed-runtime-evidence-transport-assessment-2026-10-20.md"
@@ -125,7 +125,7 @@ s09_fixed_phxci_consumer_bridge:
   br01_qualified_bvp_tests: "415_PASS_0_FAIL"
   br01_qualified_product_tests: "1292_PASS_0_FAIL"
   br01_qualification_type: "PHX_CI_DEVELOPMENT_NO_RELEASE_OR_PHYSICAL_TESTING"
-  br02_status: "COMPLETE_AWAITING_INDEPENDENT_FINAL_REVIEW"
+  br02_status: "REVIEW_RETURN_TO_BUILDER_COUNT_2_RED_REGRESSIONS_COMMITTED_OWNER_SCOPE_PENDING"
   br02_transport_first_run_id: "861d8207-3be5-4399-9ab1-5de5ecc98816"
   br02_transport_first_source: "179cca70fc0c178a4b3af2c8f4363becb01434a6"
   br02_transport_first_verdict: "BLOCKED_EXPECTED_FOCUSED_STAGE_EXIT_3_FOCUSED_429_PASS"
@@ -154,6 +154,22 @@ s09_fixed_phxci_consumer_bridge:
   br02_phx_ci_status: "PASS_11_OF_11_AFTER_PROBE_AND_REAL_IMMUTABLE_EVIDENCE_RESUME"
   simulated_two_attempt_test_scope: "FAKE_IMMUTABLE_GIT_EVIDENCE_OBJECTS_NOT_REAL_PHX_PUBLICATION"
   physical_eligibility: "NO_PHYSICAL_OPERATIONS_AUTHORIZED"
+  correction_reviewer_verdict: "CORRECTION_REQUIRED_NOT_ACCEPTED"
+  correction_reviewer_final_report: "dev/reviews/s09-br02-20261020-review-brain-09-final.md"
+  correction_reviewer_final_commit: "b5250ef86145e389d3cdbc214c38054718d36713"
+  correction_reviewed_source: "576f3cfcca9a24c8851456a5487448542cfd0c91"
+  correction_handoff_state_commit: "c1dadb2411f00b22d4b2e728564b0b90ad4756ef"
+  correction_regression_commit: "779e75582ded28a1b766e9410d279a7da2757cd5"
+  correction_regression_registry_commit: "921d2752d06a6e4361fdb4a18406bca184f633b5"
+  correction_regression_count: 8
+  correction_regressions_executed: false
+  correction_regressions_expected_state: "RED_UNTIL_BR01_CORRECTION_AND_OWNER_IDENTITY_SCOPE_RESOLVED"
+  correction_scope_decision_path: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-br02-review-correction-owner-scope-decision-20261020.md"
+  correction_scope_decision_commit: "20485e80fb17411a91b516bc34c31f28d871a793"
+  correction_scope_status: "OWNER_DECISION_REQUIRED_F01_ACTUAL_INSTALLED_MAIN_MANIFEST_HASHES_NOT_PRESENT_IN_DEVICE_RESULT_PROTOCOL"
+  original_synthetic_phx_publications_preserved: true
+  full_five_finding_acceptance: "BLOCKED_NOT_CLAIMED"
+
   br02_test_families_required: 10
   br02_owner: "BUILDER"
   review_gate: "BUILDER_TO_REVIEWER_HANDOFF_COUNT_1_PUBLISHED_BLIND_FINAL_REVIEW_PENDING"
@@ -196,7 +212,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "S09-BR02 completed two planned Builder-owned units, material test families and genuine pinned PHX-CI qualification. Exact software source commit 576f3cfcca9a24c8851456a5487448542cfd0c91 and original final PHX PASS published at 15f61461afb9e3d878f83547af221f7efd4d474a (run fedef0c1-9fcb-413b-8fbd-7504f9f9b5a0; 11/11 stages PASS, 429/429 BVP tests, 1292/1292 product tests). Nonphysical two-invocation probe PHX run 861d8207-3be5-4399-9ab1-5de5ecc98816 legitimately returned 3/BLOCKED and published checkpoint in immutable evidence 576f3cfcca9a24c8851456a5487448542cfd0c91; next run fedef0c1-9fcb-413b-8fbd-7504f9f9b5a0 recovered the exact original checkpoint and completed at exit0/PASS, with unchanged BVP logical identity, scenario SHA, source, artifact fixture identity, devices and exact immutable predecessor. Current recipient REVIEWER with handoff-count 1. Reviewer must perform required blind source-only assessment FIRST without opening prior tests/history/PHX or Builder explanations, publish that assessment, THEN read original PHX evidence and tests and publish a final report. No autonomous merge, install, release, live-device testing, Drive/vault operation or Stage 3. No PHX-CI modifications or framework-pin changes."
+next_action: "Reviewer count2 correction handoff verified at c1dadb2411f00b22d4b2e728564b0b90ad4756ef (recipient BUILDER). Read final independent report b5250ef86145e389d3cdbc214c38054718d36713: F01 installed artifact/manifest identity, F02 registered scenario binding, F03 recursive privacy, F04 relay confinement, F05 actual BVP runner simulated-device proof. BR02 test-first 8 adverse regression cases committed 779e75582ded28a1b766e9410d279a7da2757cd5 and registered 921d2752d06a6e4361fdb4a18406bca184f633b5; NOT YET PHX-EXECUTED and expected RED. Scope decision at dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-br02-review-correction-owner-scope-decision-20261020.md records verified impossibility of genuine installed byte attestation in existing source-only device protocol within approved one-file BR01 adapter boundary. OWNER CHOICE needed: explicitly authorize narrowly expanded trusted device installed-identity observation/protocol changes OR narrow acceptance strictly to synthetic PHX transport, keeping physical bridge BLOCKED. No additional production/protocol/wiring changes before decision. Prior genuine PHX PASS and two synthetic original transport publications remain preserved. Handoff-count stays 2; do not send Reviewer handoff. No PHX change/pin, physical, live Drive/vault, merge, release, Stage3."
 updated_at: "2026-10-20"
 
 context:
