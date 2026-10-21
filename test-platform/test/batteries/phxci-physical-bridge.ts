@@ -10,6 +10,8 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve, win32 } from "node:path";
+import { getLiveBattery } from "./battery-registry";
+import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
 
 import { decodeScenarioCheckpoint } from "../../src/scenario/scenario-checkpoint";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
@@ -29,6 +31,77 @@ const ALLOWED_RESUME: ReadonlySet<string> = new Set([
 ]);
 const SENSITIVE_KEY = /access.?token|refresh.?token|authorization.?code|client.?secret|password|passcode|api.?key|credential|private.?key|note.?body|vault.?content|content.?body|secret/i;
 const SENSITIVE_VALUE = /(?:PERSONAL_VAULT|BEGIN (?:RSA |OPENSSH )?PRIVATE KEY|Bearer\s+\S+|ya29\.[^\s]+|(?:password|refresh.?token|access.?token|secret)\s*[:=])/i;
+const SYNTHETIC_TRANSPORT_SCENARIOS = new Set([
+  "phxci-tdd-human-checkpoint", "s09-br02-checkpoint", "br02-phxci-synthetic-checkpoint",
+]);
+const SAFE_CODE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/;
+const SAFE_KEYS: Readonly<Record<string, readonly string[]>> = {
+  root: ["battery", "result", "checkpoint", "recovery", "installationObservation"],
+  battery: ["name", "description", "requiredDeviceLabels"],
+  result: ["scenarioId", "status", "steps", "captures", "classification", "reason", "evidence"],
+  evidence: ["machine", "machineJson", "human"],
+  machine: ["schemaVersion", "scenarioId", "executionMode", "traceability", "fixtures",
+    "deviceIdentities", "liveIdentity", "observations", "assertions", "verdict"],
+  liveIdentity: ["runId", "sourceCommit"],
+  verdict: ["status", "classification", "reason"],
+  traceability: ["kind", "id"],
+  fixture: ["stepId", "operation", "device", "path", "fromPath", "toPath", "contentHash", "sizeBytes"],
+  observation: ["stepId", "captureAs", "value"],
+  assertion: ["stepId", "status", "classification", "reason", "matchedExpectation", "index", "kind"],
+  step: ["index", "stepId", "kind", "status", "classification", "reason", "matchedExpectation"],
+  observationValue: ["kind", "status", "exists", "side", "entityKind", "hash", "sizeBytes",
+    "revision", "remoteObjectId", "stateRevision", "changeCursor", "operationKinds",
+    "nonNoopOperationCount", "uploadCreatePathKeys", "executionDisposition",
+    "globalExecutionGate", "recoveryCheckpointRequired", "knownDeviceIds",
+    "operationCount", "baseCount", "mappingCount", "tombstoneCount",
+    "classification", "reason", "planId", "schemaVersion", "deviceIdentity", "vaultIdentity"],
+};
+function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0): void {
+  const v = record(value);
+  const allowed = SAFE_KEYS[shape];
+  for (const [key, item] of Object.entries(v)) {
+    if (!allowed.includes(key)) fail("privacy-unapproved-" + shape + "-field");
+    if (depth > 16) fail("privacy-shape-depth");
+    if (shape === "root" && key === "battery") allowedShape(item, "battery", depth + 1);
+    else if (shape === "root" && key === "result") allowedShape(item, "result", depth + 1);
+    else if (shape === "result" && key === "evidence") allowedShape(item, "evidence", depth + 1);
+    else if (shape === "evidence" && key === "machine") allowedShape(item, "machine", depth + 1);
+    else if (shape === "machine" && key === "liveIdentity") allowedShape(item, "liveIdentity", depth + 1);
+    else if (shape === "machine" && key === "verdict") allowedShape(item, "verdict", depth + 1);
+    else if (shape === "machine" && key === "traceability") { if (!Array.isArray(item)) fail("privacy-traceability-array"); item.forEach(v => allowedShape(v, "traceability", depth + 1)); }
+    else if (shape === "machine" && key === "fixtures") { if (!Array.isArray(item)) fail("privacy-fixtures-array"); item.forEach(v => allowedShape(v, "fixture", depth + 1)); }
+    else if (shape === "machine" && key === "observations") { if (!Array.isArray(item)) fail("privacy-observations-array"); item.forEach(v => allowedShape(v, "observation", depth + 1)); }
+    else if (shape === "machine" && key === "assertions") { if (!Array.isArray(item)) fail("privacy-assertions-array"); item.forEach(v => allowedShape(v, "assertion", depth + 1)); }
+    else if (shape === "observation" && key === "value") {
+      allowedShape(item, "observationValue", depth + 1);
+    } else if (shape === "result" && key === "steps") {
+      if (!Array.isArray(item)) fail("privacy-steps-array");
+      item.forEach(v => allowedShape(v, "step", depth + 1));
+    } else if (shape === "result" && key === "captures") {
+      const captures = record(item);
+      // Any raw capture may include private notes, receipts, paths or names;
+      // the transport may not publish it until a dedicated field policy exists.
+      if (Object.keys(captures).length) fail("privacy-raw-captures-not-transportable");
+    } else if (shape === "root" && key === "checkpoint") {
+      // Original checkpoint is validated separately as canonical BVP schema v2.
+      if (!item || typeof item !== "object") fail("privacy-checkpoint-invalid");
+    } else if (shape === "root" && key === "recovery") {
+      allowedShape(item, "observationValue", depth + 1);
+    } else if (typeof item === "string") {
+      if (item.length > 256 || SENSITIVE_VALUE.test(item)) fail("privacy-untrusted-string");
+      if (["stepId","kind","operation","captureAs","classification","status","device","scenarioId","sourceCommit","runId"].includes(key) &&
+          !SAFE_CODE.test(item)) fail("privacy-unapproved-code");
+      if (["reason","human","description","path","fromPath","toPath","machineJson"].includes(key)) {
+        // Free text and raw path strings are not an admissible PHX evidence surface.
+        fail("privacy-free-text-unapproved");
+      }
+    } else if (Array.isArray(item)) {
+      if (item.length > 16 || !item.every(x => typeof x === "string" && SAFE_CODE.test(x))) fail("privacy-array-unapproved");
+    } else if (item !== null && typeof item === "object") {
+      fail("privacy-nested-object-unapproved");
+    } else if (typeof item === "number" && !Number.isSafeInteger(item)) fail("privacy-number-unapproved");
+  }
+}
 
 export type BridgeMode = "initial" | "checkpoint-resume" | "verified-late-receipt";
 export interface BridgePredecessor {
@@ -129,13 +202,7 @@ function parseResult(attempt: BridgeAttempt): void {
   try { parsed = record(JSON.parse(attempt.resultJson)); }
   catch { fail("result-invalid-json"); }
   inspectSensitive(parsed);
-  // Only documented BVP runner envelope fields can be transported.
-  // Reject plausible-looking arbitrary top-level narrative/data attachments.
-  for (const key of Object.keys(parsed)) {
-    if (!["battery", "result", "checkpoint", "recovery"].includes(key)) {
-      fail("result-unexpected-field");
-    }
-  }
+  allowedShape(parsed, "root");
   const battery = record(parsed.battery);
   const result = record(parsed.result);
   if (battery.name !== attempt.battery || result.scenarioId !== attempt.scenarioId) fail("result-identity-mismatch");
@@ -162,6 +229,23 @@ function parseResult(attempt: BridgeAttempt): void {
 }
 function validateAttempt(attempt: BridgeAttempt): void {
   if (attempt.schemaVersion !== 1) fail("bridge-version-invalid");
+  // Test-only historic synthetic transport fixtures are not physical identities.
+  // Real bridge.main() separately requires an exact registered battery binding.
+  const definition = getLiveBattery(attempt.battery);
+  if (!definition || attempt.scenarioId !== definition.createScenario().id) {
+    if (!SYNTHETIC_TRANSPORT_SCENARIOS.has(attempt.scenarioId) ||
+        !process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL) {
+      fail("scenario-registered-battery-mismatch");
+    }
+  } else {
+    if (scenarioDefinitionDigest(definition.createScenario()) !== attempt.scenarioDigest) {
+      fail("scenario-registered-digest-mismatch");
+    }
+    if (JSON.stringify(Object.keys(attempt.deviceIds).sort()) !==
+        JSON.stringify([...definition.requiredDeviceLabels].sort())) {
+      fail("scenario-required-device-labels-mismatch");
+    }
+  }
   stringField(attempt.bvpRunId, SAFE_ID, "bvp-run");
   stringField(attempt.phxRunId, GUID, "phx-run");
   stringField(attempt.battery, SAFE_BATTERY, "battery");
@@ -342,6 +426,21 @@ export function buildLiveRunnerArguments(
   }
   if (resumeEvidence.some(s => !ALLOWED_RESUME.has(s))) fail("resume-evidence-invalid");
   if (recoverLateCompletion && !paths.previousResultFile) fail("recovery-previous-result-required");
+  // Every path must remain within ONE attempt-specific disposable run root.
+  // Reject UNC, path traversal, alternate drive, overlap and other run roots.
+  const pathsAll = [paths.relayRoot, paths.checkpointFile, paths.resultFile,
+    ...(paths.previousResultFile ? [paths.previousResultFile] : [])];
+  const normalized = pathsAll.map(p => win32.normalize(p));
+  const rootMatch = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(normalized[0] ?? "");
+  if (!rootMatch || pathsAll.some((p,i) =>
+    !win32.isAbsolute(p) || p.includes("..") || p.startsWith("\\\\") ||
+    !normalized[i]!.toLowerCase().startsWith(("C:\\temp\\" + rootMatch[1] + "\\").toLowerCase()))) {
+    fail("relay-ownership-scratch-root-outside");
+  }
+  if (normalized[0]!.toLowerCase() !== ("C:\\temp\\" + rootMatch[1] + "\\relay").toLowerCase() ||
+      new Set(normalized.map(v => v.toLowerCase())).size !== normalized.length) {
+    fail("relay-scope-path-invalid");
+  }
   const args = [
     "--battery", attempt.battery,
     "--run-id", attempt.bvpRunId,
