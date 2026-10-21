@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09-BR02"
-handoff-count: 2
-handoff-owner-role: REVIEWER
-handoff-recipient-role: BUILDER
+handoff-count: 3
+handoff-owner-role: BUILDER
+handoff-recipient-role: REVIEWER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
-handoff-source-sha: "576f3cfcca9a24c8851456a5487448542cfd0c91"
-active_build_unit_status: "SCOPE_A_PHXCI_R3_PASS_ACTUAL_RUNNER_TWO_PUBLICATION_PROOF_PENDING"
+handoff-source-sha: "95415859f1a9890c796f9256431da81e5e34375c"
+active_build_unit_status: "SCOPE_A_BUILDER_COMPLETE_PHXCI_PASS_INDEPENDENT_REVIEW_PENDING"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -69,7 +69,7 @@ s09_physical_readiness_gate:
   permitted_next_action: "PROSPECTIVE_SOFTWARE_ONLY_PHX_CI_PHYSICAL_ADAPTER_OWNERSHIP_DESIGN_UNTIL_EXECUTION_GATES_ARE_BOUND"
 s09_fixed_phxci_consumer_bridge:
   scope: "BRAIN_ONLY_NO_PHX_CI_CHANGES_DEC_345"
-  status: "REVIEW_CORRECTION_IN_PROGRESS_OWNER_SCOPE_A_AUTHORIZED_UNVERIFIED"
+  status: "OWNER_SCOPE_A_SOFTWARE_QUALIFIED_AWAITING_INDEPENDENT_REVIEW"
   owner_decision: "DEC-345"
   design_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md"
   source_assessment: "dev/research/s09-phxci-fixed-runtime-evidence-transport-assessment-2026-10-20.md"
@@ -125,7 +125,7 @@ s09_fixed_phxci_consumer_bridge:
   br01_qualified_bvp_tests: "415_PASS_0_FAIL"
   br01_qualified_product_tests: "1292_PASS_0_FAIL"
   br01_qualification_type: "PHX_CI_DEVELOPMENT_NO_RELEASE_OR_PHYSICAL_TESTING"
-  br02_status: "REVIEW_RETURN_TO_BUILDER_COUNT_2_RED_REGRESSIONS_COMMITTED_OWNER_SCOPE_PENDING"
+  br02_status: "SCOPE_A_BUILDER_QUALIFIED_REVIEWER_HANDOFF_COUNT_3"
   br02_transport_first_run_id: "861d8207-3be5-4399-9ab1-5de5ecc98816"
   br02_transport_first_source: "179cca70fc0c178a4b3af2c8f4363becb01434a6"
   br02_transport_first_verdict: "BLOCKED_EXPECTED_FOCUSED_STAGE_EXIT_3_FOCUSED_429_PASS"
@@ -170,7 +170,7 @@ s09_fixed_phxci_consumer_bridge:
   correction_owner_approval: "SCOPE_A_AUTHORIZED_2026_10_20"
   correction_precise_scope_doc_commit: "26e35869a13ca143b96b01c4bf198e807cdfab26"
   correction_source_latest: "faa98b17ad944201fdd62b009e6ca5ff1a61c749"
-  correction_source_phx_ci_status: "R1_BLOCKED_EVIDENCE_PUBLISHED_R2_CORRECTIONS_PENDING"
+  correction_source_phx_ci_status: "R3_PASS_FINAL_TWO_RUN_ACTUAL_BVP_SIMULATED_RUNNER_PASS"
   correction_phx_r1_source_sha: "f089fc2ccc0e61de05cd8b4372ad62b5fc8db5c4"
   correction_phx_r1_run_id: "39ae79f2-222d-43a1-8f16-a909ea7d7e48"
   correction_phx_r1_evidence_commit: "79b9b71e3bdaf8a784d6ad6fc5e64d8bcfcb42d9"
@@ -199,8 +199,29 @@ s09_fixed_phxci_consumer_bridge:
   correction_phx_r3_focused_tests: "437_PASS_0_FAIL"
   correction_phx_r3_stages: "ALL_11_PASS"
   correction_phx_r3_test_only_actual_runner_proof: "NOT_RUN_TWO_GENUINE_PHX_INVOCATIONS_REQUIRED"
-  correction_phx_r3_proof_stage_1: "PENDING_EXPECTED_BLOCKED_EXIT_3_WITH_PUBLISHED_IMMUTABLE_CHECKPOINT"
-  correction_phx_r3_proof_stage_2: "PENDING_EXPECTED_PASS_WITH_ORIGINAL_CHECKPOINT_AND_NO_PRE_EFFECT_REPLAY"
+  correction_phx_r3_proof_stage_1: "PASS_EXPECTED_BLOCKED_AND_IMMUTABLE_CHECKPOINT_PUBLISHED"
+  correction_phx_r3_proof_stage_1_run_id: "e9dd6103-2e81-4626-926e-4003d2f0e6d9"
+  correction_phx_r3_proof_stage_1_source: "4de42fb252467c0c7646195bf96e8d9a12c1d8d2"
+  correction_phx_r3_proof_stage_1_evidence_commit: "95415859f1a9890c796f9256431da81e5e34375c"
+  correction_phx_r3_proof_stage_1_evidence_path: "dev/test-results/20261021T114912Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-4de42fb25246.json"
+  correction_phx_r3_proof_stage_1_checkpoint: "BVP_SCHEMA_2_NEXT_STEP_INDEX_2_FIRST_ACTION_COMPLETED"
+  correction_phx_r3_proof_stage_1_focused_exit: 3
+  correction_phx_r3_proof_stage_2: "PASS_ALL_GATES_ORIGINAL_CHECKPOINT_RESTORED_AND_NO_FIRST_ACTION_REPLAY"
+  correction_phx_r3_proof_stage_2_run_id: "bf436873-3320-42ba-be40-2f5e9a28068d"
+  correction_phx_r3_proof_stage_2_verified_source: "95415859f1a9890c796f9256431da81e5e34375c"
+  correction_phx_r3_proof_stage_2_verified_tree: "18607b899e08ef99ecd9c1817ab7852c444d9f25"
+  correction_phx_r3_proof_stage_2_evidence_commit: "5c2694b075631f94fb774cda0d513d6348dea539"
+  correction_phx_r3_proof_stage_2_evidence_path: "dev/test-results/20261021T115855Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-95415859f1a9.json"
+  correction_phx_r3_proof_stage_2_focused_tests: "437_PASS_0_FAIL"
+  correction_phx_r3_proof_stage_2_product_tests: "1292_PASS_0_FAIL"
+  correction_phx_r3_proof_stage_2_stages: "ALL_11_PASS"
+  correction_phx_r3_proof_continuity: "SAME_BVP_RUN_SCENARIO_SHA_ARTIFACT_SHA_MANIFEST_SHA_DEVICE_MAP_ORIGINAL_SOURCE_PREDECESSOR_COMMIT_PATH_RUN_AND_INDEX"
+  correction_phx_r3_proof_replay: "SIMULATED_EFFECT_LOG_BEFORE_ONCE_AFTER_ONCE"
+  correction_phx_r3_final_implementation_identity: "95415859f1a9890c796f9256431da81e5e34375c"
+  correction_phx_r3_evidence_publication: "ORIGINAL_TWO_PHASE_IMMUTABLE_GIT_COMMITS"
+  correction_phx_r3_scope: "NONPHYSICAL_ONLY_NO_INSTALL_OR_RELEASE_AUTHORITY"
+  correction_final_builder_status: "SUBSTANTIVE_PASS_REVIEWER_REQUIRED"
+  correction_reviewer_handoff_count: 3
   correction_phx_r3_no_device_or_live_vault: true
   correction_red_test_additions: "8_REVIEWER_FINDING_REGRESSIONS_COMMITTED_FIRST"
   correction_scope_impl_paths: ["test-platform/test/batteries/phxci-physical-bridge.ts", "test-platform/src/live-device/validation-entrypoint.ts", "test-platform/src/live-device/device-command-agent.ts", "test-platform/src/live-device/drive-mailbox.ts", "test-platform/src/live-device/live-scenario-executor.ts", "test-platform/test/batteries/run-live-battery.ts"]
@@ -217,7 +238,7 @@ s09_fixed_phxci_consumer_bridge:
 
   br02_test_families_required: 10
   br02_owner: "BUILDER"
-  review_gate: "BUILDER_TO_REVIEWER_HANDOFF_COUNT_1_PUBLISHED_BLIND_FINAL_REVIEW_PENDING"
+  review_gate: "SCOPE_A_BUILDER_TO_REVIEWER_HANDOFF_COUNT_3_BLIND_REASSESSMENT_PENDING"
   second_phx_run_id: "d425db25-d293-4fde-8558-a4c1362e1807"
   second_phx_tested_source_sha: "62e2ee16204e0d35eca48b1a42bda06fdf12e855"
   second_phx_evidence_commit: "09d7511091db4d1971817f3429ff196f3cf119ff"
@@ -257,7 +278,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "S09 Scope A R3 real PHX-CI PASS confirmed source 8d38131f9ee3811febde52cce60afdf9acf30175 run 56d22a3c-45ef-44be-9ec9-03b9c9c03143, original immutable evidence commit 876566f2ec74a79a4f7dabe4d08e878b973d5308 record dev/test-results/20261021T101544Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-8d38131f9ee3.json. All 11 stages PASS; 437/437 BVP tests PASS; full product PASS. NEXT: under unchanged pinned PHX-CI, run first NONPHYSICAL actual bridge-main→existing BVP-run-live-battery→test-only simulated-device worker in PHX test-focused stage after npm run test:bvp-root; synthetic physical-device-free checkpoint deliberately exits 3, PHX overall BLOCKED with original evidence published. Verify frame and exact checkpoint in original report, then second fresh PHX-CI invocation against evidence-only descendant and SAME isolated simulation attempt root, exact source, previous run ID/path/commit; verify no replay and original evidence continuity and PASS. This F05 proof is outstanding; no final acceptance or Reviewer handoff until genuine two-run proof. Keep handoff-count 2 and owner BUILDER. No PHX/pin, physical S09, installation, live Drive/vault, release/merge or Stage 3."
+next_action: "S09 Scope A corrective Builder complete; exact verified immutable source 95415859f1a9890c796f9256431da81e5e34375c (tree 18607b899e08ef99ecd9c1817ab7852c444d9f25), no product/test/architecture changes after R3 implementation qualification at 8d38131f9ee3811febde52cce60afdf9acf30175. Genuine PHX-CI R3 PASS all 11 stages and 437/437 tests run 56d22a3c-45ef-44be-9ec9-03b9c9c03143 evidence 876566f2ec74a79a4f7dabe4d08e878b973d5308. Actual bridge->BVP runner->nonphysical device PHX checkpoint source 4de42fb252467c0c7646195bf96e8d9a12c1d8d2, run e9dd6103-2e81-4626-926e-4003d2f0e6d9, expected exit3/BLOCKED, original published checkpoint commit 95415859f1a9890c796f9256431da81e5e34375c. Fresh resumed PHX run bf436873-3320-42ba-be40-2f5e9a28068d source 95415859f1a9890c796f9256431da81e5e34375c PASS all 11 stages and 437/437 BVP, 1292/1292 product, original evidence commit 5c2694b075631f94fb774cda0d513d6348dea539; source, scenario, artifact, manifest, device, original predecessor identities match; simulated filesystem effect before-once and after-once and original checkpoint recovered. Reviewed corrections F01-F05 covered with tests and nonphysical proof; no real device authenticity or physical S09/release acceptance claimed. Builder has transferred to independent REVIEWER with handoff-count 3; reviewer must perform a NEW frozen/published blind source assessment before opening any tests, Builder history, previous findings, PHX evidence, then separate evidence-informed final report, with NO software validation or edits. Do not merge, install, activate, release, use live Google Drive/vault, perform physical S09 or Stage 3. No PHX-CI/pin/authority changes."
 updated_at: "2026-10-20"
 
 context:
