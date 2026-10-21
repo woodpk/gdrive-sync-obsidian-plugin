@@ -277,10 +277,10 @@ test("BR02-F04/F05: previously used identity, stale predecessor and attempt-orde
 test("BR02-F04/F10: human checkpoint continuation and late-receipt recovery cannot mix", () => {
   const resume = second();
   const paths = {
-    relayRoot: "C:\\temp\\red-team\\relay",
-    checkpointFile: "C:\\temp\\red-team\\checkpoint.json",
-    resultFile: "C:\\temp\\red-team\\result.json",
-    previousResultFile: "C:\\temp\\red-team\\prior.json",
+    relayRoot: "C:\\temp\\abcdef0123456789abcdef0123456789\\relay",
+    checkpointFile: "C:\\temp\\abcdef0123456789abcdef0123456789\\checkpoint.json",
+    resultFile: "C:\\temp\\abcdef0123456789abcdef0123456789\\result.json",
+    previousResultFile: "C:\\temp\\abcdef0123456789abcdef0123456789\\prior.json",
   };
   const resumeArgs = buildLiveRunnerArguments(resume, paths, ["human-confirmation", "external-observation"]);
   strictEqual(resumeArgs.includes("--resume-evidence-json"), true);

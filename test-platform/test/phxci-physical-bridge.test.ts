@@ -264,16 +264,16 @@ test("TDD-09 changed code, untrusted history paths and broken ancestry block res
 
 test("TDD-10 runner contracts: existing live CLI receives stable BVP ID, approved paths and no extra arguments", () => {
   const args = buildLiveRunnerArguments(initial(), {
-    relayRoot: "C:\\temp\\fixture\\relay",
-    checkpointFile: "C:\\temp\\fixture\\checkpoint.json",
-    resultFile: "C:\\temp\\fixture\\result.json",
+    relayRoot: "C:\\temp\\0123456789abcdef0123456789abcdef\\relay",
+    checkpointFile: "C:\\temp\\0123456789abcdef0123456789abcdef\\checkpoint.json",
+    resultFile: "C:\\temp\\0123456789abcdef0123456789abcdef\\result.json",
   });
   const arg = (name: string) => args[args.indexOf(name) + 1];
   strictEqual(arg("--battery"), batteryName);
   strictEqual(arg("--run-id"), logicalRunId);
   strictEqual(arg("--validation-source-commit"), sourceCommit);
-  strictEqual(arg("--checkpoint-file"), "C:\\temp\\fixture\\checkpoint.json");
-  strictEqual(arg("--result-file"), "C:\\temp\\fixture\\result.json");
+  strictEqual(arg("--checkpoint-file"), "C:\\temp\\0123456789abcdef0123456789abcdef\\checkpoint.json");
+  strictEqual(arg("--result-file"), "C:\\temp\\0123456789abcdef0123456789abcdef\\result.json");
   deepStrictEqual(JSON.parse(arg("--device-map-json")), deviceIds);
   strictEqual(args.includes("--recover-timed-out-result-file"), false);
   strictEqual(args.includes("--resume-evidence-json"), false);
@@ -289,10 +289,10 @@ test("TDD-11 replay safety: recovery and human confirmation cannot be mixed", ()
     predecessor: { commitSha: priorCommit, historyPath: evidencePath, phxRunId: firstPhxRunId, attemptIndex: 1 },
   };
   const paths = {
-    relayRoot: "C:\\temp\\fixture\\relay",
-    checkpointFile: "C:\\temp\\fixture\\checkpoint.json",
-    resultFile: "C:\\temp\\fixture\\result.json",
-    previousResultFile: "C:\\temp\\fixture\\previous-result.json",
+    relayRoot: "C:\\temp\\0123456789abcdef0123456789abcdef\\relay",
+    checkpointFile: "C:\\temp\\0123456789abcdef0123456789abcdef\\checkpoint.json",
+    resultFile: "C:\\temp\\0123456789abcdef0123456789abcdef\\result.json",
+    previousResultFile: "C:\\temp\\0123456789abcdef0123456789abcdef\\previous-result.json",
   };
   throws(() => buildLiveRunnerArguments(attempt, paths, ["human-confirmation"], true), /exclusive|recovery|checkpoint|resume/i);
   const args = buildLiveRunnerArguments(attempt, paths, ["human-confirmation"]);

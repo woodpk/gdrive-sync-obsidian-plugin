@@ -56,9 +56,9 @@ function completed(): BridgeAttempt {
   };
 }
 const safePaths: LiveRunnerPaths = {
-  relayRoot: "C:\\temp\\bvp-review-fixture\\relay",
-  checkpointFile: "C:\\temp\\bvp-review-fixture\\checkpoint.json",
-  resultFile: "C:\\temp\\bvp-review-fixture\\result.json",
+  relayRoot: "C:\\temp\\abcdefabcdefabcdefabcdefabcdefab\\relay",
+  checkpointFile: "C:\\temp\\abcdefabcdefabcdefabcdefabcdefab\\checkpoint.json",
+  resultFile: "C:\\temp\\abcdefabcdefabcdefabcdefabcdefab\\result.json",
 };
 
 test("BR02-F01: fake caller-selected artifact SHA without any observed installed main.js/manifest proof cannot be published", () => {
