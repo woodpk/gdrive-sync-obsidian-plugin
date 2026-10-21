@@ -271,6 +271,7 @@ function parseResult(attempt: BridgeAttempt): void {
   if (attempt.exitCode !== 1) {
     const registered = getLiveBattery(attempt.battery);
     if (registered && attempt.scenarioId === registered.createScenario().id) {
+      if (parsed.installationObservation === undefined) fail("installed-artifact-manifest-proof-unverified");
       const observed = record(parsed.installationObservation);
       if (observed.sourceCommit !== attempt.sourceCommit ||
           observed.artifactSha256 !== attempt.artifactSha256 ||
@@ -300,7 +301,7 @@ function parseResult(attempt: BridgeAttempt): void {
     }
   }
 }
-function validateAttempt(attempt: BridgeAttempt): void {
+function validateAttempt(attempt: BridgeAttempt, validatePublishedResult = true): void {
   if (attempt.schemaVersion !== 1) fail("bridge-version-invalid");
   // Test-only historic synthetic transport fixtures are not physical identities.
   // Real bridge.main() separately requires an exact registered battery binding.
@@ -364,7 +365,7 @@ function validateAttempt(attempt: BridgeAttempt): void {
   } else if (attempt.checkpointJson !== undefined) {
     fail("checkpoint-exit-status-invalid");
   }
-  parseResult(attempt);
+  if (validatePublishedResult) parseResult(attempt);
 }
 function checkExpectation(attempt: BridgeAttempt, expected: BridgeExpectation): void {
   const fields: (keyof BridgeExpectation)[] = [
@@ -488,7 +489,7 @@ export function buildLiveRunnerArguments(
   resumeEvidence: readonly ScenarioResumeEvidence[] = [],
   recoverLateCompletion = false,
 ): string[] {
-  validateAttempt(attempt);
+  validateAttempt(attempt, false);
   if (recoverLateCompletion && (attempt.mode !== "verified-late-receipt" || resumeEvidence.length)) {
     fail("recovery-and-checkpoint-resume-exclusive");
   }
@@ -502,7 +503,8 @@ export function buildLiveRunnerArguments(
   // Every path must remain within ONE attempt-specific disposable run root.
   // Reject UNC, path traversal, alternate drive, overlap and other run roots.
   const pathsAll = [paths.relayRoot, paths.checkpointFile, paths.resultFile,
-    ...(paths.previousResultFile ? [paths.previousResultFile] : [])];
+    ...(paths.previousResultFile ? [paths.previousResultFile] : []),
+    ...(paths.buildIdentityFile ? [paths.buildIdentityFile] : [])];
   const normalized = pathsAll.map(p => win32.normalize(p));
   const rootMatch = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(normalized[0] ?? "");
   if (!rootMatch || pathsAll.some((p,i) =>
@@ -511,7 +513,9 @@ export function buildLiveRunnerArguments(
     fail("relay-ownership-scratch-root-outside");
   }
   if (normalized[0]!.toLowerCase() !== ("C:\\temp\\" + rootMatch[1] + "\\relay").toLowerCase() ||
-      new Set(normalized.map(v => v.toLowerCase())).size !== normalized.length) {
+      new Set(normalized.map(v => v.toLowerCase())).size !== normalized.length ||
+      (paths.buildIdentityFile && !win32.normalize(paths.buildIdentityFile).toLowerCase()
+        .startsWith(("C:\\temp\\" + rootMatch[1] + "\\installed\\").toLowerCase()))) {
     fail("relay-scope-path-invalid");
   }
   const args = [
@@ -589,13 +593,33 @@ function currentRunId(root: string): string {
 }
 function enforceScratch(paths: LiveRunnerPaths): void {
   if (process.platform !== "win32") fail("physical-platform-unsupported");
-  const scratch = win32.normalize("C:\\temp\\");
-  for (const path of [paths.checkpointFile, paths.resultFile, paths.previousResultFile].filter(
-    (v): v is string => typeof v === "string")) {
-    if (!win32.isAbsolute(path) || !win32.normalize(path).toLowerCase().startsWith(scratch.toLowerCase()) ||
-      path.includes("..")) fail("physical-scratch-path-invalid");
+  // Structural isolation FIRST, before touching files. Also refuse any
+  // existing symlink/junction/reparse point in the controlled path ancestry.
+  const all = [paths.relayRoot, paths.checkpointFile, paths.resultFile,
+    ...(paths.previousResultFile ? [paths.previousResultFile] : []),
+    ...(paths.buildIdentityFile ? [paths.buildIdentityFile] : [])];
+  const normalized = all.map(v => win32.normalize(v));
+  const match = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(normalized[0] ?? "");
+  if (!match) fail("relay-owned-run-root-invalid");
+  const ownerRoot = ("C:\\temp\\" + match[1] + "\\").toLowerCase();
+  for (let i=0;i<all.length;i++) {
+    const candidate = all[i]!;
+    if (!win32.isAbsolute(candidate) || candidate.includes("..") ||
+        candidate.startsWith("\\\\") ||
+        !normalized[i]!.toLowerCase().startsWith(ownerRoot)) {
+      fail("relay-owned-run-root-outside");
+    }
+    const parts = win32.normalize(candidate).split("\\");
+    for (let n=2;n<parts.length;n++) {
+      const parent = parts.slice(0,n+1).join("\\");
+      if (existsSync(parent) && lstatSync(parent).isSymbolicLink()) fail("relay-junction-or-symlink");
+    }
   }
-  if (!isAbsolute(paths.relayRoot)) fail("physical-relay-absolute-path-required");
+  if (normalized[0]!.toLowerCase() !== ownerRoot + "relay") fail("relay-root-not-isolated");
+  if (paths.buildIdentityFile &&
+      !win32.normalize(paths.buildIdentityFile).toLowerCase().startsWith(ownerRoot+"installed\\")) {
+    fail("identity-file-outside-install-scratch");
+  }
 }
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
