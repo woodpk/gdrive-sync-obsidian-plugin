@@ -658,6 +658,92 @@ function enforceScratch(paths: LiveRunnerPaths): void {
     fail("identity-file-outside-install-scratch");
   }
 }
+/**
+ * Durable, shared single-writer authority. The PHX verification worktree and
+ * attempt scratch GUID change on each invocation: neither can be the lease
+ * authority. For each controller machine, stable SHA-derived 32-hex roots
+ * under C:\temp fence the logical run and every participating device.
+ *
+ * A claimed attempt-index/predecessor is never automatically consumed twice.
+ * Crash/uncertain execution retains the active directory and blocks future
+ * dispatch pending separate authorized reconciliation. No TTL/lease stealing.
+ *
+ * This local controller lease does NOT attest a distributed multi-controller
+ * coordinator. A physical deployment requiring separate simultaneous host
+ * controllers must provide separate owner-approved shared authority.
+ */
+export interface BridgeAttemptAuthority {
+  finish(outcome: "blocked" | "completed" | "failed"): void;
+}
+export function claimBridgeAttemptAuthority(
+  attempt: BridgeExpectation,
+  namespaceRoot: string,
+): BridgeAttemptAuthority {
+  if (process.platform !== "win32" ||
+      !(win32.normalize(namespaceRoot).toLowerCase() === "c:\\temp" ||
+        /^c:\\temp\\[a-f0-9]{32}$/i.test(win32.normalize(namespaceRoot))) ||
+      namespaceRoot.includes("..") || namespaceRoot.startsWith("\\\\")) {
+    fail("attempt-authority-namespace-invalid");
+  }
+  stringField(attempt.bvpRunId, SAFE_ID, "authority-logical-run");
+  stringField(attempt.phxRunId, GUID, "authority-phx-run");
+  if (!Number.isSafeInteger(attempt.attemptIndex) || attempt.attemptIndex < 1) fail("authority-attempt-index");
+  if (attempt.predecessor) validatePredecessor(attempt.predecessor);
+  if (!attempt.deviceIds || !Object.values(attempt.deviceIds).length) fail("authority-devices-missing");
+  Object.values(attempt.deviceIds).forEach(deviceIdClaims);
+  // Device lock keys are also pseudonyms. Never write raw device identifiers.
+  const key=(label: string):string => join(namespaceRoot,
+    createHash("sha256").update("bvp-s09-r2-lease-v1:"+label).digest("hex").slice(0,32));
+  const logical=key("logical:"+attempt.bvpRunId);
+  const resources=[logical,...Object.values(attempt.deviceIds).map(id=>key("device:"+id))].sort();
+  const acquired:string[]=[];
+  let journalStarted=false;
+  const release=():void => {
+    for (const p of acquired.reverse()) rmSync(join(p,"active"),{recursive:true,force:false});
+  };
+  try {
+    for (const p of resources) {
+      if (existsSync(p) && lstatSync(p).isSymbolicLink()) fail("authority-junction");
+      mkdirSync(p,{recursive:true});
+      mkdirSync(join(p,"active")); // atomic across independent Node processes
+      acquired.push(p);
+    }
+    if (existsSync(join(logical,"closed"))) fail("authority-logical-run-completed");
+    const idx=join(logical,"index-"+attempt.attemptIndex);
+    const current=join(logical,"phx-"+attempt.phxRunId);
+    const consumed=attempt.predecessor ?
+      join(logical,"consumed-"+digest(JSON.stringify(attempt.predecessor))) : undefined;
+    if (existsSync(idx) || existsSync(current) || (consumed && existsSync(consumed))) {
+      fail("authority-attempt-or-predecessor-already-consumed");
+    }
+    if (attempt.attemptIndex > 1 &&
+        (!attempt.predecessor ||
+         !existsSync(join(logical,"index-"+attempt.predecessor.attemptIndex)))) {
+      fail("authority-previous-attempt-not-recorded");
+    }
+    journalStarted=true;
+    mkdirSync(idx);
+    mkdirSync(current);
+    if (consumed) mkdirSync(consumed);
+  } catch (e) {
+    // When no journal was written, undo only our just-acquired active leases.
+    // After ANY journal write, retain them so an ambiguous operation cannot
+    // automatically be retried or have its predecessor consumed twice.
+    if (!journalStarted) release();
+    throw e;
+  }
+  let finished=false;
+  return {
+    finish(outcome) {
+      if (finished) fail("authority-finish-twice");
+      finished=true;
+      if (outcome === "completed") mkdirSync(join(logical,"closed"));
+      if (outcome === "completed" || outcome === "blocked") release();
+      // Failed or uncertain execution preserves exclusive locks indefinitely.
+    },
+  };
+}
+
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
   const file = cliArgument("--bridge-request-file");
@@ -770,6 +856,9 @@ export async function main(): Promise<void> {
     request.resumeEvidence ?? [], request.expectation.mode === "verified-late-receipt");
   const runner = join(root, ".test-build", "bvp", "test-platform", "test", "batteries", "run-live-battery.js");
   if (!existsSync(runner)) fail("compiled-bvp-runner-missing");
+  // Claim durable logical-run + per-device authority BEFORE any effects.
+  // No duplicate attempt/predecessor may race through this gate.
+  const authority = claimBridgeAttemptAuthority(request.expectation, "C:\\temp");
   const child = spawnSync(process.execPath, [runner, ...args], {
     cwd: root, encoding: "utf8", maxBuffer: MAX_FRAME_BYTES * 4,
     timeout: 15 * 60 * 1000, windowsHide: true,
@@ -787,6 +876,8 @@ export async function main(): Promise<void> {
   };
   const framed = encodeBridgeAttempt(attempt);
   process.stdout.write(framed);
+  authority.finish(attempt.exitCode === 0 ? "completed" :
+    attempt.exitCode === 3 ? "blocked" : "failed");
   process.exitCode = attempt.exitCode;
 }
 if (require.main === module) {
