@@ -8,7 +8,7 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "576f3cfcca9a24c8851456a5487448542cfd0c91"
-active_build_unit_status: "SCOPE_A_PHXCI_R1_BLOCKED_TWO_FOCUSED_FAILURES_CORRECTED_R2_PENDING"
+active_build_unit_status: "SCOPE_A_PHXCI_R2_TYPECHECK_BLOCKED_R3_CORRECTED_REVERIFY_PENDING"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -181,7 +181,17 @@ s09_fixed_phxci_consumer_bridge:
   correction_phx_r2_fixed_commit: "faa98b17ad944201fdd62b009e6ca5ff1a61c749"
   correction_phx_r2_loc_expected_static: 745
   correction_phx_r2_registry: "TEST_ONLY_SIMULATION_REQUIRES_GENUINE_PHX_CONTEXT_AND_EXPLICIT_SIMULATION_FLAG"
-  correction_phx_r2_status: "NOT_EXECUTED_NEEDS_PINNED_PHX_CI"
+  correction_phx_r2_status: "BLOCKED_ON_TEST_ONLY_TS2322_AFTER_PRIOR_METRICS_REGISTRY_CORRECTIONS"
+  correction_phx_r2_run_id: "4e9304ab-1a44-46f8-94b8-4a080cc2a785"
+  correction_phx_r2_tested_sha: "12761b8f5bd5143a908479bfb84866db45610a80"
+  correction_phx_r2_evidence_commit: "b1e6496d1639e7deb33ca55267780da517dfa3f7"
+  correction_phx_r2_evidence_path: "dev/test-results/20261021T100621Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-12761b8f5bd5.json"
+  correction_phx_r2_change_set: "FAIL_TEST_FOCUSED_TSC_EXIT_2"
+  correction_phx_r2_repository: "PASS"
+  correction_phx_r2_exact_failure: "test-platform/test/batteries/battery-registry.ts(178,7) TS2322 requiredEvidence string[] incompatible readonly ScenarioResumeEvidence[]"
+  correction_phx_r3_literal_type_fix: "2fdc157289ba58b2230ecce3c2e7ea0a90a0f9df"
+  correction_phx_r3_bounded_git_evidence_buffer_fix: "fb60e8b67e890cbd204ee761de6396fd09c1fb97"
+  correction_phx_r3_status: "NOT_RUN_NO_SUCCESS_CLAIM"
   correction_red_test_additions: "8_REVIEWER_FINDING_REGRESSIONS_COMMITTED_FIRST"
   correction_scope_impl_paths: ["test-platform/test/batteries/phxci-physical-bridge.ts", "test-platform/src/live-device/validation-entrypoint.ts", "test-platform/src/live-device/device-command-agent.ts", "test-platform/src/live-device/drive-mailbox.ts", "test-platform/src/live-device/live-scenario-executor.ts", "test-platform/test/batteries/run-live-battery.ts"]
   correction_test_simulation_file: "test-platform/test/batteries/phxci-actual-runner-probe.ts"
@@ -237,7 +247,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Owner Scope A corrective PHX-CI R1 actual run 39ae79f2-222d-43a1-8f16-a909ea7d7e48 at f089fc2ccc0e61de05cd8b4372ad62b5fc8db5c4 BLOCKED, original evidence commit 79b9b71e3bdaf8a784d6ad6fc5e64d8bcfcb42d9 and report dev/test-results/20261021T095257Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-f089fc2ccc0e.json. Focused 435/437 (2 failures): frozen live device LOC 784 > 750 and test-only simulated BR02 battery wrongly exposed by physical registry; repository PASS. Corrective source faa98b17ad944201fdd62b009e6ca5ff1a61c749 restored physical registry invariants, gated synthetic fixture on true PHX-CI context + simulation env, compacted existing device logic to static estimated 745 LOC without relaxing frozen architecture or tests. NEXT: rerun original pinned PHX-CI on exact new current branch source using npm run test:bvp-root, BRAIN_ARTIFACT_PURPOSE=development, BVP_CHANGE_CLASS=ordinary; preserve/publish original evidence; diagnose and correct any failures. Subsequent genuine PHX-CI two-invocation actual bridge->BVP runner->simulated-device proof still required before independent final reviewer. Handoff-count stays 2, BUILDER controls; no PHX modification, pin, physical devices, live vault/Drive, release, Stage3, master merge."
+next_action: "S09 Scope A correction PHX-CI R2 tested 12761b8f5bd5143a908479bfb84866db45610a80, run 4e9304ab-1a44-46f8-94b8-4a080cc2a785, original evidence b1e6496d1639e7deb33ca55267780da517dfa3f7, overall BLOCKED: repository PASS, focused stage tsc EXIT2 for the typed test-only simulated battery requiredEvidence string[] vs readonly ScenarioResumeEvidence[]. A bounded exact literal-type correction was published as 2fdc157289ba58b2230ecce3c2e7ea0a90a0f9df; immutable evidence read Git maxBuffer was aligned to the preexisting 2MiB report cap in fb60e8b67e890cbd204ee761de6396fd09c1fb97. R3 NOT YET RUN. NEXT: run unchanged pinned PHX-CI in authorized development mode on exact new branch source with npm run test:bvp-root; inspect actual original stage evidence, fix any remaining failures without weakening tests, PHX-CI, architecture guard or budgets. Then perform two separate actual bridge.main->existing BVP run-live-battery->nonphysical device fixture PHX-CI invocations and verify original BLOCKED published checkpoint followed by eligible PASS/no replay. No physical devices, live vault/Drive, install/release, merge, Stage3. Per-feature handoff-count stays 2 and Reviewer handoff is unauthorized until qualification."
 updated_at: "2026-10-20"
 
 context:
