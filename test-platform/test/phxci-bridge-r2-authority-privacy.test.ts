@@ -3,11 +3,12 @@
  * BEFORE the bounded corrective BR01 implementation.
  * Only PHX-CI may execute these tests as part of the approved BVP battery.
  */
-import { strictEqual, throws, deepStrictEqual } from "node:assert/strict";
+import { doesNotThrow, throws } from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
+import { getLiveBattery } from "./batteries/battery-registry";
+import { scenarioDefinitionDigest } from "../src/scenario/scenario-checkpoint";
 import { test } from "node:test";
 import {
   claimBridgeAttemptAuthority, type BridgeExpectation, type BridgeAttempt,
@@ -15,11 +16,15 @@ import {
 } from "./batteries/phxci-physical-bridge";
 
 const SOURCE="a".repeat(40), SHA64="e".repeat(64);
+const definition=getLiveBattery("s09a-windows-initial-sync");
+if(!definition)throw Error("S09A requirement fixture missing");
+const scenario=definition.createScenario();
+const digest=scenarioDefinitionDigest(scenario);
 const prior={commitSha:"b".repeat(40),historyPath:"dev/test-results/20261021T120000Z-prior.json",phxRunId:"a09cb9ce-8d7a-4a5b-b18a-c322e0e19147",attemptIndex:1};
 function expectation(runId: string, index=1, device="device:sha256:"+"c".repeat(64), logicalRun="bvp-r2-exclusive") : BridgeExpectation {
   return { bvpRunId:logicalRun,phxRunId:runId,attemptIndex:index,
-    battery:"s09a-windows-initial-sync",scenarioId:"s09-br02-checkpoint",
-    scenarioDigest:"sha256:"+SHA64,sourceCommit:SOURCE,artifactSha256:SHA64,
+    battery:"s09a-windows-initial-sync",scenarioId:scenario.id,
+    scenarioDigest:digest,sourceCommit:SOURCE,artifactSha256:SHA64,
     deviceIds:{windows:device},mode:index===1?"initial":"checkpoint-resume",
     ...(index===1?{}:{predecessor:prior}) };
 }
@@ -78,7 +83,9 @@ function attempt(device:string):BridgeAttempt {
       scenarioId:exp.scenarioId,status:"completed",steps:[],
       evidence:{machine:{schemaVersion:1,scenarioId:exp.scenarioId,executionMode:"live",
         deviceIdentities:[device],liveIdentity:{runId:exp.bvpRunId,sourceCommit:exp.sourceCommit},
-        verdict:{status:"completed"}}}}})};
+        verdict:{status:"completed"}}}},
+      installationObservation:{sourceCommit:SOURCE,artifactSha256:SHA64,manifestSha256:SHA64,
+        devices:{[device]:{artifactSha256:SHA64,manifestSha256:SHA64}}}})};
 }
 test("R2-02 plausible personal device identifier in otherwise allowed deviceIds must not reach frame",()=>{
   for(const raw of ["device:Marys-Workstation-2026","device:john.smith@example.com","device:family-iphone-7744"]) {
@@ -87,14 +94,7 @@ test("R2-02 plausible personal device identifier in otherwise allowed deviceIds 
 });
 test("R2-02 SHA256 device pseudonym is accepted when all required identity locations agree",()=>{
   const device="device:sha256:"+"d".repeat(64);
-  const candidate=attempt(device);
-  // Synthetic model fixtures may remain blocked for unrelated scenario
-  // validation; this test specifically checks the privacy identity domain.
-  try {
-    encodeBridgeAttempt(candidate);
-  } catch (e) {
-    if (/privacy|device.*(raw|digest|nonsecret)/i.test(String(e))) throw e;
-  }
+  doesNotThrow(()=>encodeBridgeAttempt(attempt(device)));
 });
 test("R2-02 plausible private identifiers in allowlisted observation values fail closed",()=>{
   for(const [field,value] of [
