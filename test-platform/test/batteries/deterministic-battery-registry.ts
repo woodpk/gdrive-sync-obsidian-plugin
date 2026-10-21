@@ -58,6 +58,7 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
 
 const S09_LATE_COMPLETION_RECOVERY = [
   "phxci-bridge-review-corrections.test.js",
+  "phxci-bridge-r2-authority-privacy.test.js",
   "phxci-physical-bridge-adversarial.test.js",
   "phxci-physical-bridge.test.js",
   "s09a-attribution-live-guard.test.js",
