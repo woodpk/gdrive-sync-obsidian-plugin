@@ -20,7 +20,7 @@ import { createBoundedDeviceCommandAgent, type DeviceCommand, type DeviceFixture
 import type { BridgeAttempt, BridgeExpectation, BridgePredecessor } from "./phxci-physical-bridge";
 
 const NAME = "s09-br02-simulated-checkpoint";
-const RUN = "bvp-br02-actual-runner-no-physical-devices";
+let RUN = "bvp-br02-actual-runner-no-physical-devices";
 const DEVICE = "device:simulated-windows";
 const GUID = /^[a-f0-9]{32}$/i;
 const SHA = /^[a-f0-9]{40}$/i;
@@ -82,6 +82,7 @@ function effects(root:string): string[] {
 }
 async function worker(): Promise<void> {
   const root=safeRoot(opt("--root"));
+  RUN="bvp-br02-"+win32.basename(root);
   const source=opt("--source");
   if(!SHA.test(source))fault("worker-source-invalid");
   const identity=proof(root,source);
@@ -141,6 +142,7 @@ async function main():Promise<void> {
   if(phase!=="checkpoint"&&phase!=="continue")fault("phase-invalid");
   const {id:phxRun,head}=phxIdentity();
   const root=safeRoot(opt("--root"));
+  RUN="bvp-br02-"+win32.basename(root);
   const prior=phase==="continue"?{
     sha:opt("--prior-commit"),path:opt("--prior-path"),
     id:opt("--prior-run-id"),source:opt("--original-source"),
