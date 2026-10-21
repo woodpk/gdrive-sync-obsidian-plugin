@@ -143,6 +143,7 @@ function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0):
     } else if (Array.isArray(item)) {
       if (item.length > 16 || !item.every(x => typeof x === "string" && SAFE_CODE.test(x))) fail("privacy-array-unapproved");
       if (key === "deviceIdentities") item.forEach(deviceIdClaims);
+      if (shape === "observationValue") fail("privacy-observation-array-not-approved");
     } else if (item !== null && typeof item === "object") {
       fail("privacy-nested-object-unapproved");
     } else if (typeof item === "number" && !Number.isSafeInteger(item)) fail("privacy-number-unapproved");
@@ -273,6 +274,33 @@ function parseResult(attempt: BridgeAttempt): void {
   const battery = record(parsed.battery);
   const registered = getLiveBattery(attempt.battery);
   if (registered && attempt.scenarioId === registered.createScenario().id) {
+    const scenario=registered.createScenario();
+    const steps=scenario.steps;
+    const stepIds=new Set(steps.map(v=>v.id));
+    const machine=evidenceShape?.machine ? record(evidenceShape.machine) : undefined;
+    if (machine) {
+      if (machine.traceability !== undefined &&
+          JSON.stringify(machine.traceability) !== JSON.stringify(scenario.traceability?.targets ?? [])) {
+        fail("privacy-traceability-not-source-derived");
+      }
+      for (const event of Array.isArray(machine.observations) ? machine.observations : []) {
+        const o=record(event);
+        if (!stepIds.has(String(o.stepId??"")) ||
+            !steps.some(v=>v.id===o.stepId && "captureAs" in v && v.captureAs===o.captureAs)) {
+          fail("privacy-observation-not-source-derived");
+        }
+      }
+      for (const assertion of Array.isArray(machine.assertions) ? machine.assertions : []) {
+        const a=record(assertion);
+        if (!stepIds.has(String(a.stepId??""))) fail("privacy-assertion-not-source-derived");
+      }
+    }
+    for (const completed of Array.isArray(resultShape.steps) ? resultShape.steps : []) {
+      const v=record(completed);
+      if (!Number.isSafeInteger(v.index) || !steps[Number(v.index)] ||
+          steps[Number(v.index)]!.id !== v.stepId ||
+          steps[Number(v.index)]!.kind !== v.kind) fail("privacy-step-not-source-derived");
+    }
     if (battery.description !== undefined && battery.description !== registered.description) {
       fail("privacy-battery-description-untrusted");
     }
