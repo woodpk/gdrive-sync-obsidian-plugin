@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09-BR02"
-handoff-count: 1
-handoff-owner-role: BUILDER
-handoff-recipient-role: REVIEWER
+handoff-count: 2
+handoff-owner-role: REVIEWER
+handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "576f3cfcca9a24c8851456a5487448542cfd0c91"
-active_build_unit_status: "BUILDER_FINAL_PHXCI_QUALIFIED_REVIEWER_BLIND_PASS1_READY"
+active_build_unit_status: "INDEPENDENT_REVIEW_CORRECTION_REQUIRED_BUILDER"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
