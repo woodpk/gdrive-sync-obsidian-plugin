@@ -183,7 +183,7 @@ const TEST_ONLY_SIMULATED_BATTERY: LiveBatteryDefinition = Object.freeze({
       "br02-synthetic-checkpoint": {
         device: "windows", action: "Synthetic PHX-CI checkpoint, not a human physical instruction.",
         stopCondition: "The first runner invocation published BLOCKED original evidence.",
-        requiredEvidence: ["human-confirmation"],
+        requiredEvidence: ["human-confirmation"] as const,
         nextSafeAction: "Resume the same simulated runner and verify no precheckpoint replay.",
       },
     },
