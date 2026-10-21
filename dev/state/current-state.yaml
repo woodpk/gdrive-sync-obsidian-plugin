@@ -8,7 +8,7 @@ handoff-owner-role: REVIEWER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
 handoff-source-sha: "95415859f1a9890c796f9256431da81e5e34375c"
-active_build_unit_status: "REVIEW_R2_CORRECTIONS_COMMITTED_TESTS_FIRST_PHXCI_R4_PENDING"
+active_build_unit_status: "R2_PHXCI_R4_PASS_TWO_INVOCATION_ATTEMPT_AUTHORITY_PROOF_PENDING"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
@@ -242,7 +242,16 @@ s09_fixed_phxci_consumer_bridge:
   review_r2_simulation_unique_run: "5ca3271f11cca55d6c27a7b64b16f2eea23b07fb"
   review_r2_scope_addendum_commit: "1dce951ee28c38f9f47bf523be611d8c630f54dc"
   review_r2_scope_notice: "SINGLE_WINDOWS_CONTROLLER_HOST_AUTHORITY_ONLY_NO_DISTRIBUTED_CONTROLLER_ASSURANCE"
-  review_r2_new_source_status: "PHX_CI_NOT_RUN_NO_PASS_CLAIM"
+  review_r2_new_source_status: "PHXCI_R4_PASS_TWO_PHASE_ACTUAL_RUNNER_PROOF_PENDING"
+  review_r2_r4_source_sha: "b15e1321c36868bc8cce16ce9eb97da22d7ac12d"
+  review_r2_r4_verified_tree: "492b9e0ab4d6a90c887cf8f46ea9ea5f19b9c4b8"
+  review_r2_r4_phxci_run: "538f331b-9436-4c25-9e97-1cd286ce1de3"
+  review_r2_r4_evidence_commit: "26bbf0a3e4756fc702e9c6ce12a5bd4cc9b8cd92"
+  review_r2_r4_evidence_path: "dev/test-results/20261021T151607Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-b15e1321c368.json"
+  review_r2_r4_focused_tests: "448_PASS_0_FAIL"
+  review_r2_r4_required_stages: "11_OF_11_PASS"
+  review_r2_r4_overall: "COMPLETE_PASS_EXIT_0_EVIDENCE_PUBLISHED"
+  review_r2_r4_two_phase_actual_runner_proof: "NOT_YET_EXECUTED"
   review_r2_real_device_or_release_authorized: false
   review_r2_handoff_count_preserved: 4
   correction_phx_r3_no_device_or_live_vault: true
@@ -301,7 +310,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Second independent review R2 at state 0d09e4fee4dbfdf7a4b132ecf817ec36b30794e2 returned 2 HIGH findings; Builder count4. R2-01 atomic durable local Windows authority claims logical BVP run and all device pseudonyms before dispatch, one attempt-index and predecessor ever consumed, uncertain/crashed attempt keeps active lock, completed run closes, exact predecessor PHX attempt journal existence required. R2-02 device:sha256 identity for any physical dispatch, fixed PHX-only disposable fixture identities, registered scenario step/traceability bound, high-risk nested identifier keys and unsafe observation strings/arrays blocked. Eleven new adversarial tests registered in deterministic focused battery before BR01 corrections, cross-process overlap and abandoned lease coverage. Current candidate code+test HEAD before this status 658b12da6833067b7371a6b8db8d62679eb2b46d; NO PHX_CI VERIFICATION OF THIS SOURCE HAS OCCURRED. Prior historical original PHX PASS and nonphysical checkpoint/resume evidence remain immutable and are NOT new-source qualification. Next operator action: clone exact new branch HEAD with fresh C temp GUID and execute npm run test:bvp-root through pinned PHX-CI SHA 69c4aa077d4a1a46d1e85e59f39d36285be99e83 using development ordinary flags, publish and inspect original evidence, diagnose failures without weakening tests; after PASS, conduct new 2-invocation actual runner simulated-device checkpoint and resume using a NEW per-proof simulation GUID with persistent state across the two invocations, prove unconsumed predecessor and no replay under new lease. No PHX/pin, frozen guard weakening, physical, live Drive/vault, merge/release/Stage3. Device/run lease is local same-host only; remote multi-controller execution remains unproven and NOT PHYSICALLY AUTHORIZED. Handoff-count stays 4 until complete PASS and independent review transfer.
+next_action: "R2 corrective pinned PHX-CI R4 verified PASS source b15e1321c36868bc8cce16ce9eb97da22d7ac12d tree 492b9e0ab4d6a90c887cf8f46ea9ea5f19b9c4b8 run 538f331b-9436-4c25-9e97-1cd286ce1de3 evidence 26bbf0a3e4756fc702e9c6ce12a5bd4cc9b8cd92 at dev/test-results/20261021T151607Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-b15e1321c368.json. 11/11 stages PASS; focused BVP 448/448 PASS; repository PASS, overall PASS. REMAINING: two fresh genuine PHX-CI nonphysical actual bridge-main to existing BVP-run-live-battery to simulated-device invocations on this exact new source. First phase uses fresh C temp run GUID and separate persistent simulation GUID; phase1 focused command npm run test:bvp-root then phxci-actual-runner-probe.js checkpoint; expect focused exit3 and original immutable BLOCKED checkpoint publication with first effect exactly once. Second phase against evidence-only descendant, same simulation GUID, exact phase1 original source/PHX ID/report/commit; verify PASS, same logical source/digest/installation/device, second effect exactly once, no replay. Do NOT reuse previous R3 simulation root or past PHX proof as current qualification. After full proof, neutral handoff-count5 to independent reviewer may be published with exact qualified source only. Until then count4, BUILDER recipient. No PHX/pin changes, other-framework validation, physical device, live Drive/vault, install, master merge, release, Stage3. Multi-controller physical authority NOT proven."
 updated_at: "2026-10-20"
 
 context:
