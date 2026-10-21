@@ -537,7 +537,7 @@ export function buildLiveRunnerArguments(
 function gitEvidencePort(root: string): GitEvidencePort {
   const git = (...args: string[]): string => {
     const out = spawnSync("git", ["-C", root, ...args], {
-      encoding: "utf8", maxBuffer: MAX_FRAME_BYTES * 4, timeout: 15000, windowsHide: true,
+      encoding: "utf8", maxBuffer: MAX_PUBLISHED_EVIDENCE_BYTES, timeout: 15000, windowsHide: true,
     });
     if (out.error || out.status !== 0 || typeof out.stdout !== "string") fail("git-read-unavailable");
     return out.stdout.trimEnd();
