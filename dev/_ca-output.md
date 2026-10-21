@@ -1,20 +1,20 @@
-STATUS: BLOCKED
+STATUS: COMPLETE
 
 # phx-ci evidence - gdrive-sync-obsidian-plugin
 
 ## Verification summary
 
-- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited 3.
+- Change-set verification: PASS
 - Repository verification: PASS
-- Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
+- Overall verification: PASS
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 6658c44e-058a-4696-aa1d-bcc3b372d3b8
-- Repository: C:/temp/28c4b76e05bd4a029b5d8a4cdb79d8da/phx-2207841339bf4c5e/w
+- Run ID: 4323c021-1c8f-4c35-a3e3-79148d5f39c2
+- Repository: C:/temp/35f55d92e66b43cdac889a5b0aad784d/phx-e98e0a9787ac47ce/w
 - Branch:
-- Verified HEAD: a3b83ecaf97f2ce5f97550ae4f795706161aaa4c
-- Verified tree: 66463d5c5aaca35f61ad4c60734075172ea04eb7
-- Expected HEAD: a3b83ecaf97f2ce5f97550ae4f795706161aaa4c
+- Verified HEAD: 51d75e63eac1f3a37ef998cf599f039dce7feb2f
+- Verified tree: 3c362f4ef9cae621415deedf892f83bace20a574
+- Expected HEAD: 51d75e63eac1f3a37ef998cf599f039dce7feb2f
 - Base SHA: 684675e079d4cc9199f83d6c60b900a0f033153d
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,26 +24,25 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-21T15:28:35.5920739Z
-- Ended: 2026-10-21T15:30:29.6300710Z
+- Started: 2026-10-21T16:00:14.6054379Z
+- Ended: 2026-10-21T16:03:17.6950337Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- node-preflight: PASS (exit 0; NONE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- node-project-files: PASS (exit 0; NONE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- install: PASS (exit 0; NONE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- typecheck: PASS (exit 0; NONE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- test-focused: FAIL (exit 3; TEST FAILURE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- test: PASS (exit 0; NONE; run 6658c44e-058a-4696-aa1d-bcc3b372d3b8)
-- build: MISSING (FRAMEWORK FAILURE)
-- repository-check: MISSING (FRAMEWORK FAILURE)
-- check: MISSING (FRAMEWORK FAILURE)
-- artifacts: MISSING (FRAMEWORK FAILURE)
+- preflight: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- node-preflight: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- node-project-files: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- install: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- typecheck: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- test-focused: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- test: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- build: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- repository-check: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- check: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
+- artifacts: PASS (exit 0; NONE; run 4323c021-1c8f-4c35-a3e3-79148d5f39c2)
 
 ## Artifacts
 
-- None recorded for current run
+- main.js: 922631 bytes; SHA-256 6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d
 
-Final verdict: BLOCKED
-Failure classification: TEST FAILURE
+Final verdict: COMPLETE
