@@ -18,9 +18,14 @@ export interface LiveScenarioExecutorOptions {
   readonly checkpoints?: Readonly<Record<string, HumanCheckpointInstruction>>;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly expectedValidationSourceCommit: string;
+  readonly expectedValidationArtifactSha256?: string;
+  readonly expectedValidationManifestSha256?: string;
   readonly resultTimeoutMs?: number; readonly productionResultTimeoutMs?: number; readonly pollIntervalMs?: number;
 }
-export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; }
+export interface LiveScenarioExecutor extends ScenarioStepExecutor {
+  pendingCheckpoint(): HumanCheckpointInstruction | undefined;
+  observedInstalledBuilds?(): Readonly<Record<string, { artifactSha256: string; manifestSha256: string }>>;
+}
 
 type RelayResult = DeviceCommandResult | null | undefined;
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
@@ -49,8 +54,11 @@ export function liveSequenceFor(scenario:ScenarioDefinition,device:string,index:
 export function liveCommandId(runId:string,scenarioId:string,index:number,sub:number):string{
   return "bvp-"+createHash("sha256").update(`${runId}\0${scenarioId}\0${index}\0${sub}`).digest("hex").slice(0,32);
 }
-function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string):boolean{
-  return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
+function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string,artifact?:string,manifest?:string):boolean{
+  return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&
+    (artifact===undefined || result.validationBuild.artifactSha256===artifact) &&
+    (manifest===undefined || result.validationBuild.manifestSha256===manifest) &&
+    command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
 }
 function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
   return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;
@@ -80,6 +88,14 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   await mkdir(out,{recursive:true});await mkdir(join(options.relayRoot,"controller-authority"),{recursive:true});
   const leasedDevices=[...new Set(options.scenario.steps.map(stepDevice).filter((label):label is string=>Boolean(label)).map(label=>options.deviceIds[label]).filter((value):value is string=>Boolean(value)))].sort(),authorityFiles=new Map<string,string>(),activated=new Set<string>(),authorityEntries=leasedDevices.map(deviceId=>{const path=authorityPath(options.relayRoot,deviceId);authorityFiles.set(deviceId,path);return{deviceId,path};}),authorityLocks=await acquireAuthorityLocks(authorityEntries.map(value=>value.path));
   try{for(const {deviceId,path} of authorityEntries){let current:ControllerAuthority|undefined;if(await exists(path)){try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(!current)throw new Error("live-controller-authority-invalid");}if(current?.runId&&current.runId!==options.runId)throw new Error("live-controller-device-run-conflict");if(current?.runId===options.runId)continue;const next:ControllerAuthority={schemaVersion:1,generation:(current?.generation??0)+1,runId:options.runId,deviceId};await writeFile(path,JSON.stringify(next),"utf8");activated.add(deviceId);}}catch(error){for(const deviceId of activated){const path=authorityFiles.get(deviceId)!,current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);if(current?.runId===options.runId)await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}throw error;}finally{await releaseAuthorityLocks(authorityLocks);}
+  const installedByDevice:Record<string,{artifactSha256:string;manifestSha256:string}>={};
+  if ((options.expectedValidationArtifactSha256===undefined)!==
+      (options.expectedValidationManifestSha256===undefined) ||
+      (options.expectedValidationArtifactSha256!==undefined &&
+       (!/^[a-f0-9]{64}$/i.test(options.expectedValidationArtifactSha256) ||
+        !/^[a-f0-9]{64}$/i.test(options.expectedValidationManifestSha256!)))) {
+    throw new Error("live-expected-installed-build-invalid");
+  }
   let pending:HumanCheckpointInstruction|undefined,resume:ScenarioCheckpoint|undefined,resumeFailure:string|undefined;
   const history:ScenarioStepExecution[]=[];
   if(await exists(options.checkpointFile)){
@@ -98,7 +114,16 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     while(Date.now()<=deadline){
       if(await exists(resultPath)){
         let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{await rm(resultPath,{force:true});return null;}
-        await rm(resultPath,{force:true});return correlated(command,result,options.expectedValidationSourceCommit.toLowerCase())?result:null;
+        await rm(resultPath,{force:true});
+        if (!correlated(command,result,options.expectedValidationSourceCommit.toLowerCase(),
+          options.expectedValidationArtifactSha256,options.expectedValidationManifestSha256)) return null;
+        if (options.expectedValidationArtifactSha256 && options.expectedValidationManifestSha256) {
+          installedByDevice[command.deviceId]={
+            artifactSha256:options.expectedValidationArtifactSha256,
+            manifestSha256:options.expectedValidationManifestSha256,
+          };
+        }
+        return result;
       }
       await sleep(poll);
     }
@@ -136,6 +161,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
 
   return{
     executionMode:"live",deviceIdentities,runIdentity:options.runId,buildIdentity:options.expectedValidationSourceCommit.toLowerCase(),pendingCheckpoint:()=>pending,
+    observedInstalledBuilds:()=>({...installedByDevice}),
     async dispose(){if(pending||await pendingRelayCommand())return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}});},
     async execute(step,context){
       let result:ScenarioCapabilityResult;
