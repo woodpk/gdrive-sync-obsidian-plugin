@@ -8,7 +8,7 @@
  */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
@@ -35,6 +35,38 @@ const SYNTHETIC_TRANSPORT_SCENARIOS = new Set([
   "phxci-tdd-human-checkpoint", "s09-br02-checkpoint", "br02-phxci-synthetic-checkpoint",
 ]);
 const SAFE_CODE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/;
+// Transport only one-way pseudonyms for actual devices. Legacy fixed test
+// identifiers are allowed solely inside a genuine PHX-CI focused stage.
+const PUBLIC_DEVICE_ID = /^device:sha256:[a-f0-9]{64}$/i;
+const PHX_FIXTURE_DEVICE_IDS = new Set([
+  "device:fixture-windows", "device:another-windows", "device:isolated-windows",
+  "device:synthetic-windows", "device:synthetic-ios", "device:synthetic-br02-only",
+  "device:simulated-windows",
+]);
+function publicDeviceId(value: unknown): boolean {
+  return typeof value === "string" && (PUBLIC_DEVICE_ID.test(value) ||
+    (!!process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL &&
+      PHX_FIXTURE_DEVICE_IDS.has(value)));
+}
+function deviceIdClaims(value: unknown): void {
+  if (!publicDeviceId(value)) fail("privacy-device-identity-not-allowlisted");
+}
+const ALLOWED_OBSERVATION_STRINGS: ReadonlySet<string> = new Set([
+  "completed", "blocked", "failed", "rejected", "none", "present", "absent",
+  "local", "remote", "windows", "ios", "file", "folder", "idle",
+  "pending", "unknown", "matched", "mismatched", "safe", "unsafe",
+  "manual", "automatic", "enabled", "disabled", "synchronized", "ready",
+  "not-ready", "retry", "cancelled", "conflict", "pass", "fail", "ok",
+  "allowed", "denied", "pending-checkpoint", "human-checkpoint-required",
+]);
+function screenedObservation(value: unknown): void {
+  const obj=record(value);
+  for (const [key, item] of Object.entries(obj)) {
+    if (typeof item === "string" &&
+      !(key === "hash" && HEX64.test(item)) &&
+      !ALLOWED_OBSERVATION_STRINGS.has(item)) fail("privacy-unapproved-observation-value");
+  }
+}
 const SAFE_KEYS: Readonly<Record<string, readonly string[]>> = {
   root: ["battery", "result", "checkpoint", "recovery", "installationObservation"],
   battery: ["name", "description", "requiredDeviceLabels"],
@@ -50,11 +82,10 @@ const SAFE_KEYS: Readonly<Record<string, readonly string[]>> = {
   assertion: ["stepId", "status", "classification", "reason", "matchedExpectation", "index", "kind"],
   step: ["index", "stepId", "kind", "status", "classification", "reason", "matchedExpectation"],
   observationValue: ["kind", "status", "exists", "side", "entityKind", "hash", "sizeBytes",
-    "revision", "remoteObjectId", "stateRevision", "changeCursor", "operationKinds",
-    "nonNoopOperationCount", "uploadCreatePathKeys", "executionDisposition",
-    "globalExecutionGate", "recoveryCheckpointRequired", "knownDeviceIds",
+    "stateRevision", "operationKinds", "nonNoopOperationCount",
+    "executionDisposition", "globalExecutionGate", "recoveryCheckpointRequired",
     "operationCount", "baseCount", "mappingCount", "tombstoneCount",
-    "classification", "reason", "planId", "schemaVersion", "deviceIdentity", "vaultIdentity"],
+    "classification", "reason", "schemaVersion"],
 };
 function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0): void {
   const v = record(value);
@@ -68,7 +99,7 @@ function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0):
       const obs=record(item);
       for(const field of Object.keys(obs)) if(!["sourceCommit","artifactSha256","manifestSha256","devices"].includes(field))fail("privacy-installation-field-unapproved");
       const devices=record(obs.devices);
-      for(const d of Object.values(devices)){const pair=record(d);
+      for(const [id,d] of Object.entries(devices)){deviceIdClaims(id);const pair=record(d);
         if(Object.keys(pair).some(k=>!["artifactSha256","manifestSha256"].includes(k))||
           !HEX64.test(String(pair.artifactSha256??""))||!HEX64.test(String(pair.manifestSha256??"")))
           fail("privacy-installed-device-identity-invalid");
@@ -83,6 +114,7 @@ function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0):
     else if (shape === "machine" && key === "observations") { if (!Array.isArray(item)) fail("privacy-observations-array"); item.forEach(v => allowedShape(v, "observation", depth + 1)); }
     else if (shape === "machine" && key === "assertions") { if (!Array.isArray(item)) fail("privacy-assertions-array"); item.forEach(v => allowedShape(v, "assertion", depth + 1)); }
     else if (shape === "observation" && key === "value") {
+      screenedObservation(item);
       allowedShape(item, "observationValue", depth + 1);
     } else if (shape === "result" && key === "steps") {
       if (!Array.isArray(item)) fail("privacy-steps-array");
@@ -110,6 +142,7 @@ function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0):
           (item.includes("..") || !/^[a-zA-Z0-9._/-]{1,128}$/.test(item))) fail("privacy-fixture-path-unapproved");
     } else if (Array.isArray(item)) {
       if (item.length > 16 || !item.every(x => typeof x === "string" && SAFE_CODE.test(x))) fail("privacy-array-unapproved");
+      if (key === "deviceIdentities") item.forEach(deviceIdClaims);
     } else if (item !== null && typeof item === "object") {
       fail("privacy-nested-object-unapproved");
     } else if (typeof item === "number" && !Number.isSafeInteger(item)) fail("privacy-number-unapproved");
@@ -216,6 +249,8 @@ function parseResult(attempt: BridgeAttempt): void {
   try { parsed = record(JSON.parse(attempt.resultJson)); }
   catch { fail("result-invalid-json"); }
   inspectSensitive(parsed);
+  // No raw controller or device identities may enter a published frame.
+  Object.values(attempt.deviceIds).forEach(deviceIdClaims);
   // Canonical BVP evidence has derived JSON and a derived human summary:
   // neither is an arbitrary user text carrier.
   const resultShape = record(parsed.result);
@@ -337,6 +372,7 @@ function validateAttempt(attempt: BridgeAttempt, validatePublishedResult = true)
     stringField(value, SAFE_ID, "device-identity");
   }
   if (new Set(labels.map(k => attempt.deviceIds[k])).size !== labels.length) fail("device-identity-duplicate");
+  Object.values(attempt.deviceIds).forEach(deviceIdClaims);
   if (attempt.mode === "verified-late-receipt" && attempt.exitCode === 3) fail("recovery-checkpoint-exclusive");
   if (attempt.mode === "initial") {
     if (attempt.attemptIndex !== 1 || attempt.predecessor) fail("initial-attempt-predecessor-invalid");
@@ -354,6 +390,7 @@ function validateAttempt(attempt: BridgeAttempt, validatePublishedResult = true)
     const parsed = decodeScenarioCheckpoint(attempt.checkpointJson);
     if (!parsed.ok) fail("checkpoint-malformed");
     const cp = parsed.value;
+    cp.deviceIdentities.forEach(deviceIdClaims);
     if (cp.runId !== attempt.bvpRunId || cp.scenarioId !== attempt.scenarioId ||
       cp.scenarioDigest !== attempt.scenarioDigest ||
       cp.sourceIdentity !== attempt.sourceCommit ||
@@ -629,6 +666,9 @@ export async function main(): Promise<void> {
   const request = record(JSON.parse(readFileSync(file, "utf8"))) as unknown as BridgeRequest;
   if (request.schemaVersion !== 1 || !request.expectation || !request.paths) fail("request-invalid");
   const simulated = request.executionClass === "nonphysical-simulation";
+  if (!simulated && !Object.values(request.expectation.deviceIds).every(v => PUBLIC_DEVICE_ID.test(v))) {
+    fail("privacy-physical-device-must-be-digest");
+  }
   if (simulated) {
     if (!process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL ||
       process.env.BVP_NONPHYSICAL_SIMULATION !== "YES" ||
