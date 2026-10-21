@@ -1,6 +1,6 @@
 # S09-BR02 reviewer correction — narrow Owner scope decision needed
 
-**Status:** OWNER DECISION REQUIRED; no implementation expansion authorized.
+**Status:** SCOPE A OWNER AUTHORIZED (2026-10-20); constrained implementation and requalification underway. No physical/install/release authorization.
 **Repository / Build Units:** `woodpk/gdrive-sync-obsidian-plugin`, corrective S09-BR01 (one implementation file) and S09-BR02 (tests only).
 **Reviewer:** CORRECTION REQUIRED at report `dev/reviews/s09-br02-20261020-review-brain-09-final.md`, immutable commit `b5250ef86145e389d3cdbc214c38054718d36713`.
 **Handoff count:** 2; BUILDER recipient; preserve count until a genuine authorized transfer.
@@ -37,3 +37,26 @@ Until the Owner makes that decision, **no change to device protocol, PHX-CI/pin,
 ## Next authorized operation
 
 Obtain the explicit Owner choice and, for Option A, exact writable surfaces and trust model. Then implement a bounded S09-BR01 correction after existing tests-first commit, qualify through pinned PHX-CI, finish BR02 simulated-runner acceptance and send a **new** neutral Builder→Reviewer handoff only with substantive PASS and original immutable evidence.
+
+
+## Owner disposition — Scope A authorized (2026-10-20)
+
+**Decision:** Owner explicitly replied `SCOPE A AUTHORIZED`. This resolves the choice between options, **not** permission to modify PHX-CI, shipping software, any user vault, or frozen authority budgets.
+
+**Exact corrective BR01 writable implementation paths (initial maximum six; only as needed):**
+1. `test-platform/test/batteries/phxci-physical-bridge.ts` — bridge, trusted artifact/manifest input and isolation.
+2. `test-platform/src/live-device/validation-entrypoint.ts` — measure actual installed plugin `main.js` and `manifest.json` bytes via the installation's Obsidian adapter before reporting any device result; never accept a provided SHA as proof of those bytes.
+3. `test-platform/src/live-device/device-command-agent.ts` — extend validation build observation with both digests; no production action changes.
+4. `test-platform/src/live-device/drive-mailbox.ts` — preserve the measurement in the authenticated, source-bound device-result protocol; no new transport.
+5. `test-platform/src/live-device/live-scenario-executor.ts` — independently correlate device-reported observed digests against controller expected local-build identity, per command; fail closed before accepting observations.
+6. `test-platform/test/batteries/run-live-battery.ts` — forward frozen expected build identity into the existing executor (no new runner).
+
+**Test-only S09-BR02 writable scope:** `test-platform/test/**`, including tightly scoped compiled simulated-device relay fixtures and existing deterministic battery registration. Documentation/status only under the existing WS07 planning and `dev/state/current-state.yaml`.
+
+**Trust model:** Local `build-validation-artifact.ts` already hashes produced artifact/manifest and writes its `build-identity.json`. Controller computes/checks the actual local bytes and frozen source SHA; installed device computes independent SHA-256 directly from its own installed on-disk plugin `main.js`/`manifest.json` using Obsidian adapter, associates measured identity with each command result in authenticated Drive mailbox or local test-only relay, and controller requires both observed bytes' hashes equal approved expected identity before accepting. A plain caller-provided or synthetic hash is never promoted to actual installed proof. Hash measurement attests installed *on-disk bytes* and authenticated response identity, not inherently in-memory runtime image or adversarially compromised device.
+
+**Confinement:** `C:\temp\<GUID>\` per attempt, verified no symlink traversal, same owned root for relay/result/checkpoint. A nonphysical test entrypoint must have its own strict simulation identity distinct from Owner physical approval, and must never access live mailboxes/devices.
+
+**Hard constraints:** Do not modify frozen lock `dev/authority/governance/locks/testing-platform-boundary.yaml`, architecture guard, PHX framework, pin or product source. If the 750-LOC device budget cannot accommodate the minimal type addition without a prohibited increase, stop for explicit budget decision rather than relaxing the guard. Architecture's six-non-test-file splitting threshold is met at most; break corrections into bounded work increments.
+
+**Evidence:** Existing 8 Reviewer RED tests committed first. Actual RED verification must run only through PHX-CI; after correction require exact new immutable source PHX PASS plus genuine actual BVP runner nonphysical checkpoint → published BLOCKED → resumed eligible PASS. Preserve previous synthetic transport as a subordinate proof.
