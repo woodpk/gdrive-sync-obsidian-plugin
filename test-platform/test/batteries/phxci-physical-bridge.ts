@@ -8,8 +8,8 @@
  */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, join, resolve, win32 } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
 
@@ -64,6 +64,16 @@ function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0):
     if (depth > 16) fail("privacy-shape-depth");
     if (shape === "root" && key === "battery") allowedShape(item, "battery", depth + 1);
     else if (shape === "root" && key === "result") allowedShape(item, "result", depth + 1);
+    else if (shape === "root" && key === "installationObservation") {
+      const obs=record(item);
+      for(const field of Object.keys(obs)) if(!["sourceCommit","artifactSha256","manifestSha256","devices"].includes(field))fail("privacy-installation-field-unapproved");
+      const devices=record(obs.devices);
+      for(const d of Object.values(devices)){const pair=record(d);
+        if(Object.keys(pair).some(k=>!["artifactSha256","manifestSha256"].includes(k))||
+          !HEX64.test(String(pair.artifactSha256??""))||!HEX64.test(String(pair.manifestSha256??"")))
+          fail("privacy-installed-device-identity-invalid");
+      }
+    }
     else if (shape === "result" && key === "evidence") allowedShape(item, "evidence", depth + 1);
     else if (shape === "evidence" && key === "machine") allowedShape(item, "machine", depth + 1);
     else if (shape === "machine" && key === "liveIdentity") allowedShape(item, "liveIdentity", depth + 1);
@@ -147,6 +157,7 @@ export interface LiveRunnerPaths {
   readonly checkpointFile: string;
   readonly resultFile: string;
   readonly previousResultFile?: string;
+  readonly buildIdentityFile?: string;
 }
 
 function fail(reason: string): never {
@@ -258,6 +269,23 @@ function parseResult(attempt: BridgeAttempt): void {
   // An exception-only result may lack live evidence; only ordinary 0/3
   // results are accepted as resumable/certifiable physical execution.
   if (attempt.exitCode !== 1) {
+    const registered = getLiveBattery(attempt.battery);
+    if (registered && attempt.scenarioId === registered.createScenario().id) {
+      const observed = record(parsed.installationObservation);
+      if (observed.sourceCommit !== attempt.sourceCommit ||
+          observed.artifactSha256 !== attempt.artifactSha256 ||
+          typeof observed.manifestSha256 !== "string" || !HEX64.test(observed.manifestSha256)) {
+        fail("installed-artifact-manifest-proof-unverified");
+      }
+      const pairs = record(observed.devices);
+      for (const deviceId of Object.values(attempt.deviceIds)) {
+        const pair = record(pairs[deviceId]);
+        if (pair.artifactSha256 !== attempt.artifactSha256 ||
+            pair.manifestSha256 !== observed.manifestSha256) {
+          fail("installed-device-measurement-mismatch");
+        }
+      }
+    }
     const evidence = record(result.evidence), machine = record(evidence.machine);
     const verdict = record(machine.verdict);
     if (verdict.status !== result.status) fail("result-machine-verdict-mismatch");
@@ -497,6 +525,7 @@ export function buildLiveRunnerArguments(
   ];
   if (resumeEvidence.length) args.push("--resume-evidence-json", JSON.stringify([...new Set(resumeEvidence)].sort()));
   if (recoverLateCompletion) args.push("--recover-timed-out-result-file", paths.previousResultFile!);
+  if (paths.buildIdentityFile) args.push("--validation-build-identity-file", paths.buildIdentityFile);
   return args;
 }
 
@@ -535,7 +564,8 @@ interface BridgeRequest {
   readonly schemaVersion: 1;
   readonly expectation: BridgeExpectation;
   readonly paths: LiveRunnerPaths;
-  readonly ownerPhysicalApproval: { readonly approved: true; readonly scope: string };
+  readonly ownerPhysicalApproval?: { readonly approved: true; readonly scope: string };
+  readonly executionClass?: "owner-approved-physical" | "nonphysical-simulation";
   readonly prior?: PublishedAttemptRef;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly previousExpectation?: BridgeExpectation;
@@ -574,9 +604,20 @@ export async function main(): Promise<void> {
   const root = resolve(process.cwd());
   const request = record(JSON.parse(readFileSync(file, "utf8"))) as unknown as BridgeRequest;
   if (request.schemaVersion !== 1 || !request.expectation || !request.paths) fail("request-invalid");
-  if (request.ownerPhysicalApproval?.approved !== true ||
+  const simulated = request.executionClass === "nonphysical-simulation";
+  if (simulated) {
+    if (!process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL ||
+      process.env.BVP_NONPHYSICAL_SIMULATION !== "YES" ||
+      request.expectation.battery !== "s09-br02-simulated-checkpoint" ||
+      !Object.values(request.expectation.deviceIds).every(v=>v.startsWith("device:simulated-"))) {
+      fail("nonphysical-simulation-scope-invalid");
+    }
+  } else if (request.executionClass !== "owner-approved-physical" ||
+    request.ownerPhysicalApproval?.approved !== true ||
     request.ownerPhysicalApproval.scope !== "S09-EXACT-OWNER-APPROVED" ||
-    process.env.BVP_OWNER_PHYSICAL_APPROVAL !== "YES") fail("owner-physical-authorization-required");
+    process.env.BVP_OWNER_PHYSICAL_APPROVAL !== "YES") {
+    fail("owner-physical-authorization-required");
+  }
   const phxRun = currentRunId(root);
   if (phxRun !== request.expectation.phxRunId) fail("phx-run-id-mismatch");
   enforceScratch(request.paths);
@@ -585,6 +626,34 @@ export async function main(): Promise<void> {
   const currentHead = head.stdout.trim();
   if (request.expectation.mode === "initial" && currentHead !== request.expectation.sourceCommit) {
     fail("source-identity-mismatch");
+  }
+  const actualBattery = getLiveBattery(request.expectation.battery);
+  if (!actualBattery || actualBattery.createScenario().id !== request.expectation.scenarioId ||
+      scenarioDefinitionDigest(actualBattery.createScenario()) !== request.expectation.scenarioDigest ||
+      JSON.stringify([...actualBattery.requiredDeviceLabels].sort()) !==
+      JSON.stringify(Object.keys(request.expectation.deviceIds).sort())) {
+    fail("registered-executable-scenario-mismatch");
+  }
+  if (!request.paths.buildIdentityFile || !existsSync(request.paths.buildIdentityFile)) {
+    fail("installed-build-identity-file-required");
+  }
+  // Controller derives its own expected bytes from the frozen installed-build
+  // candidate; never take a digest from the owner request as its sole proof.
+  const build = record(JSON.parse(readFileSync(request.paths.buildIdentityFile, "utf8")));
+  if (build.schemaVersion !== 1 || build.sourceCommit !== request.expectation.sourceCommit ||
+      build.artifactSha256 !== request.expectation.artifactSha256 ||
+      typeof build.manifestSha256 !== "string" || !HEX64.test(build.manifestSha256)) {
+    fail("installed-build-identity-mismatch");
+  }
+  const artifactFile = join(dirname(request.paths.buildIdentityFile), "main.js");
+  const manifestFile = join(dirname(request.paths.buildIdentityFile), "manifest.json");
+  if (!existsSync(artifactFile) || !existsSync(manifestFile)) {
+    fail("installed-artifact-files-missing");
+  }
+  const hashFile = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex");
+  if (hashFile(artifactFile) !== build.artifactSha256 ||
+      hashFile(manifestFile) !== build.manifestSha256) {
+    fail("installed-artifact-manifest-bytes-mismatch");
   }
   if (request.expectation.mode !== "initial" && !request.prior) fail("resume-published-reference-required");
   let recovered: BridgeAttempt | undefined;
