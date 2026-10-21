@@ -88,13 +88,16 @@ function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0):
     } else if (shape === "root" && key === "recovery") {
       allowedShape(item, "observationValue", depth + 1);
     } else if (typeof item === "string") {
-      if (item.length > 256 || SENSITIVE_VALUE.test(item)) fail("privacy-untrusted-string");
+      if (item.length > (key === "machineJson" ? MAX_RESULT_BYTES : 256) || SENSITIVE_VALUE.test(item)) fail("privacy-untrusted-string");
       if (["stepId","kind","operation","captureAs","classification","status","device","scenarioId","sourceCommit","runId"].includes(key) &&
           !SAFE_CODE.test(item)) fail("privacy-unapproved-code");
-      if (["reason","human","description","path","fromPath","toPath","machineJson"].includes(key)) {
-        // Free text and raw path strings are not an admissible PHX evidence surface.
-        fail("privacy-free-text-unapproved");
+      if (["reason","human","description","machineJson"].includes(key)) {
+        // These are permitted ONLY after an exact source-derived comparison in
+        // parseResult below; generic free-text is not accepted.
+        if (key === "reason" && !/^(?:[a-z0-9-]{1,96}|reason-sha256:[a-f0-9]{24})$/.test(item)) fail("privacy-free-text-unapproved");
       }
+      if (["path","fromPath","toPath"].includes(key) &&
+          (item.includes("..") || !/^[a-zA-Z0-9._/-]{1,128}$/.test(item))) fail("privacy-fixture-path-unapproved");
     } else if (Array.isArray(item)) {
       if (item.length > 16 || !item.every(x => typeof x === "string" && SAFE_CODE.test(x))) fail("privacy-array-unapproved");
     } else if (item !== null && typeof item === "object") {
@@ -202,8 +205,50 @@ function parseResult(attempt: BridgeAttempt): void {
   try { parsed = record(JSON.parse(attempt.resultJson)); }
   catch { fail("result-invalid-json"); }
   inspectSensitive(parsed);
+  // Canonical BVP evidence has derived JSON and a derived human summary:
+  // neither is an arbitrary user text carrier.
+  const resultShape = record(parsed.result);
+  const evidenceShape = resultShape.evidence ? record(resultShape.evidence) : undefined;
+  if (evidenceShape && typeof evidenceShape.machineJson === "string" &&
+      evidenceShape.machineJson !== JSON.stringify(evidenceShape.machine)) {
+    fail("privacy-machine-json-untrusted");
+  }
+  if (evidenceShape && typeof evidenceShape.human === "string") {
+    const m = record(evidenceShape.machine);
+    const trace = Array.isArray(m.traceability) ? m.traceability : [];
+    const assertions = Array.isArray(m.assertions) ? m.assertions : [];
+    const observations = Array.isArray(m.observations) ? m.observations : [];
+    const passed = assertions.filter(a => record(a).status === "completed" &&
+      record(a).matchedExpectation === true).length;
+    const expectedHuman = `Scenario ${m.scenarioId} [${m.executionMode}] verdict=${record(m.verdict).status}; assertions=${passed}/${assertions.length}; observations=${observations.length}; traceability=${trace.map(t => record(t).id).join(",")}`;
+    if (evidenceShape.human !== expectedHuman) fail("privacy-human-summary-untrusted");
+  }
   allowedShape(parsed, "root");
   const battery = record(parsed.battery);
+  const registered = getLiveBattery(attempt.battery);
+  if (registered && attempt.scenarioId === registered.createScenario().id) {
+    if (battery.description !== undefined && battery.description !== registered.description) {
+      fail("privacy-battery-description-untrusted");
+    }
+    if (parsed.checkpoint !== undefined &&
+        !Object.values(registered.checkpoints ?? {}).some(v =>
+          JSON.stringify(v) === JSON.stringify(parsed.checkpoint))) {
+      fail("privacy-checkpoint-instruction-untrusted");
+    }
+    const modelFixtures = registered.createScenario().steps.filter(v => v.kind === "fixture")
+      .flatMap(v => ["path", "fromPath", "toPath"].filter(k => k in v)
+        .map(k => String((v as unknown as Record<string, unknown>)[k])));
+    const actualFixtures = Array.isArray(evidenceShape && record(evidenceShape.machine).fixtures)
+      ? (record(evidenceShape!.machine).fixtures as unknown[]) : [];
+    for (const fi of actualFixtures) {
+      const f = record(fi);
+      for (const k of ["path","fromPath","toPath"]) {
+        if (f[k] !== undefined && !modelFixtures.includes(String(f[k]))) {
+          fail("privacy-unregistered-fixture-path");
+        }
+      }
+    }
+  }
   const result = record(parsed.result);
   if (battery.name !== attempt.battery || result.scenarioId !== attempt.scenarioId) fail("result-identity-mismatch");
   const status = attempt.exitCode === 0 ? "completed" : attempt.exitCode === 3 ? "blocked" : undefined;
