@@ -36,13 +36,10 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
   const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
   let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
   async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable"};activeRunId=runId;
-    const normalizedRoot=options.root.replace(/\\/g,"/");
-    if(!/\/plugins\/[A-Za-z0-9._-]+\/\.bvp-relay$/.test(normalizedRoot))throw new Error("validation-installed-plugin-root-invalid");
-    const installedRoot=normalizedRoot.slice(0,-"/.bvp-relay".length);
-    // Measure the installed files using Obsidian's vault adapter, not a caller-
-    // provided SHA or the build workstation's local artifact identity.
-    const artifactSha256=await sha256(await options.adapter.readBinary(installedRoot+"/main.js"));
-    const manifestSha256=await sha256(await options.adapter.readBinary(installedRoot+"/manifest.json"));
+    // Installed file bytes, not caller-supplied claims or controller build output.
+    const installedRoot=options.root.replace(/\\/g,"/").replace(/\/\.bvp-relay$/,"");
+    if(!/\/plugins\/[A-Za-z0-9._-]+$/.test(installedRoot))throw new Error("validation-installed-plugin-root-invalid");
+    const artifactSha256=await sha256(await options.adapter.readBinary(installedRoot+"/main.js")),manifestSha256=await sha256(await options.adapter.readBinary(installedRoot+"/manifest.json"));
     const measuredBuild:ValidationBuildIdentity={...options.validationBuild,artifactSha256,manifestSha256};
     const agent=createBoundedDeviceCommandAgent({runId,deviceId:options.deviceId,fixtureRoot:"BVP-VALIDATION/"+runId,fixtures:new VaultFixturePort(options.adapter),sequenceState:new LocalStorageSequenceStore(stateKey(options.root,runId,options.deviceId),globalThis.localStorage),production:options.production?.(),validationBuild:measuredBuild});return pollDeviceMailboxOnce(mailbox,agent,runId,options.deviceId);}
   function pollDeviceOnce(){if(polling)return polling;polling=pollCore().finally(()=>{polling=undefined;});return polling;}

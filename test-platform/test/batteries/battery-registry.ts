@@ -44,20 +44,6 @@ const br02SimulatedScenario = defineScenario({
 });
 
 const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.freeze({
-  "s09-br02-simulated-checkpoint": {
-    name: "s09-br02-simulated-checkpoint",
-    description: "Nonphysical test-only BVP runner checkpoint/resume fixture; no real device or Drive access.",
-    requiredDeviceLabels: ["windows"],
-    checkpoints: {
-      "br02-synthetic-checkpoint": {
-        device: "windows", action: "Synthetic PHX-CI checkpoint, not a human physical instruction.",
-        stopCondition: "The first runner invocation published BLOCKED original evidence.",
-        requiredEvidence: ["human-confirmation"],
-        nextSafeAction: "Resume the same simulated runner and verify no precheckpoint replay.",
-      },
-    },
-    createScenario: () => br02SimulatedScenario,
-  },
   "windows-live-smoke": {
     name: "windows-live-smoke",
     description: "Observe the live Windows product state and verify one bounded local fixture round-trip.",
@@ -189,10 +175,28 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
   },
 });
 
+const TEST_ONLY_SIMULATED_BATTERY: LiveBatteryDefinition = Object.freeze({
+    name: "s09-br02-simulated-checkpoint",
+    description: "Nonphysical test-only BVP runner checkpoint/resume fixture; no real device or Drive access.",
+    requiredDeviceLabels: ["windows"],
+    checkpoints: {
+      "br02-synthetic-checkpoint": {
+        device: "windows", action: "Synthetic PHX-CI checkpoint, not a human physical instruction.",
+        stopCondition: "The first runner invocation published BLOCKED original evidence.",
+        requiredEvidence: ["human-confirmation"],
+        nextSafeAction: "Resume the same simulated runner and verify no precheckpoint replay.",
+      },
+    },
+    createScenario: () => br02SimulatedScenario,
+  });
+
 export function listLiveBatteryNames(): readonly string[] {
   return Object.keys(LIVE_BATTERIES).sort();
 }
 
 export function getLiveBattery(name: string): LiveBatteryDefinition | undefined {
+  if (name === "s09-br02-simulated-checkpoint" &&
+      process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL &&
+      process.env.BVP_NONPHYSICAL_SIMULATION === "YES") return TEST_ONLY_SIMULATED_BATTERY;
   return LIVE_BATTERIES[name];
 }

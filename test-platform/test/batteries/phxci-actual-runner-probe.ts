@@ -150,6 +150,9 @@ async function main():Promise<void> {
     !/^[a-f0-9-]{36}$/i.test(prior.id)||prior.id===phxRun))fault("prior-identity-invalid");
   const source=prior?.source??head;
   const installed=proof(root,source),paths=storePaths(root);
+  // The test-only registry is inaccessible absent BOTH PHX-CI and this
+  // explicit simulation scope; it is never enumerated as a physical battery.
+  process.env.BVP_NONPHYSICAL_SIMULATION="YES";
   const definition=getLiveBattery(NAME);
   if(!definition)fault("registered-simulation-missing");
   const expected:BridgeExpectation={
