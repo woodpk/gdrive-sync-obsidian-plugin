@@ -1,6 +1,6 @@
 # S09-BR02 reviewer correction — narrow Owner scope decision needed
 
-**Status:** SCOPE A OWNER AUTHORIZED (2026-10-20); constrained implementation and requalification underway. No physical/install/release authorization.
+**Status (2026-10-21):** Scope A corrective BR01/BR02 software **CLOSED**, independently accepted **PASS WITH BOUNDED FINDINGS** only for nonphysical, single-Windows-controller integration. All physical/install/release/master/Stage 3 gates remain reserved.
 **Repository / Build Units:** `woodpk/gdrive-sync-obsidian-plugin`, corrective S09-BR01 (one implementation file) and S09-BR02 (tests only).
 **Reviewer:** CORRECTION REQUIRED at report `dev/reviews/s09-br02-20261020-review-brain-09-final.md`, immutable commit `b5250ef86145e389d3cdbc214c38054718d36713`.
 **Handoff count:** 2; BUILDER recipient; preserve count until a genuine authorized transfer.
@@ -70,3 +70,15 @@ Independent report: \`dev/reviews/s09-br02-20261021-review-brain-09-final-reasse
 - R2-02: real physical bridge device identities must be one-way \`device:sha256:<64hex>\` pseudonyms. Existing named simulated fixtures may pass only in genuine PHX test contexts. Checkpoint, root device map, machine result identities and installation device-map keys are checked before publication; high-risk allowed observation identifier fields and uncontrolled observation arrays are now rejected, with bounded enumerated observation values and source-derived scenario step/observation/traceability identities. Canonical raw evidence that fails privacy checks MUST be blocked, never auto-redacted and misrepresented as losslessly resumable.
 - Eleven additional requirements-derived adversarial tests are authored under BR02 and registered in the deterministic battery. They cover competing and duplicate attempts, device contention, independent child-process overlap, abandoned authority, predecessor reuse, digest identity acceptance and plausible private values under previously allowed keys. Those tests were committed before BR01 implementation correction. Existing prior accepted PHX-CI synthetic and actual-runner publications are IMMUTABLE and retained, not reused as proof of this new source.
 - The previously completed R3 and nonphysical two-invocation PHX evidence are historical. **New corrected code is not yet qualified**. The next action is a fresh pinned PHX-CI development run covering all normal product and BVP gates; if it passes, an additional new-source two-invocation nonphysical actual-runner publication gate is required before a new neutral Reviewer handoff. No PHX-CI, framework pin, frozen guard, physical device, live Drive/vault, master merge, installation, release or Stage 3 change is authorized.
+
+## Final disposition — 2026-10-21
+
+Owner Scope A's six implementation-file allowance and test-only BR02 fixture allowance governed the completed corrective work; the historical decisions, original test-first commits and failed intermediate qualification results above remain part of the immutable audit trail.
+
+Independent R3 final report: `dev/reviews/s09-br02-20261021-review-brain-09-r3-final.md`, publication `9f66cecb88a1066c7f2452d5f00ea149bfeee850`, verdict **PASS WITH BOUNDED FINDINGS — ACCEPTED FOR SOFTWARE-ONLY, SINGLE-CONTROLLER NONPHYSICAL CLOSEOUT**. Frozen source review `dev/reviews/s09-br02-20261021-review-brain-09-r3-source.md`, commit `b7648ab77eb7f8f85ee0b1f9bbc9e31c7d396f1a`.
+
+Accepted source `51d75e63eac1f3a37ef998cf599f039dce7feb2f`, tree `3c362f4ef9cae621415deedf892f83bace20a574`. Final actual-runner two-invocation PHX-CI proof: checkpoint `6658c44e-058a-4696-aa1d-bcc3b372d3b8`, published at `51d75e63eac1f3a37ef998cf599f039dce7feb2f`; continuation `4323c021-1c8f-4c35-a3e3-79148d5f39c2` PASS, published at `f88896b7d89b165c5c5ccd31c3a3f394c8c468d7`. Previously HIGH R2-01 and R2-02 are **CLOSED FOR THIS EXACT SCOPE ONLY**.
+
+Bounded review findings retained: M-01 a local Windows lease is not distributed cross-controller authority; M-02 future physical BVP observations may fail transport privacy validation and must fail closed without lossy sanitization; M-03 reviewer source-only Pass 1 occurred in a continuing session, not a zero-history one.
+
+Last genuine Reviewer→Builder transfer: handoff-count **6**, immutable state `c27e9c3660f2eb507b704958119dd85087cc6560`. This closeout is Builder-internal administrative documentation and does not consume another count or introduce a new Build Unit. No PHX-CI re-verification is requested for unchanged implementation. Physical testing/installation/activation, live Google Drive/vault, multi-controller coordination, release, master integration and Stage 3 remain pending separate Owner decisions.

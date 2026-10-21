@@ -1,6 +1,6 @@
 # WS-07 / S09 — BVP Physical Battery: Fixed-PHX-CI Consumer Bridge
 
-**Status:** OWNER-DIRECTED SOFTWARE DESIGN; PLANNED / NOT EXECUTED; physical execution BLOCKED.
+**Status (2026-10-21):** S09-BR01/BR02 software-only, single-Windows-controller, nonphysical scope CLOSED — **independent PASS WITH BOUNDED FINDINGS** on immutable source `51d75e63eac1f3a37ef998cf599f039dce7feb2f`; physical execution remains BLOCKED.
 **Date:** 2026-10-20
 **Workstream:** WS-07-brain-verification-platform, prerequisite of prospective S09A–S09V; does not reactivate them.
 **Repository and implementation owner:** woodpk/gdrive-sync-obsidian-plugin (BRAIN Builder).
@@ -12,7 +12,7 @@
 
 The Owner expressly prohibits ANY modification to PHX-CI in this effort. PHX-CI may be called only through its existing approved, pinned, immutable runtime. Do not alter or fork PHX-CI source, scripts, taskfiles, schema, runtime manifest or hashes, package/version, or BRAIN's `phx-ci.json` framework SHA. Do not install or select a newer runtime. If the existing interface is insufficient, this work returns BLOCKED with concrete evidence; it does NOT request an implicit PHX-CI extension. No other system can publish an authoritative verification result.
 
-The Owner delegated BRAIN-side detailed design, planning and software implementation under existing Build Unit, PHX-CI and Reviewer gates. This document specifies a BRAIN-only implementation to qualify through existing PHX-CI, but is not PHX-CI PASS, independent Reviewer acceptance, release/install authorization or permission to execute a live battery.
+The Owner delegated BRAIN-side implementation under the existing Build Unit, PHX-CI and Reviewer gates. **Disposition:** the subsequently Owner-authorized Scope A implementation has completed pinned PHX-CI software qualification and independent review only for one controlled Windows controller and disposable nonphysical simulation; the present document and acceptance do not authorize release, installation, activation, personal Google Drive/vault operation, master integration, or a physical battery.
 
 ## 2. In-scope result
 
@@ -98,4 +98,20 @@ PHX-CI *read-only external reference*: pinned `schemas/run-request-v1.schema.jso
 
 ## 11. Acceptance and handoff boundary
 
-This design is ready for BRAIN planning review but **NOT YET IMPLEMENTED, RUN, REVIEWED OR PHYSICALLY AUTHORIZED**. Full software acceptance requires all nonphysical tests through real pinned PHX-CI and original immutable evidence, frozen architecture budgets, and independent two-agent final Reviewer acceptance. Handoff-count increments only on a genuine published Builder/Reviewer transfer; drafting this plan does not consume a handoff. Separate release/installed validation artifact and Owner-approved S09 physical gates still apply.
+This requirement is now **SATISFIED ONLY for the Owner Scope A single-controller nonphysical software boundary**, under independent Reviewer verdict `PASS WITH BOUNDED FINDINGS` (2026-10-21). The separately Owner-approved BR01 corrective source scope is recorded in `s09-br02-review-correction-owner-scope-decision-20261020.md`; it superseded the original one-file restriction solely for the named six implementation files. The physical S09, installation, distributed controller, release, master integration and Stage 3 gates remain **NOT AUTHORIZED**. Handoff-count tracks genuine role transfers only; administrative closeout does not increment it.
+
+## 12. Final administrative closeout — 2026-10-21
+
+**Disposition:** `S09-BR01` corrective implementation and `S09-BR02` testing/integration are **SOFTWARE-ONLY CLOSED** for one controlled Windows controller, no physical devices and disposable simulated fixtures. No third Build Unit was created. This is an accepted bounded software result, not physical verification.
+
+**Immutable accepted implementation/evidence identity:** source `51d75e63eac1f3a37ef998cf599f039dce7feb2f`; verified Git tree `3c362f4ef9cae621415deedf892f83bace20a574`. Pinned PHX-CI runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, unchanged. The R4 direct verification on source `b15e1321c36868bc8cce16ce9eb97da22d7ac12d` was PHX-CI run `538f331b-9436-4c25-9e97-1cd286ce1de3` with 11/11 stages PASS, 448/448 focused BVP tests PASS and original evidence commit `26bbf0a3e4756fc702e9c6ce12a5bd4cc9b8cd92`.
+
+**Original substantive integration proof:**
+- Checkpoint: PHX run `6658c44e-058a-4696-aa1d-bcc3b372d3b8`, source `a3b83ecaf97f2ce5f97550ae4f795706161aaa4c`, intended BLOCKED exit 3, original immutable evidence commit `51d75e63eac1f3a37ef998cf599f039dce7feb2f`, report `dev/test-results/20261021T152831Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-a3b83ecaf97f.json`.
+- Continuation: distinct PHX run `4323c021-1c8f-4c35-a3e3-79148d5f39c2`, source `51d75e63eac1f3a37ef998cf599f039dce7feb2f`, PASS 11/11 and 448/448 focused BVP and 1292/1292 repository tests (overlapping suites), original immutable evidence commit `f88896b7d89b165c5c5ccd31c3a3f394c8c468d7`, report `dev/test-results/20261021T160011Z-operator-planning-ws07-s09-bvp-physical-phxci-consumer-20261020-51d75e63eac1.json`. Original checkpoint predecessor reference, scenario digest, device map, build digests and stable logical run were independently compared; disposable effects occurred once before and once after resume without replay. Source lineage between the two proof runs is evidence-only.
+
+**Independent acceptance:** reviewer `review-brain-09`, frozen first-pass report `dev/reviews/s09-br02-20261021-review-brain-09-r3-source.md` published at `b7648ab77eb7f8f85ee0b1f9bbc9e31c7d396f1a`, final acceptance report `dev/reviews/s09-br02-20261021-review-brain-09-r3-final.md` published at `9f66cecb88a1066c7f2452d5f00ea149bfeee850`; exact verdict **PASS WITH BOUNDED FINDINGS — ACCEPTED FOR OWNER-GOVERNED SOFTWARE-ONLY, SINGLE-CONTROLLER NONPHYSICAL BRIDGE CLOSEOUT**. This closes previously HIGH R2-01 (exclusive attempt authority) and R2-02 (publication/privacy of permitted evidence) **only inside this acceptance scope**. The Reviewer returned control to BUILDER with handoff-count **6**, state commit `c27e9c3660f2eb507b704958119dd85087cc6560`.
+
+**Preserved bounded findings:** M-01 no distributed multi-controller authority; M-02 no guarantee that future physical evidence is privacy-transportable (reject disallowed values rather than redacting/truncating canonical evidence); M-03 first-pass source-only freeze without claim of zero-history fresh-session blindness. DEC-345, prior DEC-340-01 context risk and all separate Owner approval boundaries remain in effect.
+
+**Reserved downstream decisions:** Physical S09A–V on Windows/iOS, cross-host controller coordination, any personal vault/Google Drive operation, installed-device validation and activation, exact artifact/hash promotion, release approval, master integration and Stage 3 require their own applicable Owner authorization. This closeout does **not** select a next Build Unit, increment the handoff counter, modify PHX-CI or its pin, or authorize any action in those areas.
