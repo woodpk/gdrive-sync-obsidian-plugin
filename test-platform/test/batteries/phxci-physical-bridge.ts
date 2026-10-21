@@ -746,7 +746,8 @@ export function claimBridgeAttemptAuthority(
     }
     if (attempt.attemptIndex > 1 &&
         (!attempt.predecessor ||
-         !existsSync(join(logical,"index-"+attempt.predecessor.attemptIndex)))) {
+         !existsSync(join(logical,"index-"+attempt.predecessor.attemptIndex)) ||
+         !existsSync(join(logical,"phx-"+attempt.predecessor.phxRunId)))) {
       fail("authority-previous-attempt-not-recorded");
     }
     journalStarted=true;
