@@ -13,7 +13,7 @@ import { s09ePluginDisableReenableScenario } from "../../scenarios/live/s09e-plu
 import { s09eUninstallReinstallScenario } from "../../scenarios/live/s09e-uninstall-reinstall";
 import { windowsLiveSmokeScenario } from "../../scenarios/live/windows-live-smoke";
 import type { HumanCheckpointInstruction } from "../../src/live-device/live-scenario-executor";
-import type { ScenarioDefinition } from "../../src/scenario/scenario-contract";
+import { defineScenario, type ScenarioDefinition } from "../../src/scenario/scenario-contract";
 
 export interface LiveBatteryDefinition {
   readonly name: string;
@@ -24,6 +24,24 @@ export interface LiveBatteryDefinition {
 }
 
 const dual = ["windows", "ios"] as const;
+// Reserved TEST-ONLY fixture: all commands execute exclusively in a disposable
+// filesystem simulator; this name is prohibited for owner physical approvals.
+const br02SimulatedScenario = defineScenario({
+  id: "br02-actual-runner-simulated-checkpoint",
+  description: "Nonphysical controller/runner checkpoint and exactly-once fixture continuation",
+  traceability: { targets: [{ kind: "requirement", id: "BVP-EVID-005" }] },
+  executionModes: ["live"],
+  steps: [
+    { id: "precheckpoint-effect", kind: "fixture", operation: "put-local-file",
+      device: "windows", path: "br02-sim-before.txt",
+      content: { encoding: "utf8", value: "SIMULATED-BR02-BEFORE" } },
+    { id: "human-synthetic-checkpoint", kind: "checkpoint", operation: "capture",
+      checkpointId: "br02-synthetic-checkpoint" },
+    { id: "postcheckpoint-effect", kind: "fixture", operation: "put-local-file",
+      device: "windows", path: "br02-sim-after.txt",
+      content: { encoding: "utf8", value: "SIMULATED-BR02-AFTER" } },
+  ],
+});
 
 const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.freeze({
   "windows-live-smoke": {
@@ -157,10 +175,28 @@ const LIVE_BATTERIES: Readonly<Record<string, LiveBatteryDefinition>> = Object.f
   },
 });
 
+const TEST_ONLY_SIMULATED_BATTERY: LiveBatteryDefinition = Object.freeze({
+    name: "s09-br02-simulated-checkpoint",
+    description: "Nonphysical test-only BVP runner checkpoint/resume fixture; no real device or Drive access.",
+    requiredDeviceLabels: ["windows"],
+    checkpoints: {
+      "br02-synthetic-checkpoint": {
+        device: "windows", action: "Synthetic PHX-CI checkpoint, not a human physical instruction.",
+        stopCondition: "The first runner invocation published BLOCKED original evidence.",
+        requiredEvidence: ["human-confirmation"] as const,
+        nextSafeAction: "Resume the same simulated runner and verify no precheckpoint replay.",
+      },
+    },
+    createScenario: () => br02SimulatedScenario,
+  });
+
 export function listLiveBatteryNames(): readonly string[] {
   return Object.keys(LIVE_BATTERIES).sort();
 }
 
 export function getLiveBattery(name: string): LiveBatteryDefinition | undefined {
+  if (name === "s09-br02-simulated-checkpoint" &&
+      process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL &&
+      process.env.BVP_NONPHYSICAL_SIMULATION === "YES") return TEST_ONLY_SIMULATED_BATTERY;
   return LIVE_BATTERIES[name];
 }

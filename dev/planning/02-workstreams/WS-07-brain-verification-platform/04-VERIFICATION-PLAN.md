@@ -141,3 +141,34 @@ The current S09A canary battery remains blocked: the unexpected second `upload-c
 ## DEC-339 detailed verification design — pending independent review
 
 The test-case matrix, failure classifiers, exact source/evidence requirements and comparable-workload benchmark design are at `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`, §11. It is prospective: no DEC-339 tests, performance gains or PHX-CI verification are claimed yet. PHX-CI is sole executable verification authority and preserves current BVP platform boundary lock. The 223-request S09A canary with 35 unscoped planning requests is diagnostic background, not a speedup control or permission to repeat physical operations.
+
+## Fixed-PHX-CI S09 consumer bridge verification plan (prospective, software-only)
+
+**No PHX-CI changes. No physical execution.** These are requirements-to-test obligations for the Owner-directed BRAIN consumer bridge; pass/fail evidence must originate in actual pinned PHX-CI runs. A normal successful bridge invocation must preserve `npm run test:bvp-root` and the full product typecheck/test/build/repository/artifact/guard gates. A physical checkpoint can only yield PHX overall BLOCKED, never PASS.
+
+| Mandatory test family | Minimum material tests and oracles |
+| --- | --- |
+| 1. Nominal | Simulated BVP completes -> exit 0, full PHX-CI may PASS; original record contains correct identity and results. |
+| 2. Negative/boundary | Wrong/empty/duplicated/oversized marker, malformed JSON/base64, incomplete checkpoint, unsupported version, secret-containing result, missing Git path/commit -> BLOCKED. |
+| 3. Legal/forbidden transitions | Initial -> published checkpoint -> authorized resume; resume without published prior PHX record, after completion, or in disallowed mode -> BLOCKED. |
+| 4. Idempotency/retry/cancellation/recovery | Exact previous evidence may be re-read without effects; duplicate attempt/repeated physical command, uncertain prior action, canceled/missing publication -> no dispatch and BLOCKED. |
+| 5. Concurrency/order/races | Two consumers racing on same BVP/device/relay identity, advancing branch between evidence preflight/publication, delayed receipts -> no conflicting execution or forged PASS. |
+| 6. Persistence/restart/data integrity | Two real PHX invocations with distinct PHX IDs, same BVP ID, canonical first-run BLOCKED evidence reconstructed byte-for-byte from immutable history; original evidence never modified. |
+| 7. Identity/authorization/security/trust | Wrong source/device/validation artifact hash, changed executable paths despite evidence-only commit, wrong PHX run ID, unknown operator authority, path traversal/symlink, stdout secret leakage -> reject. |
+| 8. Contracts/integration/backward compatibility | Pinned run-request schema unchanged; stages retained; `test:bvp-root` and product tests retained; `dev/scripts` sentinel unchanged; full PHX JSON/stage/exit and path readback verified. |
+| 9. Architecture/ownership/invariants | No PHX repository/config edits, no BVP runner replacement, no additional PowerShell scenario verifier or product seam, no new evidence schema authority, unchanged BVP budgets/guard. |
+| 10. End-to-end/fail-closed/destructive safety | End-to-end simulated initial checkpoint/PHX BLOCKED/publish/new PHX invocation/valid completion; blocked publication, timeout late result, incomplete receipt or action-budget breach never cause physical effect or PASS. |
+
+Add focused adversarial mutation/fault-injection tests of frame parsing, proof checking, source comparison, checkpoint digest validation, relay lease and BVP result correlation. Document every N/A decision against a specific behavior; do not use blanket exemptions or relax expected outcomes to get green tests.
+
+**Evidence proofs required:** (a) source-pinned first run's actual Git-published PHX result JSON contains the bounded serialized checkpoint and original BVP result in `test-focused.stdout`; (b) second run obtains exact immutable prior commit/path and validates it before executing; (c) first run remains BLOCKED and untouched; (d) second successful run passes all required PHX gates; (e) both full PHX evidence commits are verifiable; (f) impossible/unsupported scenarios remain BLOCKED. PHX publisher's configured history layout is derived from the pinned runtime, not invented. Simulated proof does not establish real Windows/iOS acceptance or permission for S09 physical canaries.
+
+### Two-unit authorship and qualification attribution (2026-10-20)
+
+- **S09-BR01 — test-first implementation:** author requirements-derived executable test file(s) under `test-platform/test/**` and commit them before creating the single proposed BRAIN-side adapter file, `test-platform/test/batteries/phxci-physical-bridge.ts`; existing PHX-CI regression gates apply even before new tests are added. The adapter must not write another verifier, change the PHX-CI runtime, or replace the deterministic focused suite.
+- **S09-BR02 — test hardening:** additional/adversarial test files and test-oracle integrity review beneath `test-platform/test/**`, with coverage of all ten test families above. The final combined software candidate must pass original pinned PHX-CI verification and simulated checkpoint→published BLOCKED→fresh verification→resume/eligible PASS without activating physical devices.
+- **Independent final Reviewer acceptance** follows BR02 qualification; it is not a Build Unit. Defects requiring adapter edits return to BR01 as bounded corrections, followed by renewed verification. There is no S09-BR03/BR04.
+
+**Scope status:** PLANNED / NONEXECUTABLE; physical S09A–S09V stays separately gated.
+
+**Initial TDD RED state:** The first committed BR01 tests intentionally reference an absent adapter and must not be mistaken for a qualified software candidate. If an expected-RED baseline is executed, only use PHX-CI and preserve its actual BLOCKED original evidence. No standalone `tsc`, `node --test`, Task, or script is acceptance. This is an internal Builder iteration; no cross-role handoff or new Build Unit is created.

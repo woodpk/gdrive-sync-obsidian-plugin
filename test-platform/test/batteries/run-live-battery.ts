@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
@@ -107,6 +107,13 @@ async function main(): Promise<void> {
   const runId = requiredArg("--run-id");
   const relayRoot = requiredArg("--relay-root");
   const sourceCommit = requiredArg("--validation-source-commit");
+  const identityPath = optionalArg("--validation-build-identity-file");
+  const expectedBuild = identityPath ? JSON.parse(await readFile(identityPath, "utf8")) as Record<string,unknown> : undefined;
+  if (expectedBuild && (expectedBuild.sourceCommit!==sourceCommit ||
+      typeof expectedBuild.artifactSha256!=="string" || !/^[a-f0-9]{64}$/i.test(expectedBuild.artifactSha256) ||
+      typeof expectedBuild.manifestSha256!=="string" || !/^[a-f0-9]{64}$/i.test(expectedBuild.manifestSha256))) {
+    throw new Error("runner-installed-build-identity-invalid");
+  }
   const recoveryFile = optionalArg("--recover-timed-out-result-file");
   if (recoveryFile && resumeEvidenceArg().length !== 0) {
     throw new Error("late-completion recovery and human checkpoint resume are mutually exclusive");
@@ -123,6 +130,10 @@ async function main(): Promise<void> {
     checkpoints: battery.checkpoints,
     resumeEvidence: resumeEvidenceArg(),
     expectedValidationSourceCommit: sourceCommit,
+    ...(expectedBuild ? {
+      expectedValidationArtifactSha256: expectedBuild.artifactSha256 as string,
+      expectedValidationManifestSha256: expectedBuild.manifestSha256 as string,
+    } : {}),
     resultTimeoutMs: positiveIntegerArg("--result-timeout-ms", 60_000),
     productionResultTimeoutMs: positiveIntegerArg("--production-result-timeout-ms", 600_000),
     pollIntervalMs: positiveIntegerArg("--poll-interval-ms", 250),
@@ -141,6 +152,11 @@ async function main(): Promise<void> {
       originalVerdict: "blocked", originalClassification: "device-result-unavailable",
       originalResultFile: recoveryFile, completedStepIndex: recovery.completedStepIndex } } : {}),
     result,
+    ...(expectedBuild ? { installationObservation: {
+      sourceCommit, artifactSha256: expectedBuild.artifactSha256,
+      manifestSha256: expectedBuild.manifestSha256,
+      devices: executor.observedInstalledBuilds?.() ?? {},
+    } } : {}),
   };
 
   await persistResult(resultFile, envelope);

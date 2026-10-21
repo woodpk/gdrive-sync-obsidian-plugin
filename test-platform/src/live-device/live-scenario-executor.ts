@@ -17,10 +17,10 @@ export interface LiveScenarioExecutorOptions {
   readonly relayRoot: string; readonly checkpointFile: string;
   readonly checkpoints?: Readonly<Record<string, HumanCheckpointInstruction>>;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
-  readonly expectedValidationSourceCommit: string;
+  readonly expectedValidationSourceCommit: string; readonly expectedValidationArtifactSha256?: string; readonly expectedValidationManifestSha256?: string;
   readonly resultTimeoutMs?: number; readonly productionResultTimeoutMs?: number; readonly pollIntervalMs?: number;
 }
-export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; }
+export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; observedInstalledBuilds?(): Readonly<Record<string,{artifactSha256:string;manifestSha256:string}>>; }
 
 type RelayResult = DeviceCommandResult | null | undefined;
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
@@ -34,27 +34,14 @@ async function releaseAuthorityLocks(locks:readonly {path:string;handle:Awaited<
 async function withAuthorityLock<T>(path:string,action:()=>Promise<T>):Promise<T>{const locks=await acquireAuthorityLocks([path]);try{return await action();}finally{await releaseAuthorityLocks(locks);}}
 const checkpointKey=(step:ScenarioCheckpointStep):string=>step.operation==="capture"?step.checkpointId:step.checkpointRef??step.id;
 const stepDevice=(step:ScenarioStep):string|undefined=>"device" in step&&typeof step.device==="string"?step.device:undefined;
-const commandCount=(step:ScenarioStep):number=>
-  step.kind==="fixture"&&((step.operation==="put-local-file"&&step.content.encoding==="utf8")||step.operation==="put-local-pattern"||step.operation==="remove-local")?1:
-  step.kind==="production"&&(step.operation==="synchronize"||step.operation==="reconcile")?2:
-  step.kind==="production"&&step.operation!=="automatic-sync"?1:
-  step.kind==="external-state"&&step.transition==="request-cancellation"&&!step.boundary?1:
-  step.kind==="observe"&&(step.subject==="local-entry"||step.subject==="device-state")?1:0;
+const commandCount=(step:ScenarioStep):number=>step.kind==="fixture"&&((step.operation==="put-local-file"&&step.content.encoding==="utf8")||step.operation==="put-local-pattern"||step.operation==="remove-local")?1:step.kind==="production"&&(step.operation==="synchronize"||step.operation==="reconcile")?2:step.kind==="production"&&step.operation!=="automatic-sync"?1:step.kind==="external-state"&&step.transition==="request-cancellation"&&!step.boundary?1:step.kind==="observe"&&(step.subject==="local-entry"||step.subject==="device-state")?1:0;
 
-export function liveSequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=0):number{
-  let value=sub+1;
-  for(let i=0;i<index;i++)if(stepDevice(scenario.steps[i]!)===device)value+=commandCount(scenario.steps[i]!);
-  return value;
+export function liveSequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=0):number{let value=sub+1;for(let i=0;i<index;i++)if(stepDevice(scenario.steps[i]!)===device)value+=commandCount(scenario.steps[i]!);return value;}
+export function liveCommandId(runId:string,scenarioId:string,index:number,sub:number):string{return "bvp-"+createHash("sha256").update(`${runId}\0${scenarioId}\0${index}\0${sub}`).digest("hex").slice(0,32);}
+function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string,artifact?:string,manifest?:string):boolean{
+  return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&(artifact===undefined||result.validationBuild.artifactSha256===artifact)&&(manifest===undefined||result.validationBuild.manifestSha256===manifest)&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
 }
-export function liveCommandId(runId:string,scenarioId:string,index:number,sub:number):string{
-  return "bvp-"+createHash("sha256").update(`${runId}\0${scenarioId}\0${index}\0${sub}`).digest("hex").slice(0,32);
-}
-function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string):boolean{
-  return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
-}
-function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
-  return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;
-}
+function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;}
 function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
   if(result.status!=="completed")return fail(result.status==="rejected"?"blocked":"failed",result.classification);
   if(result.kind!=="production-execute")return{status:"completed",value:result};
@@ -63,12 +50,7 @@ function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
   if(terminal==="blocked"||terminal==="deferred"||terminal==="recovery-required")return fail("blocked",result.classification);
   return fail("failed",result.classification||"production-terminal-not-complete");
 }
-function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string|undefined{
-  const prior=new Set<string>();
-  for(let i=0;i<index;i++){const step=scenario.steps[i]!;if("captureAs" in step&&typeof step.captureAs==="string")prior.add(step.captureAs);}
-  for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;if("inputRef" in step&&typeof step.inputRef==="string"&&prior.has(step.inputRef))return step.inputRef;if("observationRef" in step&&typeof step.observationRef==="string"&&prior.has(step.observationRef))return step.observationRef;}
-  return undefined;
-}
+function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string|undefined{const prior=new Set<string>();for(let i=0;i<index;i++){const step=scenario.steps[i]!;if("captureAs" in step&&typeof step.captureAs==="string")prior.add(step.captureAs);}for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;if("inputRef" in step&&typeof step.inputRef==="string"&&prior.has(step.inputRef))return step.inputRef;if("observationRef" in step&&typeof step.observationRef==="string"&&prior.has(step.observationRef))return step.observationRef;}return undefined;}
 
 export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOptions):Promise<LiveScenarioExecutor>{
   const labels=Object.keys(options.deviceIds),deviceIdentities=labels.map(label=>options.deviceIds[label]!).sort();
@@ -80,6 +62,9 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   await mkdir(out,{recursive:true});await mkdir(join(options.relayRoot,"controller-authority"),{recursive:true});
   const leasedDevices=[...new Set(options.scenario.steps.map(stepDevice).filter((label):label is string=>Boolean(label)).map(label=>options.deviceIds[label]).filter((value):value is string=>Boolean(value)))].sort(),authorityFiles=new Map<string,string>(),activated=new Set<string>(),authorityEntries=leasedDevices.map(deviceId=>{const path=authorityPath(options.relayRoot,deviceId);authorityFiles.set(deviceId,path);return{deviceId,path};}),authorityLocks=await acquireAuthorityLocks(authorityEntries.map(value=>value.path));
   try{for(const {deviceId,path} of authorityEntries){let current:ControllerAuthority|undefined;if(await exists(path)){try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(!current)throw new Error("live-controller-authority-invalid");}if(current?.runId&&current.runId!==options.runId)throw new Error("live-controller-device-run-conflict");if(current?.runId===options.runId)continue;const next:ControllerAuthority={schemaVersion:1,generation:(current?.generation??0)+1,runId:options.runId,deviceId};await writeFile(path,JSON.stringify(next),"utf8");activated.add(deviceId);}}catch(error){for(const deviceId of activated){const path=authorityFiles.get(deviceId)!,current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);if(current?.runId===options.runId)await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}throw error;}finally{await releaseAuthorityLocks(authorityLocks);}
+  const installedByDevice:Record<string,{artifactSha256:string;manifestSha256:string}>={};
+  const a=options.expectedValidationArtifactSha256,m=options.expectedValidationManifestSha256;
+  if((a===undefined)!==(m===undefined)||(a!==undefined&&(!/^[a-f0-9]{64}$/i.test(a)||!/^[a-f0-9]{64}$/i.test(m!))))throw new Error("live-expected-installed-build-invalid");
   let pending:HumanCheckpointInstruction|undefined,resume:ScenarioCheckpoint|undefined,resumeFailure:string|undefined;
   const history:ScenarioStepExecution[]=[];
   if(await exists(options.checkpointFile)){
@@ -98,7 +83,10 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     while(Date.now()<=deadline){
       if(await exists(resultPath)){
         let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{await rm(resultPath,{force:true});return null;}
-        await rm(resultPath,{force:true});return correlated(command,result,options.expectedValidationSourceCommit.toLowerCase())?result:null;
+        await rm(resultPath,{force:true});
+        if(!correlated(command,result,options.expectedValidationSourceCommit.toLowerCase(),a,m))return null;
+        if(a&&m)installedByDevice[command.deviceId]={artifactSha256:a,manifestSha256:m};
+        return result;
       }
       await sleep(poll);
     }
@@ -136,6 +124,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
 
   return{
     executionMode:"live",deviceIdentities,runIdentity:options.runId,buildIdentity:options.expectedValidationSourceCommit.toLowerCase(),pendingCheckpoint:()=>pending,
+    observedInstalledBuilds:()=>({...installedByDevice}),
     async dispose(){if(pending||await pendingRelayCommand())return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}});},
     async execute(step,context){
       let result:ScenarioCapabilityResult;

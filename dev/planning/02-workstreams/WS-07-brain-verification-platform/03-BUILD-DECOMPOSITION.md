@@ -480,3 +480,16 @@ Each primary BVP stage also ends with a separate integrated PHX-CI acceptance ta
 ## Prospective DEC-339 verification unit — design only, not executable
 
 Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After D339-01 freezes contracts, plan **D339-07** PHX-CI-owned deterministic/fault, negative safety, equivalence and comparable-workload scenarios, integrated with WS-02/03/05 units; **D339-08** is the later integrated PHX-CI + independent review/controlled rollout gate. Do not reactivate S09A–V preplanned prompts, rerun the completed S09A canary, bypass the frozen BVP architecture guard, or add scenario-specific PowerShell verification. Existing physical S09A Windows/iOS acceptance remains open.
+
+## S09 fixed-PHX-CI consumer bridge — two software-only Build Units (Owner direction 2026-10-20)
+
+This prerequisite **does not replace or activate** S09A–S09V. It preserves accepted S09 G1 closeout and existing S08 engine. PHX-CI is a pinned **read-only external tool**: no changes to PHX-CI or to BRAIN `phx-ci.json` / `Taskfile.phx-ci.yml`. Use only PHX-CI's existing focused stage and canonical publication. If its fixed interface cannot support required privacy/continuity/evidence, BLOCKED is mandatory.
+
+| Build Unit | Exact code-writing boundary | Required work and exit gate |
+| --- | --- | --- |
+| **S09-BR01 — Test-first adapter implementation** | First new requirement-derived tests under `test-platform/test/**` in a separate test-first commit; then exactly one implementation file: `test-platform/test/batteries/phxci-physical-bridge.ts` | Freeze expected interface by authored tests before implementation; preserve expected-RED evidence (only via PHX-CI if run). Then implement bounded evidence stdout transport, original BVP result/checkpoint handling, identity and committed PHX evidence lookup, authorized initial/resume/late-receipt dispatch through existing BVP runner. Preserve deterministic BVP focused coverage. Require PHX-CI PASS for the completed unit, without physical devices. |
+| **S09-BR02 — Test hardening and integration qualification** | Additional/revised test files only beneath `test-platform/test/**` | Extend BR01's preserved test-first suite with adversarial ten-family negative/integrity/security/replay/timeout/compatibility coverage; simulated two-invocation PHX-CI proof (original checkpoint BLOCKED, later eligible PASS), full PHX-CI regression and final independent Reviewer acceptance. |
+
+**There is no S09-BR03 or S09-BR04.** PHX-CI verification is required per Build Unit and independent Reviewer acceptance is the final gate, not another Build Unit. If BR02 finds an implementation defect, return a scoped correction to BR01 and rerun qualification; do not allow BR02 to edit production-independent implementation files or invent another work unit. A one-file implementation limitation must be surfaced for Owner decision rather than silently changing additional files.
+
+The detailed durable work-unit contract is `tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md`. Both units remain **PLANNED / NOT-YET-DISPATCHED** until exact predecessor SHAs and writable-path allowlists are rebound. No physical invocation, release, installed-device modification, S09A rerun or Stage 3 authorization follows from either software unit.

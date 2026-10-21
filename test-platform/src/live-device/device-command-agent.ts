@@ -41,7 +41,7 @@ export interface DeviceFixturePort {
   observe(path: string): Promise<FixtureObservation>;
 }
 
-export interface ValidationBuildIdentity { readonly schemaVersion: 1; readonly sourceCommit: string; }
+export interface ValidationBuildIdentity { readonly schemaVersion: 1; readonly sourceCommit: string; readonly artifactSha256?: string; readonly manifestSha256?: string; }
 
 export interface DeviceCommandResult {
   readonly validationBuild: ValidationBuildIdentity;
@@ -181,8 +181,10 @@ function verifiedFixture(observation: FixtureObservation, shouldExist: boolean):
 }
 
 export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptions): BoundedDeviceCommandAgent {
+  const hashPair = options.validationBuild.artifactSha256===undefined && options.validationBuild.manifestSha256===undefined ||
+    !!(options.validationBuild.artifactSha256 && options.validationBuild.manifestSha256 && /^[a-f0-9]{64}$/i.test(options.validationBuild.artifactSha256) && /^[a-f0-9]{64}$/i.test(options.validationBuild.manifestSha256));
   if (!boundedString(options.runId, 128) || !boundedString(options.deviceId, 128) || !safeFixtureRoot(options.fixtureRoot) ||
-      options.validationBuild.schemaVersion !== 1 || !/^[0-9a-f]{40}$/i.test(options.validationBuild.sourceCommit)) {
+      options.validationBuild.schemaVersion !== 1 || !/^[0-9a-f]{40}$/i.test(options.validationBuild.sourceCommit) || !hashPair) {
     throw new Error("device command agent identity/fixture scope/build identity is invalid");
   }
   const maxInlineTextChars = options.maxInlineTextChars ?? 65_536;
