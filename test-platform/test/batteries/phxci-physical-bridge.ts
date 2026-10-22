@@ -945,6 +945,7 @@ export async function main(): Promise<void> {
       hashFile(manifestFile) !== build.manifestSha256) {
     fail("installed-artifact-manifest-bytes-mismatch");
   }
+  let privatePhysicalDeviceId: string | undefined;
   // No shipping plugin changes: verify the *actual* installed validation files
   // and settled pairing prior to using the Obsidian relay. Never print data.json.
   if (!simulated) {
@@ -968,7 +969,8 @@ export async function main(): Promise<void> {
     let settings: Record<string, unknown>;
     try { settings = record(record(JSON.parse(readFileSync(installedData, "utf8"))).settings); }
     catch { fail("installed-windows-plugin-data-invalid"); }
-    if (settings!.deviceIdentity !== request.expectation.deviceIds.windows ||
+    if (typeof settings!.deviceIdentity !== "string" ||
+        publicPhysicalDeviceId(settings!.deviceIdentity) !== request.expectation.deviceIds.windows ||
         !settings!.vaultIdentity || !settings!.remoteRootId ||
         settings!.firstSyncCompleted !== true ||
         settings!.startupResumeEnabled !== false ||
@@ -976,6 +978,7 @@ export async function main(): Promise<void> {
         settings!.periodicEnabled !== false) {
       fail("installed-windows-device-identity-or-pairing-mismatch");
     }
+    privatePhysicalDeviceId = settings!.deviceIdentity as string;
     for (const dir of ["outbox", "sent"]) {
       const queue = win32.join(request.paths.relayRoot, dir);
       if (existsSync(queue) && readdirSync(queue).length !== 0) {
@@ -1031,7 +1034,8 @@ export async function main(): Promise<void> {
     }),
   };
   const args = buildLiveRunnerArguments(staged, request.paths,
-    request.resumeEvidence ?? [], request.expectation.mode === "verified-late-receipt");
+    request.resumeEvidence ?? [], request.expectation.mode === "verified-late-receipt",
+    privatePhysicalDeviceId ? {windows: privatePhysicalDeviceId} : undefined);
   const runner = join(root, ".test-build", "bvp", "test-platform", "test", "batteries", "run-live-battery.js");
   if (!existsSync(runner)) fail("compiled-bvp-runner-missing");
   // Claim durable logical-run + per-device authority BEFORE any effects.
@@ -1044,7 +1048,10 @@ export async function main(): Promise<void> {
   if (child.error || child.status === null) fail("physical-result-uncertain");
   if (![0, 1, 3].includes(child.status)) fail("physical-runner-exit-unsupported");
   if (!existsSync(request.paths.resultFile)) fail("physical-result-file-missing");
-  const resultJson = readFileSync(request.paths.resultFile, "utf8");
+  const rawResultJson = readFileSync(request.paths.resultFile, "utf8");
+  const resultJson = privatePhysicalDeviceId ?
+    projectPhysicalResultForEvidence(rawResultJson, privatePhysicalDeviceId,
+      request.expectation.deviceIds.windows!) : rawResultJson;
   const checkpointJson = child.status === 3 && existsSync(request.paths.checkpointFile) ?
     readFileSync(request.paths.checkpointFile, "utf8") : undefined;
   const attempt: BridgeAttempt = {
