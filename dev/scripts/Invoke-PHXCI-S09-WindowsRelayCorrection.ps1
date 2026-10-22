@@ -7,7 +7,8 @@ param(
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^[0-9a-f]{40}$')]
   [string]$ExpectedSourceSha,
-  [switch]$RunWindowsPhysicalSmoke
+  [switch]$RunWindowsPhysicalSmoke,
+  [switch]$UseRecoveredSoftwareEvidence
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -52,15 +53,59 @@ $priorConsent = [Environment]::GetEnvironmentVariable('BVP_OWNER_PHYSICAL_APPROV
 $priorExisting = [Environment]::GetEnvironmentVariable('BVP_EXISTING_MAILBOX_ROOT_CONFIRMED', 'Process')
 $priorScratch = [Environment]::GetEnvironmentVariable('BVP_WINDOWS_SMOKE_SCRATCH', 'Process')
 $qualifiedCommand = 'npm run test:bvp-root'
-$physicalCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-second-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
+$physicalCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-second-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
 try {
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
   $env:BVP_CHANGE_CLASS = 'ordinary'
-  # First, the complete ordinary PHX-CI software qualification must PASS.
-  & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $qualifiedCommand -TempRoot $runRoot
-  $code = $LASTEXITCODE
+  if ($UseRecoveredSoftwareEvidence) {
+    if (-not $RunWindowsPhysicalSmoke) { throw 'Recovery evidence may be reused only for physical continuation.' }
+    # Recovery verifies immutable PHX-CI observations; its original aggregate verdict stays BLOCKED.
+    $qualifiedSource = 'fface1c3233312eb2356c9cebca7c2957e55918f'
+    $evidenceCommit = 'd78c4698895bbc762cabebd74edf8c448af4c242'
+    & git.exe -C $repository merge-base --is-ancestor $evidenceCommit HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Published PHX-CI evidence not ancestral; physical run not dispatched.' }
+    $sinceQualification = @(& git.exe -C $repository diff --name-only $qualifiedSource HEAD)
+    if ($LASTEXITCODE -ne 0 -or
+        @($sinceQualification | Where-Object { $_ -notmatch '^(dev/_ca-output\.(md|json)|dev/test-results/|dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection\.ps1$)' }).Count -ne 0) {
+      throw 'Implementation or tests changed since original software checks; evidence reuse denied.'
+    }
+    $evidenceLines = @(& git.exe -C $repository show ($evidenceCommit + ':dev/_ca-output.json'))
+    if ($LASTEXITCODE -ne 0 -or $evidenceLines.Count -eq 0) {
+      throw 'Original PHX-CI JSON is unreadable; physical run not dispatched.'
+    }
+    $evidence = ($evidenceLines -join [Environment]::NewLine) | ConvertFrom-Json -Depth 100
+    if ($evidence.runId -cne 'e231a5b5-7a14-42e2-b8ae-766f062fac0c' -or
+        $evidence.status -cne 'BLOCKED' -or
+        $evidence.repository.verifiedHead -cne $qualifiedSource -or
+        $evidence.verification.changeSet.status -cne 'PASS' -or
+        $evidence.verification.repository.status -cne 'PASS' -or
+        $evidence.verification.overall.classification -cne 'REPOSITORY-GATE FAILURE') {
+      throw 'Original PHX-CI identity or substantive verdict is not the expected one.'
+    }
+    foreach ($stageName in @('typecheck','test-focused','test','build','artifacts')) {
+      $found = @($evidence.stages | Where-Object { $_.name -ceq $stageName -and $_.result -ceq 'PASS' -and $_.exitCode -eq 0 })
+      if ($found.Count -ne 1) { throw ('Original software stage cannot be reused: ' + $stageName) }
+    }
+    $gate = @($evidence.stages | Where-Object { $_.name -ceq 'repository-check' -and $_.result -ceq 'FAIL' -and $_.exitCode -eq 1 })
+    if ($gate.Count -ne 1 -or
+        $gate[0].stdout -notmatch 'SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement' -or
+        $gate[0].stdout -notmatch 'BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0') {
+      throw 'Original gate failure is not the known launcher artifact-mode error.'
+    }
+    $focused = @($evidence.stages | Where-Object { $_.name -ceq 'test-focused' })[0]
+    $full = @($evidence.stages | Where-Object { $_.name -ceq 'test' })[0]
+    if ($focused.stdout -notmatch '(?m)^# pass 464\r?$' -or
+        $full.stdout -notmatch '(?m)^# pass 1292\r?$') {
+      throw 'Original software PASS tallies are unverified.'
+    }
+    Write-Output 'SOFTWARE_EVIDENCE_RECOVERED=464_FOCUSED_PASS_1292_REPOSITORY_PASS_BUILD_PASS_PREVIOUS_PHX_BLOCKED'
+    $code = 0
+  } else {
+    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $qualifiedCommand -TempRoot $runRoot
+    $code = $LASTEXITCODE
+  }
   if ($RunWindowsPhysicalSmoke -and $code -eq 0) {
-    # The original PASS has now been published as an evidence-only descendant.
+    # The original software checks passed; recovered PHX aggregate remains BLOCKED.
     # Fast-forward ONLY this disposable control clone, never an owner's checkout.
     & git.exe -C $repository fetch origin --prune
     if ($LASTEXITCODE -ne 0) { throw 'Unable to refresh published software-qualification evidence.' }
