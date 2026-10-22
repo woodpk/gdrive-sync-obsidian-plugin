@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $branch = 'fix/s09-windows-controller-plugin-relay-20261022'
 $framework = '69c4aa077d4a1a46d1e85e59f39d36285be99e83'
-$repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEnd('\', '/')
 $runRoot = Split-Path -Parent $repository
 $phxFrontDoor = Join-Path $env:LOCALAPPDATA ('PHX-CI\runtimes\' + $framework + '\scripts\Invoke-PhxCi.ps1')
 if ($runRoot -cnotmatch '^C:\\temp\\[a-f0-9]{32}$') {
