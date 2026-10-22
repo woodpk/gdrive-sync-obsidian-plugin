@@ -182,7 +182,7 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
     ),
     true,
   );
-  strictEqual(value.current.bvpPowerShellScriptCount, 3); // three actual scripts, below the frozen maximum of four
+  strictEqual(value.current.bvpPowerShellScriptCount, 4); // four PHX-CI/BVP operator scripts; frozen maximum remains four
 });
 
 test("architecture metrics pass a compliant synthetic baseline and list real production imports", () => {
