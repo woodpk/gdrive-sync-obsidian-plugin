@@ -894,6 +894,44 @@ export async function main(): Promise<void> {
       hashFile(manifestFile) !== build.manifestSha256) {
     fail("installed-artifact-manifest-bytes-mismatch");
   }
+  // No shipping plugin changes: verify the *actual* installed validation files
+  // and settled pairing prior to using the Obsidian relay. Never print data.json.
+  if (!simulated) {
+    if (request.expectation.battery !== "windows-live-smoke" ||
+        !request.paths.physicalPluginRelayRoot ||
+        Object.keys(request.expectation.deviceIds).length !== 1 ||
+        typeof request.expectation.deviceIds.windows !== "string") {
+      fail("physical-windows-smoke-only");
+    }
+    const pluginRoot = win32.dirname(request.paths.relayRoot);
+    for (const [name, expected] of [
+      ["main.js", build.artifactSha256],
+      ["manifest.json", build.manifestSha256],
+    ] as const) {
+      const candidate = win32.join(pluginRoot, name);
+      if (!existsSync(candidate) || hashFile(candidate) !== expected) {
+        fail("installed-windows-plugin-bytes-mismatch");
+      }
+    }
+    const installedData = win32.join(pluginRoot, "data.json");
+    let settings: Record<string, unknown>;
+    try { settings = record(record(JSON.parse(readFileSync(installedData, "utf8"))).settings); }
+    catch { fail("installed-windows-plugin-data-invalid"); }
+    if (settings!.deviceIdentity !== request.expectation.deviceIds.windows ||
+        !settings!.vaultIdentity || !settings!.remoteRootId ||
+        settings!.firstSyncCompleted !== true ||
+        settings!.startupResumeEnabled !== false ||
+        settings!.localChangeEnabled !== false ||
+        settings!.periodicEnabled !== false) {
+      fail("installed-windows-device-identity-or-pairing-mismatch");
+    }
+    for (const dir of ["outbox", "sent"]) {
+      const queue = win32.join(request.paths.relayRoot, dir);
+      if (existsSync(queue) && readdirSync(queue).length !== 0) {
+        fail("installed-windows-relay-pending-commands");
+      }
+    }
+  }
   if (request.expectation.mode !== "initial" && !request.prior) fail("resume-published-reference-required");
   let recovered: BridgeAttempt | undefined;
   if (request.prior) {
