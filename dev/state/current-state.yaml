@@ -5,19 +5,26 @@ active_workstream: "WS-05-integrated-sync-product"
 active_build_unit: "R019"
 handoff-count: 1
 handoff-owner-role: BUILDER
-handoff-recipient-role: REVIEWER
+handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/R019"
 handoff-source-sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
-active_build_unit_status: "R019_FINAL_REVIEW_DISPATCHED_NO_RELEASE"
+active_build_unit_status: "R019_OWNER_DIRECTED_ADMINISTRATIVE_RELEASE_REVIEW_CANCELLED"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
   version: "0.1.19"
   branch: "release/0.1.19-candidate-20261022"
-  final_review_status: "PENDING_INDEPENDENT_REVIEW"
-  exact_shipping_artifact_promotion_status: "NOT_APPROVED"
-  github_release_status: "NOT_PUBLISHED"
+  final_review_status: "OWNER_CANCELLED_DUPLICATE_REVIEW_FOR_VERSION_ONLY_OPERATION"
+  exact_shipping_artifact_promotion_status: "OWNER_AUTHORIZED_EXACT_HASH_RELEASE"
+  github_release_status: "OWNER_APPROVED_PENDING_PUBLICATION"
   retained_s09_br02_handoff_count: 6
+  cancelled_reviewer_dispatch_count: 1
+  cancelled_reviewer_dispatch_state_commit: "b7d8128b90b3748e71e3d15c1590383605884f07"
+  cancelled_dispatch_reason: "OWNER_REJECTED_DUPLICATE_REVIEW_FOR_VERSION_ONLY_RELEASE"
+  phxci_run_id: "24ba71a2-c2de-4308-9105-7ebe35dfc3fa"
+  phxci_evidence_commit: "e7b68ed396f512a2b3f8945393fbd91a40e64e7b"
+  production_main_sha256: "6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d"
+  manifest_sha256: "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
