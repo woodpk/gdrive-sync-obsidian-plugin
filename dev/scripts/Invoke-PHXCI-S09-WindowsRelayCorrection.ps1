@@ -53,4 +53,5 @@ try {
 Write-Output ('PHX-CI_EXIT_CODE=' + $code)
 Write-Output ('FROZEN_SOURCE_SHA=' + $ExpectedSourceSha)
 Write-Output ('RUN_ROOT=' + $runRoot)
-if ($code -ne 0) { exit $code }
+$global:LASTEXITCODE = $code
+if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; use its original stage/evidence report and do not dispatch a physical battery.' }
