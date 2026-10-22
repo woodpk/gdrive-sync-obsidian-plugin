@@ -673,6 +673,10 @@ export function buildLiveRunnerArguments(
   ];
   if (resumeEvidence.length) args.push("--resume-evidence-json", JSON.stringify([...new Set(resumeEvidence)].sort()));
   if (recoverLateCompletion) args.push("--recover-timed-out-result-file", paths.previousResultFile!);
+  // Live Drive propagation required >60s in BOTH observed physical attempts.
+  // Only the approved Windows physical smoke gets the longer deadline.
+  // The existing 15min PHX-owned child cap remains unchanged.
+  if (physical) args.push("--result-timeout-ms", "240000");
   if (paths.buildIdentityFile) args.push("--validation-build-identity-file", paths.buildIdentityFile);
   return args;
 }
@@ -907,10 +911,19 @@ export function validateOriginalWindowsTimeoutReconciliation(
  * corresponding installed-build receipt prove that no old effect is pending.
  * This is state reconciliation, NOT a retroactive PHX-CI PASS or test launcher.
  */
-function reconcileOriginalWindowsTimeout(): void {
-  const oldPhx="4edfe226-f3ef-414d-979c-78f0f3f6ea49";
-  const oldEvidenceSha="75ebf0a24142b2c765d9e9c58b32650cfd16b794";
-  const oldVerifiedSha="46528edcf6991dedd1f2bf283e4f2a2db47524a5";
+function reconcileWindowsTimeout(target:"original"|"second"): void {
+  // Retain each immutable, distinct failed PHX attempt. Reconciliation never
+  // retroactively passes either run and never silently dispatches work.
+  const spec=target==="original" ? {
+    phx:"4edfe226-f3ef-414d-979c-78f0f3f6ea49",
+    evidence:"75ebf0a24142b2c765d9e9c58b32650cfd16b794",
+    verified:"46528edcf6991dedd1f2bf283e4f2a2db47524a5",
+  } : {
+    phx:"906d8abb-204a-4715-989b-9a88ee65beac",
+    evidence:"d4d17daaac99d67142d5a8387ae466f973263af3",
+    verified:"e17c2535c08b3a34a6d59960a4dd1267ca7f7803",
+  };
+  const oldPhx=spec.phx,oldEvidenceSha=spec.evidence,oldVerifiedSha=spec.verified;
   const sourceCommit="2bf51ca15aec9c752e3ac7769fcf3ac237df99df";
   const artifactSha256="90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7";
   const manifestSha256="d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965";
@@ -936,7 +949,9 @@ function reconcileOriginalWindowsTimeout(): void {
       changeSet.status!=="FAIL" || changeSet.stage!=="test-focused" ||
       changeSet.exitCode!==1 || repoCheck.status!=="PASS" ||
       originalFocused.length!==1 || record(originalFocused[0]).exitCode!==1 ||
-      !String(record(originalFocused[0]).stderr??"").includes("privacy-physical-installation-mismatch")) {
+      !(target==="original"
+        ? String(record(originalFocused[0]).stderr??"").includes("privacy-physical-installation-mismatch")
+        : String(record(originalFocused[0]).stdout??"").includes("BVP-PHXCI-BRIDGE-V1 "))) {
     fail("reconcile-original-phx-evidence-identity-mismatch");
   }
   const relay="D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay";
@@ -966,6 +981,17 @@ function reconcileOriginalWindowsTimeout(): void {
   }
   if(oldCandidates.length!==1)fail("reconcile-original-request-not-unique");
   const {root:oldScratch,request}=oldCandidates[0]!;
+  // The second run can be released only after the first run was already
+  // reconciled and its exclusive locks are no longer held.
+  if(target==="second"){
+    const firstRun="bvp-win-4edfe226-f3ef-414d-979c-78f0f3f6ea49";
+    const priorLogical=win32.join("C:\\temp",createHash("sha256")
+      .update("bvp-s09-r2-lease-v1:logical:"+firstRun).digest("hex").slice(0,32));
+    if(!existsSync(win32.join(priorLogical,"index-1")) ||
+       existsSync(win32.join(priorLogical,"active"))){
+      fail("reconcile-prior-first-run-unreconciled");
+    }
+  }
   const def=getLiveBattery("windows-live-smoke");
   if(!def)fail("reconcile-smoke-battery-missing");
   const scenario=def.createScenario();
@@ -1053,7 +1079,7 @@ function reconcileOriginalWindowsTimeout(): void {
     rmdirSync(win32.join(device,"active"));
     rmdirSync(win32.join(logical,"active"));
   }finally{closeSync(fd!);rmSync(lock,{force:true});}
-  console.log("BVP_ORIGINAL_TIMEOUT_RECONCILED status=BLOCKED lateReceipt=COMPLETED oldFixture=ABSENT pendingCommands=0 oldLeases=RELEASED");
+  console.log("BVP_WINDOWS_TIMEOUT_RECONCILED attempt="+target+" status=BLOCKED lateReceipt=COMPLETED oldFixture=ABSENT pendingCommands=0 oldLeases=RELEASED");
 }
 
 /** PHX-stage-owned initial Windows smoke request. No raw ID leaves this process.
@@ -1126,7 +1152,11 @@ function prepareApprovedWindowsSmokeRequest(): string {
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
   if (process.argv.includes("--reconcile-original-windows-timeout")) {
-    reconcileOriginalWindowsTimeout();
+    reconcileWindowsTimeout("original");
+    return;
+  }
+  if (process.argv.includes("--reconcile-second-windows-timeout")) {
+    reconcileWindowsTimeout("second");
     return;
   }
   const file = cliArgument("--bridge-request-file") ?? (
