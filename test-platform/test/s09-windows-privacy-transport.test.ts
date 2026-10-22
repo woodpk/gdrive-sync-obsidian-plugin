@@ -116,6 +116,56 @@ test("original live timeout reconciles only the exact first read-only observed r
   throws(()=>validateOriginalWindowsTimeoutReconciliation({...old,result:{...old.result,steps:[...old.result.steps,{stepId:"create-canary",status:"completed"}]}},reply,expected),/reconcile/);
 });
 
+test("Windows live captures are derived privately and omitted from PHX-CI transport without weakening machine evidence",()=>{
+  const obj=JSON.parse(sample());
+  obj.result.captures={
+    product:{status:"idle",deviceIdentity:raw,vaultName:"PRIVATE_VAULT_NAME"},
+    canary:{status:"present",exists:true,sizeBytes:77,hash:"8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895",
+      noteBody:"PRIVATE_NOTE_TEXT"},
+  };
+  obj.result.evidence.machine.observations=[
+    {stepId:"observe-windows-product",captureAs:"product",value:{status:"idle"}},
+    {stepId:"observe-canary",captureAs:"canary",value:{status:"present",exists:true,sizeBytes:77,
+      hash:"8dcbdff420cef7b5075d718b025a3a0ee66c375bff66535741adb31282d53895"}},
+  ];
+  obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
+  const projected=projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed);
+  const actual=JSON.parse(projected);
+  deepStrictEqual(actual.result.captures,{});
+  deepStrictEqual(actual.result.evidence.machine.observations,obj.result.evidence.machine.observations);
+  strictEqual(actual.result.evidence.machineJson,JSON.stringify(actual.result.evidence.machine));
+  strictEqual(projected.includes(raw),false);
+  strictEqual(projected.includes("PRIVATE_VAULT_NAME"),false);
+  strictEqual(projected.includes("PRIVATE_NOTE_TEXT"),false);
+});
+test("Windows capture projection fails closed on unsourced keys, divergent observed values and missing canonical proof",()=>{
+  const obj=JSON.parse(sample());
+  obj.result.captures={product:{status:"idle",privateData:"not publishable"}};
+  obj.result.evidence.machine.observations=[
+    {stepId:"observe-windows-product",captureAs:"product",value:{status:"idle"}},
+  ];
+  obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
+  const tamper=(edit:(x:any)=>void):void=>{
+    const candidate=JSON.parse(JSON.stringify(obj));
+    edit(candidate);
+    throws(()=>projectPhysicalResultForEvidence(JSON.stringify(candidate),raw,hashed),/privacy|capture|observation/);
+  };
+  tamper(x=>{x.result.captures.unregistered={secret:"hello"};});
+  tamper(x=>{x.result.captures.product.status="failed";});
+  tamper(x=>{x.result.evidence.machine.observations=[];});
+  tamper(x=>{x.battery.name="unregistered";});
+  tamper(x=>{x.result.scenarioId="not-registered";});
+});
+test("the latest physical attempt uses a PHX-only recovery path, not a second physical dispatch",()=>{
+  const root=resolve(__dirname,"../../../..");
+  const bridge=readFileSync(resolve(root,"test-platform/test/batteries/phxci-physical-bridge.ts"),"utf8");
+  strictEqual(bridge.includes("--recover-privacy-blocked-windows-smoke"),true);
+  strictEqual(bridge.includes('const oldPhx="9103e8af-eb3d-4579-bff9-6230ff0a6bec"'),true);
+  strictEqual(bridge.includes('const evidenceSha="18d12ee3d3cd67dd36824ed78356da4d4e94d75a"'),true);
+  strictEqual(bridge.includes('BVP_S09_ORIGINAL_PHYSICAL_EVIDENCE_RECOVERED status='),true);
+  strictEqual(bridge.includes('rawCaptures=REDACTED'),true);
+});
+
 test("PHX-CI Windows operator resolves origin/master even from single-branch clones",()=>{
   const root=resolve(__dirname,"../../../..");
   const ps=readFileSync(resolve(root,"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
