@@ -138,6 +138,38 @@ test("Windows live captures are derived privately and omitted from PHX-CI transp
   strictEqual(projected.includes("PRIVATE_VAULT_NAME"),false);
   strictEqual(projected.includes("PRIVATE_NOTE_TEXT"),false);
 });
+test("only declared production status kinds pass physical observation privacy screening",()=>{
+  const statusKinds=[
+    "idle-ready", "planning", "syncing", "offline-deferred",
+    "authentication-required", "paused", "attention-required",
+    "conflict-present", "destructive-plan-blocked", "recovery-required", "error",
+  ];
+  for(const kind of statusKinds){
+    const obj=JSON.parse(sample());
+    obj.result.evidence.machine.observations=[
+      {stepId:"observe-windows-product",captureAs:"product",value:{kind}},
+    ];
+    obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
+    const projected=projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed);
+    strictEqual(JSON.parse(projected).result.evidence.machine.observations[0].value.kind,kind);
+  }
+  for(const untrusted of ["idle-ready;private", "PRIVATE_NOTE_TEXT", "unauthorized-status"]){
+    const obj=JSON.parse(sample());
+    obj.result.evidence.machine.observations=[
+      {stepId:"observe-windows-product",captureAs:"product",value:{kind:untrusted}},
+    ];
+    obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
+    throws(()=>projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed),
+      /privacy|unapproved|observation/);
+  }
+  const misuse=JSON.parse(sample());
+  misuse.result.evidence.machine.observations=[
+    {stepId:"observe-windows-product",captureAs:"product",value:{status:"idle-ready"}},
+  ];
+  misuse.result.evidence.machineJson=JSON.stringify(misuse.result.evidence.machine);
+  throws(()=>projectPhysicalResultForEvidence(JSON.stringify(misuse),raw,hashed),
+    /privacy|unapproved|observation/);
+});
 test("Windows capture projection fails closed on unsourced keys, divergent observed values and missing canonical proof",()=>{
   const obj=JSON.parse(sample());
   obj.result.captures={product:{status:"idle",privateData:"not publishable"}};
