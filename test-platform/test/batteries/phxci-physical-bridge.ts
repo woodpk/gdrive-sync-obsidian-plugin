@@ -8,7 +8,7 @@
  */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
@@ -841,7 +841,30 @@ export async function main(): Promise<void> {
   if (head.status !== 0 || !HEX40.test(head.stdout.trim())) fail("source-unavailable");
   const currentHead = head.stdout.trim();
   if (request.expectation.mode === "initial" && currentHead !== request.expectation.sourceCommit) {
-    fail("source-identity-mismatch");
+    // Installed 0.1.19 BVP bytes remain pinned to the original source. Only
+    // this nonshipping controller bridge, its focused tests and state/evidence
+    // may advance; no product, scenario, manifest or PHX-CI config drift.
+    if (simulated || !request.paths.physicalPluginRelayRoot ||
+        request.expectation.battery !== "windows-live-smoke") {
+      fail("source-identity-mismatch");
+    }
+    const anc = spawnSync("git", ["-C", root, "merge-base", "--is-ancestor",
+      request.expectation.sourceCommit, currentHead],
+      { encoding: "utf8", timeout: 15000, windowsHide: true });
+    const diff = spawnSync("git", ["-C", root, "diff", "--name-only",
+      request.expectation.sourceCommit + ".." + currentHead],
+      { encoding: "utf8", timeout: 15000, windowsHide: true });
+    if (anc.error || anc.status !== 0 || diff.error || diff.status !== 0 ||
+        typeof diff.stdout !== "string") fail("source-compatibility-unproven");
+    const allowed = new Set([
+      "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "test-platform/test/s09-windows-direct-relay-route.test.ts",
+    ]);
+    const changed = diff.stdout.trim().split(/\r?\n/).filter(Boolean);
+    if (!changed.length || changed.some(v => !allowed.has(v) &&
+        !/^dev\/(?:planning\/|state\/|reviews\/|test-results\/|_ca-output\.(?:md|json)$)/.test(v))) {
+      fail("installed-source-executable-drift");
+    }
   }
   const actualBattery = getLiveBattery(request.expectation.battery);
   if (!actualBattery || actualBattery.createScenario().id !== request.expectation.scenarioId ||
