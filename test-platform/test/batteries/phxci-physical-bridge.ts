@@ -43,6 +43,45 @@ const PHX_FIXTURE_DEVICE_IDS = new Set([
   "device:synthetic-windows", "device:synthetic-ios", "device:synthetic-br02-only",
   "device:simulated-windows",
 ]);
+/** One-way public identifier for the existing stable, private BRAIN device ID. */
+export function publicPhysicalDeviceId(raw: string): string {
+  if (typeof raw !== "string" || !/^device:[a-f0-9]{32}$/i.test(raw)) {
+    fail("privacy-physical-device-id-invalid");
+  }
+  return "device:sha256:" + createHash("sha256")
+    .update("brain-bvp-physical-device-v1\\0" .replace("\\0", "\u0000") + raw)
+    .digest("hex");
+}
+
+/** Retain command-routing identities privately; evidence accepts only one-way IDs.
+ * Do not perform a global text substitution, which might hide stray private data.
+ */
+export function projectPhysicalResultForEvidence(resultJson: string, raw: string, publicId: string): string {
+  if (publicPhysicalDeviceId(raw) !== publicId) fail("privacy-physical-device-mapping-invalid");
+  if (Buffer.byteLength(resultJson, "utf8") > MAX_RESULT_BYTES) fail("result-oversize");
+  const payload = record(JSON.parse(resultJson));
+  const result = record(payload.result);
+  const evidence = result.evidence === undefined ? undefined : record(result.evidence);
+  if (evidence?.machine !== undefined) {
+    const machine = record(evidence.machine);
+    if (!Array.isArray(machine.deviceIdentities) || machine.deviceIdentities.length !== 1 ||
+        machine.deviceIdentities[0] !== raw) fail("privacy-physical-device-result-mismatch");
+    machine.deviceIdentities = [publicId];
+    evidence.machineJson = JSON.stringify(machine);
+  }
+  if (payload.installationObservation !== undefined) {
+    const install = record(payload.installationObservation);
+    const devices = record(install.devices);
+    if (Object.keys(devices).length !== 1 || devices[raw] === undefined) {
+      fail("privacy-physical-installation-mismatch");
+    }
+    install.devices = { [publicId]: devices[raw] };
+  }
+  const publicJson = JSON.stringify(payload);
+  if (publicJson.includes(raw)) fail("privacy-physical-device-id-leak");
+  return publicJson;
+}
+
 function publicDeviceId(value: unknown): boolean {
   return typeof value === "string" && (PUBLIC_DEVICE_ID.test(value) ||
     (!!process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL &&
