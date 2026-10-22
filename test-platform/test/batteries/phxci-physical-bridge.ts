@@ -49,7 +49,7 @@ export function publicPhysicalDeviceId(raw: string): string {
     fail("privacy-physical-device-id-invalid");
   }
   return "device:sha256:" + createHash("sha256")
-    .update("brain-bvp-physical-device-v1\\0" .replace("\\0", "\u0000") + raw)
+    .update("brain-bvp-physical-device-v1\u0000" + raw)
     .digest("hex");
 }
 
@@ -603,6 +603,7 @@ export function buildLiveRunnerArguments(
   paths: LiveRunnerPaths,
   resumeEvidence: readonly ScenarioResumeEvidence[] = [],
   recoverLateCompletion = false,
+  privatePhysicalDeviceIds?: Readonly<Record<string, string>>,
 ): string[] {
   validateAttempt(attempt, false);
   if (recoverLateCompletion && (attempt.mode !== "verified-late-receipt" || resumeEvidence.length)) {
@@ -618,6 +619,13 @@ export function buildLiveRunnerArguments(
   // One explicit, installed disposable D: relay may be shared directly
   // with Obsidian; all checkpoint/results/identity stay in C:\temp\<GUID>.
   const physical = paths.physicalPluginRelayRoot !== undefined;
+  if (privatePhysicalDeviceIds) {
+    if (!physical || Object.keys(privatePhysicalDeviceIds).length !== 1 ||
+        typeof privatePhysicalDeviceIds.windows !== "string" ||
+        publicPhysicalDeviceId(privatePhysicalDeviceIds.windows) !== attempt.deviceIds.windows) {
+      fail("privacy-physical-device-routing-mismatch");
+    }
+  }
   if (physical && (paths.physicalPluginRelayRoot !== paths.relayRoot ||
       !isApprovedWindowsPluginRelay(paths.relayRoot) ||
       attempt.battery !== "windows-live-smoke" ||
@@ -649,7 +657,7 @@ export function buildLiveRunnerArguments(
   const args = [
     "--battery", attempt.battery,
     "--run-id", attempt.bvpRunId,
-    "--device-map-json", JSON.stringify(attempt.deviceIds),
+    "--device-map-json", JSON.stringify(privatePhysicalDeviceIds ?? attempt.deviceIds),
     "--relay-root", paths.relayRoot,
     "--checkpoint-file", paths.checkpointFile,
     "--result-file", paths.resultFile,
