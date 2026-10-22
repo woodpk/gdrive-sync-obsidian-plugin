@@ -1,5 +1,6 @@
 # PHX-CI-only verifier invocation for the BRAIN Windows direct-relay correction.
 # PHX-CI owns software qualification and the separately owner-approved Windows BVP smoke.
+# Reconciles the precisely identified prior timeout only after authenticated late receipt; never rewrites the prior PHX verdict.
 # Never edits the installed plugin, pairing, product sync, or independent evidence.
 [CmdletBinding()]
 param(
@@ -45,7 +46,7 @@ $priorConsent = [Environment]::GetEnvironmentVariable('BVP_OWNER_PHYSICAL_APPROV
 $priorExisting = [Environment]::GetEnvironmentVariable('BVP_EXISTING_MAILBOX_ROOT_CONFIRMED', 'Process')
 $priorScratch = [Environment]::GetEnvironmentVariable('BVP_WINDOWS_SMOKE_SCRATCH', 'Process')
 $qualifiedCommand = 'npm run test:bvp-root'
-$physicalCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
+$physicalCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-original-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
 try {
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
   $env:BVP_CHANGE_CLASS = 'ordinary'
