@@ -857,9 +857,78 @@ export function claimBridgeAttemptAuthority(
   };
 }
 
+/** PHX-stage-owned initial Windows smoke request. No raw ID leaves this process.
+ * The operator never supplies the identity, build digest, scenario, or PHX run ID.
+ */
+function prepareApprovedWindowsSmokeRequest(): string {
+  const root = resolve(process.cwd());
+  const phxRunId = currentRunId(root);
+  if (process.env.BVP_OWNER_PHYSICAL_APPROVAL !== "YES" ||
+      process.env.BVP_EXISTING_MAILBOX_ROOT_CONFIRMED !== "YES") {
+    fail("physical-approval-or-existing-mailbox-unconfirmed");
+  }
+  const scratch = process.env.BVP_WINDOWS_SMOKE_SCRATCH;
+  if (!scratch || !/^C:\\temp\\[a-f0-9]{32}$/i.test(scratch) ||
+      scratch.includes("..") || scratch.startsWith("\\\\") || existsSync(scratch)) {
+    fail("physical-smoke-scratch-must-be-new");
+  }
+  const relayRoot = "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay";
+  if (!existsSync(relayRoot)) fail("physical-installed-relay-not-ready");
+  const pluginRoot = win32.dirname(relayRoot);
+  const original = win32.join(pluginRoot, "build-identity.json");
+  if (!existsSync(original)) fail("physical-installed-build-identity-missing");
+  const build = record(JSON.parse(readFileSync(original, "utf8")));
+  const installedSource = "2bf51ca15aec9c752e3ac7769fcf3ac237df99df";
+  const installedHash = "90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7";
+  const manifestHash = "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965";
+  if (build.schemaVersion !== 1 || build.sourceCommit !== installedSource ||
+      build.artifactSha256 !== installedHash || build.manifestSha256 !== manifestHash) {
+    fail("physical-installed-build-identity-unexpected");
+  }
+  const installed = win32.join(scratch, "installed");
+  mkdirSync(installed, {recursive:true});
+  for (const name of ["main.js", "manifest.json", "build-identity.json"]) {
+    const src = win32.join(pluginRoot, name);
+    const dest = win32.join(installed, name);
+    if (!existsSync(src)) fail("physical-installed-artifact-file-missing");
+    writeFileSync(dest, readFileSync(src), {flag:"wx"});
+  }
+  const data = record(JSON.parse(readFileSync(win32.join(pluginRoot,"data.json"),"utf8")));
+  const settings = record(data.settings);
+  if (typeof settings.deviceIdentity !== "string") fail("physical-installed-identity-invalid");
+  const pseudonym = publicPhysicalDeviceId(settings.deviceIdentity);
+  const battery = getLiveBattery("windows-live-smoke");
+  if (!battery || JSON.stringify(battery.requiredDeviceLabels)!==JSON.stringify(["windows"])) {
+    fail("physical-registered-smoke-battery-invalid");
+  }
+  const scenario = battery.createScenario();
+  const request: BridgeRequest = {
+    schemaVersion:1, executionClass:"owner-approved-physical",
+    ownerPhysicalApproval:{approved:true,scope:"S09-EXACT-OWNER-APPROVED"},
+    expectation: {
+      bvpRunId:"bvp-win-"+phxRunId,phxRunId,attemptIndex:1,
+      battery:"windows-live-smoke",scenarioId:scenario.id,
+      scenarioDigest:scenarioDefinitionDigest(scenario),
+      sourceCommit:installedSource,artifactSha256:installedHash,
+      deviceIds:{windows:pseudonym},mode:"initial",
+    },
+    paths:{
+      relayRoot,physicalPluginRelayRoot:relayRoot,
+      checkpointFile:win32.join(scratch,"checkpoint.json"),
+      resultFile:win32.join(scratch,"result.json"),
+      buildIdentityFile:win32.join(installed,"build-identity.json"),
+    },
+  };
+  const file = win32.join(scratch, "bridge-request.json");
+  writeFileSync(file,JSON.stringify(request),{encoding:"utf8",flag:"wx"});
+  return file;
+}
+
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
-  const file = cliArgument("--bridge-request-file");
+  const file = cliArgument("--bridge-request-file") ?? (
+    process.argv.includes("--run-approved-windows-smoke") ? prepareApprovedWindowsSmokeRequest() : undefined
+  );
   if (!file) fail("bridge-request-file-required");
   const root = resolve(process.cwd());
   const request = record(JSON.parse(readFileSync(file, "utf8"))) as unknown as BridgeRequest;
