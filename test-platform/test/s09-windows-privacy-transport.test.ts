@@ -1,5 +1,6 @@
 /** One-way privacy boundary for physical Windows command routing; PHX-CI-owned tests only. */
 import { strictEqual, deepStrictEqual, throws } from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -123,4 +124,39 @@ test("PHX-CI Windows operator resolves origin/master even from single-branch clo
   strictEqual(ps.includes("-BaseRef 'origin/master'"),true);
   strictEqual(ps.includes("--reconcile-second-windows-timeout"),true);
   strictEqual(ps.includes("--run-approved-windows-smoke"),true);
+});
+
+test("PHX-CI Windows operator is singular, complete, and source-drift guarded", () => {
+  const root = resolve(__dirname, "../../../..");
+  const ps = readFileSync(resolve(root, "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
+  const count = (pattern: RegExp): number => [...ps.matchAll(pattern)].length;
+  strictEqual(count(/^\s*&\s*\$phxFrontDoor\s+-RepoRoot\b/gm), 2, "one software and one gated physical PHX invocation");
+  strictEqual(count(/^\s*\$qualifiedCommand\s*=/gm), 1, "qualification command assigned once");
+  strictEqual(count(/^\s*\$physicalCommand\s*=/gm), 1, "physical command assigned once");
+  strictEqual(count(/^\s*\$remote\s*=\s*@\(/gm), 1, "remote identity is verified once");
+  strictEqual(count(/^\s*\$base\s*=\s*@\(/gm), 1, "baseline identity is verified once");
+  strictEqual(count(/^\s*\$unexpectedPublishedPaths\s*=/gm), 1, "physical dispatch is guarded against unqualified source drift");
+  strictEqual(count(/^\s*\$confirmation\s*=\s*Read-Host\b/gm), 1, "only one owner authorization prompt");
+  strictEqual(count(/^\s*if \(\$LASTEXITCODE -ne 0 -or \$base\.Count -ne 1 -or \$base\[0\]\.Trim\(\) -notmatch '\^\[a-f0-9\]\{40\}\$'\) \{$/gm), 1,
+    "baseline SHA check must be complete and closed");
+  strictEqual(count(/--reconcile-second-windows-timeout/g), 1, "prior timeout reconciled exactly once");
+  strictEqual(count(/--run-approved-windows-smoke/g), 1, "new bounded smoke dispatched at most once");
+  strictEqual(ps.trimEnd().endsWith("if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.' }"), true,
+    "no orphan tail after the final operator status");
+});
+
+test("PHX-CI Windows operator parses with the real PowerShell 7 AST without executing it", { skip: process.platform !== "win32" }, () => {
+  const root = resolve(__dirname, "../../../..");
+  const script = resolve(root, "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1");
+  const quoted = script.replaceAll("'", "''");
+  const parseOnly = [
+    "$tokens = $null; $parseErrors = $null;",
+    "[void][System.Management.Automation.Language.Parser]::ParseFile('" + quoted + "', [ref]$tokens, [ref]$parseErrors);",
+    "if ($parseErrors.Count -ne 0) { foreach ($issue in $parseErrors) { [Console]::Error.WriteLine($issue.Message) }; exit 2 };",
+  ].join(" ");
+  const parsed = spawnSync("pwsh.exe", ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", parseOnly], {
+    encoding: "utf8", windowsHide: true, timeout: 30000,
+  });
+  strictEqual(parsed.error, undefined, "PowerShell 7 AST parser must be available during Windows PHX-CI verification");
+  strictEqual(parsed.status, 0, "PowerShell syntax errors: " + (parsed.stderr ?? "") + (parsed.stdout ?? ""));
 });
