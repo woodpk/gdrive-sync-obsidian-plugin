@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { publicPhysicalDeviceId, projectPhysicalResultForEvidence,
-  buildLiveRunnerArguments, validateOriginalWindowsTimeoutReconciliation, type BridgeAttempt, type LiveRunnerPaths } from "./batteries/phxci-physical-bridge";
+  buildLiveRunnerArguments, validateOriginalWindowsTimeoutReconciliation, encodeBridgeAttempt, type BridgeAttempt, type LiveRunnerPaths } from "./batteries/phxci-physical-bridge";
 import { getLiveBattery } from "./batteries/battery-registry";
 import { scenarioDefinitionDigest } from "../src/scenario/scenario-checkpoint";
 const raw="device:0123456789abcdef0123456789abcdef";
@@ -152,6 +152,10 @@ test("only declared production status kinds pass physical observation privacy sc
     obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
     const projected=projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed);
     strictEqual(JSON.parse(projected).result.evidence.machine.observations[0].value.kind,kind);
+    // Do not confuse projection with actual PHX-CI transport acceptance:
+    // exercise the final parser/encoder gate that rejected the physical result.
+    const frame=encodeBridgeAttempt({...attempt,exitCode:0,resultJson:projected});
+    strictEqual(frame.startsWith("BVP-PHXCI-BRIDGE-V1 "),true);
   }
   for(const untrusted of ["idle-ready;private", "PRIVATE_NOTE_TEXT", "unauthorized-status"]){
     const obj=JSON.parse(sample());
@@ -159,7 +163,8 @@ test("only declared production status kinds pass physical observation privacy sc
       {stepId:"observe-windows-product",captureAs:"product",value:{kind:untrusted}},
     ];
     obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
-    throws(()=>projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed),
+    const projected=projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed);
+    throws(()=>encodeBridgeAttempt({...attempt,exitCode:0,resultJson:projected}),
       /privacy|unapproved|observation/);
   }
   const misuse=JSON.parse(sample());
@@ -167,7 +172,8 @@ test("only declared production status kinds pass physical observation privacy sc
     {stepId:"observe-windows-product",captureAs:"product",value:{status:"idle-ready"}},
   ];
   misuse.result.evidence.machineJson=JSON.stringify(misuse.result.evidence.machine);
-  throws(()=>projectPhysicalResultForEvidence(JSON.stringify(misuse),raw,hashed),
+  const misprojected=projectPhysicalResultForEvidence(JSON.stringify(misuse),raw,hashed);
+  throws(()=>encodeBridgeAttempt({...attempt,exitCode:0,resultJson:misprojected}),
     /privacy|unapproved|observation/);
 });
 test("Windows capture projection fails closed on unsourced keys, divergent observed values and missing canonical proof",()=>{
