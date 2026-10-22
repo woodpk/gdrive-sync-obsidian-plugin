@@ -682,34 +682,47 @@ function currentRunId(root: string): string {
 }
 function enforceScratch(paths: LiveRunnerPaths): void {
   if (process.platform !== "win32") fail("physical-platform-unsupported");
-  // Structural isolation FIRST, before touching files. Also refuse any
-  // existing symlink/junction/reparse point in the controlled path ancestry.
-  const all = [paths.relayRoot, paths.checkpointFile, paths.resultFile,
+  const physical = paths.physicalPluginRelayRoot !== undefined;
+  if (physical && (paths.physicalPluginRelayRoot !== paths.relayRoot ||
+      !isApprovedWindowsPluginRelay(paths.relayRoot) ||
+      !existsSync(paths.relayRoot))) {
+    fail("installed-plugin-relay-path-invalid");
+  }
+  const scratch = [
+    ...(physical ? [] : [paths.relayRoot]),
+    paths.checkpointFile, paths.resultFile,
     ...(paths.previousResultFile ? [paths.previousResultFile] : []),
-    ...(paths.buildIdentityFile ? [paths.buildIdentityFile] : [])];
-  const normalized = all.map(v => win32.normalize(v));
-  const match = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(normalized[0] ?? "");
+    ...(paths.buildIdentityFile ? [paths.buildIdentityFile] : []),
+  ];
+  const normalized = scratch.map(p => win32.normalize(p));
+  const root = win32.normalize(physical ? paths.checkpointFile : paths.relayRoot);
+  const match = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(root);
   if (!match) fail("relay-owned-run-root-invalid");
-  const ownerRoot = ("C:\\temp\\" + match[1] + "\\").toLowerCase();
-  for (let i=0;i<all.length;i++) {
-    const candidate = all[i]!;
-    if (!win32.isAbsolute(candidate) || candidate.includes("..") ||
-        candidate.startsWith("\\\\") ||
-        !normalized[i]!.toLowerCase().startsWith(ownerRoot)) {
+  const prefix = ("C:\\temp\\" + match[1] + "\\").toLowerCase();
+  for (let i = 0; i < scratch.length; i++) {
+    const value = scratch[i]!;
+    if (!win32.isAbsolute(value) || value.includes("..") || value.startsWith("\\\\") ||
+        !normalized[i]!.toLowerCase().startsWith(prefix)) {
       fail("relay-owned-run-root-outside");
     }
+  }
+  if ((!physical && win32.normalize(paths.relayRoot).toLowerCase() !== prefix + "relay") ||
+      (paths.buildIdentityFile &&
+        !win32.normalize(paths.buildIdentityFile).toLowerCase().startsWith(prefix + "installed\\"))) {
+    fail("relay-scope-path-invalid");
+  }
+  // Reject junctions/symlinks in the physical vault and C: workspace.
+  for (const candidate of [...scratch, ...(physical ? [paths.relayRoot] : [])]) {
     const parts = win32.normalize(candidate).split("\\");
-    for (let n=2;n<parts.length;n++) {
-      const parent = parts.slice(0,n+1).join("\\");
-      if (existsSync(parent) && lstatSync(parent).isSymbolicLink()) fail("relay-junction-or-symlink");
+    for (let n = 2; n < parts.length; n++) {
+      const segment = parts.slice(0, n + 1).join("\\");
+      if (existsSync(segment) && lstatSync(segment).isSymbolicLink()) {
+        fail("relay-junction-or-symlink");
+      }
     }
   }
-  if (normalized[0]!.toLowerCase() !== ownerRoot + "relay") fail("relay-root-not-isolated");
-  if (paths.buildIdentityFile &&
-      !win32.normalize(paths.buildIdentityFile).toLowerCase().startsWith(ownerRoot+"installed\\")) {
-    fail("identity-file-outside-install-scratch");
-  }
 }
+
 /**
  * Durable, shared single-writer authority. The PHX verification worktree and
  * attempt scratch GUID change on each invocation: neither can be the lease
