@@ -67,3 +67,24 @@ test("mismatched installed result identity cannot be attributed to the approved 
   obj.result.evidence.machine.deviceIdentities=["device:ffffffffffffffffffffffffffffffff"];
   throws(()=>projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed),/privacy|mismatch|device/i);
 });
+
+test("timed-out Windows smoke with zero device measurements retains BLOCKED evidence instead of masking failure",()=>{
+  const obj=JSON.parse(sample());
+  obj.result.status="blocked";
+  obj.result.evidence.machine.verdict.status="blocked";
+  obj.result.evidence.machineJson=JSON.stringify(obj.result.evidence.machine);
+  obj.result.classification="device-result-unavailable";
+  obj.installationObservation.devices={};
+  const projected=projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed);
+  const found=JSON.parse(projected);
+  strictEqual(found.result.status,"blocked");
+  strictEqual(found.result.classification,"device-result-unavailable");
+  deepStrictEqual(found.installationObservation.devices,{});
+  deepStrictEqual(found.result.evidence.machine.deviceIdentities,[hashed]);
+  strictEqual(projected.includes(raw),false);
+});
+test("completed Windows smoke with zero device measurements remains a hard privacy and verification failure",()=>{
+  const obj=JSON.parse(sample());
+  obj.installationObservation.devices={};
+  throws(()=>projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed),/privacy|installation|measurement/i);
+});
