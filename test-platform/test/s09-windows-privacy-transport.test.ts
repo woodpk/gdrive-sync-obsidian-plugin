@@ -45,6 +45,9 @@ test("Windows smoke runner address binds private raw to the approved public PHX 
   const args=buildLiveRunnerArguments(attempt,paths,[],false,{windows:raw});
   strictEqual(args[args.indexOf("--device-map-json")+1],JSON.stringify({windows:raw}));
   strictEqual(args[args.indexOf("--relay-root")+1],relay);
+  // Previously observed live Drive propagation exceeded the default 60s.
+  // The physical exception is bounded and does not change simulations.
+  strictEqual(args[args.indexOf("--result-timeout-ms")+1],"240000");
   throws(()=>buildLiveRunnerArguments(attempt,paths,[],false,{windows:"device:ffffffffffffffffffffffffffffffff"}),/privacy|mapping|identity|device/i);
   throws(()=>buildLiveRunnerArguments(attempt,paths,[],false,{ios:raw}),/privacy|mapping|identity|device/i);
 });
