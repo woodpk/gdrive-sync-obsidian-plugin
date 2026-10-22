@@ -8,7 +8,7 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-source-sha: "4708f18952702d98456530dfb9f9854a336bfeac"
-active_build_unit_status: "S09_WINDOWS_SMOKE_PHXCI_PASS_REVIEW_OWNER_DEFERRED_S09A_SOFTWARE_TESTS_IN_PROGRESS"
+active_build_unit_status: "S09A_DUAL_DEVICE_READINESS_SOFTWARE_PASS_IOS_PHYSICAL_READINESS_PREPARATION_NEXT_REVIEW_OWNER_DEFERRED"
 owner_current_testing_directive:
   date: "2026-10-22"
   reviewer_handoff: "DEFERRED_BY_OWNER_DO_NOT_ISSUE_ANY_REVIEW_PROMPT_UNTIL_OWNER_EXPLICITLY_INSTRUCTS"
@@ -22,6 +22,16 @@ owner_current_testing_directive:
   next_testing_candidate_ref: "USE_CURRENT_VERIFIED_FEATURE_BRANCH_HEAD_WHEN_RUNNING_PHXCI"
   no_claims: "NO_IOS_PHYSICAL_PROOF_NO_BIDIRECTIONAL_SYNC_NO_FULL_S09A_ACCEPTANCE_NO_STAGE3"
   physical_preconditions: "IOS_VALIDATION_INSTALL_SAME_DEVICE_AUTH_AND_MANAGED_ROOT_PAIRING_NOT_YET_BOUND"
+  s09a_readiness_software:
+    result: "PHX_CI_PASS_ALL_11_STAGES_SEVEN_S09A_FOCUSED_TESTS_ALL_PASS_FULL_REPOSITORY_1292_PASS"
+    exact_qualified_source_sha: "a9ddb7daad38be5a0a09d0402ebed07c8d45ad6b"
+    phxci_run_id: "eef97eec-25bb-44a3-a4fe-42d22c8ddd0a"
+    original_evidence_commit: "24a9df079d6ec61a8f2d2ea10b55173d22c072d4"
+    verification_kind: "SIMULATED_DEVICE_RESPONSES_NO_REAL_IOS_DEVICE_TEST_EXECUTED"
+  next_testing_activity: "READ_ONLY_IOS_IPADOS_VALIDATION_ARTIFACT_ISOLATED_VAULT_DEVICE_INSTALL_AND_PAIRING_READINESS_PREPARATION"
+  next_testing_owner_gate: "REAL_IOS_INSTALL_AUTH_GOOGLE_DRIVE_PAIRING_DEVICE_RUN_REQUIRES_EXACT_BINDING_AND_OWNER_APPROVAL"
+  no_redundant_rerun: "S09A_SIMULATED_SOFTWARE_PASS_ALREADY_PUBLISHED_DO_NOT_RERUN_ADMINISTRATIVELY"
+
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
