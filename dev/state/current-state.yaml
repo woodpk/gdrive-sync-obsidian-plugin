@@ -18,7 +18,8 @@ owner_current_testing_directive:
   next_executable_software_slice: "S09A_DUAL_DEVICE_READINESS_LIVE_RUNNER_SIMULATED_RECEIPTS"
   next_test_file: "test-platform/test/s09a-dual-device-readiness.test.ts"
   next_operator: "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1 -RunS09AReadinessSoftware"
-  next_testing_candidate_sha: "4846907a17eec971f979a491091e314759c00700"
+  first_s09a_test_source_sha: "4846907a17eec971f979a491091e314759c00700"
+  next_testing_candidate_ref: "USE_CURRENT_VERIFIED_FEATURE_BRANCH_HEAD_WHEN_RUNNING_PHXCI"
   no_claims: "NO_IOS_PHYSICAL_PROOF_NO_BIDIRECTIONAL_SYNC_NO_FULL_S09A_ACCEPTANCE_NO_STAGE3"
   physical_preconditions: "IOS_VALIDATION_INSTALL_SAME_DEVICE_AUTH_AND_MANAGED_ROOT_PAIRING_NOT_YET_BOUND"
 release_019_candidate:
