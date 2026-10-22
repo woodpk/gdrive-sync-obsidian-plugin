@@ -859,6 +859,7 @@ export async function main(): Promise<void> {
     const allowed = new Set([
       "test-platform/test/batteries/phxci-physical-bridge.ts",
       "test-platform/test/s09-windows-direct-relay-route.test.ts",
+      "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1",
     ]);
     const changed = diff.stdout.trim().split(/\r?\n/).filter(Boolean);
     if (!changed.length || changed.some(v => !allowed.has(v) &&
