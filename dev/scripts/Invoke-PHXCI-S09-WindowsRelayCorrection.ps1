@@ -9,7 +9,8 @@ param(
   [string]$ExpectedSourceSha,
   [switch]$RunWindowsPhysicalSmoke,
   [switch]$UseRecoveredSoftwareEvidence,
-  [switch]$RecoverPreviouslyDispatchedWindowsSmoke
+  [switch]$RecoverPreviouslyDispatchedWindowsSmoke,
+  [switch]$RunS09AReadinessSoftware
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -53,10 +54,17 @@ $priorClass = [Environment]::GetEnvironmentVariable('BVP_CHANGE_CLASS', 'Process
 $priorConsent = [Environment]::GetEnvironmentVariable('BVP_OWNER_PHYSICAL_APPROVAL', 'Process')
 $priorExisting = [Environment]::GetEnvironmentVariable('BVP_EXISTING_MAILBOX_ROOT_CONFIRMED', 'Process')
 $priorScratch = [Environment]::GetEnvironmentVariable('BVP_WINDOWS_SMOKE_SCRATCH', 'Process')
-$qualifiedCommand = 'npm run test:bvp-root'
+$qualifiedCommand = if ($RunS09AReadinessSoftware) {
+  'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s09a-dual-device-readiness.test.js'
+} else {
+  'npm run test:bvp-root'
+}
 $recoveryCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --recover-privacy-blocked-windows-smoke'
 $physicalCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-second-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
 try {
+  if ($RunS09AReadinessSoftware -and ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RecoverPreviouslyDispatchedWindowsSmoke)) {
+    throw 'S09A software readiness tests are strictly nonphysical and cannot be combined with a physical run or evidence recovery.'
+  }
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
   $env:BVP_CHANGE_CLASS = 'ordinary'
   if ($RecoverPreviouslyDispatchedWindowsSmoke) {
