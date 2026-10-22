@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_WINDOWS_BVP_INSTALLED_RELAY"
-handoff-count: 1
+handoff-count: 2
 handoff-owner-role: BUILDER
 handoff-recipient-role: REVIEWER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
-handoff-source-sha: "e3468b6a0f6b7412fe0c9bab422f1ffb5d618893"
-active_build_unit_status: "S09_WINDOWS_INSTALLED_RELAY_BUILDER_QUALIFIED_FINAL_REVIEW_PENDING"
+handoff-source-sha: "4708f18952702d98456530dfb9f9854a336bfeac"
+active_build_unit_status: "S09_WINDOWS_INSTALLED_RELAY_PHXCI_AND_RECOVERED_PHYSICAL_SIX_OF_SIX_QUALIFIED_FINAL_REVIEW_PENDING"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
@@ -161,6 +161,23 @@ s09_physical_readiness_gate:
   windows_live_attempt_2_mailbox_timeline_utc: "2026-10-22T20:06:19Z_RUN_BINDING; 20:07:19Z_COMMAND; 20:08:19Z_SUCCESS_RESULT; SLOW_BUT_WORKING_DRIVE_PROPAGATION"
   windows_live_attempt_2_reconciliation: "PENDING_LOCAL_INBOX_AND_CONTROLLER_LEASE_CHECK_IN_NEXT_PHX_ONLY_FOCUSED_STAGE; DO_NOT_DELETE_RELAY_RECORDS"
   windows_live_latency_fix: "240000MS_RESULT_TIMEOUT_ONLY_FOR_EXACT_BOUND_WINDOWS_PHYSICAL_SMOKE; NO_PRODUCTION_PLUGIN_CHANGE; NO_PHXCI_PASS_CLAIM_BEFORE_EXECUTION"
+  windows_live_attempt_3_phxci_run_id: "9103e8af-eb3d-4579-bff9-6230ff0a6bec"
+  windows_live_attempt_3_verified_source_sha: "f77017b00d73dc283b83aa56d0ac5916184fa8c0"
+  windows_live_attempt_3_evidence_commit: "18d12ee3d3cd67dd36824ed78356da4d4e94d75a"
+  windows_live_attempt_3_verdict: "BLOCKED_PRIVACY_RAW_CAPTURES_NOT_TRANSPORTABLE_RECONCILIATION_OF_SECOND_TIMEOUT_PASSED"
+  windows_live_attempt_3_result: "ORIGINAL_RESULT_PERSISTED_PRIVACY_PROJECTION_FAILED_PHX_OVERALL_BLOCKED"
+  windows_live_attempt_3_subsequent_recovery_run_id: "c642c72a-9a47-4d0c-8ff5-07f37ec60aab"
+  windows_live_attempt_3_recovery_verified_source_sha: "4708f18952702d98456530dfb9f9854a336bfeac"
+  windows_live_attempt_3_recovery_evidence_commit: "4e21afc818dc6a6698c045385e5e07b70303a015"
+  windows_live_attempt_3_recovery_result: "EXACT_SAVED_LOCAL_RESULT_COMPLETED_6_OF_6_ALL_STEPS_COMPLETED_YES_PRIVATE_CAPTURES_REDACTED_READ_ONLY_NO_NEW_DEVICE_COMMAND"
+  windows_live_attempt_3_original_phx_verdict_retained: "BLOCKED_NOT_REWRITTEN"
+  windows_live_attempt_2_reconciliation_latest: "PASS_PHX_CI_9103e8af_EVIDENCE_18d12ee3_PRIOR_TIMEOUT_RECEIPT_VERIFIED_EXCLUSIVE_LEASES_RELEASED"
+  windows_recovery_correction_phxci_source_sha: "4708f18952702d98456530dfb9f9854a336bfeac"
+  windows_recovery_correction_phxci_tree_sha: "afd0d50680ebddecc3208e6525b5476dd21a349b"
+  windows_recovery_correction_phxci_run_id: "c642c72a-9a47-4d0c-8ff5-07f37ec60aab"
+  windows_recovery_correction_phxci_evidence_commit: "4e21afc818dc6a6698c045385e5e07b70303a015"
+  windows_recovery_correction_phxci_verdict: "OVERALL_PASS_11_OF_11_468_OF_468_FOCUSED_1292_OF_1292_REPOSITORY"
+  windows_recovery_correction_final_gate: "BUILDER_QUALIFIED_FINAL_INDEPENDENT_REVIEW_PENDING_NO_GENERAL_S09_A_TO_V_OR_IOS_OR_STAGE3_ACCEPTANCE"
 
 
   prior_s09a_canary: "HISTORICAL_EVIDENCE_ONLY_NO_AUTOMATIC_RERUN"
