@@ -576,19 +576,32 @@ export function buildLiveRunnerArguments(
   }
   if (resumeEvidence.some(s => !ALLOWED_RESUME.has(s))) fail("resume-evidence-invalid");
   if (recoverLateCompletion && !paths.previousResultFile) fail("recovery-previous-result-required");
-  // Every path must remain within ONE attempt-specific disposable run root.
-  // Reject UNC, path traversal, alternate drive, overlap and other run roots.
-  const pathsAll = [paths.relayRoot, paths.checkpointFile, paths.resultFile,
+  // One explicit, installed disposable D: relay may be shared directly
+  // with Obsidian; all checkpoint/results/identity stay in C:\temp\<GUID>.
+  const physical = paths.physicalPluginRelayRoot !== undefined;
+  if (physical && (paths.physicalPluginRelayRoot !== paths.relayRoot ||
+      !isApprovedWindowsPluginRelay(paths.relayRoot) ||
+      attempt.battery !== "windows-live-smoke" ||
+      Object.keys(attempt.deviceIds).length !== 1 ||
+      typeof attempt.deviceIds.windows !== "string")) {
+    fail("physical-windows-relay-scope-invalid");
+  }
+  const pathsAll = [
+    ...(physical ? [] : [paths.relayRoot]),
+    paths.checkpointFile, paths.resultFile,
     ...(paths.previousResultFile ? [paths.previousResultFile] : []),
-    ...(paths.buildIdentityFile ? [paths.buildIdentityFile] : [])];
+    ...(paths.buildIdentityFile ? [paths.buildIdentityFile] : []),
+  ];
   const normalized = pathsAll.map(p => win32.normalize(p));
-  const rootMatch = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(normalized[0] ?? "");
+  const anchor = physical ? paths.checkpointFile : paths.relayRoot;
+  const rootMatch = /^C:\\temp\\([a-f0-9]{32})\\/i.exec(win32.normalize(anchor));
   if (!rootMatch || pathsAll.some((p,i) =>
     !win32.isAbsolute(p) || p.includes("..") || p.startsWith("\\\\") ||
     !normalized[i]!.toLowerCase().startsWith(("C:\\temp\\" + rootMatch[1] + "\\").toLowerCase()))) {
     fail("relay-ownership-scratch-root-outside");
   }
-  if (normalized[0]!.toLowerCase() !== ("C:\\temp\\" + rootMatch[1] + "\\relay").toLowerCase() ||
+  if ((!physical && win32.normalize(paths.relayRoot).toLowerCase() !==
+        ("C:\\temp\\" + rootMatch[1] + "\\relay").toLowerCase()) ||
       new Set(normalized.map(v => v.toLowerCase())).size !== normalized.length ||
       (paths.buildIdentityFile && !win32.normalize(paths.buildIdentityFile).toLowerCase()
         .startsWith(("C:\\temp\\" + rootMatch[1] + "\\installed\\").toLowerCase()))) {
