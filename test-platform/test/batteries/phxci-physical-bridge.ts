@@ -70,6 +70,43 @@ export function projectPhysicalResultForEvidence(resultJson: string, raw: string
     machine.deviceIdentities = [publicId];
     evidence.machineJson = JSON.stringify(machine);
   }
+  // Raw captures are private scenario-runner working memory, not PHX-CI evidence.
+  // The canonical machine contains the narrowly projected, source-bound observations.
+  // Discard raw captures ONLY for the registered Windows smoke, and only after
+  // proving that each retained canonical observation agrees with its raw source.
+  if (result.captures !== undefined) {
+    const captures = record(result.captures);
+    if (Object.keys(captures).length !== 0) {
+      const registered = getLiveBattery("windows-live-smoke");
+      const scenario = registered?.createScenario();
+      if (record(payload.battery).name !== "windows-live-smoke" ||
+          result.scenarioId !== scenario?.id || !evidence?.machine) {
+        fail("privacy-raw-captures-unregistered");
+      }
+      const observations = record(evidence.machine).observations;
+      if (!Array.isArray(observations)) fail("privacy-capture-observation-missing");
+      const captureSteps = scenario.steps.filter(step =>
+        "captureAs" in step && typeof step.captureAs === "string");
+      for (const [captureAs, rawCapture] of Object.entries(captures)) {
+        const sourceStep = captureSteps.find(step =>
+          "captureAs" in step && step.captureAs === captureAs);
+        if (!sourceStep) fail("privacy-capture-not-source-derived");
+        const matches = observations.filter(value => {
+          const observation = record(value);
+          return observation.stepId === sourceStep.id && observation.captureAs === captureAs;
+        });
+        if (matches.length !== 1) fail("privacy-capture-observation-missing");
+        const projected = record(record(matches[0]).value);
+        const rawValue = record(rawCapture);
+        for (const [field, value] of Object.entries(projected)) {
+          if (JSON.stringify(rawValue[field]) !== JSON.stringify(value)) {
+            fail("privacy-capture-observation-mismatch");
+          }
+        }
+      }
+      result.captures = {};
+    }
+  }
   if (payload.installationObservation !== undefined) {
     const install = record(payload.installationObservation);
     const devices = record(install.devices);
@@ -1082,6 +1119,114 @@ function reconcileWindowsTimeout(target:"original"|"second"): void {
   console.log("BVP_WINDOWS_TIMEOUT_RECONCILED attempt="+target+" status=BLOCKED lateReceipt=COMPLETED oldFixture=ABSENT pendingCommands=0 oldLeases=RELEASED");
 }
 
+/** Recover exact previously executed physical evidence without another device command.
+ * This is PHX-CI-focused retrospective observation; it never re-runs the
+ * six-step scenario or changes the original PHX-CI BLOCKED verdict.
+ */
+function recoverPrivacyBlockedWindowsSmoke(): void {
+  const oldPhx="9103e8af-eb3d-4579-bff9-6230ff0a6bec";
+  const evidenceSha="18d12ee3d3cd67dd36824ed78356da4d4e94d75a";
+  const oldHead="f77017b00d73dc283b83aa56d0ac5916184fa8c0";
+  const root=resolve(process.cwd());
+  if (process.platform!=="win32" || !process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL ||
+      currentRunId(root)===oldPhx) fail("privacy-recovery-phx-context-required");
+  const git=(args:string[])=>spawnSync("git",["-C",root,...args],
+    {encoding:"utf8",timeout:15000,maxBuffer:2*1024*1024,windowsHide:true});
+  const ancestor=git(["merge-base","--is-ancestor",evidenceSha,"HEAD"]);
+  const prior=git(["show",evidenceSha+":dev/_ca-output.json"]);
+  if(ancestor.status!==0 || prior.status!==0 || prior.error ||
+      typeof prior.stdout!=="string") fail("privacy-recovery-original-evidence-unavailable");
+  const envelope=record(JSON.parse(prior.stdout)),verify=record(envelope.verification);
+  const focused=Array.isArray(envelope.stages)?
+    envelope.stages.filter((v:unknown)=>record(v).name==="test-focused"):[];
+  if(envelope.runId!==oldPhx || envelope.status!=="BLOCKED" ||
+      record(envelope.repository).verifiedHead!==oldHead ||
+      record(verify.changeSet).status!=="FAIL" ||
+      record(verify.repository).status!=="PASS" ||
+      focused.length!==1 || record(focused[0]).exitCode!==1 ||
+      !String(record(focused[0]).stderr??"").includes("privacy-raw-captures-not-transportable") ||
+      !String(record(focused[0]).stdout??"").includes("BVP_WINDOWS_TIMEOUT_RECONCILED attempt=second")) {
+    fail("privacy-recovery-original-failure-identity-mismatch");
+  }
+  // On the original failed stage, the child result file was fully persisted;
+  // only the privacy projection/publisher failed after child completion.
+  const candidates:{root:string;request:BridgeRequest}[]=[];
+  for (const item of readdirSync("C:\\temp",{withFileTypes:true})) {
+    if (!item.isDirectory() || !/^[a-f0-9]{32}$/i.test(item.name)) continue;
+    const scratch=win32.join("C:\\temp",item.name),file=win32.join(scratch,"bridge-request.json");
+    if (!existsSync(file)) continue;
+    if (lstatSync(scratch).isSymbolicLink() || lstatSync(file).isSymbolicLink()) {
+      fail("privacy-recovery-scratch-reparse-point");
+    }
+    let request:BridgeRequest;
+    try { request=record(JSON.parse(readFileSync(file,"utf8"))) as unknown as BridgeRequest; }
+    catch { continue; }
+    if (request.expectation?.phxRunId===oldPhx) candidates.push({root:scratch,request});
+  }
+  if (candidates.length!==1) fail("privacy-recovery-original-request-not-unique");
+  const {root:scratch,request}=candidates[0]!;
+  const originalBattery=getLiveBattery("windows-live-smoke");
+  const scenario=originalBattery?.createScenario();
+  if (request.executionClass!=="owner-approved-physical" ||
+      request.ownerPhysicalApproval?.approved!==true ||
+      request.expectation.phxRunId!==oldPhx ||
+      request.expectation.bvpRunId!=="bvp-win-"+oldPhx ||
+      request.expectation.attemptIndex!==1 ||
+      request.expectation.mode!=="initial" ||
+      request.expectation.battery!=="windows-live-smoke" ||
+      request.expectation.scenarioId!==scenario?.id ||
+      request.expectation.scenarioDigest!==scenarioDefinitionDigest(scenario!) ||
+      request.expectation.sourceCommit!=="2bf51ca15aec9c752e3ac7769fcf3ac237df99df" ||
+      request.expectation.artifactSha256!=="90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7" ||
+      !request.paths.physicalPluginRelayRoot ||
+      !isApprovedWindowsPluginRelay(request.paths.relayRoot) ||
+      request.paths.physicalPluginRelayRoot!==request.paths.relayRoot ||
+      win32.normalize(request.paths.resultFile).toLowerCase()!==
+        win32.join(scratch,"result.json").toLowerCase()) {
+    fail("privacy-recovery-original-request-invalid");
+  }
+  enforceScratch(request.paths);
+  const resultFile=win32.join(scratch,"result.json");
+  if (!existsSync(resultFile) || lstatSync(resultFile).isSymbolicLink()) {
+    fail("privacy-recovery-original-result-missing");
+  }
+  const rawJson=readFileSync(resultFile,"utf8"),rawResult=record(JSON.parse(rawJson));
+  const status=record(rawResult.result).status;
+  if (!["completed","blocked","failed"].includes(String(status))) {
+    fail("privacy-recovery-unsupported-result-status");
+  }
+  const deviceSetting=record(record(JSON.parse(readFileSync(
+    win32.join(win32.dirname(request.paths.relayRoot),"data.json"),"utf8"))).settings);
+  const rawId=deviceSetting.deviceIdentity;
+  if(typeof rawId!=="string" ||
+      publicPhysicalDeviceId(rawId)!==request.expectation.deviceIds.windows) {
+    fail("privacy-recovery-physical-device-identity-changed");
+  }
+  const publicResult=projectPhysicalResultForEvidence(rawJson,rawId,
+    request.expectation.deviceIds.windows!);
+  const attempt:BridgeAttempt={
+    ...request.expectation,schemaVersion:1,
+    exitCode:status==="completed"?0:status==="blocked"?3:1,
+    resultJson:publicResult,
+  };
+  // Decode+validate the exact recovered public transport shape in memory.
+  // No raw capture, private device identity or original text may reach stdout.
+  const frame=encodeBridgeAttempt(attempt);
+  const verified=decodeBridgeAttempt(frame,request.expectation);
+  const result=record(JSON.parse(verified.resultJson)),machine=record(record(record(result.result).evidence).machine);
+  const steps=record(result.result).steps;
+  if (!Array.isArray(steps) || !Array.isArray(machine.assertions)) {
+    fail("privacy-recovery-derived-evidence-incomplete");
+  }
+  const complete=steps.length===scenario!.steps.length &&
+    steps.every((v:unknown)=>record(v).status==="completed");
+  // A complete original battery can be independently observed without rerunning
+  // any fixture; partial results remain blocked as originally recorded.
+  console.log("BVP_S09_ORIGINAL_PHYSICAL_EVIDENCE_RECOVERED status="+String(status)+
+    " steps="+steps.length+"/"+scenario!.steps.length+
+    " allStepsCompleted="+(complete?"YES":"NO")+
+    " originalPhx=BLOCKED rawCaptures=REDACTED");
+}
 /** PHX-stage-owned initial Windows smoke request. No raw ID leaves this process.
  * The operator never supplies the identity, build digest, scenario, or PHX run ID.
  */
@@ -1151,6 +1296,10 @@ function prepareApprovedWindowsSmokeRequest(): string {
 
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
+  if (process.argv.includes("--recover-privacy-blocked-windows-smoke")) {
+    recoverPrivacyBlockedWindowsSmoke();
+    return;
+  }
   if (process.argv.includes("--reconcile-original-windows-timeout")) {
     reconcileWindowsTimeout("original");
     return;
