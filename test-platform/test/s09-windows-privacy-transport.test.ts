@@ -180,7 +180,7 @@ test("PHX-CI Windows operator is singular, complete, and source-drift guarded", 
   const root = resolve(__dirname, "../../../..");
   const ps = readFileSync(resolve(root, "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
   const count = (pattern: RegExp): number => [...ps.matchAll(pattern)].length;
-  strictEqual(count(/^\s*&\s*\$phxFrontDoor\s+-RepoRoot\b/gm), 2, "one software and one gated physical PHX invocation");
+  strictEqual(count(/^\s*&\s*\$phxFrontDoor\s+-RepoRoot\b/gm), 3, "one software, one recovery-only and one gated physical PHX invocation");
   strictEqual(count(/^\s*\$qualifiedCommand\s*=/gm), 1, "qualification command assigned once");
   strictEqual(count(/^\s*\$physicalCommand\s*=/gm), 1, "physical command assigned once");
   strictEqual(count(/^\s*\$remote\s*=\s*@\(/gm), 1, "remote identity is verified once");
@@ -189,6 +189,10 @@ test("PHX-CI Windows operator is singular, complete, and source-drift guarded", 
   strictEqual(count(/^\s*\$confirmation\s*=\s*Read-Host\b/gm), 1, "only one owner authorization prompt");
   strictEqual(count(/^\s*if \(\$LASTEXITCODE -ne 0 -or \$base\.Count -ne 1 -or \$base\[0\]\.Trim\(\) -notmatch '\^\[a-f0-9\]\{40\}\$'\) \{$/gm), 1,
     "baseline SHA check must be complete and closed");
+  strictEqual(count(/--recover-privacy-blocked-windows-smoke/g), 1, "retrospective recovery configured only once");
+  strictEqual(ps.includes("if ($RecoverPreviouslyDispatchedWindowsSmoke)"), true, "recovery-only operator switch present");
+  strictEqual(ps.includes("Retrospective evidence recovery cannot be combined with a new physical dispatch."), true,
+    "recovery and new physical effects are mutually exclusive");
   strictEqual(count(/--reconcile-second-windows-timeout/g), 1, "prior timeout reconciled exactly once");
   strictEqual(count(/--run-approved-windows-smoke/g), 1, "new bounded smoke dispatched at most once");
   strictEqual(ps.trimEnd().endsWith("if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.' }"), true,
