@@ -3,7 +3,7 @@ import { strictEqual, deepStrictEqual, throws } from "node:assert/strict";
 import { test } from "node:test";
 import { createHash } from "node:crypto";
 import { publicPhysicalDeviceId, projectPhysicalResultForEvidence,
-  buildLiveRunnerArguments, type BridgeAttempt, type LiveRunnerPaths } from "./batteries/phxci-physical-bridge";
+  buildLiveRunnerArguments, validateOriginalWindowsTimeoutReconciliation, type BridgeAttempt, type LiveRunnerPaths } from "./batteries/phxci-physical-bridge";
 import { getLiveBattery } from "./batteries/battery-registry";
 import { scenarioDefinitionDigest } from "../src/scenario/scenario-checkpoint";
 const raw="device:0123456789abcdef0123456789abcdef";
@@ -87,4 +87,25 @@ test("completed Windows smoke with zero device measurements remains a hard priva
   const obj=JSON.parse(sample());
   obj.installationObservation.devices={};
   throws(()=>projectPhysicalResultForEvidence(JSON.stringify(obj),raw,hashed),/privacy|installation|measurement/i);
+});
+
+test("original live timeout reconciles only the exact first read-only observed reply",()=>{
+  const old=JSON.parse(sample());
+  old.result.status="blocked";
+  old.result.classification="device-result-unavailable";
+  old.result.steps=[{index:0,stepId:"observe-windows-product",kind:"observe",status:"blocked",classification:"device-result-unavailable",matchedExpectation:false}];
+  old.installationObservation.devices={};
+  const expected={runId:"bvp-win-12345678-1234-4234-8234-1234567890ab",
+    deviceId:raw,sourceCommit,artifactSha256:artifact,manifestSha256:manifest,
+    scenarioId:scenario.id,commandId:"bvp-0123456789abcdef0123456789abcdef"};
+  const reply={runId:expected.runId,deviceId:raw,sequence:1,commandId:expected.commandId,
+    kind:"observe-product",status:"completed",classification:"product-observed",
+    productStatus:{state:"idle"},validationBuild:{schemaVersion:1,sourceCommit,
+      artifactSha256:artifact,manifestSha256:manifest}};
+  validateOriginalWindowsTimeoutReconciliation(old,reply,expected);
+  throws(()=>validateOriginalWindowsTimeoutReconciliation(old,{...reply,status:"failed"},expected),/reconcile/);
+  throws(()=>validateOriginalWindowsTimeoutReconciliation(old,{...reply,deviceId:"device:ffffffffffffffffffffffffffffffff"},expected),/reconcile/);
+  throws(()=>validateOriginalWindowsTimeoutReconciliation(old,{...reply,validationBuild:{...reply.validationBuild,artifactSha256:"d".repeat(64)}},expected),/reconcile/);
+  throws(()=>validateOriginalWindowsTimeoutReconciliation({...old,result:{...old.result,status:"completed"}},reply,expected),/reconcile/);
+  throws(()=>validateOriginalWindowsTimeoutReconciliation({...old,result:{...old.result,steps:[...old.result.steps,{stepId:"create-canary",status:"completed"}]}},reply,expected),/reconcile/);
 });
