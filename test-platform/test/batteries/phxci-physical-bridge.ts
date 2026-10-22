@@ -135,6 +135,11 @@ function publicDeviceId(value: unknown): boolean {
 function deviceIdClaims(value: unknown): void {
   if (!publicDeviceId(value)) fail("privacy-device-identity-not-allowlisted");
 }
+const PRODUCTION_STATUS_KINDS: ReadonlySet<string> = new Set([
+  "idle-ready", "planning", "syncing", "offline-deferred",
+  "authentication-required", "paused", "attention-required",
+  "conflict-present", "destructive-plan-blocked", "recovery-required", "error",
+]);
 const ALLOWED_OBSERVATION_STRINGS: ReadonlySet<string> = new Set([
   "completed", "blocked", "failed", "rejected", "none", "present", "absent",
   "local", "remote", "windows", "ios", "file", "folder", "idle",
@@ -148,6 +153,7 @@ function screenedObservation(value: unknown): void {
   for (const [key, item] of Object.entries(obj)) {
     if (typeof item === "string" &&
       !(key === "hash" && HEX64.test(item)) &&
+      !(key === "kind" && PRODUCTION_STATUS_KINDS.has(item)) &&
       !ALLOWED_OBSERVATION_STRINGS.has(item)) fail("privacy-unapproved-observation-value");
   }
 }
