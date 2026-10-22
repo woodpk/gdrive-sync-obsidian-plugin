@@ -30,9 +30,12 @@ async function waitForEntry(entry: Promise<void>, operation: Promise<void>): Pro
 }
 
 async function runtimeClass() {
-  // Match the existing PHX-CI-consumed Node test harness: the Obsidian API
-  // is unavailable in a plain Node process; no live vault/Drive is opened.
-  const location = ".test-build/node_modules/obsidian";
+  // This test's Obsidian stub must not share the top-level mock path with
+  // independent Node test processes: they can concurrently replace/open it on
+  // Windows. The compiled product modules resolve .test-build/src/node_modules
+  // before .test-build/node_modules, so use this narrower mock location.
+  // No live vault/Drive is opened; all runtime assertions remain unchanged.
+  const location = ".test-build/src/node_modules/obsidian";
   mkdirSync(location, { recursive: true });
   writeFileSync(location + "/index.js",
     'class Notice { constructor(message) { this.message = message; } }\n' +
