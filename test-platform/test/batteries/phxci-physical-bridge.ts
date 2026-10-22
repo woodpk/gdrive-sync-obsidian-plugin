@@ -8,9 +8,10 @@
  */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
+import { liveCommandId } from "../../src/live-device/live-scenario-executor";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
 
 import { decodeScenarioCheckpoint } from "../../src/scenario/scenario-checkpoint";
@@ -864,6 +865,193 @@ export function claimBridgeAttemptAuthority(
   };
 }
 
+
+/** Strictly verify a late first-device observation. Never turn the original
+ * timed-out PHX-CI verdict into PASS or equate a receipt with a full battery. */
+export function validateOriginalWindowsTimeoutReconciliation(
+  original: unknown, late: unknown,
+  expected: {runId:string; deviceId:string; sourceCommit:string; artifactSha256:string;
+    manifestSha256:string; scenarioId:string; commandId:string},
+): void {
+  const outer=record(original), battery=record(outer.battery), result=record(outer.result);
+  const steps=result.steps;
+  if (battery.name!=="windows-live-smoke" || result.scenarioId!==expected.scenarioId ||
+      result.status!=="blocked" || result.classification!=="device-result-unavailable" ||
+      !Array.isArray(steps) || steps.length!==1 ||
+      record(steps[0]).stepId!=="observe-windows-product" ||
+      record(steps[0]).status!=="blocked") {
+    fail("reconcile-original-not-exact-first-timeout");
+  }
+  const observation=record(outer.installationObservation),devices=record(observation.devices);
+  if (Object.keys(devices).length!==0 ||
+      observation.sourceCommit!==expected.sourceCommit ||
+      observation.artifactSha256!==expected.artifactSha256 ||
+      observation.manifestSha256!==expected.manifestSha256) {
+    fail("reconcile-original-not-unmeasured-timeout");
+  }
+  const response=record(late),build=record(response.validationBuild);
+  if (response.runId!==expected.runId || response.deviceId!==expected.deviceId ||
+      response.sequence!==1 || response.commandId!==expected.commandId ||
+      response.kind!=="observe-product" || response.status!=="completed" ||
+      response.classification!=="product-observed" ||
+      !response.productStatus || typeof response.productStatus!=="object" ||
+      build.schemaVersion!==1 || build.sourceCommit!==expected.sourceCommit ||
+      build.artifactSha256!==expected.artifactSha256 ||
+      build.manifestSha256!==expected.manifestSha256) {
+    fail("reconcile-late-device-receipt-invalid");
+  }
+}
+
+/** The old first-command timeout left a protective, fail-closed lease. Resume
+ * physical verification only after exact immutable PHX evidence and the
+ * corresponding installed-build receipt prove that no old effect is pending.
+ * This is state reconciliation, NOT a retroactive PHX-CI PASS or test launcher.
+ */
+function reconcileOriginalWindowsTimeout(): void {
+  const oldPhx="4edfe226-f3ef-414d-979c-78f0f3f6ea49";
+  const oldEvidenceSha="75ebf0a24142b2c765d9e9c58b32650cfd16b794";
+  const oldVerifiedSha="46528edcf6991dedd1f2bf283e4f2a2db47524a5";
+  const sourceCommit="2bf51ca15aec9c752e3ac7769fcf3ac237df99df";
+  const artifactSha256="90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7";
+  const manifestSha256="d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965";
+  const oldRunId="bvp-win-"+oldPhx;
+  if (process.platform!=="win32" || process.env.BVP_OWNER_PHYSICAL_APPROVAL!=="YES" ||
+      process.env.BVP_EXISTING_MAILBOX_ROOT_CONFIRMED!=="YES" ||
+      !process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL ||
+      currentRunId(resolve(process.cwd()))===oldPhx) {
+    fail("reconcile-current-phx-owner-approval-required");
+  }
+  const ancestor=spawnSync("git",["-C",resolve(process.cwd()),"merge-base","--is-ancestor",oldEvidenceSha,"HEAD"],
+    {encoding:"utf8",timeout:15000,windowsHide:true});
+  const evidenceRead=spawnSync("git",["-C",resolve(process.cwd()),"show",oldEvidenceSha+":dev/_ca-output.json"],
+    {encoding:"utf8",timeout:15000,maxBuffer:2*1024*1024,windowsHide:true});
+  if (ancestor.error || ancestor.status!==0 || evidenceRead.error || evidenceRead.status!==0 ||
+      typeof evidenceRead.stdout!=="string") fail("reconcile-original-phx-evidence-unavailable");
+  const canonical=record(JSON.parse(evidenceRead.stdout)),checks=record(canonical.verification),
+    changeSet=record(checks.changeSet),repoCheck=record(checks.repository);
+  if (canonical.runId!==oldPhx || canonical.status!=="BLOCKED" ||
+      record(canonical.repository).verifiedHead!==oldVerifiedSha ||
+      changeSet.status!=="FAIL" || changeSet.stage!=="test-focused" ||
+      changeSet.exitCode!==1 || repoCheck.status!=="PASS") {
+    fail("reconcile-original-phx-evidence-identity-mismatch");
+  }
+  const relay="D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay";
+  const pluginRoot=win32.dirname(relay);
+  const settings=record(record(JSON.parse(readFileSync(win32.join(pluginRoot,"data.json"),"utf8"))).settings);
+  if (typeof settings.deviceIdentity!=="string" || !settings.vaultIdentity ||
+      !settings.remoteRootId || settings.firstSyncCompleted!==true ||
+      settings.startupResumeEnabled!==false || settings.localChangeEnabled!==false ||
+      settings.periodicEnabled!==false) fail("reconcile-installed-pairing-changed");
+  const rawId=settings.deviceIdentity,publicId=publicPhysicalDeviceId(rawId);
+  if (createHash("sha256").update(readFileSync(win32.join(pluginRoot,"main.js"))).digest("hex")!==artifactSha256 ||
+      createHash("sha256").update(readFileSync(win32.join(pluginRoot,"manifest.json"))).digest("hex")!==manifestSha256) {
+    fail("reconcile-installed-artifact-changed");
+  }
+  const oldCandidates:{root:string;request:BridgeRequest}[]=[];
+  for(const entry of readdirSync("C:\\temp",{withFileTypes:true})){
+    if(!entry.isDirectory() || !/^[a-f0-9]{32}$/i.test(entry.name))continue;
+    const root=win32.join("C:\\temp",entry.name),reqFile=win32.join(root,"bridge-request.json");
+    if(!existsSync(reqFile))continue;
+    if(lstatSync(root).isSymbolicLink() || lstatSync(reqFile).isSymbolicLink()) {
+      fail("reconcile-original-scratch-reparse-point");
+    }
+    let candidate:BridgeRequest;
+    try{candidate=record(JSON.parse(readFileSync(reqFile,"utf8"))) as unknown as BridgeRequest;}
+    catch{fail("reconcile-original-request-unreadable");}
+    if(candidate!.expectation?.phxRunId===oldPhx)oldCandidates.push({root,request:candidate!});
+  }
+  if(oldCandidates.length!==1)fail("reconcile-original-request-not-unique");
+  const {root:oldScratch,request}=oldCandidates[0]!;
+  const def=getLiveBattery("windows-live-smoke");
+  if(!def)fail("reconcile-smoke-battery-missing");
+  const scenario=def.createScenario();
+  if(request.schemaVersion!==1 || request.executionClass!=="owner-approved-physical" ||
+      request.expectation.mode!=="initial" || request.expectation.attemptIndex!==1 ||
+      request.expectation.bvpRunId!==oldRunId ||
+      request.expectation.sourceCommit!==sourceCommit ||
+      request.expectation.artifactSha256!==artifactSha256 ||
+      request.expectation.scenarioId!==scenario.id ||
+      request.expectation.scenarioDigest!==scenarioDefinitionDigest(scenario) ||
+      request.expectation.deviceIds.windows!==publicId ||
+      request.paths.relayRoot!==relay ||
+      win32.normalize(request.paths.resultFile).toLowerCase()!==
+        win32.normalize(win32.join(oldScratch,"result.json")).toLowerCase()) {
+    fail("reconcile-original-request-identity-mismatch");
+  }
+  const originalResultFile=win32.join(oldScratch,"result.json");
+  if(!existsSync(originalResultFile) || lstatSync(originalResultFile).isSymbolicLink()) {
+    fail("reconcile-original-result-file-invalid");
+  }
+  const original=JSON.parse(readFileSync(originalResultFile,"utf8")) as unknown;
+  const commandId=liveCommandId(oldRunId,scenario.id,0,0);
+  const inbox=win32.join(relay,"inbox");
+  const replies:unknown[]=[];
+  for(const file of readdirSync(inbox,{withFileTypes:true})){
+    if(!file.isFile() || !file.name.endsWith(".result.json"))continue;
+    const full=win32.join(inbox,file.name);
+    if(lstatSync(full).isSymbolicLink())fail("reconcile-inbox-symlink");
+    const data=record(JSON.parse(readFileSync(full,"utf8")));
+    if(data.runId===oldRunId)replies.push(data);
+  }
+  if(replies.length!==1)fail("reconcile-original-receipt-not-unique");
+  validateOriginalWindowsTimeoutReconciliation(original,replies[0]!,{
+    runId:oldRunId,deviceId:rawId,sourceCommit,artifactSha256,manifestSha256,
+    scenarioId:scenario.id,commandId,
+  });
+  // The timed-out run reached precisely the observation, never the fixture put.
+  const vault=win32.dirname(win32.dirname(win32.dirname(win32.dirname(relay))));
+  if(existsSync(win32.join(vault,"BVP-VALIDATION",oldRunId,"windows-first-sync-canary.md"))) {
+    fail("reconcile-original-fixture-effect-unexpected");
+  }
+  for(const dir of ["outbox","sent"]){
+    const location=win32.join(relay,dir);
+    if(!existsSync(location) || readdirSync(location).length!==0)
+      fail("reconcile-relay-has-pending-commands");
+  }
+  const authorityDir=win32.join(relay,"controller-authority");
+  const authorityKey=createHash("sha256").update(rawId).digest("hex");
+  const authorityFile=win32.join(authorityDir,authorityKey+".json");
+  const stored=record(JSON.parse(readFileSync(authorityFile,"utf8")));
+  if(stored.schemaVersion!==1 || stored.deviceId!==rawId || stored.runId!==oldRunId ||
+      !Number.isSafeInteger(stored.generation) || Number(stored.generation)<=0) {
+    fail("reconcile-original-controller-authority-mismatch");
+  }
+  const key=(label:string)=>win32.join("C:\\temp",
+    createHash("sha256").update("bvp-s09-r2-lease-v1:"+label).digest("hex").slice(0,32));
+  const logical=key("logical:"+oldRunId),device=key("device:"+publicId);
+  if(logical===device)fail("reconcile-lease-key-collision");
+  for(const directory of [logical,device]){
+    if(!existsSync(directory) || lstatSync(directory).isSymbolicLink() ||
+        !existsSync(win32.join(directory,"active")) ||
+        !lstatSync(win32.join(directory,"active")).isDirectory() ||
+        readdirSync(win32.join(directory,"active")).length!==0) {
+      fail("reconcile-exclusive-lease-not-intact");
+    }
+  }
+  if(!existsSync(win32.join(logical,"index-1")) ||
+      !existsSync(win32.join(logical,"phx-"+oldPhx))) {
+    fail("reconcile-original-lease-journal-incomplete");
+  }
+  // Serialize with the same per-device filesystem lock as the live executor.
+  const lock=authorityFile+".lock";
+  let fd:number;
+  try{fd=openSync(lock,"wx");}catch{fail("reconcile-controller-authority-in-use");}
+  try{
+    const current=record(JSON.parse(readFileSync(authorityFile,"utf8")));
+    if(current.runId!==oldRunId || current.deviceId!==rawId ||
+        current.generation!==stored.generation)fail("reconcile-controller-authority-raced");
+    for(const dir of ["outbox","sent"]){
+      if(readdirSync(win32.join(relay,dir)).length!==0)fail("reconcile-pending-command-race");
+    }
+    const tmp=win32.join(authorityDir,"."+authorityKey+".reconcile-"+process.pid+".tmp");
+    writeFileSync(tmp,JSON.stringify({...current,runId:null}),{flag:"wx",encoding:"utf8"});
+    renameSync(tmp,authorityFile);
+    rmdirSync(win32.join(device,"active"));
+    rmdirSync(win32.join(logical,"active"));
+  }finally{closeSync(fd!);rmSync(lock,{force:true});}
+  console.log("BVP_ORIGINAL_TIMEOUT_RECONCILED status=BLOCKED lateReceipt=COMPLETED oldFixture=ABSENT pendingCommands=0 oldLeases=RELEASED");
+}
+
 /** PHX-stage-owned initial Windows smoke request. No raw ID leaves this process.
  * The operator never supplies the identity, build digest, scenario, or PHX run ID.
  */
@@ -933,6 +1121,10 @@ function prepareApprovedWindowsSmokeRequest(): string {
 
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
+  if (process.argv.includes("--reconcile-original-windows-timeout")) {
+    reconcileOriginalWindowsTimeout();
+    return;
+  }
   const file = cliArgument("--bridge-request-file") ?? (
     process.argv.includes("--run-approved-windows-smoke") ? prepareApprovedWindowsSmokeRequest() : undefined
   );
