@@ -4,7 +4,8 @@
  * Executed exclusively as PHX-CI's focused test command.
  */
 import { deepStrictEqual, rejects, strictEqual } from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -20,6 +21,12 @@ const scenario = battery.createScenario();
 const sourceCommit = "a".repeat(40);
 const devices = { windows: "device:fixture-windows-s09a", ios: "device:fixture-ios-s09a" };
 const pause = () => new Promise<void>(resolve => setTimeout(resolve, 3));
+async function scratchRoot(): Promise<string> {
+  const base = process.platform === "win32" ? "C:\\temp" : tmpdir();
+  const dir = join(base, randomUUID().replaceAll("-", ""));
+  await mkdir(dir);
+  return dir;
+}
 
 async function commandFrom(relay: string): Promise<{command: DeviceCommand; filename: string}> {
   const out = join(relay, "outbox");
@@ -54,7 +61,7 @@ async function runStatusPair(
     windows: "idle-ready"|"paused"|"authentication-required",
     ios?: "idle-ready"|"paused"|"authentication-required",
     override?: Partial<DeviceCommandResult>) {
-  const dir = await mkdtemp(join(tmpdir(), "brain-s09a-"));
+  const dir = await scratchRoot();
   const relay = join(dir, "relay");
   try {
     const executor = await createLiveScenarioExecutor({
@@ -135,7 +142,7 @@ test("S09A missing iOS reply retains BLOCKED and does not infer a second partici
 });
 
 test("S09A refuses a duplicate identity for both device labels before relay dispatch",async()=>{
-  const dir=await mkdtemp(join(tmpdir(),"brain-s09a-"));
+  const dir=await scratchRoot();
   try{
     await rejects(()=>createLiveScenarioExecutor({
       scenario,runId:"s09a-collision",deviceIds:{windows:devices.windows,ios:devices.windows},
