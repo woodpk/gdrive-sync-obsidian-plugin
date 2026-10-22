@@ -5,10 +5,22 @@ active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-count: 2
 handoff-owner-role: BUILDER
-handoff-recipient-role: REVIEWER
+handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-source-sha: "4708f18952702d98456530dfb9f9854a336bfeac"
-active_build_unit_status: "S09_WINDOWS_INSTALLED_RELAY_PHXCI_AND_RECOVERED_PHYSICAL_SIX_OF_SIX_QUALIFIED_FINAL_REVIEW_PENDING"
+active_build_unit_status: "S09_WINDOWS_SMOKE_PHXCI_PASS_REVIEW_OWNER_DEFERRED_S09A_SOFTWARE_TESTS_IN_PROGRESS"
+owner_current_testing_directive:
+  date: "2026-10-22"
+  reviewer_handoff: "DEFERRED_BY_OWNER_DO_NOT_ISSUE_ANY_REVIEW_PROMPT_UNTIL_OWNER_EXPLICITLY_INSTRUCTS"
+  prior_handoff_count_preserved: 2
+  owner_role: "BUILDER"
+  next_testing_section: "BVP-S09A_WINDOWS_IOS_INSTALL_AUTHENTICATION_PAIRING_BASELINE"
+  next_executable_software_slice: "S09A_DUAL_DEVICE_READINESS_LIVE_RUNNER_SIMULATED_RECEIPTS"
+  next_test_file: "test-platform/test/s09a-dual-device-readiness.test.ts"
+  next_operator: "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1 -RunS09AReadinessSoftware"
+  next_testing_candidate_sha: "4846907a17eec971f979a491091e314759c00700"
+  no_claims: "NO_IOS_PHYSICAL_PROOF_NO_BIDIRECTIONAL_SYNC_NO_FULL_S09A_ACCEPTANCE_NO_STAGE3"
+  physical_preconditions: "IOS_VALIDATION_INSTALL_SAME_DEVICE_AUTH_AND_MANAGED_ROOT_PAIRING_NOT_YET_BOUND"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
