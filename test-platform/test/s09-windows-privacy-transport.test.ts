@@ -2,6 +2,8 @@
 import { strictEqual, deepStrictEqual, throws } from "node:assert/strict";
 import { test } from "node:test";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { publicPhysicalDeviceId, projectPhysicalResultForEvidence,
   buildLiveRunnerArguments, validateOriginalWindowsTimeoutReconciliation, type BridgeAttempt, type LiveRunnerPaths } from "./batteries/phxci-physical-bridge";
 import { getLiveBattery } from "./batteries/battery-registry";
@@ -111,4 +113,14 @@ test("original live timeout reconciles only the exact first read-only observed r
   throws(()=>validateOriginalWindowsTimeoutReconciliation(old,{...reply,validationBuild:{...reply.validationBuild,artifactSha256:"d".repeat(64)}},expected),/reconcile/);
   throws(()=>validateOriginalWindowsTimeoutReconciliation({...old,result:{...old.result,status:"completed"}},reply,expected),/reconcile/);
   throws(()=>validateOriginalWindowsTimeoutReconciliation({...old,result:{...old.result,steps:[...old.result.steps,{stepId:"create-canary",status:"completed"}]}},reply,expected),/reconcile/);
+});
+
+test("PHX-CI Windows operator resolves origin/master even from single-branch clones",()=>{
+  const root=resolve(__dirname,"../../../..");
+  const ps=readFileSync(resolve(root,"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
+  strictEqual(ps.includes("'+refs/heads/master:refs/remotes/origin/master'"),true);
+  strictEqual(ps.includes("'refs/remotes/origin/master^{commit}'"),true);
+  strictEqual(ps.includes("-BaseRef 'origin/master'"),true);
+  strictEqual(ps.includes("--reconcile-second-windows-timeout"),true);
+  strictEqual(ps.includes("--run-approved-windows-smoke"),true);
 });
