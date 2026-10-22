@@ -8,7 +8,7 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/R019"
 handoff-source-sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
-active_build_unit_status: "R019_GITHUB_PRERELEASE_PUBLISHED_BVP_STARTUP_PENDING"
+active_build_unit_status: "R019_ADMINISTRATIVE_CLOSEOUT_COMPLETE_WINDOWS_BVP_STARTUP_OPERATOR_CONFIRMED"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
@@ -49,7 +49,12 @@ release_019_candidate:
   windows_bvp_inspected_data_json_sha256: "a954e45def3254e0667d12309cd01a67dd3e7a88c0c552604a2dc4da852a9722"
   windows_bvp_preinstall_backup_data_json_sha256: "a954e45def3254e0667d12309cd01a67dd3e7a88c0c552604a2dc4da852a9722"
   windows_bvp_plugin_enabled_in_config: true
-  windows_bvp_startup_observation: "PENDING_OFFLINE_OBSIDIAN_STARTUP"
+  windows_bvp_startup_observation: "OPERATOR_REPORTED_LOADED_CORRECTLY"
+  windows_bvp_startup_evidence_type: "HUMAN_OPERATOR_CHAT_CONFIRMATION"
+  windows_bvp_startup_validation_scope: "OBSIDIAN_PLUGIN_LOAD_ONLY_NOT_PHX_CI_PHYSICAL_BATTERY"
+  windows_bvp_startup_network_mode: "NOT_INDEPENDENTLY_OBSERVED"
+  windows_bvp_live_google_drive_access: "NOT_TESTED"
+  next_s09_action: "READ_ONLY_PREPARATION_AND_EXPLICIT_SCOPE_BINDING_BEFORE_PHYSICAL_BVP_DISPATCH"
   physical_s09_acceptance: "INCOMPLETE_NOT_AUTHORIZED_BY_RELEASE"
   stage_3_validation: "DEFERRED_NOT_STARTED"
   personal_vault_deployment: "NOT_AUTHORIZED"
