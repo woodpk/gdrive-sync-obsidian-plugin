@@ -44,20 +44,31 @@ $priorClass = [Environment]::GetEnvironmentVariable('BVP_CHANGE_CLASS', 'Process
 $priorConsent = [Environment]::GetEnvironmentVariable('BVP_OWNER_PHYSICAL_APPROVAL', 'Process')
 $priorExisting = [Environment]::GetEnvironmentVariable('BVP_EXISTING_MAILBOX_ROOT_CONFIRMED', 'Process')
 $priorScratch = [Environment]::GetEnvironmentVariable('BVP_WINDOWS_SMOKE_SCRATCH', 'Process')
-$focused = 'npm run test:bvp-root'
-if ($RunWindowsPhysicalSmoke) {
-  $confirmation = Read-Host 'Confirm the existing Google Drive BRAIN BVP Mailbox is present, Obsidian BVP is open, and you authorize ONE Windows smoke local fixture/control-message run (type YES)'
-  if ($confirmation -cne 'YES') { throw 'Physical Windows smoke canceled; no dispatch.' }
-  $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
-  $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
-  $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
-  $focused = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
-}
+$qualifiedCommand = 'npm run test:bvp-root'
+$physicalCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
 try {
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
   $env:BVP_CHANGE_CLASS = 'ordinary'
-  & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $focused -TempRoot $runRoot
+  # First, the complete ordinary PHX-CI software qualification must PASS.
+  & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $qualifiedCommand -TempRoot $runRoot
   $code = $LASTEXITCODE
+  if ($RunWindowsPhysicalSmoke -and $code -eq 0) {
+    # The original PASS has now been published as an evidence-only descendant.
+    # Fast-forward ONLY this disposable control clone, never an owner's checkout.
+    & git.exe -C $repository fetch origin --prune
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to refresh published software-qualification evidence.' }
+    & git.exe -C $repository merge --ff-only ('origin/' + $branch)
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to fast-forward isolated control clone; physical battery not dispatched.' }
+    $postQualificationDirty = @(& git.exe -C $repository status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0 -or $postQualificationDirty.Count -ne 0) { throw 'Dirty qualification checkout; physical battery not dispatched.' }
+    $confirmation = Read-Host 'Confirm Google Drive already contains BRAIN BVP Mailbox and Windows Obsidian BVP is open; authorize ONE smoke fixture/control run (type YES)'
+    if ($confirmation -cne 'YES') { throw 'Physical Windows smoke canceled without dispatch.' }
+    $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
+    $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
+    $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
+    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $physicalCommand -TempRoot $runRoot
+    $code = $LASTEXITCODE
+  }
 } finally {
   if ($null -eq $priorPurpose) { Remove-Item Env:\BRAIN_ARTIFACT_PURPOSE -ErrorAction SilentlyContinue }
   else { $env:BRAIN_ARTIFACT_PURPOSE = $priorPurpose }
