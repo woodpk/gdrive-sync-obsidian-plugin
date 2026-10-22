@@ -63,6 +63,7 @@ const S09_LATE_COMPLETION_RECOVERY = [
   "phxci-physical-bridge.test.js",
   "s09-windows-direct-relay-route.test.js",
   "s09-windows-privacy-transport.test.js",
+  "s09a-dual-device-readiness.test.js",
   "s09a-attribution-live-guard.test.js",
   "s09a-late-completion-recovery.test.js",
 ] as const;
