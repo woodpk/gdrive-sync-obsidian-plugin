@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-05-integrated-sync-product"
 active_build_unit: "R019"
-handoff-count: 0
+handoff-count: 1
 handoff-owner-role: BUILDER
-handoff-recipient-role: BUILDER
+handoff-recipient-role: REVIEWER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/R019"
 handoff-source-sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
-active_build_unit_status: "R019_METADATA_CANDIDATE_PHX_QUALIFIED_REVIEW_PENDING_NO_RELEASE"
+active_build_unit_status: "R019_FINAL_REVIEW_DISPATCHED_NO_RELEASE"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
