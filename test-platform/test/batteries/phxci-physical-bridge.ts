@@ -192,6 +192,8 @@ export interface LiveRunnerPaths {
   readonly resultFile: string;
   readonly previousResultFile?: string;
   readonly buildIdentityFile?: string;
+  /** Explicit matching D: relay of the already installed disposable BVP plugin. */
+  readonly physicalPluginRelayRoot?: string;
 }
 
 function fail(reason: string): never {
@@ -547,6 +549,15 @@ export async function loadPublishedBridgeAttempt(
   }
   return attempt;
 }
+/** Physically installed Windows BVP relay, never a personal or arbitrary vault. */
+function isApprovedWindowsPluginRelay(path: string): boolean {
+  return typeof path === "string" && !path.includes("..") &&
+    !path.includes("\0") && !path.startsWith("\\\\") &&
+    win32.isAbsolute(path) &&
+    /^D:\\bvp-s08f-vault-[a-f0-9]{32}\\\.obsidian\\plugins\\brain-google-drive-sync\\\.bvp-relay$/i.test(path) &&
+    win32.normalize(path).toLowerCase() === path.toLowerCase();
+}
+
 /** Construct only the existing BVP CLI's supported arguments, never a shell command. */
 export function buildLiveRunnerArguments(
   attempt: BridgeAttempt,
