@@ -8,7 +8,7 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/R019"
 handoff-source-sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
-active_build_unit_status: "R019_OWNER_DIRECTED_ADMINISTRATIVE_RELEASE_REVIEW_CANCELLED"
+active_build_unit_status: "R019_GITHUB_PRERELEASE_PUBLISHED_BVP_STARTUP_PENDING"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
@@ -16,7 +16,16 @@ release_019_candidate:
   branch: "release/0.1.19-candidate-20261022"
   final_review_status: "OWNER_CANCELLED_DUPLICATE_REVIEW_FOR_VERSION_ONLY_OPERATION"
   exact_shipping_artifact_promotion_status: "OWNER_AUTHORIZED_EXACT_HASH_RELEASE"
-  github_release_status: "OWNER_APPROVED_PENDING_PUBLICATION"
+  github_release_status: "PUBLISHED_GITHUB_PRERELEASE"
+  github_release_id: 420690608
+  github_release_url: "https://github.com/woodpk/gdrive-sync-obsidian-plugin/releases/tag/0.1.19"
+  github_release_tag: "0.1.19"
+  github_release_tag_target_sha: "6fea57fdded4a643556defe8a546e1225e46f918"
+  github_release_master_merge_sha: "6fea57fdded4a643556defe8a546e1225e46f918"
+  github_release_published_at_utc: "2026-10-22T12:24:35Z"
+  github_release_type: "PRERELEASE"
+  github_release_assets: ["main.js", "manifest.json", "release-sha256.txt"]
+  release_sha256_asset_sha256: "060f2d816d45edc01f50bd7086a68d486c3106809d454b77afedcfd47f1e551b"
   retained_s09_br02_handoff_count: 6
   cancelled_reviewer_dispatch_count: 1
   cancelled_reviewer_dispatch_state_commit: "b7d8128b90b3748e71e3d15c1590383605884f07"
@@ -25,6 +34,18 @@ release_019_candidate:
   phxci_evidence_commit: "e7b68ed396f512a2b3f8945393fbd91a40e64e7b"
   production_main_sha256: "6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d"
   manifest_sha256: "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965"
+  validation_only_source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
+  validation_only_phxci_run_id: "49c13c1b-7ce3-4cb9-89bb-1f23243404c6"
+  validation_only_phxci_evidence_commit: "73f66411fdaf0de412f86faf13e5b962e1a5b9f4"
+  validation_only_main_sha256: "90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7"
+  windows_bvp_vault_path: "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b"
+  windows_bvp_installation: "OPERATOR_REPORTED_0_1_19_VALIDATION_ONLY_INSTALLED_NOT_RECHECKED"
+  windows_bvp_data_json: "OPERATOR_REPORTED_PRESERVED_STARTUP_CHECK_PENDING"
+  windows_bvp_automatic_sync: "OPERATOR_REPORTED_ALL_THREE_DISABLED_STARTUP_CHECK_PENDING"
+  windows_bvp_startup_observation: "PENDING"
+  physical_s09_acceptance: "INCOMPLETE_NOT_AUTHORIZED_BY_RELEASE"
+  stage_3_validation: "DEFERRED_NOT_STARTED"
+  personal_vault_deployment: "NOT_AUTHORIZED"
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
