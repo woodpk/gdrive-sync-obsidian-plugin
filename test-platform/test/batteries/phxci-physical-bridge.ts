@@ -975,6 +975,7 @@ export async function main(): Promise<void> {
     const allowed = new Set([
       "test-platform/test/batteries/phxci-physical-bridge.ts",
       "test-platform/test/s09-windows-direct-relay-route.test.ts",
+      "test-platform/test/s09-windows-privacy-transport.test.ts",
       "test-platform/test/architecture-metrics.test.ts",
       "test-platform/test/batteries/deterministic-battery-registry.ts",
       "tests/adversarial/s09-g1-runtime-authority-interleavings.test.ts",
