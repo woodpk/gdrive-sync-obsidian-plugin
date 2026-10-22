@@ -4,17 +4,17 @@ STATUS: BLOCKED
 
 ## Verification summary
 
-- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited 1.
-- Repository verification: PASS
+- Change-set verification: PASS
+- Repository verification: FAIL; TEST FAILURE; Stage 'test' exited 1.
 - Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 51f6d5f0-3a1e-45fc-b036-8ab61384eb68
-- Repository: C:/temp/4ce916d645d94813913e37abb9960d59/phx-796850eeb8944572/w
+- Run ID: b61a2725-60f7-4508-b728-22bb217d22a5
+- Repository: C:/temp/674170d8954148f287c364210aa2446f/phx-ad2ab5b47d264d47/w
 - Branch:
-- Verified HEAD: 1878c7b9f98efd74bb50a5151ee38c7dfbf9e971
-- Verified tree: b806dc3ab64c25007a5c51edddd8b3b03204c295
-- Expected HEAD: 1878c7b9f98efd74bb50a5151ee38c7dfbf9e971
+- Verified HEAD: 35dd7340d99ad67e0dcbd40da5e00e04911e24e6
+- Verified tree: fd7d70858193c3e1185ab6b26e7f706aa80a706c
+- Expected HEAD: 35dd7340d99ad67e0dcbd40da5e00e04911e24e6
 - Base SHA: 42460912847e363aa4fa11e23e0429944383889d
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,18 +24,18 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-22T16:17:11.5698622Z
-- Ended: 2026-10-22T16:19:13.4120784Z
+- Started: 2026-10-22T17:05:57.2150637Z
+- Ended: 2026-10-22T17:07:18.3186618Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
-- node-preflight: PASS (exit 0; NONE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
-- node-project-files: PASS (exit 0; NONE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
-- install: PASS (exit 0; NONE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
-- typecheck: PASS (exit 0; NONE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
-- test-focused: FAIL (exit 1; TEST FAILURE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
-- test: PASS (exit 0; NONE; run 51f6d5f0-3a1e-45fc-b036-8ab61384eb68)
+- preflight: PASS (exit 0; NONE; run b61a2725-60f7-4508-b728-22bb217d22a5)
+- node-preflight: PASS (exit 0; NONE; run b61a2725-60f7-4508-b728-22bb217d22a5)
+- node-project-files: PASS (exit 0; NONE; run b61a2725-60f7-4508-b728-22bb217d22a5)
+- install: PASS (exit 0; NONE; run b61a2725-60f7-4508-b728-22bb217d22a5)
+- typecheck: PASS (exit 0; NONE; run b61a2725-60f7-4508-b728-22bb217d22a5)
+- test-focused: PASS (exit 0; NONE; run b61a2725-60f7-4508-b728-22bb217d22a5)
+- test: FAIL (exit 1; TEST FAILURE; run b61a2725-60f7-4508-b728-22bb217d22a5)
 - build: MISSING (FRAMEWORK FAILURE)
 - repository-check: MISSING (FRAMEWORK FAILURE)
 - check: MISSING (FRAMEWORK FAILURE)
