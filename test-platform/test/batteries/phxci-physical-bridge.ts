@@ -72,10 +72,17 @@ export function projectPhysicalResultForEvidence(resultJson: string, raw: string
   if (payload.installationObservation !== undefined) {
     const install = record(payload.installationObservation);
     const devices = record(install.devices);
-    if (Object.keys(devices).length !== 1 || devices[raw] === undefined) {
-      fail("privacy-physical-installation-mismatch");
+    // A timeout can legitimately produce no installed-device measurement.
+    // Preserve that BLOCKED/FAILED evidence without inventing an observation.
+    // A purported COMPLETED run, however, must still prove the exact device.
+    if (Object.keys(devices).length === 0 && result.status !== "completed") {
+      install.devices = {};
+    } else {
+      if (Object.keys(devices).length !== 1 || devices[raw] === undefined) {
+        fail("privacy-physical-installation-mismatch");
+      }
+      install.devices = { [publicId]: devices[raw] };
     }
-    install.devices = { [publicId]: devices[raw] };
   }
   const publicJson = JSON.stringify(payload);
   if (publicJson.includes(raw)) fail("privacy-physical-device-id-leak");
