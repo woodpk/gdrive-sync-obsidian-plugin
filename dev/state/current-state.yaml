@@ -1,14 +1,14 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "WS-05-integrated-sync-product"
-active_build_unit: "R019"
+active_workstream: "WS-07-brain-verification-platform"
+active_build_unit: "S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-count: 1
 handoff-owner-role: BUILDER
-handoff-recipient-role: BUILDER
-handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/R019"
-handoff-source-sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
-active_build_unit_status: "R019_ADMINISTRATIVE_CLOSEOUT_COMPLETE_WINDOWS_BVP_STARTUP_OPERATOR_CONFIRMED"
+handoff-recipient-role: REVIEWER
+handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
+handoff-source-sha: "e3468b6a0f6b7412fe0c9bab422f1ffb5d618893"
+active_build_unit_status: "S09_WINDOWS_INSTALLED_RELAY_BUILDER_QUALIFIED_FINAL_REVIEW_PENDING"
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
   source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
@@ -114,11 +114,11 @@ s09_physical_readiness_gate:
   windows_smoke_discovery_doc: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-physical-readiness-gate-20261020.md"
   windows_smoke_execution_result: "NONE_NO_PHX_RUN"
   windows_direct_relay_correction_branch: "fix/s09-windows-controller-plugin-relay-20261022"
-  windows_direct_relay_correction_status: "FOCUSED_FAILURES_CORRECTED_PENDING_PHXCI_REQUALIFICATION"
+  windows_direct_relay_correction_status: "BUILDER_QUALIFIED_PHXCI_PASS_REVIEWER_PENDING"
   windows_direct_relay_test_first_commit: "35fe4b352606a89417a5335eeab006458cd86d65"
   windows_direct_relay_design: "SAME_INSTALLED_D_VAULT_PLUGIN_RELAY_C_TEMP_GUID_SCRATCH_NO_COPIER_NO_JUNCTION"
-  windows_direct_relay_phxci_qualification: "R1_BLOCKED_FOCUSED_R2_BLOCKED_REPOSITORY_R3_PENDING"
-  windows_direct_relay_reviewer_acceptance: "NOT_REQUESTED_PENDING_PHXCI_PASS"
+  windows_direct_relay_phxci_qualification: "R3_PASS_11_OF_11_STAGES_ORIGINAL_EVIDENCE_PUBLISHED"
+  windows_direct_relay_reviewer_acceptance: "FINAL_REVIEW_DISPATCHED_NOT_YET_ACCEPTED"
   windows_direct_relay_physical_attempt: "NOT_DISPATCHED"
   windows_direct_relay_original_verified_sha: "1878c7b9f98efd74bb50a5151ee38c7dfbf9e971"
   windows_direct_relay_original_phxci_run_id: "51f6d5f0-3a1e-45fc-b036-8ab61384eb68"
@@ -133,7 +133,18 @@ s09_physical_readiness_gate:
   windows_direct_relay_r2_phxci_verdict: "BLOCKED_FOCUSED_PASS_REPOSITORY_TEST_1289_PASS_3_FAIL"
   windows_direct_relay_r2_failure_observed: "THREE_EXISTING_RUNTIME_AUTHORITY_TESTS_FAILED_FS_OPEN_UNKNOWN_ON_SHARED_OBSIDIAN_NODE_STUB"
   windows_direct_relay_r2_test_only_correction_commit: "73445b8f464e36770cac1da066cec598dca2f98c"
-  windows_direct_relay_r2_correction_status: "ISOLATED_EXISTING_RUNTIME_TEST_STUB_PATH_PENDING_PHXCI_CONFIRMATION"
+
+  windows_direct_relay_r2_correction_status: "ISOLATED_EXISTING_RUNTIME_TEST_STUB_PATH_R3_PHXCI_QUALIFIED"
+  windows_direct_relay_qualified_source_sha: "e3468b6a0f6b7412fe0c9bab422f1ffb5d618893"
+  windows_direct_relay_qualified_tree: "f83c7456fe52cf5431a94d30283d5e73ce77ab84"
+  windows_direct_relay_qualified_phxci_run_id: "7473034b-748d-4130-a870-b77c2d97e3af"
+  windows_direct_relay_qualified_evidence_commit: "846f96573065c07c97bc5557ddeb8f89b5e1666c"
+  windows_direct_relay_qualified_evidence_file: "dev/test-results/20261022T171648Z-operator-fix-s09-windows-controller-plugin-relay-20261022-e3468b6a0f6b.json"
+  windows_direct_relay_review_scope: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-windows-controller-installed-relay-review-scope-20261022.md"
+  windows_direct_relay_handoff_feature_initial_count: 0
+  windows_direct_relay_handoff_count: 1
+  windows_direct_relay_handoff_review_status: "REVIEWER_PENDING_BLIND_THEN_EVIDENCE_FINAL"
+  windows_direct_relay_physical_readiness: "BLOCKED_PENDING_INDEPENDENT_REVIEW_AND_DEVICE_ID_PRIVACY_BINDING"
 
 
   prior_s09a_canary: "HISTORICAL_EVIDENCE_ONLY_NO_AUTOMATIC_RERUN"
