@@ -929,10 +929,14 @@ function reconcileOriginalWindowsTimeout(): void {
       typeof evidenceRead.stdout!=="string") fail("reconcile-original-phx-evidence-unavailable");
   const canonical=record(JSON.parse(evidenceRead.stdout)),checks=record(canonical.verification),
     changeSet=record(checks.changeSet),repoCheck=record(checks.repository);
+  const originalFocused=Array.isArray(canonical.stages) ?
+    canonical.stages.filter((value:unknown)=>record(value).name==="test-focused") : [];
   if (canonical.runId!==oldPhx || canonical.status!=="BLOCKED" ||
       record(canonical.repository).verifiedHead!==oldVerifiedSha ||
       changeSet.status!=="FAIL" || changeSet.stage!=="test-focused" ||
-      changeSet.exitCode!==1 || repoCheck.status!=="PASS") {
+      changeSet.exitCode!==1 || repoCheck.status!=="PASS" ||
+      originalFocused.length!==1 || record(originalFocused[0]).exitCode!==1 ||
+      !String(record(originalFocused[0]).stderr??"").includes("privacy-physical-installation-mismatch")) {
     fail("reconcile-original-phx-evidence-identity-mismatch");
   }
   const relay="D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay";
@@ -957,7 +961,7 @@ function reconcileOriginalWindowsTimeout(): void {
     }
     let candidate:BridgeRequest;
     try{candidate=record(JSON.parse(readFileSync(reqFile,"utf8"))) as unknown as BridgeRequest;}
-    catch{fail("reconcile-original-request-unreadable");}
+    catch{continue;} // Unrelated scratch requests are not part of this exact timeout.
     if(candidate!.expectation?.phxRunId===oldPhx)oldCandidates.push({root,request:candidate!});
   }
   if(oldCandidates.length!==1)fail("reconcile-original-request-not-unique");
