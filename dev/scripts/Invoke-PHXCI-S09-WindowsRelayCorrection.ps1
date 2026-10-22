@@ -8,7 +8,8 @@ param(
   [ValidatePattern('^[0-9a-f]{40}$')]
   [string]$ExpectedSourceSha,
   [switch]$RunWindowsPhysicalSmoke,
-  [switch]$UseRecoveredSoftwareEvidence
+  [switch]$UseRecoveredSoftwareEvidence,
+  [switch]$RecoverPreviouslyDispatchedWindowsSmoke
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -53,11 +54,19 @@ $priorConsent = [Environment]::GetEnvironmentVariable('BVP_OWNER_PHYSICAL_APPROV
 $priorExisting = [Environment]::GetEnvironmentVariable('BVP_EXISTING_MAILBOX_ROOT_CONFIRMED', 'Process')
 $priorScratch = [Environment]::GetEnvironmentVariable('BVP_WINDOWS_SMOKE_SCRATCH', 'Process')
 $qualifiedCommand = 'npm run test:bvp-root'
+$recoveryCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --recover-privacy-blocked-windows-smoke'
 $physicalCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-second-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
 try {
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
   $env:BVP_CHANGE_CLASS = 'ordinary'
-  if ($UseRecoveredSoftwareEvidence) {
+  if ($RecoverPreviouslyDispatchedWindowsSmoke) {
+    if ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence) {
+      throw 'Retrospective evidence recovery cannot be combined with a new physical dispatch.'
+    }
+    # PHX-CI-only read of the prior interrupted smoke: no device command is sent.
+    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $recoveryCommand -TempRoot $runRoot
+    $code = $LASTEXITCODE
+  } elseif ($UseRecoveredSoftwareEvidence) {
     if (-not $RunWindowsPhysicalSmoke) { throw 'Recovery evidence may be reused only for physical continuation.' }
     # Recovery verifies immutable PHX-CI observations; its original aggregate verdict stays BLOCKED.
     $qualifiedSource = 'fface1c3233312eb2356c9cebca7c2957e55918f'
