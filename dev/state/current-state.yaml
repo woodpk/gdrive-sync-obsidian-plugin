@@ -141,8 +141,6 @@ s09_physical_readiness_gate:
   windows_direct_relay_qualified_evidence_commit: "846f96573065c07c97bc5557ddeb8f89b5e1666c"
   windows_direct_relay_qualified_evidence_file: "dev/test-results/20261022T171648Z-operator-fix-s09-windows-controller-plugin-relay-20261022-e3468b6a0f6b.json"
   windows_direct_relay_review_scope: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-windows-controller-installed-relay-review-scope-20261022.md"
-  windows_direct_relay_handoff_feature_initial_count: 0
-  windows_direct_relay_handoff_count: 1
   windows_direct_relay_handoff_review_status: "REVIEWER_PENDING_BLIND_THEN_EVIDENCE_FINAL"
   windows_direct_relay_physical_readiness: "BLOCKED_PENDING_INDEPENDENT_REVIEW_AND_DEVICE_ID_PRIVACY_BINDING"
 
