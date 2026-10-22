@@ -1,14 +1,23 @@
 schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
-active_workstream: "WS-07-brain-verification-platform"
-active_build_unit: "S09-BR02"
-handoff-count: 6
-handoff-owner-role: REVIEWER
+active_workstream: "WS-05-integrated-sync-product"
+active_build_unit: "R019"
+handoff-count: 0
+handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
-handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09-BR02"
-handoff-source-sha: "51d75e63eac1f3a37ef998cf599f039dce7feb2f"
-active_build_unit_status: "S09_BR02_ACCEPTED_SOFTWARE_MASTER_MERGED_PHYSICAL_PREPARATION_NOT_AUTHORIZED"
+handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/R019"
+handoff-source-sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
+active_build_unit_status: "R019_METADATA_CANDIDATE_PHX_QUALIFIED_REVIEW_PENDING_NO_RELEASE"
+release_019_candidate:
+  planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
+  source_sha: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
+  version: "0.1.19"
+  branch: "release/0.1.19-candidate-20261022"
+  final_review_status: "PENDING_INDEPENDENT_REVIEW"
+  exact_shipping_artifact_promotion_status: "NOT_APPROVED"
+  github_release_status: "NOT_PUBLISHED"
+  retained_s09_br02_handoff_count: 6
 s09_g1_feature_closeout:
   status: "CLOSEOUT_COMPLETE"
   scope: "SOFTWARE_FEATURE_ONLY"
