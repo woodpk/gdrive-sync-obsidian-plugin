@@ -79,8 +79,8 @@ export function projectPhysicalResultForEvidence(resultJson: string, raw: string
     if (Object.keys(captures).length !== 0) {
       const registered = getLiveBattery("windows-live-smoke");
       const scenario = registered?.createScenario();
-      if (record(payload.battery).name !== "windows-live-smoke" ||
-          result.scenarioId !== scenario?.id || !evidence?.machine) {
+      if (!scenario || record(payload.battery).name !== "windows-live-smoke" ||
+          result.scenarioId !== scenario.id || !evidence?.machine) {
         fail("privacy-raw-captures-unregistered");
       }
       const observations = record(evidence.machine).observations;
@@ -1206,7 +1206,9 @@ function recoverPrivacyBlockedWindowsSmoke(): void {
     request.expectation.deviceIds.windows!);
   const attempt:BridgeAttempt={
     ...request.expectation,schemaVersion:1,
-    exitCode:status==="completed"?0:status==="blocked"?3:1,
+    // A blocked non-checkpoint attempt is a completed runner with exit 1, not
+    // checkpoint exit 3; only durable checkpoint results may use exit 3.
+    exitCode:status==="completed"?0:1,
     resultJson:publicResult,
   };
   // Decode+validate the exact recovered public transport shape in memory.
