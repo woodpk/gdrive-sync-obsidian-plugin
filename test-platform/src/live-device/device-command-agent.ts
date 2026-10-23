@@ -1,5 +1,5 @@
 import type { ProductionVerificationControl } from "../../../src/product/live-validation-control-seam";
-import { bvpDiagnostic, type BvpDiagnostic } from "../scenario/scenario-diagnostics";
+import { bvpDiagnostic, type BvpDiagnostic } from "./diagnostic-contract";
 
 type ProductionReceipt = Exclude<ReturnType<ProductionVerificationControl["latestProductionRunReceipt"]>, undefined>;
 type ProductionStatus = ReturnType<ProductionVerificationControl["currentStatus"]>;
