@@ -54,6 +54,9 @@ function result(value: unknown): DeviceCommandResult | undefined {
     phase:rawDiagnostic.phase,lastConfirmedBoundary:rawDiagnostic.lastConfirmedBoundary,
     firstUnconfirmedBoundary:rawDiagnostic.firstUnconfirmedBoundary,effect:rawDiagnostic.effect,
     recommendedAction:rawDiagnostic.recommendedAction,stepId:rawDiagnostic.stepId,
+    identity:obj(rawDiagnostic.identity) as BvpDiagnostic["identity"],
+    hops:Array.isArray(rawDiagnostic.hops)?rawDiagnostic.hops:undefined,
+    causeClass:rawDiagnostic.causeClass,retriability:rawDiagnostic.retriability,
   }):undefined;
   return {validationBuild:{schemaVersion:1,sourceCommit:build.sourceCommit.toLowerCase(),...(typeof build.artifactSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.artifactSha256)&&typeof build.manifestSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.manifestSha256)?{artifactSha256:build.artifactSha256.toLowerCase(),manifestSha256:build.manifestSha256.toLowerCase()}:{})},...h,kind:v.kind as DeviceCommandResult["kind"],status:v.status as DeviceCommandResult["status"],classification:safeClassification,...(v.replayed===true?{replayed:true as const}:{}),...(v.plan?{plan:structuredClone(v.plan)}:{}),...(v.actionResult?{actionResult:structuredClone(v.actionResult)}:{}),...(v.receipt?{receipt:structuredClone(v.receipt)}:{}),...(v.productStatus?{productStatus:structuredClone(v.productStatus)}:{}),...(v.fixture?{fixture:structuredClone(v.fixture)}:{}),...(diagnostic?{diagnostic}:{})};
 }
@@ -175,7 +178,8 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
       }
       return{status:"ok",published,completed};
     }catch(e){
-      const reason=e instanceof MailboxUnavailableError?e.message:failureClass;
+      const reason=e instanceof MailboxUnavailableError?e.message:
+        e instanceof Error&&["mailbox-record-too-large","mailbox-record-invalid","mailbox-sensitive-field"].includes(e.message)?e.message:failureClass;
       const diagnostic=bvpDiagnostic({
         classification:reason,component:"windows-relay",phase,lastConfirmedBoundary:last,
         firstUnconfirmedBoundary:first,effect:"unknown",recommendedAction:"reconcile-relay-state",
