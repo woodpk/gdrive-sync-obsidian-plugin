@@ -4,7 +4,7 @@ import {
   type ScenarioExecutionMode, type ScenarioExpectedOutcome, type ScenarioFixtureContent,
   type ScenarioObservationStep, type ScenarioStep,
 } from "./scenario-contract";
-import { BvpDiagnosticError, safeUnexpectedFailure, type BvpDiagnostic } from "./scenario-diagnostics";
+import { BvpDiagnosticError, bvpDiagnostic, safeUnexpectedFailure, type BvpDiagnostic } from "./scenario-diagnostics";
 import { VirtualSynchronizationWorld, type VirtualProductionDevice } from "../virtual-world/virtual-world";
 import { virtualDrivePath, type InMemoryGoogleDriveCore } from "../virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../virtual-world/in-memory-local-vault";
@@ -75,7 +75,13 @@ export class DeterministicScenarioRunner {
     const validated = validateScenarioDefinition(scenario);
     if (!validated.ok) {
       await this.executor?.dispose?.();
-      return { scenarioId: scenario.id ?? "<invalid>", status: "unsupported", steps: [], captures: {}, classification: "invalid-scenario", reason: validated.issues.join("; ") };
+      const diagnostic=bvpDiagnostic({
+        classification:"invalid-scenario",component:"scenario-runner",phase:"scenario-preflight",
+        lastConfirmedBoundary:"scenario-input-received",firstUnconfirmedBoundary:"scenario-validation",
+        effect:"none-confirmed",recommendedAction:"inspect-scenario-schema",
+      });
+      return {scenarioId:"invalid-scenario",status:"unsupported",steps:[],captures:{},
+        classification:"invalid-scenario",diagnostic};
     }
     const executionMode = this.executor?.executionMode ?? "deterministic";
     if (!scenario.executionModes.includes(executionMode)) {
