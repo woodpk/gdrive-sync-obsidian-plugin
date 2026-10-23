@@ -1,4 +1,5 @@
-import { deepStrictEqual, strictEqual } from "node:assert/strict";
+import { deepStrictEqual, strictEqual, doesNotMatch } from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 
 import { defineScenario, type ScenarioDefinition, type ScenarioStep } from "../src/scenario/scenario-contract";
@@ -54,7 +55,10 @@ test("same runner owns live step order, captures, verdict, evidence mode, and di
   deepStrictEqual(result.captures.observed, { status: "present", exists: true });
   strictEqual(executor.disposed, 1);
   strictEqual(result.evidence?.machine.executionMode, "live");
-  deepStrictEqual(result.evidence?.machine.deviceIdentities, ["device:ios", "device:windows"]);
+  const hashed = executor.deviceIdentities.map(id => "device-sha256:" + createHash("sha256")
+    .update("").update("\\0").update(id).digest("hex").slice(0, 24)).sort();
+  deepStrictEqual(result.evidence?.machine.deviceIdentities, hashed);
+  doesNotMatch(result.evidence?.machineJson ?? "", /device:ios|device:windows/);
 });
 
 test("runner applies existing expected-outcome rules to executor results and terminates centrally", async () => {
