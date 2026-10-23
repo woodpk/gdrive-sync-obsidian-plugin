@@ -63,12 +63,19 @@ function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
   return undefined;
 }
 function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
-  if(result.status!=="completed")return fail(result.status==="rejected"?"blocked":"failed",result.classification);
-  if(result.kind!=="production-execute")return{status:"completed",value:result};
-  const terminal=result.receipt?.terminal;
-  if(terminal==="complete")return{status:"completed",value:result};
-  if(terminal==="blocked"||terminal==="deferred"||terminal==="recovery-required")return fail("blocked",result.classification);
-  return fail("failed",result.classification||"production-terminal-not-complete");
+  if(result.status==="completed"&&result.kind!=="production-execute")return{status:"completed",value:result};
+  if(result.status==="completed"&&result.kind==="production-execute"&&result.receipt?.terminal==="complete")
+    return{status:"completed",value:result};
+  const status=result.status==="rejected"||result.receipt?.terminal==="blocked"||
+    result.receipt?.terminal==="deferred"||result.receipt?.terminal==="recovery-required"?"blocked":"failed";
+  const diagnostic=result.diagnostic??bvpDiagnostic({
+    classification:result.classification||"production-terminal-not-complete",component:"live-controller",
+    phase:"device-result",lastConfirmedBoundary:"device-result-correlated",
+    firstUnconfirmedBoundary:"device-operation-outcome",
+    effect:result.status==="rejected"?"none-confirmed":"unknown",
+    recommendedAction:result.status==="rejected"?"inspect-device-rejection":"reconcile-device-outcome",
+  });
+  return{status,classification:diagnostic.classification,diagnostic};
 }
 function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string|undefined{const prior=new Set<string>();for(let i=0;i<index;i++){const step=scenario.steps[i]!;if("captureAs" in step&&typeof step.captureAs==="string")prior.add(step.captureAs);}for(let i=index+1;i<scenario.steps.length;i++){const step=scenario.steps[i]!;if("inputRef" in step&&typeof step.inputRef==="string"&&prior.has(step.inputRef))return step.inputRef;if("observationRef" in step&&typeof step.observationRef==="string"&&prior.has(step.observationRef))return step.observationRef;}return undefined;}
 
