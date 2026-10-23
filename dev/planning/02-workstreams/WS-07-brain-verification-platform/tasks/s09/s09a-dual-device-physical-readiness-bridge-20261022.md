@@ -28,7 +28,7 @@ The operator's default focused stage is `npm run test:bvp-root`; the repository 
 
 1. Owner-authorized installation of **validation-only**, not shipping, `main.js`, `manifest.json`, `build-identity.json` into the already isolated iPhone/iPad Obsidian test vault, after backup/identity checks. Shipping build already installed is insufficient.
 2. Proof of independent on-device OAuth and explicit pairing to the intended disposable managed test remote on iOS; no auth token export.
-3. Separate PHX-CI operator integration/qualification for the S09A-only physically approved dual-device dispatch. Current PowerShell operator remains deliberately software-only for S09A.
+3. Repository-controlled S09A-only PHX-CI physical operator switch is now implemented (commit `3bb4017309949f03f11c8a0976d89977e24a56be`), but remains **UNQUALIFIED until a new substantive PHX-CI software run**. The path requires exact owner `YES`, a local iOS device ID, existing mailbox confirmation, and both installed validation-only plugins. No physical S09A operator execution has occurred.
 4. Exact private device ID supplied to the controller only in its authorized local process, redacted public SHA-256 pseudonyms in evidence. Device ID must not be misrepresented as a token.
 5. Existing and owned BVP command-mailbox root confirmation; it may create control-plane metadata records, even though the readiness scenario does not synchronize product files.
 6. Real installed source SHA/manifest/artifact checks and acknowledgement of the explicit BVP-only metadata-effect budget; bound run ID, PHX publication, live device receipts, no duplicate dispatch after uncertainty.
@@ -37,3 +37,7 @@ The operator's default focused stage is `npm run test:bvp-root`; the repository 
 ## Relevant negative limits
 
 No new test framework, test runner, GitHub Actions, extra physical coordination service, PHX-CI runtime or configuration change, personal vault operation, or Stage 3 authorization. Preserve the owner-deferred Reviewer handoff.
+
+## 2026-10-22 operator continuation
+
+Test-first operator contract commit: `e3eeaedb97475e6e40d89f1b82463461e1799f77`. Physical switch implementation: `3bb4017309949f03f11c8a0976d89977e24a56be`. Existing `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1` retains default nonphysical PHX software qualification and the Windows-only route. New `-RunS09ADualPhysicalReadiness` is not to be used until software-qualified, both iOS/Windows validation-only artifacts installed and observed, and exact physical effects separately approved. The `0.1.19` shipping artifact and the original S09A PHX software PASS remain unchanged.
