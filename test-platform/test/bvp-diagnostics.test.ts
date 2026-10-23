@@ -405,6 +405,7 @@ test("unsupported execution mode and cleanup exceptions return safe evidence wit
   strictEqual(after.steps[0]?.classification,"source-correlation-failed");
   strictEqual(after.classification,"source-correlation-failed");
   strictEqual(after.cleanupDiagnostic?.classification,"cleanup-failed");
+  strictEqual(after.evidence?.machine.verdict.cleanupDiagnostic?.classification,"cleanup-failed");
   strictEqual(after.cleanupDiagnostic?.effect,"unknown");
   doesNotMatch(JSON.stringify(after),/private-token|secret\.md|private-id/);
 });
