@@ -1,4 +1,5 @@
 import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "./device-command-agent";
+import { bvpDiagnostic, type BvpDiagnostic } from "../scenario/scenario-diagnostics";
 
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -41,7 +42,14 @@ function command(value: unknown): DeviceCommand | undefined {
 const RESULT_KINDS=new Set(["fixture-put","fixture-remove","observe-file","production-preview","production-execute","production-control","observe-product","invalid"]);
 function result(value: unknown): DeviceCommandResult | undefined {
   const v=obj(value), h=header(v),build=obj(v?.validationBuild); if(!v||!h||!build||build.schemaVersion!==1||typeof build.sourceCommit!=="string"||!/^[0-9a-f]{40}$/i.test(build.sourceCommit)||typeof v.kind!=="string"||!RESULT_KINDS.has(v.kind)||typeof v.status!=="string"||typeof v.classification!=="string"||!["completed","rejected","failed"].includes(v.status)) return undefined;
-  return {validationBuild:{schemaVersion:1,sourceCommit:build.sourceCommit.toLowerCase(),...(typeof build.artifactSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.artifactSha256)&&typeof build.manifestSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.manifestSha256)?{artifactSha256:build.artifactSha256.toLowerCase(),manifestSha256:build.manifestSha256.toLowerCase()}:{})},...h,kind:v.kind as DeviceCommandResult["kind"],status:v.status as DeviceCommandResult["status"],classification:v.classification,...(v.replayed===true?{replayed:true as const}:{}),...(v.plan?{plan:structuredClone(v.plan)}:{}),...(v.actionResult?{actionResult:structuredClone(v.actionResult)}:{}),...(v.receipt?{receipt:structuredClone(v.receipt)}:{}),...(v.productStatus?{productStatus:structuredClone(v.productStatus)}:{}),...(v.fixture?{fixture:structuredClone(v.fixture)}:{})};
+  const rawDiagnostic=obj(v.diagnostic);
+  const diagnostic=rawDiagnostic?.schemaVersion===1?bvpDiagnostic({
+    classification:rawDiagnostic.classification,component:rawDiagnostic.component,
+    phase:rawDiagnostic.phase,lastConfirmedBoundary:rawDiagnostic.lastConfirmedBoundary,
+    firstUnconfirmedBoundary:rawDiagnostic.firstUnconfirmedBoundary,effect:rawDiagnostic.effect,
+    recommendedAction:rawDiagnostic.recommendedAction,stepId:rawDiagnostic.stepId,
+  }):undefined;
+  return {validationBuild:{schemaVersion:1,sourceCommit:build.sourceCommit.toLowerCase(),...(typeof build.artifactSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.artifactSha256)&&typeof build.manifestSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.manifestSha256)?{artifactSha256:build.artifactSha256.toLowerCase(),manifestSha256:build.manifestSha256.toLowerCase()}:{})},...h,kind:v.kind as DeviceCommandResult["kind"],status:v.status as DeviceCommandResult["status"],classification:v.classification,...(v.replayed===true?{replayed:true as const}:{}),...(v.plan?{plan:structuredClone(v.plan)}:{}),...(v.actionResult?{actionResult:structuredClone(v.actionResult)}:{}),...(v.receipt?{receipt:structuredClone(v.receipt)}:{}),...(v.productStatus?{productStatus:structuredClone(v.productStatus)}:{}),...(v.fixture?{fixture:structuredClone(v.fixture)}:{}),...(diagnostic?{diagnostic}:{})};
 }
 function same(a: Header,b: Header): boolean { return a.runId===b.runId&&a.deviceId===b.deviceId&&a.sequence===b.sequence&&a.commandId===b.commandId; }
 function sensitive(value:unknown):boolean{if(!value||typeof value!=="object")return false;if(Array.isArray(value))return value.some(sensitive);return Object.entries(value as Record<string,unknown>).some(([k,v])=>/^(access[_-]?token|refresh[_-]?token|authorization[_-]?code|client[_-]?secret|code[_-]?verifier|password|passcode|token)$/i.test(k)||sensitive(v));}
@@ -104,11 +112,48 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
   const out=`${root}/outbox`,sent=`${root}/sent`,inside=`${root}/inbox`,publisher=commandPublishers.get(mailbox);
   if(!publisher)throw new Error("relay-mailbox-publisher-unavailable");
   const publishCommand=publisher;
-  type PumpResult={status:"ok"|"unavailable";published:number;completed:number};
+  type PumpResult={status:"ok"|"unavailable";published:number;completed:number;reason?:string;diagnostic?:BvpDiagnostic};
   let pumping:Promise<PumpResult>|undefined;
   async function ensure(){for(const p of [root,out,sent,inside])if(!await adapter.exists(p))await adapter.mkdir(p);}
   async function authorityGeneration(cmd:DeviceCommand):Promise<number>{const path=await controllerAuthorityPath(root,cmd.deviceId);if(!await adapter.exists(path))throw new MailboxUnavailableError("relay-controller-run-unleased");let value:ControllerAuthority|undefined;try{value=controllerAuthority(JSON.parse(await adapter.read(path)),cmd.deviceId);}catch{}if(!value||value.runId!==cmd.runId||value.generation<=0)throw new MailboxUnavailableError("relay-controller-run-unleased");return value.generation;}
-  async function pumpCore():Promise<PumpResult>{let published=0,completed=0;try{await ensure();for(const path of (await adapter.list(out)).files){const raw=await adapter.read(path),cmd=command(JSON.parse(raw));if(!cmd)throw new Error("relay-command-invalid");await publishCommand(cmd,await authorityGeneration(cmd));await adapter.rename(path,`${sent}/${baseName(path)}`);published++;}for(const path of (await adapter.list(sent)).files){const cmd=command(JSON.parse(await adapter.read(path)));if(!cmd)throw new Error("relay-pending-invalid");const res=await mailbox.resultFor(cmd);if(!res)continue;await adapter.write(`${inside}/${baseName(path)}.result.json`,JSON.stringify(res));await adapter.remove(path);completed++;}return{status:"ok",published,completed};}catch(e){if(e instanceof MailboxUnavailableError)return{status:"unavailable",published,completed};throw e;}}
+  async function pumpCore():Promise<PumpResult>{
+    let published=0,completed=0,phase="relay-preflight",lastConfirmed="relay-entry",
+      firstUnconfirmed="relay-directory-preflight";
+    try{
+      await ensure();lastConfirmed="relay-directories-ready";
+      for(const path of (await adapter.list(out)).files){
+        const raw=await adapter.read(path),cmd=command(JSON.parse(raw));
+        if(!cmd)throw new Error("relay-command-invalid");
+        lastConfirmed="relay-command-read";
+        phase="command-authorization";firstUnconfirmed="command-lease-validation";
+        const generation=await authorityGeneration(cmd);
+        phase="command-publication";firstUnconfirmed="drive-command-publication";
+        await publishCommand(cmd,generation);
+        lastConfirmed="drive-publish-acknowledged";firstUnconfirmed="sent-record-persistence";
+        await adapter.rename(path,`${sent}/${baseName(path)}`);published++;
+      }
+      for(const path of (await adapter.list(sent)).files){
+        const cmd=command(JSON.parse(await adapter.read(path)));
+        if(!cmd)throw new Error("relay-pending-invalid");
+        lastConfirmed="relay-sent-record-read";
+        phase="result-fetch";firstUnconfirmed="drive-receipt-observation";
+        const res=await mailbox.resultFor(cmd);
+        if(!res)continue;
+        lastConfirmed="device-result-observed";phase="result-persistence";
+        firstUnconfirmed="relay-inbox-persistence";
+        await adapter.write(`${inside}/${baseName(path)}.result.json`,JSON.stringify(res));
+        await adapter.remove(path);completed++;
+      }
+      return{status:"ok",published,completed};
+    }catch(e){
+      if(!(e instanceof MailboxUnavailableError))throw e;
+      const diagnostic=bvpDiagnostic({
+        classification:e.message,component:"windows-relay",phase,lastConfirmedBoundary:lastConfirmed,
+        firstUnconfirmedBoundary:firstUnconfirmed,effect:"unknown",recommendedAction:"reconcile-relay-state",
+      });
+      return{status:"unavailable",published,completed,reason:diagnostic.classification,diagnostic};
+    }
+  }
   function pumpOnce():Promise<PumpResult>{if(pumping)return pumping;pumping=pumpCore().finally(()=>{pumping=undefined;});return pumping;}
   return{pumpOnce};
 }
