@@ -75,7 +75,7 @@ test("live executor maps local fixture, production preview/execute, observation,
 test("production uncertainty propagates as failure rather than transport success",async()=>{const dir=await root(),relay=join(dir,"relay"),s=scenario("uncertain",[{id:"sync",kind:"production",device:"device-a",operation:"synchronize"}]),executor=await createLiveScenarioExecutor(options(s,"run-u",relay,join(dir,"cp.json"))),run=new DeterministicScenarioRunner({},executor).run(s);
   await respond(relay,c=>baseResult(c,{classification:"production-preview-ready",plan:{planId:"p",trigger:"manual",operationCount:1,executionDisposition:"reviewable",recoveryCheckpointRequired:false,globalExecutionGate:"open"}}));
   await respond(relay,c=>baseResult(c,{classification:"production-uncertain",receipt:{runId:"prod-u",trigger:"manual",planId:"p",terminal:"uncertain",physicalEffectsCommittedAndVerified:false,committedOperationCount:0,skippedOperationCount:0,reasonCode:"uncertain"} as any}));
-  const result=await run;strictEqual(result.status,"failed");strictEqual(result.classification,"production-uncertain");await rm(dir,{recursive:true,force:true});
+  const result=await run;strictEqual(result.status,"failed");strictEqual(result.classification,"production-uncertain");strictEqual(result.diagnostic?.phase,"device-result");strictEqual(result.diagnostic?.lastConfirmedBoundary,"device-result-correlated");strictEqual(result.diagnostic?.firstUnconfirmedBoundary,"device-operation-outcome");strictEqual(result.diagnostic?.effect,"unknown");await rm(dir,{recursive:true,force:true});
 });
 
 
