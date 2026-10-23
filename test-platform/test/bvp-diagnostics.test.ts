@@ -402,3 +402,25 @@ test("unsupported execution mode and cleanup exceptions return safe evidence wit
   strictEqual(after.cleanupDiagnostic?.effect,"unknown");
   doesNotMatch(JSON.stringify(after),/private-token|secret\.md|private-id/);
 });
+
+test("deterministic child TAP with private error text stays private while preserving failure evidence",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"bvp-tap-privacy-"));
+  try{
+    const resultPath=join(root,"result.json"),tapPath=join(root,"result.tap");
+    const cli=join(__dirname,"batteries","run-deterministic-battery.js");
+    const child=spawnSync(process.execPath,[cli,"--battery","bvp-private-tap-canary",
+      "--result-file",resultPath,"--tap-file",tapPath],{
+      encoding:"utf8",env:{...process.env,BVP_PRIVACY_TAP_INJECT:"1"},
+    });
+    strictEqual(child.status,1);
+    const result=JSON.parse(await readFile(resultPath,"utf8"));
+    strictEqual(result.result.status,"failed");
+    strictEqual(result.result.exitCode,1);
+    const tap=await readFile(tapPath,"utf8");
+    strictEqual(tap.includes("not ok"),true);
+    strictEqual(tap.includes("privacy canary"),true);
+    for(const shared of [child.stdout,child.stderr,tap,JSON.stringify(result)]){
+      doesNotMatch(shared,/synthetic-secret-(stderr|stack)|PrivateVault\.txt|Bearer|node:internal|at TestContext/);
+    }
+  }finally{await rm(root,{recursive:true,force:true});}
+});
