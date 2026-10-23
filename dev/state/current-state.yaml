@@ -8,7 +8,7 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-source-sha: "4708f18952702d98456530dfb9f9854a336bfeac"
-active_build_unit_status: "S09A_DUAL_PHYSICAL_OPERATOR_PHXCI_BLOCKED_ONE_STALE_TEST_ASSERTION_FIX_PENDING_NO_IOS_EXECUTION_REVIEW_OWNER_DEFERRED"
+active_build_unit_status: "S09A_PHYSICAL_OPERATOR_CARDINALITY_CORRECTED_NEW_PHXCI_QUALIFICATION_PENDING_NO_IOS_EXECUTION_REVIEW_OWNER_DEFERRED"
 owner_current_testing_directive:
   date: "2026-10-22"
   reviewer_handoff: "DEFERRED_BY_OWNER_DO_NOT_ISSUE_ANY_REVIEW_PROMPT_UNTIL_OWNER_EXPLICITLY_INSTRUCTS"
@@ -51,7 +51,11 @@ owner_current_testing_directive:
     blocked_evidence_commit: "578fda9de9d51e93bc16bf5a010dd47b51eb8f34"
     failed_focus_test: "PHX-CI Windows operator is singular complete and source-drift guarded"
     precise_failure: "FOUR_LEGITIMATE_PHX_INVOCATIONS_CURRENT_TEST_EXPECTS_THREE; TWO_PHYSICAL_CONSENT_PROMPTS_TEST_EXPECTS_ONE"
-    correction_status: "TEST_SOURCE_CORRECTION_IDENTIFIED_BUT_GITHUB_WRITE_BLOCKED_NOT_COMMITTED"
+    correction_status: "REFACTORED_PHYSICAL_OPERATOR_INSTEAD_OF_WEAKENING_SAFETY_TEST_COUNTS"
+    correction_source_commit: "f272b41aaf5e23f01d6b73731797bfc15a474eee"
+    correction_approach: "SINGLE_PHX_PHYSICAL_DISPATCH_SITE_ONE_OWNER_PROMPT_AND_SEPARATE_S09A_BATTERY_APPROVAL"
+    regression_audit: "THREE_TOTAL_PHX_INVOCATIONS_ONE_PHYSICAL_CONSENT_PROMPT_DISTINCT_IOS_GATES"
+    new_candidate_software_qualification: "PENDING_NOT_YET_RUN"
     rerun_policy: "NO_RERUN_OF_UNCHANGED_BLOCKED_CANDIDATE"
     previous_bridge_qualified_sha: "c51791b9f6cf6336398d318f0330bb7cc7e65d29"
     dual_operator_owner_effect_gate: "REQUIRES_EXPLICIT_YES_AND_PRIVATE_IOS_DEVICE_ID_ONLY_ON_LOCAL_PROCESS"
