@@ -223,7 +223,12 @@ test("diagnostic-looking custom observation cannot substitute for authoritative 
   strictEqual(result.status, "blocked");
   strictEqual(result.classification, "missing-observation-field");
   const json = result.evidence?.machineJson ?? "";
-  doesNotMatch(json, /secret-token|unrelated note content|"diagnostic":/);
+  // The custom observation's "diagnostic": "success" must not become authoritative,
+  // but the real allowlisted machine verdict diagnostic is now required.
+  doesNotMatch(json, /secret-token|unrelated note content|"diagnostic":"success"/);
+  strictEqual(result.evidence?.machine.verdict.diagnostic?.classification, "missing-observation-field");
+  strictEqual(result.evidence?.machine.verdict.diagnostic?.component, "scenario-runner");
+  strictEqual(result.evidence?.machine.verdict.diagnostic?.phase, "simulated-step-result");
 });
 
 test("canonical evidence retains traceability and derives human text from the same machine verdict", async () => {
