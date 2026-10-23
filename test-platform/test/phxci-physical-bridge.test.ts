@@ -173,6 +173,16 @@ test("TDD-01 nominal: completed BVP attempt round-trips through bounded PHX stdo
   doesNotMatch(frame, /"resultJson"|"checkpointJson"/, "raw JSON must not accidentally escape into logs");
 });
 
+test("ER-01 authenticated bridge also accepts exact SHA-256 run identity while rejecting wrong hashes",()=>{
+  const original=initial(0),parsed=JSON.parse(original.resultJson);
+  const opaque="run-sha256:"+sha(logicalRunId).slice(0,24);
+  parsed.result.evidence.machine.liveIdentity.runId=opaque;
+  const safe={...original,resultJson:JSON.stringify(parsed)};
+  deepStrictEqual(decodeBridgeAttempt(encodeBridgeAttempt(safe),expected(safe)),safe);
+  parsed.result.evidence.machine.liveIdentity.runId="run-sha256:"+"f".repeat(24);
+  throws(()=>encodeBridgeAttempt({...safe,resultJson:JSON.stringify(parsed)}),/identity|mismatch|result/i);
+});
+
 test("TDD-02 checkpoint: exit 3 and original v2 BVP checkpoint persist without manufacturing PASS", () => {
   const attempt = initial(3);
   const decoded = decodeBridgeAttempt(encodeBridgeAttempt(attempt), expected(attempt));
