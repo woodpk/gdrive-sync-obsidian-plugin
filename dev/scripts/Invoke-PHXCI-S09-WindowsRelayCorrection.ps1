@@ -4,7 +4,9 @@
 # Never edits the installed plugin, pairing, product sync, or independent evidence.
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)]
+  # Optional immutable pin for callers that require it. By default this
+  # operator binds the freshly checked-out remote commit on each invocation.
+  # Never pin a prior evidence commit in a reusable bootstrap.
   [ValidatePattern('^[0-9a-f]{40}$')]
   [string]$ExpectedSourceSha,
   [switch]$RunWindowsPhysicalSmoke,
@@ -27,8 +29,14 @@ if (-not (Test-Path -LiteralPath $phxFrontDoor -PathType Leaf)) {
   throw "Pinned PHX-CI front door not installed: $phxFrontDoor"
 }
 $local = @(& git.exe -C $repository rev-parse HEAD)
-if ($LASTEXITCODE -ne 0 -or $local.Count -ne 1 -or $local[0].Trim() -cne $ExpectedSourceSha) {
-  throw 'Local source commit differs from the authorized exact source.'
+if ($LASTEXITCODE -ne 0 -or $local.Count -ne 1 -or $local[0].Trim() -cnotmatch '^[a-f0-9]{40}$') {
+  throw 'Local source commit unavailable.'
+}
+if (-not $PSBoundParameters.ContainsKey('ExpectedSourceSha')) {
+  $ExpectedSourceSha = $local[0].Trim()
+}
+if ($local[0].Trim() -cne $ExpectedSourceSha) {
+  throw 'Caller-pinned source differs from local commit; no verification dispatched.'
 }
 $currentBranch = @(& git.exe -C $repository branch --show-current)
 if ($LASTEXITCODE -ne 0 -or $currentBranch.Count -ne 1 -or $currentBranch[0].Trim() -cne $branch) {
@@ -157,75 +165,10 @@ try {
     if ($RunS09ADualPhysicalReadiness) {
       $iosId = Read-Host 'iPhone BRAIN test-vault Device identity (32 lowercase hexadecimal digits; device: prefix optional)'
       $iosId = $iosId.Trim()
-      # BRAIN Settings can present only the 32-hex value. The private mailbox
-      # contract requires the canonical device: prefix; never change the stored
-      # device identity or bypass the exact full-value validation.
-      if ($iosId -cmatch '^[a-f0-9]{32}
-      $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'
-      $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'YES'
-    }
-    $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
-    $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
-    $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
-    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $dualPhysicalCommand -TempRoot $runRoot
-    $code = $LASTEXITCODE
-  }
-} finally {
-  if ($null -eq $priorPurpose) { Remove-Item Env:\BRAIN_ARTIFACT_PURPOSE -ErrorAction SilentlyContinue }
-  else { $env:BRAIN_ARTIFACT_PURPOSE = $priorPurpose }
-  if ($null -eq $priorClass) { Remove-Item Env:\BVP_CHANGE_CLASS -ErrorAction SilentlyContinue }
-  else { $env:BVP_CHANGE_CLASS = $priorClass }
-  foreach ($entry in @(
-    @{ Name = 'BVP_OWNER_PHYSICAL_APPROVAL'; Value = $priorConsent },
-    @{ Name = 'BVP_EXISTING_MAILBOX_ROOT_CONFIRMED'; Value = $priorExisting },
-    @{ Name = 'BVP_WINDOWS_SMOKE_SCRATCH'; Value = $priorScratch },
-    @{ Name = 'BVP_IOS_DEVICE_ID'; Value = $priorIosId },
-    @{ Name = 'BVP_S09A_DUAL_OWNER_APPROVAL'; Value = $priorIosApproval },
-    @{ Name = 'BVP_IOS_VALIDATION_READY_CONFIRMED'; Value = $priorIosReady }
-  )) {
-    if ($null -eq $entry.Value) { Remove-Item ('Env:' + $entry.Name) -ErrorAction SilentlyContinue }
-    else { [Environment]::SetEnvironmentVariable($entry.Name, [string]$entry.Value, 'Process') }
-  }
-}
-Write-Output ('PHX-CI_EXIT_CODE=' + $code)
-Write-Output ('FROZEN_SOURCE_SHA=' + $ExpectedSourceSha)
-Write-Output ('RUN_ROOT=' + $runRoot)
-$global:LASTEXITCODE = $code
-if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.' }
-) { $iosId = 'device:' + $iosId }
-      if ($iosId -cnotmatch '^device:[a-f0-9]{32}
-      $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'
-      $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'YES'
-    }
-    $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
-    $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
-    $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
-    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $dualPhysicalCommand -TempRoot $runRoot
-    $code = $LASTEXITCODE
-  }
-} finally {
-  if ($null -eq $priorPurpose) { Remove-Item Env:\BRAIN_ARTIFACT_PURPOSE -ErrorAction SilentlyContinue }
-  else { $env:BRAIN_ARTIFACT_PURPOSE = $priorPurpose }
-  if ($null -eq $priorClass) { Remove-Item Env:\BVP_CHANGE_CLASS -ErrorAction SilentlyContinue }
-  else { $env:BVP_CHANGE_CLASS = $priorClass }
-  foreach ($entry in @(
-    @{ Name = 'BVP_OWNER_PHYSICAL_APPROVAL'; Value = $priorConsent },
-    @{ Name = 'BVP_EXISTING_MAILBOX_ROOT_CONFIRMED'; Value = $priorExisting },
-    @{ Name = 'BVP_WINDOWS_SMOKE_SCRATCH'; Value = $priorScratch },
-    @{ Name = 'BVP_IOS_DEVICE_ID'; Value = $priorIosId },
-    @{ Name = 'BVP_S09A_DUAL_OWNER_APPROVAL'; Value = $priorIosApproval },
-    @{ Name = 'BVP_IOS_VALIDATION_READY_CONFIRMED'; Value = $priorIosReady }
-  )) {
-    if ($null -eq $entry.Value) { Remove-Item ('Env:' + $entry.Name) -ErrorAction SilentlyContinue }
-    else { [Environment]::SetEnvironmentVariable($entry.Name, [string]$entry.Value, 'Process') }
-  }
-}
-Write-Output ('PHX-CI_EXIT_CODE=' + $code)
-Write-Output ('FROZEN_SOURCE_SHA=' + $ExpectedSourceSha)
-Write-Output ('RUN_ROOT=' + $runRoot)
-$global:LASTEXITCODE = $code
-if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.' }
-) { throw 'Invalid iOS device identity; no test dispatched.' }
+      # The UI may show a bare 32-hex value. Normalize locally, preserve
+      # the actual device identity, and send only canonical private routing IDs.
+      if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }
+      if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
       $env:BVP_IOS_DEVICE_ID = $iosId
       $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'
       $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'YES'
