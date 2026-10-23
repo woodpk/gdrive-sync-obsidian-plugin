@@ -127,6 +127,99 @@ export function projectPhysicalResultForEvidence(resultJson: string, raw: string
   return publicJson;
 }
 
+
+/**
+ * Strictly bounded S09A readiness privacy projection for the existing physical
+ * PHX-CI bridge. Both real device IDs stay inside the controller process.
+ * No claim of iOS physical readiness is made by calling this pure function.
+ *
+ * Only the registered observation-only battery is accepted; no synchronization
+ * battery or arbitrary result may use the two-device projection.
+ */
+export function projectPhysicalDualReadinessResultForEvidence(
+  resultJson: string, rawByLabel: Readonly<Record<string, string>>,
+): string {
+  if (!rawByLabel || typeof rawByLabel !== "object" || Array.isArray(rawByLabel) ||
+      JSON.stringify(Object.keys(rawByLabel).sort()) !== JSON.stringify(["ios", "windows"])) {
+    fail("privacy-dual-physical-device-labels-invalid");
+  }
+  const rawIds = [rawByLabel.windows!, rawByLabel.ios!];
+  if (new Set(rawIds).size !== 2) fail("privacy-dual-physical-device-identity-duplicate");
+  const publicIds = rawIds.map(publicPhysicalDeviceId);
+  if (new Set(publicIds).size !== 2) fail("privacy-dual-physical-public-identity-duplicate");
+  if (Buffer.byteLength(resultJson, "utf8") > MAX_RESULT_BYTES) fail("result-oversize");
+  let payload: Record<string, unknown>;
+  try { payload = record(JSON.parse(resultJson)); }
+  catch { fail("privacy-dual-result-malformed"); }
+  const expected = getLiveBattery("s09a-dual-device-readiness");
+  const battery = record(payload.battery), result = record(payload.result);
+  if (!expected || battery.name !== expected.name ||
+      result.scenarioId !== expected.createScenario().id) {
+    fail("privacy-dual-registered-battery-mismatch");
+  }
+  if (!["completed", "blocked", "failed"].includes(String(result.status))) {
+    fail("privacy-dual-verdict-invalid");
+  }
+  const evidence = record(result.evidence);
+  const machine = record(evidence.machine);
+  if (evidence.machineJson !== undefined &&
+      evidence.machineJson !== JSON.stringify(machine)) {
+    fail("privacy-dual-original-machine-json-mismatch");
+  }
+  const actualIds = machine.deviceIdentities;
+  if (!Array.isArray(actualIds) || actualIds.length !== 2 ||
+      JSON.stringify([...actualIds].sort()) !== JSON.stringify([...rawIds].sort())) {
+    fail("privacy-dual-machine-device-identities-mismatch");
+  }
+  if (record(machine.verdict).status !== result.status) fail("privacy-dual-verdict-mismatch");
+  machine.deviceIdentities = [...publicIds].sort();
+  evidence.machineJson = JSON.stringify(machine);
+
+  // The raw captures are not transportable. Prove every projected observation
+  // derives from that exact registered capture before dropping the private raw.
+  if (result.captures !== undefined) {
+    const captures = record(result.captures);
+    const captureSteps = expected.createScenario().steps.filter(step =>
+      "captureAs" in step && typeof step.captureAs === "string");
+    const observations = machine.observations;
+    if (!Array.isArray(observations)) fail("privacy-dual-observations-missing");
+    for (const [captureAs, rawCapture] of Object.entries(captures)) {
+      const step = captureSteps.find(candidate =>
+        "captureAs" in candidate && candidate.captureAs === captureAs);
+      if (!step) fail("privacy-dual-unregistered-capture");
+      const matching = observations.filter(item => {
+        const observed = record(item);
+        return observed.stepId === step.id && observed.captureAs === captureAs;
+      });
+      if (matching.length !== 1) fail("privacy-dual-capture-observation-missing");
+      const projected = record(record(matching[0]).value);
+      const original = record(rawCapture);
+      for (const [key, value] of Object.entries(projected)) {
+        if (JSON.stringify(original[key]) !== JSON.stringify(value)) {
+          fail("privacy-dual-capture-observation-mismatch");
+        }
+      }
+    }
+    result.captures = {};
+  }
+
+  const installed = record(payload.installationObservation);
+  const installations = record(installed.devices);
+  const safeInstallations: Record<string, unknown> = {};
+  for (const [id, observation] of Object.entries(installations)) {
+    const index = rawIds.indexOf(id);
+    if (index < 0) fail("privacy-dual-unapproved-installation-device");
+    safeInstallations[publicIds[index]!] = observation;
+  }
+  if (result.status === "completed" && Object.keys(safeInstallations).length !== 2) {
+    fail("privacy-dual-complete-missing-installed-device");
+  }
+  installed.devices = safeInstallations;
+  const projected = JSON.stringify(payload);
+  if (rawIds.some(id => projected.includes(id))) fail("privacy-dual-physical-device-id-leak");
+  return projected;
+}
+
 function publicDeviceId(value: unknown): boolean {
   return typeof value === "string" && (PUBLIC_DEVICE_ID.test(value) ||
     (!!process.env.PHX_VERIFICATION_CONTEXT_PATH_INTERNAL &&
@@ -670,18 +763,25 @@ export function buildLiveRunnerArguments(
   // One explicit, installed disposable D: relay may be shared directly
   // with Obsidian; all checkpoint/results/identity stay in C:\temp\<GUID>.
   const physical = paths.physicalPluginRelayRoot !== undefined;
+  const dualReadiness = attempt.battery === "s09a-dual-device-readiness";
   if (privatePhysicalDeviceIds) {
-    if (!physical || Object.keys(privatePhysicalDeviceIds).length !== 1 ||
-        typeof privatePhysicalDeviceIds.windows !== "string" ||
-        publicPhysicalDeviceId(privatePhysicalDeviceIds.windows) !== attempt.deviceIds.windows) {
+    const expectedLabels = dualReadiness ? ["ios", "windows"] : ["windows"];
+    if (!physical ||
+        JSON.stringify(Object.keys(privatePhysicalDeviceIds).sort()) !== JSON.stringify(expectedLabels) ||
+        Object.keys(privatePhysicalDeviceIds).some(label =>
+          typeof privatePhysicalDeviceIds[label] !== "string" ||
+          publicPhysicalDeviceId(privatePhysicalDeviceIds[label]!) !== attempt.deviceIds[label]) ||
+        new Set(Object.values(privatePhysicalDeviceIds)).size !== expectedLabels.length) {
       fail("privacy-physical-device-routing-mismatch");
     }
+  } else if (physical && dualReadiness) {
+    fail("privacy-dual-physical-device-routing-required");
   }
   if (physical && (paths.physicalPluginRelayRoot !== paths.relayRoot ||
       !isApprovedWindowsPluginRelay(paths.relayRoot) ||
-      attempt.battery !== "windows-live-smoke" ||
-      Object.keys(attempt.deviceIds).length !== 1 ||
-      typeof attempt.deviceIds.windows !== "string")) {
+      !["windows-live-smoke", "s09a-dual-device-readiness"].includes(attempt.battery) ||
+      JSON.stringify(Object.keys(attempt.deviceIds).sort()) !==
+        JSON.stringify(dualReadiness ? ["ios", "windows"] : ["windows"]))) {
     fail("physical-windows-relay-scope-invalid");
   }
   const pathsAll = [
