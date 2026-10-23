@@ -12,7 +12,7 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
 import { liveCommandId } from "../../src/live-device/live-scenario-executor";
-import { S09A_VALIDATION_ARTIFACTS } from "../../src/live-device/s09a-validation-artifacts";
+import { S09A_VALIDATION_ARTIFACTS } from "./s09a-validation-artifacts";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
 
 import { decodeScenarioCheckpoint } from "../../src/scenario/scenario-checkpoint";
