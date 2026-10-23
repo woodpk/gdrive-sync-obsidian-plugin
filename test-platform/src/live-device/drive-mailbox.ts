@@ -117,10 +117,15 @@ export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:Bo
       firstUnconfirmedBoundary:phase==="result-lookup"?"previous-result-observation":
         phase==="device-execution"?"device-command-outcome":phase==="result-publication"?"drive-result-publication":"drive-command-list",
       effect:"unknown",recommendedAction:"reconcile-device-state",
-      identity:{runId:await opaqueDiagnosticId(runId,"run"),scenarioId:"unavailable",stepIndex:null,
-        executionMode:"unknown",correlationToken:current?await opaqueDiagnosticId(current.commandId,"corr"):"unavailable"}});
+      identity:await diagnosticIdentity(runId,current?.commandId)});
     return{status:"unavailable",processed,reason:diagnostic.classification,diagnostic};
   }
+}
+
+async function diagnosticIdentity(runId?:string,commandId?:string):Promise<BvpDiagnostic["identity"]>{
+  return{runId:runId?await opaqueDiagnosticId(runId,"run"):"unavailable",
+    scenarioId:"unavailable",stepIndex:null,executionMode:"unknown",
+    correlationToken:commandId?await opaqueDiagnosticId(commandId,"corr"):"unavailable"};
 }
 
 const commandPublishers=new WeakMap<DriveCommandMailbox,(value:DeviceCommand,generation:number)=>Promise<void>>();
@@ -140,8 +145,8 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
       const raw=await adapter.read(path);
       failureClass=scope==="outbox"?"relay-outbox-malformed":"relay-sent-malformed";
       first="relay-command-decoding";
-      let value:unknown;try{value=JSON.parse(raw);}catch{throw new Error(failureClass);}
-      const cmd=command(value);if(!cmd)throw new Error(failureClass);
+      let cmd:DeviceCommand|undefined;try{cmd=command(JSON.parse(raw));}catch{}
+      if(!cmd)throw new Error(failureClass);
       context=cmd;last="relay-command-read";return cmd;
     };
     try{
@@ -171,9 +176,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
       const diagnostic=bvpDiagnostic({
         classification:reason,component:"windows-relay",phase,lastConfirmedBoundary:last,
         firstUnconfirmedBoundary:first,effect:"unknown",recommendedAction:"reconcile-relay-state",
-        identity:{runId:context?await opaqueDiagnosticId(context.runId,"run"):"unavailable",
-          scenarioId:"unavailable",stepIndex:null,executionMode:"unknown",
-          correlationToken:context?await opaqueDiagnosticId(context.commandId,"corr"):"unavailable"},
+        identity:await diagnosticIdentity(context?.runId,context?.commandId),
       });
       return{status:"unavailable",published,completed,reason:diagnostic.classification,diagnostic};
     }
