@@ -1402,6 +1402,56 @@ function prepareApprovedWindowsSmokeRequest(): string {
   return file;
 }
 
+
+/**
+ * Prepares a distinct S09A readiness request from the same already-approved
+ * Windows validation installation. The iOS ID is furnished privately by the
+ * owner from the isolated iOS test vault; the digest alone enters PHX evidence.
+ *
+ * This creates only a local request. The PHX runner remains subject to separate
+ * physical approval, exact installed-build receipts, and all bridge gates.
+ */
+function prepareApprovedS09ADualReadinessRequest(): string {
+  if (process.env.BVP_S09A_DUAL_OWNER_APPROVAL !== "YES" ||
+      process.env.BVP_IOS_VALIDATION_READY_CONFIRMED !== "YES") {
+    fail("s09a-dual-physical-authorization-required");
+  }
+  const rawIos = process.env.BVP_IOS_DEVICE_ID;
+  if (!rawIos) fail("s09a-ios-private-routing-identity-required");
+  const publicIos = publicPhysicalDeviceId(rawIos);
+  const windowsRequestPath = prepareApprovedWindowsSmokeRequest();
+  const base = record(JSON.parse(readFileSync(windowsRequestPath, "utf8")));
+  const original = record(base.expectation);
+  const windowsIds = record(original.deviceIds);
+  const windowPublic = windowsIds.windows;
+  if (typeof windowPublic !== "string" || windowPublic === publicIos) {
+    fail("s09a-distinct-physical-device-identity-required");
+  }
+  const registered = getLiveBattery("s09a-dual-device-readiness");
+  if (!registered ||
+      JSON.stringify(registered.requiredDeviceLabels) !== JSON.stringify(["windows", "ios"]) ||
+      registered.createScenario().steps.some(step =>
+        !["observe", "assert"].includes(step.kind))) {
+    fail("s09a-dual-observation-only-battery-invalid");
+  }
+  const scenario = registered.createScenario();
+  const dual: BridgeRequest = {
+    schemaVersion: 1, executionClass: "owner-approved-physical",
+    ownerPhysicalApproval: { approved: true, scope: "S09A-DUAL-OBSERVATION-ONLY" },
+    expectation: {
+      ...original as unknown as BridgeExpectation,
+      bvpRunId: "bvp-s09a-" + String(original.phxRunId),
+      battery: registered.name, scenarioId: scenario.id,
+      scenarioDigest: scenarioDefinitionDigest(scenario),
+      deviceIds: { windows: windowPublic, ios: publicIos },
+    },
+    paths: base.paths as LiveRunnerPaths,
+  };
+  const dualFile = win32.join(dirname(windowsRequestPath), "s09a-dual-bridge-request.json");
+  writeFileSync(dualFile, JSON.stringify(dual), { encoding: "utf8", flag: "wx" });
+  return dualFile;
+}
+
 /** PHX-only stage subcommand: no external status publisher or checkpoint repository writer. */
 export async function main(): Promise<void> {
   if (process.argv.includes("--recover-privacy-blocked-windows-smoke")) {
@@ -1417,7 +1467,10 @@ export async function main(): Promise<void> {
     return;
   }
   const file = cliArgument("--bridge-request-file") ?? (
-    process.argv.includes("--run-approved-windows-smoke") ? prepareApprovedWindowsSmokeRequest() : undefined
+    process.argv.includes("--run-approved-s09a-dual-readiness")
+      ? prepareApprovedS09ADualReadinessRequest()
+      : process.argv.includes("--run-approved-windows-smoke")
+        ? prepareApprovedWindowsSmokeRequest() : undefined
   );
   if (!file) fail("bridge-request-file-required");
   const root = resolve(process.cwd());
@@ -1436,8 +1489,13 @@ export async function main(): Promise<void> {
     }
   } else if (request.executionClass !== "owner-approved-physical" ||
     request.ownerPhysicalApproval?.approved !== true ||
-    request.ownerPhysicalApproval.scope !== "S09-EXACT-OWNER-APPROVED" ||
-    process.env.BVP_OWNER_PHYSICAL_APPROVAL !== "YES") {
+    request.ownerPhysicalApproval.scope !== (
+      request.expectation.battery === "s09a-dual-device-readiness"
+        ? "S09A-DUAL-OBSERVATION-ONLY" : "S09-EXACT-OWNER-APPROVED") ||
+    process.env.BVP_OWNER_PHYSICAL_APPROVAL !== "YES" ||
+    (request.expectation.battery === "s09a-dual-device-readiness" &&
+      (process.env.BVP_S09A_DUAL_OWNER_APPROVAL !== "YES" ||
+       process.env.BVP_IOS_VALIDATION_READY_CONFIRMED !== "YES"))) {
     fail("owner-physical-authorization-required");
   }
   const phxRun = currentRunId(root);
@@ -1451,7 +1509,7 @@ export async function main(): Promise<void> {
     // this nonshipping controller bridge, its focused tests and state/evidence
     // may advance; no product, scenario, manifest or PHX-CI config drift.
     if (simulated || !request.paths.physicalPluginRelayRoot ||
-        request.expectation.battery !== "windows-live-smoke") {
+        !["windows-live-smoke", "s09a-dual-device-readiness"].includes(request.expectation.battery)) {
       fail("source-identity-mismatch");
     }
     const anc = spawnSync("git", ["-C", root, "merge-base", "--is-ancestor",
@@ -1466,6 +1524,8 @@ export async function main(): Promise<void> {
       "test-platform/test/batteries/phxci-physical-bridge.ts",
       "test-platform/test/s09-windows-direct-relay-route.test.ts",
       "test-platform/test/s09-windows-privacy-transport.test.ts",
+      "test-platform/test/s09a-dual-device-readiness.test.ts",
+      "test-platform/test/s09a-physical-dual-bridge.test.ts",
       "test-platform/test/architecture-metrics.test.ts",
       "test-platform/test/batteries/deterministic-battery-registry.ts",
       "tests/adversarial/s09-g1-runtime-authority-interleavings.test.ts",
@@ -1506,14 +1566,25 @@ export async function main(): Promise<void> {
     fail("installed-artifact-manifest-bytes-mismatch");
   }
   let privatePhysicalDeviceId: string | undefined;
-  // No shipping plugin changes: verify the *actual* installed validation files
-  // and settled pairing prior to using the Obsidian relay. Never print data.json.
+  let privateIosDeviceId: string | undefined;
+  const dualReadiness = request.expectation.battery === "s09a-dual-device-readiness";
+  // No shipping plugin changes: verify the *actual* installed Windows validation
+  // files and settled pairing. On iOS, the physical device's returned installed
+  // build measurement must independently prove the matching validation artifact.
   if (!simulated) {
-    if (request.expectation.battery !== "windows-live-smoke" ||
+    if (!["windows-live-smoke", "s09a-dual-device-readiness"].includes(request.expectation.battery) ||
         !request.paths.physicalPluginRelayRoot ||
-        Object.keys(request.expectation.deviceIds).length !== 1 ||
-        typeof request.expectation.deviceIds.windows !== "string") {
-      fail("physical-windows-smoke-only");
+        JSON.stringify(Object.keys(request.expectation.deviceIds).sort()) !==
+          JSON.stringify(dualReadiness ? ["ios", "windows"] : ["windows"])) {
+      fail("physical-approved-readiness-only");
+    }
+    if (dualReadiness) {
+      privateIosDeviceId = process.env.BVP_IOS_DEVICE_ID;
+      if (!privateIosDeviceId ||
+          publicPhysicalDeviceId(privateIosDeviceId) !== request.expectation.deviceIds.ios ||
+          process.env.BVP_IOS_VALIDATION_READY_CONFIRMED !== "YES") {
+        fail("s09a-ios-identity-or-approval-mismatch");
+      }
     }
     const pluginRoot = win32.dirname(request.paths.relayRoot);
     for (const [name, expected] of [
@@ -1593,9 +1664,13 @@ export async function main(): Promise<void> {
       result: { scenarioId: request.expectation.scenarioId, status: "failed", classification: "not-dispatched" },
     }),
   };
+  const physicalDeviceMap = privatePhysicalDeviceId ? {
+    windows: privatePhysicalDeviceId,
+    ...(dualReadiness && privateIosDeviceId ? { ios: privateIosDeviceId } : {}),
+  } : undefined;
   const args = buildLiveRunnerArguments(staged, request.paths,
     request.resumeEvidence ?? [], request.expectation.mode === "verified-late-receipt",
-    privatePhysicalDeviceId ? {windows: privatePhysicalDeviceId} : undefined);
+    physicalDeviceMap);
   const runner = join(root, ".test-build", "bvp", "test-platform", "test", "batteries", "run-live-battery.js");
   if (!existsSync(runner)) fail("compiled-bvp-runner-missing");
   // Claim durable logical-run + per-device authority BEFORE any effects.
@@ -1609,9 +1684,11 @@ export async function main(): Promise<void> {
   if (![0, 1, 3].includes(child.status)) fail("physical-runner-exit-unsupported");
   if (!existsSync(request.paths.resultFile)) fail("physical-result-file-missing");
   const rawResultJson = readFileSync(request.paths.resultFile, "utf8");
-  const resultJson = privatePhysicalDeviceId ?
-    projectPhysicalResultForEvidence(rawResultJson, privatePhysicalDeviceId,
-      request.expectation.deviceIds.windows!) : rawResultJson;
+  const resultJson = dualReadiness && physicalDeviceMap ?
+    projectPhysicalDualReadinessResultForEvidence(rawResultJson, physicalDeviceMap) :
+    privatePhysicalDeviceId ?
+      projectPhysicalResultForEvidence(rawResultJson, privatePhysicalDeviceId,
+        request.expectation.deviceIds.windows!) : rawResultJson;
   const checkpointJson = child.status === 3 && existsSync(request.paths.checkpointFile) ?
     readFileSync(request.paths.checkpointFile, "utf8") : undefined;
   const attempt: BridgeAttempt = {
