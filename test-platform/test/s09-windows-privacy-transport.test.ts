@@ -233,8 +233,21 @@ test("PHX-CI Windows operator is singular, complete, and source-drift guarded", 
     "recovery and new physical effects are mutually exclusive");
   strictEqual(count(/--reconcile-second-windows-timeout/g), 1, "prior timeout reconciled exactly once");
   strictEqual(count(/--run-approved-windows-smoke/g), 1, "new bounded smoke dispatched at most once");
-  strictEqual(ps.trimEnd().endsWith("if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.' }"), true,
-    "no orphan tail after the final operator status");
+  const expectedTail = [
+    "if ($code -ne 0) {",
+    "  if ($SoftwareOnlyBranch) {",
+    "    Write-Warning 'PHX-CI software-only qualification did not pass; physical dispatch was disabled.'",
+    "  } else {",
+    "    Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.'",
+    "  }",
+    "}",
+  ].join("\n");
+  strictEqual(ps.replace(/\r\n/g, "\n").trimEnd().endsWith(expectedTail), true,
+    "no orphan tail after the final operator status; software-only mode must not imply physical effects");
+  strictEqual(count(/Write-Warning 'PHX-CI software-only qualification did not pass; physical dispatch was disabled\.'/g), 1,
+    "software-only outcome is reported once without implying device contact");
+  strictEqual(count(/Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began\./g), 1,
+    "physical uncertainty warning remains restricted to the other branch");
 });
 
 test("PHX-CI Windows operator parses with the real PowerShell 7 AST without executing it", { skip: process.platform !== "win32" }, () => {
