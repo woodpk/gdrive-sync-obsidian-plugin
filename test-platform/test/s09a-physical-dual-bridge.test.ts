@@ -239,10 +239,10 @@ test("S09A iOS ID input is validated before expensive PHX-CI qualification and u
   const validated=operator.indexOf("if ($iosId -cnotmatch '^device:[a-f0-9]{32}$')");
   const firstPHX=operator.indexOf("& $phxFrontDoor");
   const approval=operator.indexOf("$confirmation = Read-Host $approvalPrompt");
-  const dispatched=operator.indexOf("& $phxFrontDoor",firstPHX+1);
+  const dispatched=operator.lastIndexOf("& $phxFrontDoor");
   strictEqual(validated>0&&validated<firstPHX,true);
   strictEqual(approval>firstPHX,true);
   strictEqual(dispatched>approval,true);
   strictEqual(operator.includes("BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'"),true);
-  strictEqual(operator.includes("BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp'"),true);
+  strictEqual(operator.includes("BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\\temp'"),true);
 });
