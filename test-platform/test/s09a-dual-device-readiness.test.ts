@@ -244,7 +244,7 @@ test("S09A expected per-device manifest map must be exact and cannot weaken abse
         expectedValidationSourceCommit:expectedS09A.sourceCommit,
         expectedValidationArtifactSha256:expectedS09A.artifactSha256,
         expectedValidationManifestSha256:expectedS09A.windowsManifestSha256,
-        expectedValidationManifestSha256ByDevice:unsafe,
+        expectedValidationManifestSha256ByDevice:unsafe as Readonly<Record<string, string>>,
       }),/installed-build|manifest|identity/i);
     }finally{await rm(dir,{recursive:true,force:true});}
   }
