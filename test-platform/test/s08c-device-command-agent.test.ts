@@ -120,6 +120,11 @@ test("run/device/sequence safety executes one fixture command once and replays e
   equal(wrongRun.classification, "run-mismatch");
   const wrongDevice = await agent.execute({ ...command(2, { kind: "observe-file", path: "note.md" }), deviceId: "other-device" });
   equal(wrongDevice.classification, "device-mismatch");
+  equal(wrongDevice.diagnostic?.component,"device-agent");
+  equal(wrongDevice.diagnostic?.phase,"command-preflight");
+  equal(wrongDevice.diagnostic?.lastConfirmedBoundary,"device-command-decoded");
+  equal(wrongDevice.diagnostic?.firstUnconfirmedBoundary,"command-acceptance");
+  equal(wrongDevice.diagnostic?.effect,"none-confirmed");
   equal(fixtures.calls.length, callsAfterFirst);
 
   const observed = await agent.execute(command(2, { kind: "observe-file", path: "note.md" }));
@@ -147,6 +152,8 @@ test("write-ahead claim prevents ambiguous command replay across agent reconstru
   const restarted = createBoundedDeviceCommandAgent(options);
   const duplicate = await restarted.execute(put);
   equal(duplicate.classification, "prior-outcome-uncertain");
+  equal(duplicate.diagnostic?.classification,"prior-outcome-uncertain");
+  equal(duplicate.diagnostic?.effect,"unknown");
   equal(fixtures.calls.filter(value => value.startsWith("text:")).length, writes);
 });
 
