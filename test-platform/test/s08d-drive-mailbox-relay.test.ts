@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deepEqual, equal, rejects } from "node:assert/strict";
 import { test } from "node:test";
+import { bvpDiagnostic } from "../src/scenario/scenario-diagnostics";
 import {
   MailboxUnavailableError,
   createDriveCommandMailbox,
@@ -87,4 +88,24 @@ test("relay makes missing controller lease explicit without falsely claiming pub
   equal(outcome.diagnostic?.lastConfirmedBoundary,"relay-command-read");
   equal(outcome.diagnostic?.firstUnconfirmedBoundary,"command-lease-validation");
   equal(await files.exists(root+"/outbox/missing-lease.json"),true);
+});
+
+test("mailbox roundtrip preserves bounded handler uncertainty while sanitizing forged diagnostic fields",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),cmd=command();
+  const diagnostic=bvpDiagnostic({
+    classification:"command-handler-failed",component:"device-agent",phase:"command-execution",
+    lastConfirmedBoundary:"sequence-claim-persisted",firstUnconfirmedBoundary:"command-handler-outcome",
+    effect:"unknown",recommendedAction:"reconcile-claimed-command",
+  });
+  const failure={...result(cmd),status:"failed" as const,classification:"command-handler-failed",diagnostic};
+  await mailbox.publishResult(failure);
+  deepEqual(await mailbox.resultFor(cmd),failure);
+  const corrupt=command(2),privateResult={...result(corrupt),status:"failed" as const,
+    classification:"Bearer oauth-hidden-secret",diagnostic:{...diagnostic,phase:"C:\\private\\vault"}};
+  await mailbox.publishResult(privateResult as any);
+  const recovered=await mailbox.resultFor(corrupt);
+  equal(recovered?.classification,"unexpected-internal-error");
+  equal(recovered?.diagnostic?.phase,"unknown-phase");
+  equal(JSON.stringify(recovered).includes("oauth-hidden-secret"),false);
+  equal(JSON.stringify(recovered).includes("private"),false);
 });
