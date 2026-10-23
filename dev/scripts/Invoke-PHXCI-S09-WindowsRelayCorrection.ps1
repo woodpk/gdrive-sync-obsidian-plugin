@@ -11,6 +11,7 @@ param(
   [string]$ExpectedSourceSha,
   [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._/-]{0,120}$')]
   [string]$SoftwareOnlyBranch,
+  [switch]$SoftwareOnlyGovernance,
   [switch]$RunWindowsPhysicalSmoke,
   [switch]$UseRecoveredSoftwareEvidence,
   [switch]$RecoverPreviouslyDispatchedWindowsSmoke,
@@ -21,6 +22,9 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $branch = 'fix/s09-bvp-live-controller-20261022'
 # Explicit software-only feature verification cannot select any physical or recovery mode.
+if ($SoftwareOnlyGovernance -and -not $SoftwareOnlyBranch) {
+  throw 'Governance qualification requires an explicit software-only branch.'
+}
 if ($SoftwareOnlyBranch -and (
     $RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or
     $RecoverPreviouslyDispatchedWindowsSmoke -or $RunS09AReadinessSoftware -or
@@ -105,7 +109,8 @@ try {
     if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
   }
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
-  $env:BVP_CHANGE_CLASS = 'ordinary'
+  # DEC-349: only the owner's expressly approved frozen budget change is governance-class.
+  $env:BVP_CHANGE_CLASS = if ($SoftwareOnlyGovernance) { 'authorized-governance' } else { 'ordinary' }
   if ($RecoverPreviouslyDispatchedWindowsSmoke) {
     if ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RunS09ADualPhysicalReadiness) {
       throw 'Retrospective evidence recovery cannot be combined with a new physical dispatch.'
