@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { safeUnexpectedFailure } from "../../src/scenario/scenario-diagnostics";
+import { bvpDiagnostic, safeUnexpectedFailure } from "../../src/scenario/scenario-diagnostics";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
@@ -197,7 +197,13 @@ main().catch(async error => {
         result: failure,
       });
     } catch {
-      console.error("BVP_DIAGNOSTIC result-persistence-failed");
+      const diagnostic=bvpDiagnostic({
+        classification:"result-persistence-failed",component:"battery-runner",
+        phase:"result-persistence",lastConfirmedBoundary:"battery-failure-classified",
+        firstUnconfirmedBoundary:"result-file-write",effect:"unknown",
+        recommendedAction:"inspect-output-path",
+      });
+      console.error("BVP_DIAGNOSTIC "+JSON.stringify(diagnostic));
     }
   }
   console.error("BVP_DIAGNOSTIC " + JSON.stringify(failure.diagnostic));
