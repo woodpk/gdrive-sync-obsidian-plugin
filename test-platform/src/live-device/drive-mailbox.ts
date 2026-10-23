@@ -1,5 +1,5 @@
 import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "./device-command-agent";
-import { bvpDiagnostic, type BvpDiagnostic } from "../scenario/scenario-diagnostics";
+import { bvpDiagnostic, type BvpDiagnostic } from "./diagnostic-contract";
 
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
