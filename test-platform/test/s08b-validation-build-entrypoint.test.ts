@@ -103,6 +103,18 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   base.onload=async function(){};base.onunload=async function(){};base.loadData=async function(){return{settings:{oauthClientId:"client",oauthRedirectUri:"https://example.invalid/callback",deviceIdentity:deviceId,vaultIdentity:"",remoteRootId:"",firstSyncCompleted:false}}};base.productionVerificationControl=function(){return production};
   const fixture={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}},control={runId,deviceId,sequence:2,commandId:"cmd-2",kind:"production-control",action:"pause"};
   const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.deviceId,deviceId);ok(intervalCallback);intervalCallback!();intervalCallback!();await new Promise(resolve=>setTimeout(resolve,0));equal(listCalls,desktop?2:0);runtime.mailbox.activeRun=async()=>runId;runtime.mailbox.resultFor=async()=>undefined;
+  // Missing durable sequence storage must return a typed preflight diagnosis,
+  // not an unstructured unavailable result or a claimed device dispatch.
+  delete context.localStorage;
+  const storageFailure=await runtime.pollDeviceOnce();
+  equal(storageFailure.status,"unavailable");
+  equal(storageFailure.classification,undefined);
+  equal(storageFailure.reason,"device-sequence-storage-unavailable");
+  equal(storageFailure.diagnostic?.classification,"device-sequence-storage-unavailable");
+  equal(storageFailure.diagnostic?.phase,"sequence-storage-preflight");
+  equal(storageFailure.diagnostic?.firstUnconfirmedBoundary,"durable-sequence-storage");
+  equal(storageFailure.diagnostic?.effect,"none-confirmed");
+  context.localStorage=localStorage;
   let current:any=fixture,last:any,published=0;runtime.mailbox.commands=async()=>[current];runtime.mailbox.publishResult=async(value:any)=>{last=value;published++;};await Promise.all([runtime.pollDeviceOnce(),runtime.pollDeviceOnce()]);equal(runtime.currentRunId(),runId);equal(last.classification,"fixture-verified");equal(last.validationBuild.sourceCommit,result.sourceCommit);equal(fixtureWrites,1);equal(published,1);
   current=control;await runtime.pollDeviceOnce();equal(last.classification,"production-control-accepted");equal(productionCalls,1);
   // The production controller can be replaced after initial mailbox installation.
