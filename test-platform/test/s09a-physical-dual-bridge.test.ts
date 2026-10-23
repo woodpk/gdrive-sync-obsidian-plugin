@@ -5,6 +5,8 @@
  */
 import { deepStrictEqual, strictEqual, throws } from "node:assert/strict";
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { getLiveBattery } from "./batteries/battery-registry";
 import { scenarioDefinitionDigest } from "../src/scenario/scenario-checkpoint";
 import {
@@ -135,4 +137,16 @@ test("dual readiness rejects forged capture, untrusted source evidence and stray
     throws(() => projectPhysicalDualReadinessResultForEvidence(JSON.stringify(obj), rawByLabel),
       /privacy|identity|device|capture|source|battery|scenario|unapproved|mismatch/i);
   }
+});
+
+test("S09A physical operator requires a separate explicit consent and cannot bypass PHX-CI", () => {
+  const script = readFileSync(resolve(process.cwd(), "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
+  strictEqual(script.includes("[switch]$RunS09ADualPhysicalReadiness"), true);
+  strictEqual(script.includes("BVP_S09A_DUAL_OWNER_APPROVAL"), true);
+  strictEqual(script.includes("BVP_IOS_VALIDATION_READY_CONFIRMED"), true);
+  strictEqual(script.includes("BVP_IOS_DEVICE_ID"), true);
+  strictEqual(script.includes("--run-approved-s09a-dual-readiness"), true);
+  strictEqual(script.includes("Read-Host"), true);
+  strictEqual(script.includes("-FocusedTestCommand $dualPhysicalCommand"), true);
+  strictEqual(script.includes("-PublicationMode push"), true);
 });
