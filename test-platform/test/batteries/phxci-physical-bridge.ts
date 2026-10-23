@@ -12,6 +12,7 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
 import { liveCommandId } from "../../src/live-device/live-scenario-executor";
+import { S09A_VALIDATION_ARTIFACTS } from "../../src/live-device/s09a-validation-artifacts";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
 
 import { decodeScenarioCheckpoint } from "../../src/scenario/scenario-checkpoint";
@@ -204,12 +205,25 @@ export function projectPhysicalDualReadinessResultForEvidence(
   }
 
   const installed = record(payload.installationObservation);
+  if (installed.sourceCommit !== S09A_VALIDATION_ARTIFACTS.sourceCommit ||
+      installed.artifactSha256 !== S09A_VALIDATION_ARTIFACTS.artifactSha256 ||
+      installed.manifestSha256 !== S09A_VALIDATION_ARTIFACTS.windowsManifestSha256) {
+    fail("privacy-dual-installation-source-or-windows-manifest-mismatch");
+  }
   const installations = record(installed.devices);
   const safeInstallations: Record<string, unknown> = {};
   for (const [id, observation] of Object.entries(installations)) {
     const index = rawIds.indexOf(id);
     if (index < 0) fail("privacy-dual-unapproved-installation-device");
-    safeInstallations[publicIds[index]!] = observation;
+    const actual = record(observation);
+    const expectedManifest = index === 0
+      ? S09A_VALIDATION_ARTIFACTS.windowsManifestSha256
+      : S09A_VALIDATION_ARTIFACTS.iosManifestSha256;
+    if (actual.artifactSha256 !== S09A_VALIDATION_ARTIFACTS.artifactSha256 ||
+        actual.manifestSha256 !== expectedManifest) {
+      fail("privacy-dual-installed-device-manifest-or-artifact-mismatch");
+    }
+    safeInstallations[publicIds[index]!] = actual;
   }
   if (result.status === "completed" && Object.keys(safeInstallations).length !== 2) {
     fail("privacy-dual-complete-missing-installed-device");
@@ -526,11 +540,20 @@ function parseResult(attempt: BridgeAttempt): void {
           typeof observed.manifestSha256 !== "string" || !HEX64.test(observed.manifestSha256)) {
         fail("installed-artifact-manifest-proof-unverified");
       }
+      const dualReadiness = attempt.battery === "s09a-dual-device-readiness";
+      if (dualReadiness &&
+          (attempt.sourceCommit !== S09A_VALIDATION_ARTIFACTS.sourceCommit ||
+           attempt.artifactSha256 !== S09A_VALIDATION_ARTIFACTS.artifactSha256 ||
+           observed.manifestSha256 !== S09A_VALIDATION_ARTIFACTS.windowsManifestSha256)) {
+        fail("s09a-installed-build-allowlist-mismatch");
+      }
       const pairs = record(observed.devices);
-      for (const deviceId of Object.values(attempt.deviceIds)) {
+      for (const [label,deviceId] of Object.entries(attempt.deviceIds)) {
         const pair = record(pairs[deviceId]);
+        const expectedManifest = dualReadiness && label === "ios"
+          ? S09A_VALIDATION_ARTIFACTS.iosManifestSha256 : observed.manifestSha256;
         if (pair.artifactSha256 !== attempt.artifactSha256 ||
-            pair.manifestSha256 !== observed.manifestSha256) {
+            pair.manifestSha256 !== expectedManifest) {
           fail("installed-device-measurement-mismatch");
         }
       }
@@ -1356,9 +1379,9 @@ function prepareApprovedWindowsSmokeRequest(): string {
   const original = win32.join(pluginRoot, "build-identity.json");
   if (!existsSync(original)) fail("physical-installed-build-identity-missing");
   const build = record(JSON.parse(readFileSync(original, "utf8")));
-  const installedSource = "2bf51ca15aec9c752e3ac7769fcf3ac237df99df";
-  const installedHash = "90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7";
-  const manifestHash = "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965";
+  const installedSource = S09A_VALIDATION_ARTIFACTS.sourceCommit;
+  const installedHash = S09A_VALIDATION_ARTIFACTS.artifactSha256;
+  const manifestHash = S09A_VALIDATION_ARTIFACTS.windowsManifestSha256;
   if (build.schemaVersion !== 1 || build.sourceCommit !== installedSource ||
       build.artifactSha256 !== installedHash || build.manifestSha256 !== manifestHash) {
     fail("physical-installed-build-identity-unexpected");
@@ -1522,6 +1545,11 @@ export async function main(): Promise<void> {
         typeof diff.stdout !== "string") fail("source-compatibility-unproven");
     const allowed = new Set([
       "test-platform/test/batteries/phxci-physical-bridge.ts",
+      // Controller-only adaptation: installed 0.1.19 Windows bytes and plugin
+      // source remain frozen. These files only correlate exact iOS prerelease proof.
+      "test-platform/src/live-device/s09a-validation-artifacts.ts",
+      "test-platform/src/live-device/live-scenario-executor.ts",
+      "test-platform/test/batteries/run-live-battery.ts",
       "test-platform/test/s09-windows-direct-relay-route.test.ts",
       "test-platform/test/s09-windows-privacy-transport.test.ts",
       "test-platform/test/s09a-dual-device-readiness.test.ts",
