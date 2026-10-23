@@ -1547,7 +1547,7 @@ export async function main(): Promise<void> {
       "test-platform/test/batteries/phxci-physical-bridge.ts",
       // Controller-only adaptation: installed 0.1.19 Windows bytes and plugin
       // source remain frozen. These files only correlate exact iOS prerelease proof.
-      "test-platform/src/live-device/s09a-validation-artifacts.ts",
+      "test-platform/test/batteries/s09a-validation-artifacts.ts",
       "test-platform/src/live-device/live-scenario-executor.ts",
       "test-platform/test/batteries/run-live-battery.ts",
       "test-platform/test/s09-windows-direct-relay-route.test.ts",
