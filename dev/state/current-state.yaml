@@ -3,12 +3,12 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP_ERROR_REPORTING_UPGRADE"
-handoff-count: 1
-handoff-owner-role: BUILDER
-handoff-recipient-role: REVIEWER
+handoff-count: 2
+handoff-owner-role: REVIEWER
+handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_ERROR_REPORTING_UPGRADE"
 handoff-source-sha: "fd9ccf9f99ebc73de54f3553fd62b265ed0f86fb"
-active_build_unit_status: "DEC348_BUILDER_QUALIFIED_PHXCI_PASS_AWAITING_INDEPENDENT_FINAL_REVIEW"
+active_build_unit_status: "INDEPENDENT_FINAL_REVIEW_CORRECTION_REQUIRED_BUILDER"
 next_build_unit: "BVP_POWERSHELL_INTERFACE_LIBRARY"
 next_build_unit_status: "PLANNED_DEPENDS_ON_BVP_ERROR_REPORTING"
 next_build_unit_planning_path: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-powershell-interface-library-2026-10-23.md"
