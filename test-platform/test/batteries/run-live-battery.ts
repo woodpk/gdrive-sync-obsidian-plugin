@@ -179,7 +179,12 @@ async function main(): Promise<void> {
   };
 
   await persistResult(resultFile, envelope);
-  console.log(JSON.stringify(envelope, null, 2));
+  // Local result file retains the structured envelope; stdout must never expose
+  // raw validation device identities, operator paths or payload details.
+  console.log(JSON.stringify({
+    battery:battery.name,scenarioId:result.scenarioId,
+    status:result.status,classification:result.classification??"completed",
+  }));
   process.exitCode = result.status === "completed" ? 0 : checkpoint ? 3 : 1;
 }
 
