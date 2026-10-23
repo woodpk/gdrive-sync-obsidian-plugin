@@ -309,7 +309,7 @@ export function buildScenarioEvidence(
       ? execution.deviceIdentities.map(value => "device-sha256:" + createHash("sha256")
         .update(execution.runIdentity ?? "").update("\\0").update(value).digest("hex").slice(0,24)).sort()
       : [...execution.deviceIdentities].sort(),
-    ...(execution.executionMode==="live"&&execution.runIdentity&&execution.buildIdentity?{liveIdentity:{runId:execution.runIdentity,sourceCommit:execution.buildIdentity}}:{}),
+    ...(execution.executionMode==="live"&&execution.runIdentity&&execution.buildIdentity?{liveIdentity:{runId:"run-sha256:"+createHash("sha256").update(execution.runIdentity).digest("hex").slice(0,24),sourceCommit:execution.buildIdentity}}:{}),
     observations,
     assertions: execution.steps.filter(step => assertionIds.has(step.stepId)).map(step => ({
       stepId: step.stepId,
