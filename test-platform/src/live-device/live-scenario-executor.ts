@@ -97,6 +97,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   const leasedDevices=[...new Set(options.scenario.steps.map(stepDevice).filter((label):label is string=>Boolean(label)).map(label=>options.deviceIds[label]).filter((value):value is string=>Boolean(value)))].sort(),authorityFiles=new Map<string,string>(),activated=new Set<string>(),authorityEntries=leasedDevices.map(deviceId=>{const path=authorityPath(options.relayRoot,deviceId);authorityFiles.set(deviceId,path);return{deviceId,path};}),authorityLocks=await acquireAuthorityLocks(authorityEntries.map(value=>value.path));
   try{for(const {deviceId,path} of authorityEntries){let current:ControllerAuthority|undefined;if(await exists(path)){try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(!current)throw new Error("live-controller-authority-invalid");}if(current?.runId&&current.runId!==options.runId)throw new Error("live-controller-device-run-conflict");if(current?.runId===options.runId)continue;const next:ControllerAuthority={schemaVersion:1,generation:(current?.generation??0)+1,runId:options.runId,deviceId};await writeFile(path,JSON.stringify(next),"utf8");activated.add(deviceId);}}catch(error){for(const deviceId of activated){const path=authorityFiles.get(deviceId)!,current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);if(current?.runId===options.runId)await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}throw error;}finally{await releaseAuthorityLocks(authorityLocks);}
   const installedByDevice:Record<string,{artifactSha256:string;manifestSha256:string}>={};
+  let lastCommandId:string|undefined;
   let pending:HumanCheckpointInstruction|undefined,resume:ScenarioCheckpoint|undefined,resumeFailure:string|undefined;
   const history:ScenarioStepExecution[]=[];
   if(await exists(options.checkpointFile)){
@@ -135,6 +136,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     const label=stepDevice(step);if(!label)throw new Error("live-command-target-unavailable");
     const deviceId=options.deviceIds[label];if(!deviceId)throw new Error("live-command-device-map-incomplete");
     const command={runId:options.runId,deviceId,sequence:liveSequenceFor(options.scenario,label,context.stepIndex,sub),commandId:liveCommandId(options.runId,options.scenario.id,context.stepIndex,sub),...body} as DeviceCommand;
+    lastCommandId=command.commandId;
     return roundTrip(command,step.id);
   }
   function remember(index:number,step:ScenarioStep,result:ScenarioCapabilityResult):ScenarioCapabilityResult{
@@ -196,6 +198,11 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
       }else if(step.kind==="observe"&&(step.subject==="production-plan"||step.subject==="production-result")){
         const value=context.readCapture(step.inputRef);result=value===undefined?fail("blocked","missing-required-result",step.inputRef):{status:"completed",value};
       }else result=fail("unsupported","live-capability-unsupported",step.kind);
+      if(result.status!=="completed"&&result.diagnostic)
+        result={...result,diagnostic:bvpDiagnostic({...result.diagnostic,identity:{
+          ...result.diagnostic.identity,correlationToken:lastCommandId?
+            "corr-sha256:"+createHash("sha256").update(lastCommandId).digest("hex").slice(0,24):"unavailable",
+        }})};
       return remember(context.stepIndex,step,result);
     },
   };
