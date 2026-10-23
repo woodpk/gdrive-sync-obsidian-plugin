@@ -4,6 +4,9 @@
 
 ### Owner-directed operational BVP modernization — DEC-346/347/348 (2026-10-23)
 
+**Governed architecture budget change DEC-349 (Owner Option 2):** Core BVP framework 4,000 → **4,500** and live-device agent/relay 750 → **950** logical TS lines, solely to implement the error-communication feature without forced code compression. See [WS-07 Architecture](02-ARCHITECTURE.md) and [error communication task](tasks/bvp-error-communication-upgrade-2026-10-23.md); original R1 PHX-CI was BLOCKED at 4,079/778 lines. Authorization changes only the manifest's two numeric ceilings, not the governance guard. The next engineering gate is Windows PHX-CI **authorized-governance** qualification; no physical mobile dispatch or Reviewer handoff before PASS.
+
+
 The new owner-locked priorities are (1) a complete minimal PowerShell **interface to all existing BVP API commands**, (2) all BVP operational testing on Windows Obsidian or the existing Windows-hosted iPhone/iPad simulator with iOS/iPad scenarios connected to that simulator, and (3) materially better structured error communication. For this third priority, the **authoritative new planning contract** is [BVP Error Communication and Diagnostic Upgrade](tasks/bvp-error-communication-upgrade-2026-10-23.md), with the complementary [PowerShell API and persistent configuration build plan](tasks/bvp-powershell-interface-library-2026-10-23.md). Its status is **PLANNED**; implementation, tests, and any required engineering-source qualification are not yet complete. Do not use PHX-CI to launch routine BVP tests, revive physical S09 dispatch without new Owner authorization, or claim simulator evidence is actual iOS OS/hardware evidence. Older physical S09 plans remain historical/deferred and do not override DEC-346/347/348.
 
 The only retained detailed future task contracts are BVP-S09A through S09V under `tasks/s09/`. They remain `PREPLANNED / NOT-YET-EXECUTABLE` and must be re-grounded against current repository reality, current authority, and current PHX-CI/physical-validation requirements immediately before dispatch. Completed or superseded historical prompts are preserved only in the external pre-standard archive.
@@ -433,7 +436,7 @@ Every primary S01-S09 work package ends with a `V` acceptance gate. S01 is alrea
 | S07 | 07V | Primary-stage PHX-CI acceptance and mandatory architecture review | PHX-CI complete; deterministic mappings reconciled; architecture review authorizes or blocks S08. |
 | S08 | 08A | Narrow production run-receipt seam | Seam enumerated, <=350 LOC/4 files, no scenario/test authority in production; boundary re-frozen. |
 | S08 | 08B | Validation-only Obsidian build/entrypoint | Validation build loads separately; production main.js excludes agent/transport/scenarios. |
-| S08 | 08C | Bounded device command agent and sequence safety | Agent executes single commands only; no scenario state machine; <=750 LOC subset budget tracked. |
+| S08 | 08C | Bounded device command agent and sequence safety | Agent executes single commands only; no scenario state machine; original <=750 LOC subset budget was tracked; DEC-349 now sets the current live-device ceiling at 950 for diagnostic upgrades. |
 | S08 | 08D | Minimal command mailbox and Windows relay | Transport is run-scoped control metadata, no new OAuth scope/token export/product authority. |
 | S08 | 08E | External live executor and human checkpoints | Scenario authority stays external; unavailable OS/provider actions become explicit checkpoints. |
 | S08 | 08F | Platform construction closure and production-bundle isolation proof | Automated S08A–E platform-contract checks, architecture guard/metrics, full PHX-CI gates, and production-bundle exclusion pass; no real Obsidian/Drive/vault/product execution occurs. |
