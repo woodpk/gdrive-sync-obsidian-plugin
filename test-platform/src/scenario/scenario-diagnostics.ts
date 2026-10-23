@@ -19,6 +19,13 @@ export interface BvpDiagnostic {
   readonly stepId?: string;
 }
 export type BvpDiagnosticInput = Omit<BvpDiagnostic, "schemaVersion">;
+/** Trusted internal failure wrapper: shared boundaries carry no raw exceptions. */
+export class BvpDiagnosticError extends Error {
+  constructor(readonly diagnostic:BvpDiagnostic,readonly status:"failed"|"blocked"="failed"){
+    super(diagnostic.classification);this.name="BvpDiagnosticError";
+  }
+}
+
 
 const TOKEN = /^[a-z][a-z0-9-]{0,95}$/;
 const STEP = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$/;
