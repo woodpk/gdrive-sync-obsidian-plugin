@@ -4,7 +4,7 @@ import {
   type ScenarioExecutionMode, type ScenarioExpectedOutcome, type ScenarioFixtureContent,
   type ScenarioObservationStep, type ScenarioStep,
 } from "./scenario-contract";
-import { safeUnexpectedFailure, type BvpDiagnostic } from "./scenario-diagnostics";
+import { BvpDiagnosticError, safeUnexpectedFailure, type BvpDiagnostic } from "./scenario-diagnostics";
 import { VirtualSynchronizationWorld, type VirtualProductionDevice } from "../virtual-world/virtual-world";
 import { virtualDrivePath, type InMemoryGoogleDriveCore } from "../virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../virtual-world/in-memory-local-vault";
@@ -113,11 +113,13 @@ export class DeterministicScenarioRunner {
           ? await this.executor.execute(step, { stepIndex: index, readCapture: ref => captures.get(ref) })
           : await this.execute(step, context!, devices, captures);
       } catch (error) {
-        actual = safeUnexpectedFailure(error, {
-          component: "scenario-runner", phase: "step-execution",
-          lastConfirmedBoundary: "scenario-step-selected", firstUnconfirmedBoundary: "step-execution",
-          stepId: step.id,
-        });
+        actual = error instanceof BvpDiagnosticError
+          ? {status:error.status,classification:error.diagnostic.classification,diagnostic:error.diagnostic}
+          : safeUnexpectedFailure(error, {
+            component: "scenario-runner", phase: "step-execution",
+            lastConfirmedBoundary: "scenario-step-selected", firstUnconfirmedBoundary: "step-execution",
+            stepId: step.id,
+          });
       }
       if (actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && ("value" in actual || (!this.executor && step.kind === "observe"))) captures.set(step.captureAs, "value" in actual ? actual.value : undefined);
       const matchedExpectation = expectedMatches(step.expect, actual);
