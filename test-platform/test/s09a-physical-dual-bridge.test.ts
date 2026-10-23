@@ -190,3 +190,34 @@ test("S09A incomplete run preserves only genuinely measured approved device hash
   throws(()=>projectPhysicalDualReadinessResultForEvidence(JSON.stringify(obj),rawByLabel),
     /privacy|manifest|installed|mismatch/i);
 });
+
+
+test("S09A operator accepts a Settings-screen bare 32-hex identity and forwards its canonical device: form only",()=>{
+  const operator=readFileSync(resolve(process.cwd(),"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
+  // The owner enters only what is visibly displayed in BRAIN Settings.
+  // Normalize ONLY at the private operator boundary; never republish raw IDs.
+  const read=operator.indexOf("$iosId = Read-Host");
+  const canonical=operator.indexOf("if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }",read);
+  const guard=operator.indexOf("if ($iosId -cnotmatch '^device:[a-f0-9]{32}$')",read);
+  const stored=operator.indexOf("$env:BVP_IOS_DEVICE_ID = $iosId",read);
+  strictEqual(read>=0,true);
+  strictEqual(canonical>read,true,"Settings-screen identity must be normalized");
+  strictEqual(guard>canonical,true,"canonical identity must be checked after normalization");
+  strictEqual(stored>guard,true,"only checked canonical identity may be routed privately");
+  strictEqual(operator.includes("Write-Output $iosId"),false);
+  strictEqual(operator.includes("Write-Host $iosId"),false);
+  const sampleId="fedcba9876543210fedcba9876543210";
+  const canonicalize=(entry:string)=>/^[a-f0-9]{32}$/.test(entry)?"device:"+entry:entry;
+  for(const input of [sampleId,"device:"+sampleId]) {
+    const result=canonicalize(input);
+    strictEqual(result,"device:"+sampleId);
+    strictEqual(publicPhysicalDeviceId(result),publicByLabel.ios);
+  }
+  for(const bad of ["", "device:",sampleId.slice(1),"device:"+sampleId+"0",
+    "device:00112233445566778899aabbccddeefZ",
+    "DEVICE:"+sampleId,"device:"+sampleId.toUpperCase(),"x"+sampleId,
+  ]) {
+    const normalized=canonicalize(bad);
+    strictEqual(/^device:[a-f0-9]{32}$/.test(normalized),false);
+  }
+});
