@@ -65,7 +65,10 @@ $qualifiedCommand = if ($RunS09AReadinessSoftware) {
 }
 $recoveryCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --recover-privacy-blocked-windows-smoke'
 $physicalCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-second-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
-$dualPhysicalCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-s09a-dual-readiness'
+# Exactly one physical PHX invocation below; select only the separately authorized battery.
+$dualPhysicalCommand = if ($RunS09ADualPhysicalReadiness) {
+  'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-s09a-dual-readiness'
+} else { $physicalCommand }
 try {
   if ($RunS09AReadinessSoftware -and ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RecoverPreviouslyDispatchedWindowsSmoke -or $RunS09ADualPhysicalReadiness)) {
     throw 'S09A software readiness tests are strictly nonphysical and cannot be combined with a physical run or evidence recovery.'
@@ -144,28 +147,25 @@ try {
     if ($unexpectedPublishedPaths.Count -ne 0) { throw 'Non-evidence changes after qualification; physical battery not dispatched.' }
     $postQualificationDirty = @(& git.exe -C $repository status --porcelain=v1 --untracked-files=all)
     if ($LASTEXITCODE -ne 0 -or $postQualificationDirty.Count -ne 0) { throw 'Dirty qualification checkout; physical battery not dispatched.' }
+    $approvalPrompt = if ($RunS09ADualPhysicalReadiness) {
+      'Confirm exact BVP validation-only builds on BOTH disposable Windows and iPhone vaults, independent OAuth and intended managed test root, automatic sync disabled, existing BVP mailbox; authorize TWO status observations and BVP mailbox metadata writes (type YES)'
+    } else {
+      'Confirm Google Drive already contains BRAIN BVP Mailbox and Windows Obsidian BVP is open; authorize ONE smoke fixture/control run (type YES)'
+    }
+    $confirmation = Read-Host $approvalPrompt
+    if ($confirmation -cne 'YES') { throw 'Physical test not authorized; no device dispatch.' }
     if ($RunS09ADualPhysicalReadiness) {
-      $confirmation = Read-Host 'Confirm Windows and iPhone test vaults have the exact BVP validation-only build, same managed test remote, independent OAuth, automatic sync disabled, BVP mailbox already exists; approve two status observations and BVP mailbox metadata writes (type YES)'
-      if ($confirmation -cne 'YES') { throw 'S09A physical test not authorized.' }
-      $iosId = Read-Host 'iPhone BRAIN settings Device identity (device:32 lowercase hexadecimal digits)'
-      if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; test not started.' }
+      $iosId = Read-Host 'iPhone BRAIN test-vault Device identity (device:32 lowercase hexadecimal digits)'
+      if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
       $env:BVP_IOS_DEVICE_ID = $iosId
       $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'
       $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'YES'
-      $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
-      $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
-      $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
-      & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $dualPhysicalCommand -TempRoot $runRoot
-      $code = $LASTEXITCODE
-    } else {
-      $confirmation = Read-Host 'Confirm Google Drive already contains BRAIN BVP Mailbox and Windows Obsidian BVP is open; authorize ONE smoke fixture/control run (type YES)'
-      if ($confirmation -cne 'YES') { throw 'Physical Windows smoke canceled without dispatch.' }
-      $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
-      $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
-      $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
-      & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $physicalCommand -TempRoot $runRoot
-      $code = $LASTEXITCODE
     }
+    $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
+    $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
+    $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
+    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $dualPhysicalCommand -TempRoot $runRoot
+    $code = $LASTEXITCODE
   }
 } finally {
   if ($null -eq $priorPurpose) { Remove-Item Env:\BRAIN_ARTIFACT_PURPOSE -ErrorAction SilentlyContinue }
