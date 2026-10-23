@@ -118,7 +118,10 @@ async function main(): Promise<void> {
   // The Windows participant retains its exact qualified 0.1.19 manifest.
   // The iOS BRAT install uses the same main.js/source but an exact 0.1.20-bvp.1
   // manifest. Never accept an arbitrary cross-device manifest or version string.
-  const s09aDualInstalled = batteryName === "s09a-dual-device-readiness" && !!expectedBuild;
+  const s09aDualInstalled = batteryName === "s09a-dual-device-readiness";
+  if (s09aDualInstalled && !expectedBuild) {
+    throw new Error("s09a-installed-build-identity-file-required");
+  }
   if(s09aDualInstalled && (
       expectedBuild!.sourceCommit !== S09A_VALIDATION_ARTIFACTS.sourceCommit ||
       expectedBuild!.artifactSha256 !== S09A_VALIDATION_ARTIFACTS.artifactSha256 ||
