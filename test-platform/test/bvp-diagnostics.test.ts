@@ -133,6 +133,10 @@ test("missing live response identifies an unknown receipt rather than claiming f
     strictEqual(result.diagnostic?.identity.executionMode,"windows-live");
     strictEqual(result.diagnostic?.identity.correlationToken.startsWith("corr-sha256:"),true);
     strictEqual(result.diagnostic?.hops.some(h=>h.boundary==="device-result-receipt"&&h.status==="unknown"),true);
+    deepStrictEqual(result.diagnostic?.hops.map(h=>[h.boundary,h.status]),[
+      ["relay-outbox-write","confirmed"],["drive-command-publication","unknown"],
+      ["device-command-consumed","unknown"],["device-result-receipt","unknown"],
+    ]);
     doesNotMatch(JSON.stringify(result), /simulated-only-private-id/);
     const files = await readdir(join(relay, "outbox"));
     strictEqual(files.length, 1);
@@ -242,6 +246,10 @@ test("relay write failures report a prepublication boundary without emitting a c
     strictEqual(result.diagnostic?.lastConfirmedBoundary,"controller-command-prepared");
     strictEqual(result.diagnostic?.firstUnconfirmedBoundary,"relay-outbox-write");
     strictEqual(result.diagnostic?.effect,"unknown");
+    deepStrictEqual(result.diagnostic?.hops.map(h=>[h.boundary,h.status]),[
+      ["controller-command-prepared","confirmed"],["relay-outbox-write","unknown"],
+      ["drive-command-publication","not-observed"],
+    ]);
     strictEqual((await readdir(join(relay,"outbox"))).length,0);
     doesNotMatch(JSON.stringify(result),/synthetic-device-secret|\.json\.tmp|node:internal/);
   }finally{await rm(root,{recursive:true,force:true});}
