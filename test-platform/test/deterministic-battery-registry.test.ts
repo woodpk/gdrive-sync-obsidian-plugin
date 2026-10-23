@@ -10,6 +10,7 @@ import {
 test("deterministic batteries partition the automated BVP platform suite without duplicate test files", () => {
   deepStrictEqual(listDeterministicBatteryNames(), [
     "all-platform-tests",
+    "bvp-private-tap-canary",
     "platform-core",
     "s06-sync-semantics",
     "s07-fault-recovery-safety",
