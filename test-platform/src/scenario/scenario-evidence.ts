@@ -12,6 +12,7 @@ import type {
   ScenarioRunnerHookContext,
   ScenarioRunnerHooks,
 } from "./scenario-runner";
+import type { BvpDiagnostic } from "./scenario-diagnostics";
 import { virtualDrivePath } from "../virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../virtual-world/in-memory-local-vault";
 
@@ -34,6 +35,7 @@ export interface ScenarioEvidenceInput {
   readonly executionMode: ScenarioExecutionMode;
   readonly classification?: string;
   readonly reason?: string;
+  readonly diagnostic?: BvpDiagnostic;
   readonly runIdentity?: string;
   readonly buildIdentity?: string;
 }
@@ -65,6 +67,7 @@ export interface CanonicalScenarioEvidenceMachine {
     readonly status: string;
     readonly classification?: string;
     readonly reason?: string;
+    readonly diagnostic?: BvpDiagnostic;
   };
 }
 
@@ -91,6 +94,8 @@ const safeScalar = (value: unknown): value is JsonScalar =>
   value === null || typeof value === "string" || typeof value === "boolean" ||
   (typeof value === "number" && Number.isFinite(value));
 
+const SAFE_CODE = /^[a-z][a-z0-9-]{0,95}$/;
+const safeClassification = (value: string) => SAFE_CODE.test(value) ? value : "unexpected-internal-error";
 const TRUSTED_REASON_CODES=new Set(["exists","status","path","hash","sizeBytes","planId","deviceIdentity","vaultIdentity","classification","reason"]);
 function safeReason(value:string,classification:string):string{if(value===classification||TRUSTED_REASON_CODES.has(value))return value;return "reason-sha256:"+createHash("sha256").update(value).digest("hex").slice(0,24);}
 function safeObservation(value: unknown): Readonly<Record<string, SafeValue>> {
@@ -298,13 +303,22 @@ export function buildScenarioEvidence(
     executionMode: execution.executionMode,
     traceability: scenario.traceability.targets.map(target => ({ kind: target.kind, id: target.id })),
     fixtures: scenario.steps.map(fixtureIdentity).filter((value): value is NonNullable<typeof value> => value !== undefined),
-    deviceIdentities: [...execution.deviceIdentities].sort(),
+    deviceIdentities: execution.executionMode === "live"
+      ? execution.deviceIdentities.map(value => "device-sha256:" + createHash("sha256")
+        .update(execution.runIdentity ?? "").update("\\0").update(value).digest("hex").slice(0,24)).sort()
+      : [...execution.deviceIdentities].sort(),
     ...(execution.executionMode==="live"&&execution.runIdentity&&execution.buildIdentity?{liveIdentity:{runId:execution.runIdentity,sourceCommit:execution.buildIdentity}}:{}),
     observations,
-    assertions: execution.steps.filter(step => assertionIds.has(step.stepId)),
+    assertions: execution.steps.filter(step => assertionIds.has(step.stepId)).map(step => ({
+      stepId: step.stepId,
+      status: step.status,
+      matchedExpectation: step.matchedExpectation,
+      ...(step.classification === undefined ? {} : { classification: safeClassification(step.classification) }),
+    })),
     verdict: {
       status: execution.status,
-      ...(execution.classification === undefined ? {} : { classification: execution.classification }),
+      ...(execution.classification === undefined ? {} : { classification: safeClassification(execution.classification) }),
+      ...(execution.diagnostic === undefined ? {} : { diagnostic: execution.diagnostic }),
       ...(execution.status === "completed" || execution.classification === undefined
         ? {}
         : { reason: safeReason(execution.reason ?? execution.classification, execution.classification) }),
