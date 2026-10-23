@@ -31,6 +31,25 @@ owner_current_testing_directive:
   next_testing_activity: "READ_ONLY_IOS_IPADOS_VALIDATION_ARTIFACT_ISOLATED_VAULT_DEVICE_INSTALL_AND_PAIRING_READINESS_PREPARATION"
   next_testing_owner_gate: "REAL_IOS_INSTALL_AUTH_GOOGLE_DRIVE_PAIRING_DEVICE_RUN_REQUIRES_EXACT_BINDING_AND_OWNER_APPROVAL"
   no_redundant_rerun: "S09A_SIMULATED_SOFTWARE_PASS_ALREADY_PUBLISHED_DO_NOT_RERUN_ADMINISTRATIVELY"
+  ios_validation_artifact_stage_2026_10_22:
+    observation: "OWNER_SUPPLIED_WINDOWS_OPERATOR_TERMINAL_OUTPUT"
+    result: "PASS_LOCAL_STAGE_ONLY"
+    source_commit: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
+    artifact_size_bytes: 959715
+    main_sha256: "90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7"
+    manifest_sha256: "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965"
+    staging_root: "C:\\temp\\aae9b8222b41417ab1b14938050683c3"
+    package_archive: "C:\\temp\\aae9b8222b41417ab1b14938050683c3\\ios-validation-only-0.1.19.zip"
+    installed_on_ios: false
+    actual_ios_runtime_observed: false
+    test_or_provider_side_effects: "NONE_PER_OPERATOR_OUTPUT"
+  s09a_two_device_physical_runner_gap:
+    existing_transport: "WINDOWS_RELAY_OUTBOX_PUBLISHES_DEVICE_ADDRESSED_COMMANDS_THROUGH_DRIVE_MAILBOX_IOS_AGENT_POLLS_IN_APP"
+    existing_registered_battery: "s09a-dual-device-readiness"
+    current_physical_bridge_blocker: "BRIDGE_LIMITS_PHYSICAL_TO_WINDOWS_LIVE_SMOKE_SINGLE_DEVICE_RAW_TO_PUBLIC_PROJECTION"
+    required_software_correction: "BOUND_S09A_TWO_DEVICE_RELAY_MAPPING_AND_MULTI_DEVICE_PRIVACY_PROJECTION_TEST_FIRST"
+    current_physical_status: "NOT_DISPATCHED_UNAUTHORIZED_PENDING_COMPLETE_DEVICE_AND_MAILBOX_BINDING"
+
   iphone_operator_readiness_2026_10_22:
     evidence_type: "OWNER_REPORTED_NOT_PHX_OBSERVED"
     isolated_test_vault: true
@@ -43,8 +62,8 @@ owner_current_testing_directive:
     shipping_version: "0.1.19_OWNER_REPORTED_INSTALLED"
     validation_only_agent_installation: "NOT_YET_VERIFIED_ON_IOS"
     no_credentials_or_remote_ids_recorded: true
-  next_testing_activity: "STAGE_EXACT_PHX_QUALIFIED_0_1_19_VALIDATION_ONLY_IOS_PACKAGE_NONPHYSICAL"
-  next_testing_prerequisite: "BVP_PHYSICAL_DISPATCHER_CURRENTLY_RESTRICTED_TO_WINDOWS_LIVE_SMOKE_IOS_TWO_DEVICE_ROUTE_REQUIRES_BOUNDED_SOFTWARE_QUALIFICATION"
+  next_testing_activity: "QUALIFY_BOUNDED_S09A_PHYSICAL_TWO_DEVICE_BRIDGE_WITH_PHXCI_BEFORE_PHONE_INSTALL_OR_LIVE_DISPATCH"
+  next_testing_prerequisite: "APPROVED_ISOLATED_IOS_VALIDATION_INSTALL_DEVICE_MAPPING_MAILBOX_OWNERSHIP_OPERATION_EFFECT_BUDGET_AFTER_SOFTWARE_BRIDGE_QUALIFICATION"
 
 
 release_019_candidate:
