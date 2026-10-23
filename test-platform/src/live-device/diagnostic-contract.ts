@@ -48,6 +48,9 @@ function token(value: unknown, fallback: string): string {
   return typeof value === "string" && TOKEN.test(value) ? value : fallback;
 }
 
+/** Public safe code used identically by the diagnostics and remote result parser. */
+export const diagnosticCode=(value:unknown):string=>token(value,"unexpected-internal-error");
+
 /** Construct only allowlisted machine-readable diagnostic fields. */
 export function bvpDiagnostic(input: BvpDiagnosticInput): BvpDiagnostic {
   return {
