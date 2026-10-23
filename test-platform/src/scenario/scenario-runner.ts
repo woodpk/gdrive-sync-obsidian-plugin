@@ -4,6 +4,7 @@ import {
   type ScenarioExecutionMode, type ScenarioExpectedOutcome, type ScenarioFixtureContent,
   type ScenarioObservationStep, type ScenarioStep,
 } from "./scenario-contract";
+import { safeUnexpectedFailure, type BvpDiagnostic } from "./scenario-diagnostics";
 import { VirtualSynchronizationWorld, type VirtualProductionDevice } from "../virtual-world/virtual-world";
 import { virtualDrivePath, type InMemoryGoogleDriveCore } from "../virtual-world/in-memory-google-drive";
 import { virtualVaultPath } from "../virtual-world/in-memory-local-vault";
@@ -17,17 +18,17 @@ export type ScenarioExecutionStatus = "completed" | "failed" | "blocked" | "unsu
 export interface ScenarioStepExecution {
   readonly index: number; readonly stepId: string; readonly kind: ScenarioStep["kind"];
   readonly status: ScenarioExecutionStatus; readonly classification?: string;
-  readonly reason?: string; readonly matchedExpectation: boolean;
+  readonly reason?: string; readonly diagnostic?: BvpDiagnostic; readonly matchedExpectation: boolean;
 }
 export interface ScenarioExecutionResult {
   readonly scenarioId: string; readonly status: ScenarioExecutionStatus;
   readonly steps: readonly ScenarioStepExecution[]; readonly captures: Readonly<Record<string, unknown>>;
-  readonly classification?: string; readonly reason?: string;
+  readonly classification?: string; readonly reason?: string; readonly diagnostic?: BvpDiagnostic;
   readonly evidence?: CanonicalScenarioEvidence;
 }
 export type ScenarioCapabilityResult =
   | { readonly status: "completed"; readonly value?: unknown }
-  | { readonly status: "failed" | "blocked" | "unsupported"; readonly classification: string; readonly reason?: string };
+  | { readonly status: "failed" | "blocked" | "unsupported"; readonly classification: string; readonly reason?: string; readonly diagnostic?: BvpDiagnostic };
 export interface ScenarioRunnerHookContext {
   readonly world: VirtualSynchronizationWorld;
   readCapture(ref: string): unknown | undefined;
@@ -95,11 +96,12 @@ export class DeterministicScenarioRunner {
         const created = await world.reconstructDevice(name); devices.set(name, created); return created;
       },
     } : undefined;
-    const finish = async (status: ScenarioExecutionStatus, classification?: string, reason?: string): Promise<ScenarioExecutionResult> => {
+    const finish = async (status: ScenarioExecutionStatus, classification?: string, reason?: string, diagnostic?: BvpDiagnostic): Promise<ScenarioExecutionResult> => {
       for (const device of devices.values()) await device.dispose();
       await this.executor?.dispose?.();
       const core = { scenarioId: scenario.id, status, steps, captures: Object.fromEntries(captures),
-        ...(classification === undefined ? {} : { classification }), ...(reason === undefined ? {} : { reason }) };
+        ...(classification === undefined ? {} : { classification }), ...(reason === undefined ? {} : { reason }),
+        ...(diagnostic === undefined ? {} : { diagnostic }) };
       const deviceIdentities = this.executor?.deviceIdentities ?? [...names].map(name => String(world!.deviceBacking(name).deviceIdentity));
       return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities, executionMode, runIdentity:this.executor?.runIdentity, buildIdentity:this.executor?.buildIdentity }) };
     };
@@ -111,7 +113,11 @@ export class DeterministicScenarioRunner {
           ? await this.executor.execute(step, { stepIndex: index, readCapture: ref => captures.get(ref) })
           : await this.execute(step, context!, devices, captures);
       } catch (error) {
-        actual = fail("failed", "step-exception", error instanceof Error ? error.message : String(error));
+        actual = safeUnexpectedFailure(error, {
+          component: "scenario-runner", phase: "step-execution",
+          lastConfirmedBoundary: "scenario-step-selected", firstUnconfirmedBoundary: "step-execution",
+          stepId: step.id,
+        });
       }
       if (actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && ("value" in actual || (!this.executor && step.kind === "observe"))) captures.set(step.captureAs, "value" in actual ? actual.value : undefined);
       const matchedExpectation = expectedMatches(step.expect, actual);
@@ -119,13 +125,14 @@ export class DeterministicScenarioRunner {
         index, stepId: step.id, kind: step.kind, status: actual.status, matchedExpectation,
         ...("classification" in actual ? { classification: actual.classification } : {}),
         ...("reason" in actual && actual.reason !== undefined ? { reason: actual.reason } : {}),
+        ...("diagnostic" in actual && actual.diagnostic !== undefined ? { diagnostic: actual.diagnostic } : {}),
       });
       if (!matchedExpectation) {
         if (actual.status === "completed") return finish(
           "failed", "expected-outcome-not-observed",
           `step ${step.id} completed but expected ${step.expect?.status}`,
         );
-        return finish(actual.status, actual.classification, actual.reason);
+        return finish(actual.status, actual.classification, actual.reason, actual.diagnostic);
       }
     }
     return finish("completed");
