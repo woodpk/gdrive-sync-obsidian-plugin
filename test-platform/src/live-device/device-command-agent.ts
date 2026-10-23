@@ -162,13 +162,13 @@ function fixturePath(root: string, relativePath: string): string | undefined {
   return root + "/" + relativePath;
 }
 
-function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | undefined, status: DeviceCommandResult["status"], classification: string): DeviceCommandResult {
+function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | undefined, status: DeviceCommandResult["status"], classification: string, phase?: "command-execution"|"sequence-finalization"): DeviceCommandResult {
   const claimed=classification==="prior-outcome-uncertain";
   const diagnostic=status==="completed"?undefined:bvpDiagnostic({
     classification,component:"device-agent",
-    phase:claimed?"sequence-reconciliation":status==="rejected"?"command-preflight":"device-command",
-    lastConfirmedBoundary:claimed?"sequence-claim-persisted":command?"device-command-decoded":"device-agent-entry",
-    firstUnconfirmedBoundary:claimed?"claimed-command-result":status==="rejected"?"command-acceptance":"device-operation-outcome",
+    phase:phase??(claimed?"sequence-reconciliation":status==="rejected"?"command-preflight":"device-command"),
+    lastConfirmedBoundary:phase==="command-execution"?"sequence-claim-persisted":phase==="sequence-finalization"?"command-handler-returned":claimed?"sequence-claim-persisted":command?"device-command-decoded":"device-agent-entry",
+    firstUnconfirmedBoundary:phase==="command-execution"?"command-handler-outcome":phase==="sequence-finalization"?"sequence-result-persisted":claimed?"claimed-command-result":status==="rejected"?"command-acceptance":"device-operation-outcome",
     effect:status==="rejected"?"none-confirmed":"unknown",
     recommendedAction:claimed?"reconcile-claimed-command":status==="rejected"?"inspect-device-rejection":"reconcile-device-outcome",
   });
@@ -183,16 +183,6 @@ function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | 
     classification:diagnostic?.classification??classification,
     ...(diagnostic?{diagnostic}:{}),
   };
-}
-
-function uncertainCommandResult(options:DeviceCommandAgentOptions,command:DeviceCommand,classification:string,
-  phase:"command-execution"|"sequence-finalization"):DeviceCommandResult{
-  return {...resultFor(options,command,"failed",classification),diagnostic:bvpDiagnostic({
-    component:"device-agent",classification,phase,
-    lastConfirmedBoundary:phase==="command-execution"?"sequence-claim-persisted":"command-handler-returned",
-    firstUnconfirmedBoundary:phase==="command-execution"?"command-handler-outcome":"sequence-result-persisted",
-    effect:"unknown",recommendedAction:"reconcile-claimed-command",
-  })};
 }
 
 function verifiedFixture(observation: FixtureObservation, shouldExist: boolean): boolean {
@@ -334,15 +324,15 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
       try {
         terminal = await dispatch(command);
       } catch {
-        terminal = uncertainCommandResult(options, command, "command-handler-failed", "command-execution");
+        terminal = resultFor(options, command, "failed", "command-handler-failed", "command-execution");
       }
 
       try {
         const completed: DeviceSequenceState = { sequence: command.sequence, commandKey, phase: "completed", result: copy(terminal) };
         if (!await options.sequenceState.compareAndSave(options.runId, options.deviceId, claim, completed)) {
-          return uncertainCommandResult(options, command, "sequence-state-finalization-failed", "sequence-finalization");
+          return resultFor(options, command, "failed", "sequence-state-finalization-failed", "sequence-finalization");
         }
-      } catch { return uncertainCommandResult(options, command, "sequence-state-finalization-failed", "sequence-finalization"); }
+      } catch { return resultFor(options, command, "failed", "sequence-state-finalization-failed", "sequence-finalization"); }
       return terminal;
   }
   return {
