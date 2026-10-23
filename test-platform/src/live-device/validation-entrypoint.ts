@@ -1,5 +1,6 @@
 import { createBoundedDeviceCommandAgent, type DeviceFixturePort, type DeviceSequenceState, type DeviceSequenceStateStore, type ValidationBuildIdentity } from "./device-command-agent";
 import { createDriveCommandMailbox, createWindowsMailboxRelay, pollDeviceMailboxOnce, type AuthenticatedDriveRequest } from "./drive-mailbox";
+import { bvpDiagnostic } from "./diagnostic-contract";
 
 export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL";
 export const BVP_VALIDATION_BUILD_GLOBAL = "__BRAIN_BVP_VALIDATION_BUILD__";
@@ -35,7 +36,10 @@ export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValida
 export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){
   const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
   let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
-  async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable"};activeRunId=runId;
+  async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable",diagnostic:bvpDiagnostic({
+      classification:"device-sequence-storage-unavailable",component:"device-agent",phase:"sequence-storage-preflight",
+      lastConfirmedBoundary:"active-run-read",firstUnconfirmedBoundary:"durable-sequence-storage",effect:"none-confirmed",
+      recommendedAction:"enable-device-sequence-storage"})};activeRunId=runId;
     // Installed file bytes, not caller-supplied claims or controller build output.
     const installedRoot=options.root.replace(/\\/g,"/").replace(/\/\.bvp-relay$/,"");
     if(!/\/plugins\/[A-Za-z0-9._-]+$/.test(installedRoot))throw new Error("validation-installed-plugin-root-invalid");
