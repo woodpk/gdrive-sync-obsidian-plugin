@@ -3,6 +3,7 @@ import { createWriteStream } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
+import { safeUnexpectedFailure } from "../../src/scenario/scenario-diagnostics";
 
 import {
   getDeterministicBattery,
@@ -102,22 +103,19 @@ async function main(): Promise<void> {
 }
 
 main().catch(async error => {
-  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  const failure = safeUnexpectedFailure(error, {
+    component: "battery-runner", phase: "battery-preflight",
+    lastConfirmedBoundary: "battery-entrypoint",
+    firstUnconfirmedBoundary: "battery-execution",
+  }, "deterministic-battery-runner-exception");
   const resultFile = optionalArg("--result-file");
   if (resultFile) {
     try {
-      await persist(
-        resultFile,
-        JSON.stringify({
-          result: {
-            status: "failed",
-            classification: "deterministic-battery-runner-exception",
-            reason: message,
-          },
-        }, null, 2) + "\n",
-      );
-    } catch {}
+      await persist(resultFile, JSON.stringify({ result: failure }, null, 2) + "\n");
+    } catch {
+      console.error("BVP_DIAGNOSTIC result-persistence-failed");
+    }
   }
-  console.error(message);
+  console.error("BVP_DIAGNOSTIC " + JSON.stringify(failure.diagnostic));
   process.exitCode = 1;
 });
