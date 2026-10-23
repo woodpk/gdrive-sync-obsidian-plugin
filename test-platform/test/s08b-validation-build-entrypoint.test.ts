@@ -142,6 +142,7 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(readFileSync(first.manifestPath, "utf8"), readFileSync(resolve(repositoryRoot, "manifest.json"), "utf8"));
   deepEqual(first.testPlatformInputs, [
     "test-platform/src/live-device/device-command-agent.ts",
+    "test-platform/src/live-device/diagnostic-contract.ts",
     "test-platform/src/live-device/drive-mailbox.ts",
     "test-platform/src/live-device/validation-entrypoint.ts",
   ]);
