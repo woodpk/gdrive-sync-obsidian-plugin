@@ -1,6 +1,6 @@
 # DEC-348 BVP diagnostics — fault/acceptance coverage
 
-**Status:** BUILDER-QUALIFIED on exact source `fd9ccf9f99ebc73de54f3553fd62b265ed0f86fb` by PHX-CI run `612f2abd-560c-4375-8458-e2a1586bea40`, published evidence `b212c36cd98f2f035d539a84434834c25ae99a75` (**515/515 BVP, 1292/1292 product tests; 11/11 stages; exit 0**). Independent Reviewer acceptance is PENDING. Simulation/mock evidence is NOT physical iPhone, live Google Drive or live Obsidian proof.
+**Status:** R6 source `fd9ccf9f99ebc73de54f3553fd62b265ed0f86fb` legitimately PHX-CI-qualified (run `612f2abd-560c-4375-8458-e2a1586bea40`, evidence `b212c36cd98f2f035d539a84434834c25ae99a75`), BUT independent Reviewer ruled **CORRECTION REQUIRED ER-01–ER-04**. R7 correction tests and source are committed, **new exact-source PHX-CI PENDING**. No physical iPhone, live Google Drive or installed Obsidian proof.
 
 ## Source-grounded acceptance map
 
@@ -52,10 +52,21 @@ All ten families are materially applicable. This mapping is Builder qualificatio
 - `invalid-scenario`: preflight rejected the scenario before any dispatch; review its schema and required fields. `bridge-unexpected-internal-error`: sanitized fallback cannot establish a specific cause; inspect protected original evidence, not raw public logs.
 - Do not report device publication, reception, execution, or completion as confirmed unless the relevant authenticated record exists. The separately planned PowerShell interface consumes the existing typed diagnostic fields; it must not generate independent conclusions.
 
+## Independent Reviewer ER-01–ER-04 correction-to-test traceability (R7, PHX-CI PENDING)
+
+| Finding | Distinct tests added before Builder production repair | Source result required | Test-change integrity and safety |
+| --- | --- | --- | --- |
+| ER-01 identity/hops | `bvp-diagnostics.test.ts` bounded identity, forged private fields, exact live outbox-vs-timeout hops, correlated run/step/mode; `s08c-device-command-agent.test.ts` opaque command keys; `phxci-physical-bridge.test.ts` strict safe typed diagnostic and exact SHA vs wrong hash; `s09a-late-completion-recovery.test.ts` hashed ID vs wrong ID; `scenario-evidence.test.ts` no raw run ID | Full context and per-hop confidence in one bounded record; no fabricated send/receive; schema type-only shared with browser runtime, no installed source-boundary widening | Bridge's prior strict model still rejects unmatched private/free fields; existing raw run fixtures remain authenticated through exact prior-run equality |
+| ER-02 relay/poll failures | `s08d-drive-mailbox-relay.test.ts` malformed outbox/sent, adapter read/rename/write thrown private text, device-poll exception, preserve queued files, oversize record fails explicitly | Structured safe `unavailable`, cause/phase/last-confirmed/first-unconfirmed/unknown-effect; no automatic retry/delete | Changed original oversized-record oracle from bare throw to safe `mailbox-record-too-large`, preserving no-effect/no-dispatch and queued-file assertions |
+| ER-03 subprocess TAP privacy | `bvp-private-tap-canary.test.ts` synthetic secret in stderr/stack (only under explicitly set environment flag); `bvp-diagnostics.test.ts` subprocess exit and sanitized console/TAP/result; `deterministic-battery-registry.test.ts` full test discovery | Zero raw child-authored secret text on printed/shared artifacts; preserve `not ok` numeric identity, failing test count and subprocess exit 1 | Source-compatible single deterministic battery runner, no raw log replay, no fake success; real secrets never injected |
+| ER-04 cleanup and unsupported modes | `bvp-diagnostics.test.ts` unsupported-mode clean/failed dispose, executor disposal throw after step failure, virtual-device disposal throw after successful step, canonical cleanup record | Return stable fail-closed result and original step evidence, with separate cleanup unknown and safe secondary phase | No suppression of secondary disposal error and no erasure of original step cause; production code unchanged |
+
+**Proof boundary:** R7 is **not validated** until a fresh genuine Windows software-only PHX-CI PASS for exact updated source/tests and original evidence publication. Older R6 PASS cannot qualify modified tests/source. Reviewer must independently reassess all four findings after Builder verification. No installation, physical devices, real mailbox/vault, release, or dependent PowerShell interface work is authorized.
+
 ## Current architecture and operational boundaries
 
 - Owner's `DEC-349` approves only BVP core **4,500** and live-device **950** logical TypeScript lines. All other frozen guards are intact.
 - The first limited implementation slice already had genuine Windows PHX-CI PASS: source `5c8d34ad9bee7f968eee47f5d8d26c2d27a7eb96`, run `6b6dd05b-33e2-4b63-ac29-3088477fdf64`, evidence `569efcb54c75826b31c7d70a19193020ed7bb293`. **These identities do not qualify subsequent modifications.**
 - BVP operating tests remain direct BVP responsibilities under `DEC-346`, not operated through PHX-CI. PHX-CI is used for software-build/change qualification only.
-- The feature's complete R6 source now has a **Windows, software-only, authorized-governance** PHX-CI PASS with original evidence published. No iPhone/iPad hardware, installed Obsidian, production vault, live mailbox or release is authorized. Builder→Reviewer handoff is allowed only after independently verifying the current canonical state and publishing its new counter/recipient.
+- The feature's R6 reference source passed Windows PHX-CI but was **REJECTED in independent final review**. R7 correction source is UNQUALIFIED until it passes new software-only PHX-CI. No hardware, installed Obsidian, live vault/mailbox, release, or re-review handoff is authorized until that qualification and required handoff-state publication.
 - The independent Reviewer must verify source-to-contract fit, all ten mandatory test families, failure boundaries, security/privacy, evidence and current source identity after Builder completes qualification. A test-count PASS alone is not independent acceptance.
