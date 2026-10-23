@@ -122,6 +122,21 @@ test("late receipt resumes the exact run with read-only observations, never redi
   } finally { await rm(f.directory, { recursive: true, force: true }); }
 });
 
+test("ER-01 late receipt reuses an exact opaque logical run identity, never an unrelated one",async()=>{
+  const f=await fixture();
+  try{
+    const good=JSON.parse(await readFile(f.resultFile,"utf8"));
+    good.result.evidence.machine.liveIdentity.runId="run-sha256:"+
+      createHash("sha256").update(runId).digest("hex").slice(0,24);
+    await writeFile(f.resultFile,JSON.stringify(good));
+    const resumed=await loadLateCompletionRecovery(f.options);
+    strictEqual(resumed.completedStepIndex,5);
+    good.result.evidence.machine.liveIdentity.runId="run-sha256:"+"f".repeat(24);
+    await writeFile(f.resultFile,JSON.stringify(good));
+    await rejects(loadLateCompletionRecovery(f.options),/prior-identity-mismatch/);
+  }finally{await rm(f.directory,{recursive:true,force:true});}
+});
+
 test("invalid late receipts, mismatched provenance and pending commands fail closed before a lease", async () => {
   const f = await fixture();
   try {
