@@ -175,6 +175,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     observedInstalledBuilds:()=>({...installedByDevice}),
     async dispose(){if(pending||await pendingRelayCommand())return;for(const [deviceId,path] of authorityFiles)await withAuthorityLock(path,async()=>{let current:ControllerAuthority|undefined;try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(current?.runId===options.runId){await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}});},
     async execute(step,context){
+      lastCommandId=undefined;
       let result:ScenarioCapabilityResult;
       if(resumeFailure)result=fail("blocked",resumeFailure);
       else if(resume&&context.stepIndex<resume.nextStepIndex-1)result=replay(context.stepIndex);
