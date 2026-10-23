@@ -56,7 +56,7 @@ function seedCommand(drive:FakeDrive,value:any,id="seed-"+drive.next++){drive.fi
 function seedBinding(drive:FakeDrive,runId:string,deviceId:string,generation:number,id="binding-"+drive.next++){drive.files.set(id,{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"run-binding",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpGeneration:String(generation)}},content:""});}
 async function relayPublish(mailbox:ReturnType<typeof createDriveCommandMailbox>,files:Files,root:string,value:DeviceCommand,generation=1,name="cmd.json"){await authorize(files,root,value.runId,value.deviceId,generation);await files.write(root+"/outbox/"+name,JSON.stringify(value));return createWindowsMailboxRelay(mailbox,files,root).pumpOnce();}
 
-test("Drive mailbox is separate, bounded, addressed, duplicate-tolerant, and exact-result correlated",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);equal("publishCommand" in (mailbox as any),false);const a=command(),wrongRun=command(2,"other","device-a"),wrongDevice=command(3,"run-a","other");seedCommand(drive,wrongDevice);seedCommand(drive,command(2));seedCommand(drive,{...a,accessToken:"must-not-persist"});seedCommand(drive,wrongRun,"stale-wrong-run");seedCommand(drive,a);const addressed=await mailbox.commands("run-a","device-a");deepEqual(addressed.map(v=>v.sequence),[1,1,2]);equal(addressed.some(v=>"accessToken" in (v as any)),false);const folder=drive.folder();equal(folder?.meta.name,"BRAIN BVP Mailbox");equal(folder?.meta.appProperties.brainBvpMailbox,"1");equal(folder?.meta.appProperties.brainSyncRole,undefined);await mailbox.publishResult(result(a));deepEqual(await mailbox.resultFor(a),result(a));const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",huge={...a,kind:"fixture-put",path:"huge.md",content:{type:"text",text:"x".repeat(140000)}} as any;await authorize(files,root,a.runId,a.deviceId);await files.write(root+"/outbox/huge.json",JSON.stringify(huge));await rejects(()=>createWindowsMailboxRelay(mailbox,files,root).pumpOnce(),/mailbox-record-too-large/);await rejects(()=>mailbox.publishResult({...result(a),receipt:{accessToken:"secret"}} as any),/mailbox-sensitive-field/);await mailbox.publishResult(result(a,"different"));await rejects(()=>mailbox.resultFor(a),/mailbox-conflicting-result/);});
+test("Drive mailbox is separate, bounded, addressed, duplicate-tolerant, and exact-result correlated",async()=>{const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);equal("publishCommand" in (mailbox as any),false);const a=command(),wrongRun=command(2,"other","device-a"),wrongDevice=command(3,"run-a","other");seedCommand(drive,wrongDevice);seedCommand(drive,command(2));seedCommand(drive,{...a,accessToken:"must-not-persist"});seedCommand(drive,wrongRun,"stale-wrong-run");seedCommand(drive,a);const addressed=await mailbox.commands("run-a","device-a");deepEqual(addressed.map(v=>v.sequence),[1,1,2]);equal(addressed.some(v=>"accessToken" in (v as any)),false);const folder=drive.folder();equal(folder?.meta.name,"BRAIN BVP Mailbox");equal(folder?.meta.appProperties.brainBvpMailbox,"1");equal(folder?.meta.appProperties.brainSyncRole,undefined);await mailbox.publishResult(result(a));deepEqual(await mailbox.resultFor(a),result(a));const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",huge={...a,kind:"fixture-put",path:"huge.md",content:{type:"text",text:"x".repeat(140000)}} as any;await authorize(files,root,a.runId,a.deviceId);await files.write(root+"/outbox/huge.json",JSON.stringify(huge));{const blocked=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();equal(blocked.status,"unavailable");equal(blocked.reason,"mailbox-record-too-large");equal(blocked.diagnostic?.phase,"command-publication");equal(await files.exists(root+"/outbox/huge.json"),true);}await rejects(()=>mailbox.publishResult({...result(a),receipt:{accessToken:"secret"}} as any),/mailbox-sensitive-field/);await mailbox.publishResult(result(a,"different"));await rejects(()=>mailbox.resultFor(a),/mailbox-conflicting-result/);});
 
 test("unavailable Drive is explicit and device pump preserves S08C typed results",async()=>{const unavailable=createDriveCommandMailbox(async()=>{throw new Error("offline");});await rejects(()=>unavailable.commands("run-a","device-a"),MailboxUnavailableError);const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),c=command();seedCommand(drive,c);let executions=0;const agent:BoundedDeviceCommandAgent={async execute(input){executions++;return result(input as DeviceCommand);}};deepEqual(await pollDeviceMailboxOnce(mailbox,agent,"run-a","device-a"),{status:"ok",processed:1});deepEqual(await pollDeviceMailboxOnce(mailbox,agent,"run-a","device-a"),{status:"ok",processed:0});equal(executions,1);});
 
@@ -108,4 +108,60 @@ test("mailbox roundtrip preserves bounded handler uncertainty while sanitizing f
   equal(recovered?.diagnostic?.phase,"unknown-phase");
   equal(JSON.stringify(recovered).includes("oauth-hidden-secret"),false);
   equal(JSON.stringify(recovered).includes("private"),false);
+});
+
+test("malformed relay outbox/sent messages return safe distinct phase and preserve original bytes",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),
+    root=".obsidian/plugins/brain/.bvp-relay";
+  for(const folder of ["outbox","sent"]){
+    const files=new Files(),path=root+"/"+folder+"/bad.json",payload="{Bearer oauth-secret /vault.md";
+    await files.write(path,payload);
+    const res=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();
+    equal(res.status,"unavailable");
+    equal(res.reason,folder==="outbox"?"relay-outbox-malformed":"relay-sent-malformed");
+    equal(res.diagnostic?.effect,"unknown");
+    equal(res.diagnostic?.firstUnconfirmedBoundary,"relay-command-decoding");
+    equal(await files.read(path),payload);
+    equal(JSON.stringify(res).includes("oauth-secret"),false);
+  }
+});
+
+test("relay adapter read, rename and inbox-write failures are classified without deleting uncertain state",async()=>{
+  const root=".obsidian/plugins/brain/.bvp-relay",drive=new FakeDrive(),
+    mailbox=createDriveCommandMailbox(drive.request),c=command();
+  for(const operation of ["read","rename","write"] as const){
+    const files=new Files();
+    await authorize(files,root,c.runId,c.deviceId);
+    const path=root+(operation==="write"?"/sent/":"/outbox/")+"cmd.json";
+    await files.write(path,JSON.stringify(c));
+    const secret="Bearer secret-path /private/Vault/client-note.md";
+    const adapter={
+      exists:(p:string)=>files.exists(p),mkdir:(p:string)=>files.mkdir(p),
+      list:(p:string)=>files.list(p),
+      read:(p:string)=>operation==="read"&&p===path?Promise.reject(new Error(secret)):files.read(p),
+      write:(p:string,v:string)=>operation==="write"&&p.startsWith(root+"/inbox/")?Promise.reject(new Error(secret)):files.write(p,v),
+      rename:(a:string,b:string)=>operation==="rename"?Promise.reject(new Error(secret)):files.rename(a,b),
+      remove:(p:string)=>files.remove(p),
+    };
+    if(operation==="write")await mailbox.publishResult(result(c));
+    const res=await createWindowsMailboxRelay(mailbox,adapter,root).pumpOnce();
+    equal(res.status,"unavailable");
+    equal(res.reason,operation==="read"?"relay-file-read-failed":operation==="rename"?"relay-file-rename-failed":"relay-inbox-write-failed");
+    equal(res.diagnostic?.effect,"unknown");
+    equal(await files.exists(path),true);
+    equal(JSON.stringify(res).includes("secret-path"),false);
+    equal(JSON.stringify(res).includes("client-note"),false);
+  }
+});
+
+test("device mailbox polling ordinary failure is classified instead of rejecting into a silent periodic catch",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),c=command();
+  seedCommand(drive,c);
+  const agent:BoundedDeviceCommandAgent={async execute(){throw new Error("Bearer local-device-secret");}};
+  const res=await pollDeviceMailboxOnce(mailbox,agent,c.runId,c.deviceId);
+  equal(res.status,"unavailable");
+  equal(res.reason,"device-command-execution-failed");
+  equal(res.diagnostic?.component,"device-agent");
+  equal(res.diagnostic?.firstUnconfirmedBoundary,"device-command-outcome");
+  equal(JSON.stringify(res).includes("local-device-secret"),false);
 });
