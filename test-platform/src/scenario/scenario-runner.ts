@@ -127,6 +127,20 @@ export class DeterministicScenarioRunner {
             stepId: step.id,
           });
       }
+      // Every non-completed step needs a stable, privacy-safe public diagnosis,
+      // even when a capability returns only a classification rather than throwing.
+      if (actual.status !== "completed") {
+        const diagnosis="diagnostic" in actual&&actual.diagnostic
+          ? bvpDiagnostic({...actual.diagnostic,stepId:step.id})
+          : bvpDiagnostic({
+            classification:actual.classification,component:"scenario-runner",
+            phase:this.executor?"live-step-result":"simulated-step-result",
+            lastConfirmedBoundary:"scenario-step-result-received",
+            firstUnconfirmedBoundary:"expected-outcome-confirmation",
+            effect:"unknown",recommendedAction:"inspect-step-evidence",stepId:step.id,
+          });
+        actual={...actual,classification:diagnosis.classification,diagnostic:diagnosis};
+      }
       if (actual.status === "completed" && "captureAs" in step && typeof step.captureAs === "string" && ("value" in actual || (!this.executor && step.kind === "observe"))) captures.set(step.captureAs, "value" in actual ? actual.value : undefined);
       const matchedExpectation = expectedMatches(step.expect, actual);
       steps.push({
