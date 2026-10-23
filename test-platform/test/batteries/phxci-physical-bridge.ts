@@ -14,6 +14,7 @@ import { getLiveBattery } from "./battery-registry";
 import { liveCommandId } from "../../src/live-device/live-scenario-executor";
 import { S09A_VALIDATION_ARTIFACTS } from "./s09a-validation-artifacts";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
+import { bvpDiagnostic, type BvpDiagnostic } from "../../src/scenario/scenario-diagnostics";
 
 import { decodeScenarioCheckpoint } from "../../src/scenario/scenario-checkpoint";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
@@ -1730,13 +1731,27 @@ export async function main(): Promise<void> {
     attempt.exitCode === 3 ? "blocked" : "failed");
   process.exitCode = attempt.exitCode;
 }
+/** Fixed-boundary bridge diagnostic; no assumptions about device dispatch or effects. */
+export function bridgeFailureDiagnostic(error:unknown):{
+  readonly code:string;readonly diagnostic:BvpDiagnostic;
+}{
+  const candidate=error instanceof Error?error.message:"";
+  const code=/^bvp-phxci-bridge-[a-z0-9-]{1,70}$/.test(candidate)?
+    candidate:"bvp-phxci-bridge-unexpected-internal-error";
+  const diagnostic=bvpDiagnostic({
+    classification:code.replace(/^bvp-phxci-/,""),component:"battery-runner",
+    phase:"bridge-controller",lastConfirmedBoundary:"bridge-entrypoint",
+    firstUnconfirmedBoundary:"bridge-outcome",effect:"unknown",
+    recommendedAction:"inspect-bridge-evidence",
+  });
+  return{code,diagnostic};
+}
 if (require.main === module) {
   main().catch(error => {
-    // Never print error.stack or BVP's original output: either can contain
-    // paths/identifiers/fixture data. Fail closed with a fixed diagnostic.
-    console.error("BVP_PHXCI_BRIDGE_BLOCKED " + (
-      error instanceof Error && error.message.startsWith("bvp-phxci-bridge-")
-        ? error.message : "unclassified-error"));
-    process.exitCode = 1;
+    // Never print an original stack, exception message, raw path or device ID.
+    const failure=bridgeFailureDiagnostic(error);
+    console.error("BVP_PHXCI_BRIDGE_BLOCKED "+failure.code);
+    console.error("BVP_PHXCI_BRIDGE_DIAGNOSTIC "+JSON.stringify(failure.diagnostic));
+    process.exitCode=1;
   });
 }
