@@ -42,17 +42,22 @@ test("diagnostics describe only observed boundaries and never imply device deliv
     recommendedAction: "inspect-pending-command",
     stepId: "observe",
   });
-  deepStrictEqual(value, {
-    schemaVersion: 1,
-    classification: "device-result-unavailable",
-    component: "live-controller",
-    phase: "response-wait",
-    lastConfirmedBoundary: "relay-outbox-write",
-    firstUnconfirmedBoundary: "device-result-receipt",
-    effect: "unknown",
-    recommendedAction: "inspect-pending-command",
-    stepId: "observe",
+  // DEC-348: the common record itself, not a surrounding scenario, must carry
+  // privacy-safe context and the observations supporting dispatch uncertainty.
+  strictEqual(value.schemaVersion,1);
+  strictEqual(value.classification,"device-result-unavailable");
+  strictEqual(value.phase,"response-wait");
+  deepStrictEqual(value.identity,{
+    runId:"unavailable",scenarioId:"unavailable",stepIndex:null,
+    executionMode:"unknown",correlationToken:"unavailable",
   });
+  deepStrictEqual(value.hops,[
+    {boundary:"relay-outbox-write",status:"confirmed"},
+    {boundary:"device-result-receipt",status:"unknown"},
+  ]);
+  strictEqual(value.causeClass,"device-result-unavailable");
+  strictEqual(value.retriability,"requires-reconciliation");
+  strictEqual(value.stepId,"observe");
   strictEqual(JSON.stringify(value).includes("delivered"), false);
 });
 
@@ -339,4 +344,61 @@ test("battery operator output paths never print raw live envelopes or child erro
   strictEqual(deterministic.includes("error: outcome.error"),false);
   strictEqual(live.includes("console.log(JSON.stringify({"),true);
   strictEqual(deterministic.includes("console.log(JSON.stringify({"),true);
+});
+
+test("explicit correlation is hashed/allowlisted and never leaks raw identity",()=>{
+  const d=bvpDiagnostic({
+    classification:"device-result-unavailable",component:"windows-relay",
+    phase:"result-fetch",lastConfirmedBoundary:"drive-command-publication",
+    firstUnconfirmedBoundary:"device-result-receipt",effect:"unknown",
+    recommendedAction:"inspect-pending-command",
+    identity:{runId:"run-sha256:"+"a".repeat(24),scenarioId:"diagnostic-fixture",
+      stepIndex:3,executionMode:"windows-live",
+      correlationToken:"corr-sha256:"+"b".repeat(24)},
+    hops:[{boundary:"relay-command-read",status:"confirmed"},
+      {boundary:"drive-command-publication",status:"confirmed"},
+      {boundary:"device-command-consumed",status:"unknown"},
+      {boundary:"device-result-receipt",status:"unknown"}],
+    causeClass:"timeout",retriability:"requires-reconciliation",
+  });
+  strictEqual(d.identity?.runId,"run-sha256:"+"a".repeat(24));
+  strictEqual(d.identity?.stepIndex,3);
+  strictEqual(d.hops?.[2]?.status,"unknown");
+  strictEqual(d.causeClass,"timeout");
+  const malicious=bvpDiagnostic({
+    classification:"outbox-failed",component:"windows-relay",phase:"relay",
+    lastConfirmedBoundary:"relay-command-read",firstUnconfirmedBoundary:"drive-publish",
+    effect:"unknown",recommendedAction:"reconcile-relay-state",
+    identity:{runId:"Bearer SECRET /Users/owner",scenarioId:"../../vault.md",
+      stepIndex:-999,executionMode:"ios-secret" as any,correlationToken:"secret-token"},
+    hops:[{boundary:"secret/file",status:"confirmed"} as any],
+    causeClass:"Bearer SECRET",retriability:"safe-to-repeat",
+  });
+  doesNotMatch(JSON.stringify(malicious),/SECRET|vault\.md|secret-token|secret\/file|owner/i);
+  strictEqual(malicious.identity?.runId,"unavailable");
+  strictEqual(malicious.retriability,"requires-reconciliation");
+});
+
+test("unsupported execution mode and cleanup exceptions return safe evidence without losing observed results",async()=>{
+  const scenario=fixture("deterministic");
+  const executor={
+    executionMode:"live" as const,deviceIdentities:["private-id"],
+    async execute(){return {status:"failed" as const,classification:"source-correlation-failed"};},
+    async dispose(){throw new Error("Bearer private-token /owner/secret.md");},
+  };
+  const unsupported=await new DeterministicScenarioRunner({},executor).run(scenario);
+  strictEqual(unsupported.status,"failed");
+  strictEqual(unsupported.classification,"cleanup-failed");
+  strictEqual(unsupported.diagnostic?.phase,"scenario-cleanup");
+  strictEqual(unsupported.cleanupDiagnostic?.firstUnconfirmedBoundary,"executor-disposal");
+  strictEqual(unsupported.evidence?.machine.verdict.classification,"cleanup-failed");
+  doesNotMatch(JSON.stringify(unsupported),/private-token|secret\.md|private-id/);
+  const accepted=fixture("live");
+  const after=await new DeterministicScenarioRunner({},executor).run(accepted);
+  strictEqual(after.status,"failed");
+  strictEqual(after.steps[0]?.classification,"source-correlation-failed");
+  strictEqual(after.classification,"source-correlation-failed");
+  strictEqual(after.cleanupDiagnostic?.classification,"cleanup-failed");
+  strictEqual(after.cleanupDiagnostic?.effect,"unknown");
+  doesNotMatch(JSON.stringify(after),/private-token|secret\.md|private-id/);
 });
