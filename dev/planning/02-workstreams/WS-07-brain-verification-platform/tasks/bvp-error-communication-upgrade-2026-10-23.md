@@ -2,9 +2,17 @@
 
 ## Authority and status
 
-**Status: PLANNED / NOT IMPLEMENTED / NO TEST EXECUTION.** Owner-authorized under **DEC-348**, informed by **DEC-346** (PowerShell primary operational interface) and **DEC-347** (Windows / Windows-hosted iPhone-iPad simulation first). This is a BVP platform-core improvement, not a request to create a second runner, change the production synchronization system, launch a physical iPhone test, or use PHX-CI to OPERATE BVP. Ordinary software-change qualification remains a separate Windows-based engineering gate where governed; it must not be inserted into BVP user test execution.
+**Status: BUILD IN PROGRESS / FIRST SOURCE SLICE COMMITTED / SOFTWARE QUALIFICATION NOT RUN.** Owner-authorized under **DEC-348**, informed by **DEC-346** (PowerShell primary operational interface) and **DEC-347** (Windows / Windows-hosted iPhone-iPad simulation first). This is a BVP platform-core improvement, not a request to create a second runner, change the production synchronization system, launch a physical iPhone test, or use PHX-CI to OPERATE BVP. Ordinary software-change qualification remains a separate Windows-based engineering gate where governed; it must not be inserted into BVP user test execution.
 
 Governing navigation: `dev/authority/decision-register.yaml`; this workstream's `02-ARCHITECTURE.md`, `03-BUILD-DECOMPOSITION.md`, `04-VERIFICATION-PLAN.md`; `dev/planning/01-target-system/bvp-subsystem-specification.md`. Preserve BVP source/test isolation, frozen boundaries, existing complexity budgets, and the current simulator and scenario runner. If complying would exceed a hard budget, surface the proposed budget delta to the Owner before executable changes.
+
+## Build progress (current feature branch)
+
+- Builder branch: `build/bvp-error-diagnostics-20261023`, created from exact `7655c1d51c0ec917c3f5c0e23d1ccb735a861ab9`; no installation, physical dispatch or Reviewer handoff.
+- **Tests first:** `d747f8dcc6315e9e35c9bfa4a149314036c9da22` introduced explicit BVP diagnostic/privacy/uncertainty regression tests before implementation; follow-up test commits added Drive HTTP failure families and sanitized CLI exception contracts before corresponding changes.
+- **First implementation slice:** safe bounded diagnostic type, scenario-runner exception classification, evidence projection with private live-device identity hashing and assertion allowlisting, truthful live-response uncertainty and early device-map validation, safe Drive HTTP error categories, and safe Node battery-runner exception results.
+- **Not yet complete:** exhaustive per-hop telemetry, optional physical-bridge diagnostic narrowing, all simulator-specific fault cases, full ten-family test adequacy, architecture guard/complexity budget qualification, and exact-source PHX-CI software verification on the Owner's Windows environment. Nothing is a PASS until original qualification evidence proves it.
+- The PowerShell interface is deliberately **not** included; it remains the next Build Unit after the error-reporting work is fully qualified and independently reviewed.
 
 ## Problem established from source inspection
 
