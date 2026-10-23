@@ -214,4 +214,10 @@ Write-Output ('PHX-CI_EXIT_CODE=' + $code)
 Write-Output ('FROZEN_SOURCE_SHA=' + $ExpectedSourceSha)
 Write-Output ('RUN_ROOT=' + $runRoot)
 $global:LASTEXITCODE = $code
-if ($code -ne 0) { Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.' }
+if ($code -ne 0) {
+  if ($SoftwareOnlyBranch) {
+    Write-Warning 'PHX-CI software-only qualification did not pass; physical dispatch was disabled.'
+  } else {
+    Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.'
+  }
+}
