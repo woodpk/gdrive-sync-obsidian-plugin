@@ -8,7 +8,7 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-source-sha: "4708f18952702d98456530dfb9f9854a336bfeac"
-active_build_unit_status: "S09A_DUAL_DEVICE_READINESS_SOFTWARE_PASS_IOS_PHYSICAL_READINESS_PREPARATION_NEXT_REVIEW_OWNER_DEFERRED"
+active_build_unit_status: "S09A_TWO_DEVICE_PHYSICAL_BRIDGE_CODE_WRITTEN_UNQUALIFIED_SOFTWARE_PHXCI_NEXT_REVIEW_OWNER_DEFERRED"
 owner_current_testing_directive:
   date: "2026-10-22"
   reviewer_handoff: "DEFERRED_BY_OWNER_DO_NOT_ISSUE_ANY_REVIEW_PROMPT_UNTIL_OWNER_EXPLICITLY_INSTRUCTS"
@@ -31,6 +31,21 @@ owner_current_testing_directive:
   next_testing_activity: "READ_ONLY_IOS_IPADOS_VALIDATION_ARTIFACT_ISOLATED_VAULT_DEVICE_INSTALL_AND_PAIRING_READINESS_PREPARATION"
   next_testing_owner_gate: "REAL_IOS_INSTALL_AUTH_GOOGLE_DRIVE_PAIRING_DEVICE_RUN_REQUIRES_EXACT_BINDING_AND_OWNER_APPROVAL"
   no_redundant_rerun: "S09A_SIMULATED_SOFTWARE_PASS_ALREADY_PUBLISHED_DO_NOT_RERUN_ADMINISTRATIVELY"
+  s09a_dual_physical_software_candidate:
+    planning_path: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09a-dual-device-physical-readiness-bridge-20261022.md"
+    tests_first_commit: "6d3f312dcb7eb1de14623ed31a2acab3c937e342"
+    tests_registered_commit: "6c71c79a6c48b23414d1b7bd9d605751cacf5710"
+    bounded_bridge_implementation_commit: "d342e09f86aa9342b498a59053b44871642597a1"
+    dual_phx_guarded_entrypoint_commit: "754b586c0de3ab1f9d0c8979561f698c9cdb5cb8"
+    current_candidate: "UNQUALIFIED_FINAL_SHA_CAPTURE_FROM_REMOTE_BEFORE_PHXCI"
+    software_phxci: "NOT_RUN_ON_THIS_CANDIDATE"
+    tests: "NINE_NEW_SOFTWARE_TESTS_UNQUALIFIED"
+    next_operator: "Invoke-PHXCI-S09-WindowsRelayCorrection.ps1 -ExpectedSourceSha <frozen-sha> WITHOUT_PHYSICAL_SWITCHES"
+    physical_dispatch: "NOT_PERFORMED"
+    operator_dual_physical_switch: "NOT_EXPOSED_YET"
+    next_dependency: "PHXCI_SOFTWARE_QUALIFICATION_THEN_IOS_VALIDATION_INSTALL_AND_OWNER_GATED_PHYSICAL_OPERATOR"
+    owner_review_directive: "NO_REVIEW_PROMPT_UNTIL_OWNER_REQUESTS"
+
   ios_validation_artifact_stage_2026_10_22:
     observation: "OWNER_SUPPLIED_WINDOWS_OPERATOR_TERMINAL_OUTPUT"
     result: "PASS_LOCAL_STAGE_ONLY"
