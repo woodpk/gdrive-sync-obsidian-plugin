@@ -301,5 +301,7 @@ test("live product status kind is retained in canonical evidence without widenin
 
   strictEqual(evidence.machine.observations[0]?.value.kind, "idle-ready");
   strictEqual(evidence.machineJson.includes("must-not-be-recorded"), false);
+  strictEqual(evidence.machine.liveIdentity?.runId.startsWith("run-sha256:"),true);
+  strictEqual(evidence.machineJson.includes('"run:test"'),false);
 });
 
