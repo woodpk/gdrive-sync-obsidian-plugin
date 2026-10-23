@@ -418,7 +418,9 @@ test("deterministic child TAP with private error text stays private while preser
     strictEqual(result.result.exitCode,1);
     const tap=await readFile(tapPath,"utf8");
     strictEqual(tap.includes("not ok"),true);
-    strictEqual(tap.includes("privacy canary"),true);
+    strictEqual(tap.includes("test-case-1"),true);
+    strictEqual(tap.includes("# fail 1"),true);
+    strictEqual(tap.includes("not ok 1"),true);
     for(const shared of [child.stdout,child.stderr,tap,JSON.stringify(result)]){
       doesNotMatch(shared,/synthetic-secret-(stderr|stack)|PrivateVault\.txt|Bearer|node:internal|at TestContext/);
     }
