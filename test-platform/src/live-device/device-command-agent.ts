@@ -1,5 +1,5 @@
 import type { ProductionVerificationControl } from "../../../src/product/live-validation-control-seam";
-import { bvpDiagnostic, type BvpDiagnostic } from "./diagnostic-contract";
+import { bvpDiagnostic, opaqueDiagnosticId, type BvpDiagnostic } from "./diagnostic-contract";
 
 type ProductionReceipt = Exclude<ReturnType<ProductionVerificationControl["latestProductionRunReceipt"]>, undefined>;
 type ProductionStatus = ReturnType<ProductionVerificationControl["currentStatus"]>;
@@ -303,8 +303,7 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
     };
   }
 
-  return {
-    async execute(input: unknown): Promise<DeviceCommandResult> {
+  async function executeCore(input: unknown): Promise<DeviceCommandResult> {
       const command = parseCommand(input);
       if (!command) return resultFor(options, undefined, "rejected", "invalid-command");
       if (command.runId !== options.runId) return resultFor(options, command, "rejected", "run-mismatch");
@@ -345,6 +344,16 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
         }
       } catch { return uncertainCommandResult(options, command, "sequence-state-finalization-failed", "sequence-finalization"); }
       return terminal;
+  }
+  return {
+    async execute(input:unknown):Promise<DeviceCommandResult>{
+      const value=await executeCore(input);
+      if(!value.diagnostic)return value;
+      return {...value,diagnostic:bvpDiagnostic({...value.diagnostic,identity:{
+        ...value.diagnostic.identity,
+        runId:await opaqueDiagnosticId(value.runId,"run"),
+        correlationToken:await opaqueDiagnosticId(value.commandId,"corr"),
+      }})};
     },
   };
 }
