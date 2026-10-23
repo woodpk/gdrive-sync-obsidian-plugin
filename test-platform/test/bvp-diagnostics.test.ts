@@ -441,3 +441,34 @@ test("deterministic child TAP with private error text stays private while preser
     }
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("unsupported execution mode reports preflight non-dispatch even when cleanup succeeds",async()=>{
+  const unsupported=await new DeterministicScenarioRunner({},{
+    executionMode:"live",deviceIdentities:["private-device"],
+    async execute(){throw new Error("must never execute");},
+    async dispose(){},
+  }).run(fixture("deterministic"));
+  strictEqual(unsupported.status,"unsupported");
+  strictEqual(unsupported.classification,"execution-mode-not-applicable");
+  strictEqual(unsupported.diagnostic?.phase,"execution-mode-preflight");
+  strictEqual(unsupported.diagnostic?.effect,"none-confirmed");
+  strictEqual(unsupported.diagnostic?.firstUnconfirmedBoundary,"scenario-mode-dispatch");
+  doesNotMatch(JSON.stringify(unsupported),/private-device/);
+});
+
+test("virtual device disposal failure preserves a completed observation and returns safe failed evidence",async()=>{
+  const result=await new DeterministicScenarioRunner({
+    async observe(_step,context){
+      const device=await context.device("device-a");
+      (device as any).dispose=async()=>{throw new Error("Bearer synthetic-cleanup-secret /vault/secret.md");};
+      return {status:"completed",value:{status:"present"}};
+    },
+  }).run(fixture("deterministic"));
+  strictEqual(result.steps[0]?.status,"completed");
+  strictEqual(result.status,"failed");
+  strictEqual(result.classification,"cleanup-failed");
+  strictEqual(result.cleanupDiagnostic?.firstUnconfirmedBoundary,"device-disposal");
+  strictEqual(result.cleanupDiagnostic?.effect,"unknown");
+  strictEqual(result.evidence?.machine.verdict.cleanupDiagnostic?.classification,"cleanup-failed");
+  doesNotMatch(JSON.stringify(result),/synthetic-cleanup-secret|secret\.md/);
+});
