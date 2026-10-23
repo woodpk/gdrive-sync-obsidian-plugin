@@ -92,13 +92,16 @@ async function main(): Promise<void> {
       exitCode,
       durationMs,
       ...(outcome.signal ? { signal: outcome.signal } : {}),
-      ...(outcome.error ? { error: outcome.error } : {}),
+      ...(outcome.error ? { error: "subprocess-execution-failed" } : {}),
     },
   };
 
   await persist(resultFile, JSON.stringify(envelope, null, 2) + "\n");
   console.log("\nBVP deterministic battery summary:");
-  console.log(JSON.stringify(envelope, null, 2));
+  // Never print subprocess error text or untrusted test output into shared logs.
+  console.log(JSON.stringify({
+    battery:battery.name,status:exitCode===0?"completed":"failed",exitCode,durationMs,
+  }));
   process.exitCode = exitCode;
 }
 
