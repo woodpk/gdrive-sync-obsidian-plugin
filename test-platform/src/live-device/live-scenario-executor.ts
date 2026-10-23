@@ -68,7 +68,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     throw new Error("live-expected-installed-build-manifest-map-invalid");
   }
   const manifestByDevice=new Map<string,string>(namedManifests
-    ? Object.entries(namedManifests).map(([label,hash])=>[options.deviceIds[label]!,hash])
+    ? Object.entries(namedManifests).map(([label,hash]):[string,string]=>[options.deviceIds[label]!,hash])
     : []);
   const timeout=options.resultTimeoutMs??30_000,productionTimeout=options.productionResultTimeoutMs??600_000,poll=options.pollIntervalMs??250;
   if(timeout<=0||productionTimeout<=0||poll<=0)throw new Error("live-executor-timing-invalid");
