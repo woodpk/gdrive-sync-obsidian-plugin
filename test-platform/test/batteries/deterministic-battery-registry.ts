@@ -107,6 +107,11 @@ const DETERMINISTIC_BATTERIES: Readonly<Record<string, DeterministicBatteryDefin
       description: "S09A guarded late-completion recovery tests.",
       testFiles: S09_LATE_COMPLETION_RECOVERY,
     },
+    "bvp-private-tap-canary": {
+      name: "bvp-private-tap-canary",
+      description: "Synthetic privacy fault-injection fixture; never executed in normal all-platform-tests.",
+      testFiles: ["bvp-private-tap-canary.test.js"],
+    },
     "all-platform-tests": {
       name: "all-platform-tests",
       description: "Complete automated BVP test-platform suite grouped under one deterministic battery.",
