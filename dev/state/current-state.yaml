@@ -31,6 +31,21 @@ owner_current_testing_directive:
   next_testing_activity: "READ_ONLY_IOS_IPADOS_VALIDATION_ARTIFACT_ISOLATED_VAULT_DEVICE_INSTALL_AND_PAIRING_READINESS_PREPARATION"
   next_testing_owner_gate: "REAL_IOS_INSTALL_AUTH_GOOGLE_DRIVE_PAIRING_DEVICE_RUN_REQUIRES_EXACT_BINDING_AND_OWNER_APPROVAL"
   no_redundant_rerun: "S09A_SIMULATED_SOFTWARE_PASS_ALREADY_PUBLISHED_DO_NOT_RERUN_ADMINISTRATIVELY"
+  iphone_operator_readiness_2026_10_22:
+    evidence_type: "OWNER_REPORTED_NOT_PHX_OBSERVED"
+    isolated_test_vault: true
+    google_connected: true
+    test_remote_paired: true
+    automatic_sync_disabled: true
+    status_visible_in_mobile_ui: false
+    internal_production_status: "UNKNOWN_NOT_YET_OBSERVED_BY_LIVE_BVP"
+    mobile_ui_finding: "CURRENT_SRC_MAIN_USES_OBSIDIAN_STATUS_BAR_WITH_NO_MOBILE_SETTINGS_STATUS_PRESENTATION"
+    shipping_version: "0.1.19_OWNER_REPORTED_INSTALLED"
+    validation_only_agent_installation: "NOT_YET_VERIFIED_ON_IOS"
+    no_credentials_or_remote_ids_recorded: true
+  next_testing_activity: "STAGE_EXACT_PHX_QUALIFIED_0_1_19_VALIDATION_ONLY_IOS_PACKAGE_NONPHYSICAL"
+  next_testing_prerequisite: "BVP_PHYSICAL_DISPATCHER_CURRENTLY_RESTRICTED_TO_WINDOWS_LIVE_SMOKE_IOS_TWO_DEVICE_ROUTE_REQUIRES_BOUNDED_SOFTWARE_QUALIFICATION"
+
 
 release_019_candidate:
   planning_path: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/brain-0.1.19-release-candidate-20261022.md"
