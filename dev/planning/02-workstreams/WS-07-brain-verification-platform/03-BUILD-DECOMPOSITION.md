@@ -2,6 +2,10 @@
 
 ## Durable future task contracts
 
+### Owner-directed operational BVP modernization — DEC-346/347/348 (2026-10-23)
+
+The new owner-locked priorities are (1) a complete minimal PowerShell **interface to all existing BVP API commands**, (2) all BVP operational testing on Windows Obsidian or the existing Windows-hosted iPhone/iPad simulator with iOS/iPad scenarios connected to that simulator, and (3) materially better structured error communication. For this third priority, the **authoritative new planning contract** is [BVP Error Communication and Diagnostic Upgrade](tasks/bvp-error-communication-upgrade-2026-10-23.md). Its status is **PLANNED**; implementation, tests, and any required engineering-source qualification are not yet complete. Do not use PHX-CI to launch routine BVP tests, revive physical S09 dispatch without new Owner authorization, or claim simulator evidence is actual iOS OS/hardware evidence. Older physical S09 plans remain historical/deferred and do not override DEC-346/347/348.
+
 The only retained detailed future task contracts are BVP-S09A through S09V under `tasks/s09/`. They remain `PREPLANNED / NOT-YET-EXECUTABLE` and must be re-grounded against current repository reality, current authority, and current PHX-CI/physical-validation requirements immediately before dispatch. Completed or superseded historical prompts are preserved only in the external pre-standard archive.
 
 ## Primary decomposition
