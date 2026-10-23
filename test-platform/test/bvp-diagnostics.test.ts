@@ -330,3 +330,13 @@ test("ordinary simulated assertion failures carry phase and uncertainty in canon
   strictEqual(result.evidence?.machine.verdict.diagnostic?.classification,"assertion-mismatch");
   strictEqual(result.steps[1]?.diagnostic?.classification,"assertion-mismatch");
 });
+
+test("battery operator output paths never print raw live envelopes or child error text",()=>{
+  const read=(file:string)=>readFileSync(resolve(process.cwd(),"test-platform","test","batteries",file),"utf8");
+  const live=read("run-live-battery.ts"),deterministic=read("run-deterministic-battery.ts");
+  strictEqual(live.includes("console.log(JSON.stringify(envelope"),false);
+  strictEqual(deterministic.includes("console.log(JSON.stringify(envelope"),false);
+  strictEqual(deterministic.includes("error: outcome.error"),false);
+  strictEqual(live.includes("console.log(JSON.stringify({"),true);
+  strictEqual(deterministic.includes("console.log(JSON.stringify({"),true);
+});
