@@ -1,5 +1,7 @@
 import { deepStrictEqual, doesNotMatch, rejects, strictEqual } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -193,4 +195,15 @@ test("deterministic runner top-level invalid battery cannot echo untrusted argum
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("existing PHX-CI engineering operator accepts software-only feature ref without physical device dispatch", () => {
+  const code = readFileSync(resolve(process.cwd(), "dev", "scripts",
+    "Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
+  strictEqual(code.includes("[string]$SoftwareOnlyBranch"), true);
+  strictEqual(code.includes("$branch = $SoftwareOnlyBranch"), true);
+  strictEqual(code.includes("if ($SoftwareOnlyBranch -and ("), true);
+  strictEqual(code.includes("$RunWindowsPhysicalSmoke"), true);
+  strictEqual(code.includes("$RunS09ADualPhysicalReadiness"), true);
+  strictEqual(code.includes("'npm run test:bvp-root'"), true);
 });
