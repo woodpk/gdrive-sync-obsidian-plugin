@@ -84,6 +84,13 @@ try {
   if ($RunS09ADualPhysicalReadiness -and ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RecoverPreviouslyDispatchedWindowsSmoke)) {
     throw 'Dual-device physical operation cannot combine with Windows smoke or recovery.'
   }
+  # Perform input-only validation before spending time in PHX-CI or requesting
+  # approval. Invalid input has no external effects and is safely rerunnable.
+  if ($RunS09ADualPhysicalReadiness) {
+    $iosId = (Read-Host 'iPhone BRAIN test-vault Device identity (32 lowercase hexadecimal digits; device: prefix optional)').Trim()
+    if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }
+    if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
+  }
   $env:BRAIN_ARTIFACT_PURPOSE = 'development'
   $env:BVP_CHANGE_CLASS = 'ordinary'
   if ($RecoverPreviouslyDispatchedWindowsSmoke) {
@@ -163,12 +170,6 @@ try {
     $confirmation = Read-Host $approvalPrompt
     if ($confirmation -cne 'YES') { throw 'Physical test not authorized; no device dispatch.' }
     if ($RunS09ADualPhysicalReadiness) {
-      $iosId = Read-Host 'iPhone BRAIN test-vault Device identity (32 lowercase hexadecimal digits; device: prefix optional)'
-      $iosId = $iosId.Trim()
-      # The UI may show a bare 32-hex value. Normalize locally, preserve
-      # the actual device identity, and send only canonical private routing IDs.
-      if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }
-      if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
       $env:BVP_IOS_DEVICE_ID = $iosId
       $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'
       $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'YES'
