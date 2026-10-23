@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-10-07"
+  as_of: "2026-10-23"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "Shared agent-led engineering standards listed in dev/authority/external-authorities.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
