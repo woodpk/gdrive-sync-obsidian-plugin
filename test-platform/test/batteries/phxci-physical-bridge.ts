@@ -12,6 +12,7 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { getLiveBattery } from "./battery-registry";
 import { liveCommandId } from "../../src/live-device/live-scenario-executor";
+import { bvpDiagnostic } from "../../src/live-device/diagnostic-contract";
 import { S09A_VALIDATION_ARTIFACTS } from "./s09a-validation-artifacts";
 import { scenarioDefinitionDigest } from "../../src/scenario/scenario-checkpoint";
 import { bvpDiagnostic, type BvpDiagnostic } from "../../src/scenario/scenario-diagnostics";
@@ -268,30 +269,41 @@ function screenedObservation(value: unknown): void {
 const SAFE_KEYS: Readonly<Record<string, readonly string[]>> = {
   root: ["battery", "result", "checkpoint", "recovery", "installationObservation"],
   battery: ["name", "description", "requiredDeviceLabels"],
-  result: ["scenarioId", "status", "steps", "captures", "classification", "reason", "evidence"],
+  result: ["scenarioId", "status", "steps", "captures", "classification", "reason", "diagnostic", "cleanupDiagnostic", "evidence"],
   evidence: ["machine", "machineJson", "human"],
   machine: ["schemaVersion", "scenarioId", "executionMode", "traceability", "fixtures",
     "deviceIdentities", "liveIdentity", "observations", "assertions", "verdict"],
   liveIdentity: ["runId", "sourceCommit"],
-  verdict: ["status", "classification", "reason"],
+  verdict: ["status", "classification", "reason", "diagnostic", "cleanupDiagnostic"],
   traceability: ["kind", "id"],
   fixture: ["stepId", "operation", "device", "path", "fromPath", "toPath", "contentHash", "sizeBytes"],
   observation: ["stepId", "captureAs", "value"],
   assertion: ["stepId", "status", "classification", "reason", "matchedExpectation", "index", "kind"],
-  step: ["index", "stepId", "kind", "status", "classification", "reason", "matchedExpectation"],
+  step: ["index", "stepId", "kind", "status", "classification", "reason", "matchedExpectation", "diagnostic"],
   observationValue: ["kind", "status", "exists", "side", "entityKind", "hash", "sizeBytes",
     "stateRevision", "operationKinds", "nonNoopOperationCount",
     "executionDisposition", "globalExecutionGate", "recoveryCheckpointRequired",
     "operationCount", "baseCount", "mappingCount", "tombstoneCount",
     "classification", "reason", "schemaVersion"],
 };
+function strictDiagnostic(value:unknown):void{
+  const input=record(value);
+  if(input.schemaVersion!==1||!Array.isArray(input.hops)||input.hops.length<1||
+     input.hops.length>12||!record(input.identity))fail("privacy-diagnostic-invalid");
+  let safe:unknown;
+  try{safe=bvpDiagnostic(input as Parameters<typeof bvpDiagnostic>[0]);}
+  catch{fail("privacy-diagnostic-invalid");}
+  if(JSON.stringify(input)!==JSON.stringify(safe))fail("privacy-diagnostic-unapproved-field");
+}
 function allowedShape(value: unknown, shape: keyof typeof SAFE_KEYS, depth = 0): void {
   const v = record(value);
   const allowed = SAFE_KEYS[shape];
   for (const [key, item] of Object.entries(v)) {
     if (!allowed.includes(key)) fail("privacy-unapproved-" + shape + "-field");
     if (depth > 16) fail("privacy-shape-depth");
-    if (shape === "root" && key === "battery") allowedShape(item, "battery", depth + 1);
+    if ((shape==="result"||shape==="verdict"||shape==="step")&&
+        (key==="diagnostic"||key==="cleanupDiagnostic"))strictDiagnostic(item);
+    else if (shape === "root" && key === "battery") allowedShape(item, "battery", depth + 1);
     else if (shape === "root" && key === "result") allowedShape(item, "result", depth + 1);
     else if (shape === "root" && key === "installationObservation") {
       const obs=record(item);
