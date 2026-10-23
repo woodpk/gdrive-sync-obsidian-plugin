@@ -28,6 +28,19 @@ async function persist(path: string, content: string): Promise<void> {
   await writeFile(path, content, "utf8");
 }
 
+/** Public TAP is a strict structural projection, never raw child-authored text.
+ * Test numbers and counts retain objective failure evidence; error strings,
+ * titles, fixture names and raw stack traces remain excluded. */
+function publicTapLine(line:string):string{
+  if(/^TAP version 13\r?$/.test(line))return "TAP version 13\n";
+  const item=/^(\s*)(not ok|ok) (\d+)(?: .*)?\r?$/.exec(line);
+  if(item)return item[1]+item[2]+" "+item[3]+" - test-case-"+item[3]+"\n";
+  const count=/^(\s*)# (tests|pass|fail|cancelled|skipped|todo|duration_ms) (\d+(?:\.\d+)?)\r?$/.exec(line);
+  if(count)return count[1]+"# "+count[2]+" "+count[3]+"\n";
+  const plan=/^(\s*)(\d+)\.\.(\d+)\r?$/.exec(line);
+  return plan?plan[1]+plan[2]+".."+plan[3]+"\n":"";
+}
+
 async function main(): Promise<void> {
   const resultFile = requiredArg("--result-file");
   const tapFile = requiredArg("--tap-file");
@@ -61,16 +74,23 @@ async function main(): Promise<void> {
       rejectRun(new Error("deterministic battery subprocess has no output streams"));
       return;
     }
+    let pending="",stderrObserved=false;
+    const publishSafe=(value:string)=>{if(!value)return;process.stdout.write(value);
+      if(!tap.write(value)){stdout.pause();tap.once("drain",()=>stdout.resume());}};
     stdout.on("data", (chunk: Buffer) => {
-      process.stdout.write(chunk);
-      if (!tap.write(chunk)) {
-        stdout.pause();
-        tap.once("drain", () => stdout.resume());
+      pending+=chunk.toString("utf8");
+      let end:number;
+      while((end=pending.indexOf("\n"))>=0){
+        publishSafe(publicTapLine(pending.slice(0,end)));
+        pending=pending.slice(end+1);
       }
+      // Bound memory if a child prints an untrusted multiline-free secret.
+      if(pending.length>8192)pending="";
     });
-    stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));
+    stderr.on("data", () => {stderrObserved=true;});
     child.on("error", error => { launchError = error; });
     child.on("close", (code, signal) => {
+      publishSafe(publicTapLine(pending));if(stderrObserved)publishSafe("# child-stderr-suppressed\n");
       tap.end(() => resolveRun({
         exitCode: code ?? 1,
         signal,
