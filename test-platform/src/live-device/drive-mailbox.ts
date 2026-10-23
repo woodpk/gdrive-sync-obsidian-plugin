@@ -1,5 +1,5 @@
 import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "./device-command-agent";
-import { bvpDiagnostic, type BvpDiagnostic } from "./diagnostic-contract";
+import { bvpDiagnostic, opaqueDiagnosticId, type BvpDiagnostic } from "./diagnostic-contract";
 
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -109,8 +109,27 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
   };commandPublishers.set(mailbox,(value,generation)=>publish("command",value,generation));return mailbox;
 }
 
-export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:BoundedDeviceCommandAgent,runId:string,deviceId:string):Promise<{status:"ok";processed:number}|{status:"unavailable";processed:number;reason:string}>{
-  let processed=0;try{for(const cmd of await mailbox.commands(runId,deviceId)){if(await mailbox.resultFor(cmd))continue;const response=await agent.execute(cmd);await mailbox.publishResult(response);processed++;}return{status:"ok",processed};}catch(e){if(e instanceof MailboxUnavailableError)return{status:"unavailable",processed,reason:e.message};throw e;}
+export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:BoundedDeviceCommandAgent,runId:string,deviceId:string):Promise<{status:"ok";processed:number}|{status:"unavailable";processed:number;reason:string;diagnostic:BvpDiagnostic}>{
+  let processed=0,phase="command-fetch",last="device-poll-started",first="drive-command-list",classification="device-command-fetch-failed",current:DeviceCommand|undefined;
+  try{
+    for(const cmd of await mailbox.commands(runId,deviceId)){
+      current=cmd;last="device-command-read";phase="result-lookup";first="previous-result-observation";classification="device-result-lookup-failed";
+      if(await mailbox.resultFor(cmd))continue;
+      phase="device-execution";first="device-command-outcome";classification="device-command-execution-failed";
+      const response=await agent.execute(cmd);
+      phase="result-publication";last="device-handler-returned";first="drive-result-publication";classification="device-result-publication-failed";
+      await mailbox.publishResult(response);processed++;
+    }
+    return{status:"ok",processed};
+  }catch(e){
+    const reason=e instanceof MailboxUnavailableError?e.message:classification;
+    const diagnostic=bvpDiagnostic({classification:reason,component:"device-agent",phase,
+      lastConfirmedBoundary:last,firstUnconfirmedBoundary:first,effect:"unknown",
+      recommendedAction:"reconcile-device-state",
+      identity:{runId:await opaqueDiagnosticId(runId,"run"),scenarioId:"unavailable",stepIndex:null,
+        executionMode:"unknown",correlationToken:current?await opaqueDiagnosticId(current.commandId,"corr"):"unavailable"}});
+    return{status:"unavailable",processed,reason:diagnostic.classification,diagnostic};
+  }
 }
 
 const commandPublishers=new WeakMap<DriveCommandMailbox,(value:DeviceCommand,generation:number)=>Promise<void>>();
@@ -123,39 +142,46 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
   async function ensure(){for(const p of [root,out,sent,inside])if(!await adapter.exists(p))await adapter.mkdir(p);}
   async function authorityGeneration(cmd:DeviceCommand):Promise<number>{const path=await controllerAuthorityPath(root,cmd.deviceId);if(!await adapter.exists(path))throw new MailboxUnavailableError("relay-controller-run-unleased");let value:ControllerAuthority|undefined;try{value=controllerAuthority(JSON.parse(await adapter.read(path)),cmd.deviceId);}catch{}if(!value||value.runId!==cmd.runId||value.generation<=0)throw new MailboxUnavailableError("relay-controller-run-unleased");return value.generation;}
   async function pumpCore():Promise<PumpResult>{
-    let published=0,completed=0,phase="relay-preflight",lastConfirmed="relay-entry",
-      firstUnconfirmed="relay-directory-preflight";
+    let published=0,completed=0,phase="relay-preflight",last="relay-entry",
+      first="relay-directory-preflight",failureClass="relay-preflight-failed",context:DeviceCommand|undefined;
+    const readCommand=async(path:string,scope:"outbox"|"sent"):Promise<DeviceCommand>=>{
+      failureClass="relay-file-read-failed";first="relay-file-read";
+      const raw=await adapter.read(path);
+      failureClass=scope==="outbox"?"relay-outbox-malformed":"relay-sent-malformed";
+      first="relay-command-decoding";
+      let value:unknown;try{value=JSON.parse(raw);}catch{throw new Error(failureClass);}
+      const cmd=command(value);if(!cmd)throw new Error(failureClass);
+      context=cmd;last="relay-command-read";return cmd;
+    };
     try{
-      await ensure();lastConfirmed="relay-directories-ready";
+      await ensure();last="relay-directories-ready";
       for(const path of (await adapter.list(out)).files){
-        const raw=await adapter.read(path),cmd=command(JSON.parse(raw));
-        if(!cmd)throw new Error("relay-command-invalid");
-        lastConfirmed="relay-command-read";
-        phase="command-authorization";firstUnconfirmed="command-lease-validation";
+        phase="command-parse";const cmd=await readCommand(path,"outbox");
+        phase="command-authorization";first="command-lease-validation";failureClass="relay-command-lease-failed";
         const generation=await authorityGeneration(cmd);
-        phase="command-publication";firstUnconfirmed="drive-command-publication";
+        phase="command-publication";first="drive-command-publication";failureClass="relay-command-publication-failed";
         await publishCommand(cmd,generation);
-        lastConfirmed="drive-publish-acknowledged";firstUnconfirmed="sent-record-persistence";
+        last="drive-publish-acknowledged";first="sent-record-persistence";failureClass="relay-file-rename-failed";
         await adapter.rename(path,`${sent}/${baseName(path)}`);published++;
       }
       for(const path of (await adapter.list(sent)).files){
-        const cmd=command(JSON.parse(await adapter.read(path)));
-        if(!cmd)throw new Error("relay-pending-invalid");
-        lastConfirmed="relay-sent-record-read";
-        phase="result-fetch";firstUnconfirmed="drive-receipt-observation";
-        const res=await mailbox.resultFor(cmd);
-        if(!res)continue;
-        lastConfirmed="device-result-observed";phase="result-persistence";
-        firstUnconfirmed="relay-inbox-persistence";
+        phase="result-fetch";const cmd=await readCommand(path,"sent");
+        first="drive-receipt-observation";failureClass="relay-result-lookup-failed";
+        const res=await mailbox.resultFor(cmd);if(!res)continue;
+        last="device-result-observed";phase="result-persistence";first="relay-inbox-persistence";failureClass="relay-inbox-write-failed";
         await adapter.write(`${inside}/${baseName(path)}.result.json`,JSON.stringify(res));
+        first="sent-record-removal";failureClass="relay-file-remove-failed";
         await adapter.remove(path);completed++;
       }
       return{status:"ok",published,completed};
     }catch(e){
-      if(!(e instanceof MailboxUnavailableError))throw e;
+      const reason=e instanceof MailboxUnavailableError?e.message:failureClass;
       const diagnostic=bvpDiagnostic({
-        classification:e.message,component:"windows-relay",phase,lastConfirmedBoundary:lastConfirmed,
-        firstUnconfirmedBoundary:firstUnconfirmed,effect:"unknown",recommendedAction:"reconcile-relay-state",
+        classification:reason,component:"windows-relay",phase,lastConfirmedBoundary:last,
+        firstUnconfirmedBoundary:first,effect:"unknown",recommendedAction:"reconcile-relay-state",
+        identity:{runId:context?await opaqueDiagnosticId(context.runId,"run"):"unavailable",
+          scenarioId:"unavailable",stepIndex:null,executionMode:"unknown",
+          correlationToken:context?await opaqueDiagnosticId(context.commandId,"corr"):"unavailable"},
       });
       return{status:"unavailable",published,completed,reason:diagnostic.classification,diagnostic};
     }
