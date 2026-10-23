@@ -125,6 +125,10 @@ test("run/device/sequence safety executes one fixture command once and replays e
   equal(wrongDevice.diagnostic?.lastConfirmedBoundary,"device-command-decoded");
   equal(wrongDevice.diagnostic?.firstUnconfirmedBoundary,"command-acceptance");
   equal(wrongDevice.diagnostic?.effect,"none-confirmed");
+  equal(wrongDevice.diagnostic?.identity.runId.startsWith("run-sha256:"),true);
+  equal(wrongDevice.diagnostic?.identity.correlationToken.startsWith("corr-sha256:"),true);
+  equal(JSON.stringify(wrongDevice.diagnostic).includes("device-win"),false);
+  equal(JSON.stringify(wrongDevice.diagnostic).includes("run-001"),false);
   equal(fixtures.calls.length, callsAfterFirst);
 
   const observed = await agent.execute(command(2, { kind: "observe-file", path: "note.md" }));
