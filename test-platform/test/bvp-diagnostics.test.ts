@@ -272,3 +272,17 @@ test("bridge classifies known gate failures but hides arbitrary private exceptio
   const invalid=bridgeFailureDiagnostic(new Error("bvp-phxci-bridge-unsafe/path"));
   strictEqual(invalid.code,"bvp-phxci-bridge-unexpected-internal-error");
 });
+
+test("invalid preflight scenarios fail safely without echoing private fields",async()=>{
+  const malformed={...fixture("deterministic"),id:"C:\\Users\\owner\\secret-vault.md",
+    "Bearer private-token":"secret-note"} as any;
+  const result=await new DeterministicScenarioRunner().run(malformed);
+  strictEqual(result.status,"unsupported");
+  strictEqual(result.classification,"invalid-scenario");
+  strictEqual(result.scenarioId,"invalid-scenario");
+  strictEqual(result.diagnostic?.phase,"scenario-preflight");
+  strictEqual(result.diagnostic?.lastConfirmedBoundary,"scenario-input-received");
+  strictEqual(result.diagnostic?.firstUnconfirmedBoundary,"scenario-validation");
+  strictEqual(result.diagnostic?.effect,"none-confirmed");
+  doesNotMatch(JSON.stringify(result),/secret-vault|private-token|secret-note|owner/);
+});
