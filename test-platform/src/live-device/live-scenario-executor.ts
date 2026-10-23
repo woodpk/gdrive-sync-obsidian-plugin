@@ -7,6 +7,7 @@ import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition,
 import { assertScenarioObservation } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
+import { bvpDiagnostic } from "../scenario/scenario-diagnostics";
 
 export interface HumanCheckpointInstruction {
   readonly action: string; readonly device: string; readonly stopCondition: string;
@@ -43,7 +44,19 @@ export function liveCommandId(runId:string,scenarioId:string,index:number,sub:nu
 function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommit:string,artifact?:string,manifest?:string):boolean{
   return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&(artifact===undefined||result.validationBuild.artifactSha256===artifact)&&(manifest===undefined||result.validationBuild.manifestSha256===manifest)&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
 }
-function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{return value===undefined?fail("blocked","device-result-unavailable"):value===null?fail("failed","result-correlation-mismatch"):undefined;}
+function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
+  if(value===undefined)return {status:"blocked",classification:"device-result-unavailable",diagnostic:bvpDiagnostic({
+    classification:"device-result-unavailable",component:"live-controller",phase:"response-wait",
+    lastConfirmedBoundary:"relay-outbox-write",firstUnconfirmedBoundary:"device-result-receipt",
+    effect:"unknown",recommendedAction:"inspect-pending-command",
+  })};
+  if(value===null)return {status:"failed",classification:"result-correlation-mismatch",diagnostic:bvpDiagnostic({
+    classification:"result-correlation-mismatch",component:"live-controller",phase:"receipt-validation",
+    lastConfirmedBoundary:"relay-inbox-record-observed",firstUnconfirmedBoundary:"receipt-correlation",
+    effect:"unknown",recommendedAction:"reconcile-receipt",
+  })};
+  return undefined;
+}
 function resultOutcome(result:DeviceCommandResult):ScenarioCapabilityResult{
   if(result.status!=="completed")return fail(result.status==="rejected"?"blocked":"failed",result.classification);
   if(result.kind!=="production-execute")return{status:"completed",value:result};
@@ -57,6 +70,8 @@ function crossCheckpointCapture(scenario:ScenarioDefinition,index:number):string
 export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOptions):Promise<LiveScenarioExecutor>{
   const labels=Object.keys(options.deviceIds),deviceIdentities=labels.map(label=>options.deviceIds[label]!).sort();
   if(!options.scenario.executionModes.includes("live"))throw new Error("live-execution-mode-unavailable");
+  const requiredLabels=[...new Set(options.scenario.steps.map(stepDevice).filter((v):v is string=>Boolean(v)))];
+  if(requiredLabels.some(label=>!options.deviceIds[label]))throw new Error("live-executor-device-map-incomplete");
   if(!options.runId||options.runId.length>128||!/^[0-9a-f]{40}$/i.test(options.expectedValidationSourceCommit)||deviceIdentities.some(value=>!value||value.length>128)||new Set(deviceIdentities).size!==deviceIdentities.length)throw new Error("live-executor-identity-invalid");
   const a=options.expectedValidationArtifactSha256,m=options.expectedValidationManifestSha256,names=options.expectedValidationManifestSha256ByDevice;
   if((a===undefined)!==(m===undefined)||(a!==undefined&&(!/^[a-f0-9]{64}$/i.test(a)||!/^[a-f0-9]{64}$/i.test(m!)))||
@@ -99,8 +114,8 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     return undefined;
   }
   async function send(step:ScenarioStep,context:ScenarioExecutorContext,body:Record<string,unknown>,sub=0):Promise<RelayResult>{
-    const label=stepDevice(step);if(!label)return null;
-    const deviceId=options.deviceIds[label];if(!deviceId)return undefined;
+    const label=stepDevice(step);if(!label)throw new Error("live-command-target-unavailable");
+    const deviceId=options.deviceIds[label];if(!deviceId)throw new Error("live-command-device-map-incomplete");
     const command={runId:options.runId,deviceId,sequence:liveSequenceFor(options.scenario,label,context.stepIndex,sub),commandId:liveCommandId(options.runId,options.scenario.id,context.stepIndex,sub),...body} as DeviceCommand;
     return roundTrip(command);
   }
