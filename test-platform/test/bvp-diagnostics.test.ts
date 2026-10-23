@@ -127,6 +127,12 @@ test("missing live response identifies an unknown receipt rather than claiming f
     strictEqual(result.diagnostic?.lastConfirmedBoundary, "relay-outbox-write");
     strictEqual(result.diagnostic?.firstUnconfirmedBoundary, "device-result-receipt");
     strictEqual(result.diagnostic?.effect, "unknown");
+    strictEqual(result.diagnostic?.identity.runId.startsWith("run-sha256:"),true);
+    strictEqual(result.diagnostic?.identity.scenarioId,"diagnostic-fixture");
+    strictEqual(result.diagnostic?.identity.stepIndex,0);
+    strictEqual(result.diagnostic?.identity.executionMode,"windows-live");
+    strictEqual(result.diagnostic?.identity.correlationToken.startsWith("corr-sha256:"),true);
+    strictEqual(result.diagnostic?.hops.some(h=>h.boundary==="device-result-receipt"&&h.status==="unknown"),true);
     doesNotMatch(JSON.stringify(result), /simulated-only-private-id/);
     const files = await readdir(join(relay, "outbox"));
     strictEqual(files.length, 1);
