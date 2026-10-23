@@ -1,4 +1,5 @@
 import { deepStrictEqual, doesNotMatch, rejects, strictEqual } from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -147,4 +148,49 @@ test("Drive mailbox distinguishes safe authorization, rate, provider and transpo
   await rejects(() => network.commands("test-run", "simulated-device"),
     (error: unknown) => error instanceof MailboxUnavailableError &&
       error.message === "mailbox-drive-transport-unavailable");
+});
+
+test("live runner top-level exceptions produce a safe failure record, no raw path or stack", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bvp-cli-"));
+  try {
+    const resultPath = join(root, "result.json");
+    const privatePath = join(root, "Bearer-private-credential-should-not-leak.json");
+    const cli = join(__dirname, "batteries", "run-live-battery.js");
+    const child = spawnSync(process.execPath, [cli,
+      "--battery", "windows-live-smoke", "--result-file", resultPath,
+      "--device-map-json", JSON.stringify({ windows: "synthetic-windows-id" }),
+      "--run-id", "diagnostics-cli",
+      "--relay-root", join(root, "relay"), "--checkpoint-file", join(root, "checkpoint.json"),
+      "--validation-source-commit", "a".repeat(40),
+      "--validation-build-identity-file", privatePath,
+    ], { encoding: "utf8" });
+    strictEqual(child.status, 1);
+    const record = JSON.parse(await readFile(resultPath, "utf8"));
+    strictEqual(record.result.status, "failed");
+    strictEqual(record.result.classification, "battery-runner-exception");
+    strictEqual(record.result.diagnostic.component, "battery-runner");
+    doesNotMatch(child.stdout + child.stderr + JSON.stringify(record),
+      /Bearer-private-credential|synthetic-windows-id|node:internal|at main/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("deterministic runner top-level invalid battery cannot echo untrusted arguments", async () => {
+  const root = await mkdtemp(join(tmpdir(), "bvp-det-cli-"));
+  try {
+    const resultPath = join(root, "result.json");
+    const cli = join(__dirname, "batteries", "run-deterministic-battery.js");
+    const child = spawnSync(process.execPath, [cli,
+      "--battery", "Bearer-private-credential", "--result-file", resultPath,
+      "--tap-file", join(root, "tap.txt"),
+    ], { encoding: "utf8" });
+    strictEqual(child.status, 1);
+    const record = JSON.parse(await readFile(resultPath, "utf8"));
+    strictEqual(record.result.classification, "deterministic-battery-runner-exception");
+    strictEqual(record.result.diagnostic.component, "battery-runner");
+    doesNotMatch(child.stdout + child.stderr + JSON.stringify(record), /Bearer-private-credential|node:internal|at main/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
