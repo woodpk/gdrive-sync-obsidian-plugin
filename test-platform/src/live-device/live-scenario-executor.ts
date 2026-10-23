@@ -61,8 +61,9 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   const artifact=options.expectedValidationArtifactSha256, manifest=options.expectedValidationManifestSha256;
   if((artifact===undefined)!==(manifest===undefined)||(artifact!==undefined&&(!/^[a-f0-9]{64}$/i.test(artifact)||!/^[a-f0-9]{64}$/i.test(manifest!))))throw new Error("live-expected-installed-build-invalid");
   const namedManifests=options.expectedValidationManifestSha256ByDevice;
-  if(namedManifests && (artifact===undefined || !namedManifests || 
-      JSON.stringify(Object.keys(namedManifests).sort())!==JSON.stringify(labels.sort()) ||
+  if(namedManifests!==undefined && (artifact===undefined ||
+      !namedManifests || typeof namedManifests!=="object" || Array.isArray(namedManifests) ||
+      JSON.stringify(Object.keys(namedManifests).sort())!==JSON.stringify([...labels].sort()) ||
       Object.values(namedManifests).some(value=>typeof value!=="string"||!/^[a-f0-9]{64}$/i.test(value)))) {
     throw new Error("live-expected-installed-build-manifest-map-invalid");
   }
