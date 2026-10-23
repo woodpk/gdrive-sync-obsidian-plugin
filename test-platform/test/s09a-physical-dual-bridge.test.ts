@@ -196,7 +196,7 @@ test("S09A operator accepts a Settings-screen bare 32-hex identity and forwards 
   const operator=readFileSync(resolve(process.cwd(),"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
   // The owner enters only what is visibly displayed in BRAIN Settings.
   // Normalize ONLY at the private operator boundary; never republish raw IDs.
-  const read=operator.indexOf("$iosId = Read-Host");
+  const read=operator.indexOf("$iosId = (Read-Host");
   const canonical=operator.indexOf("if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }",read);
   const guard=operator.indexOf("if ($iosId -cnotmatch '^device:[a-f0-9]{32}$')",read);
   const stored=operator.indexOf("$env:BVP_IOS_DEVICE_ID = $iosId",read);
