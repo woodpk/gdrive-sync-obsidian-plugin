@@ -64,9 +64,9 @@ These command names are a **design candidate, not an assertion that they exist**
     "windows-sim": {
       "mode": "simulated",
       "devices": {
-        "windows": { "kind": "windows-sim", "deviceId": "CONFIGURED-ONCE-LOCALLY" },
-        "ios": { "kind": "ios-sim-on-windows", "deviceId": "CONFIGURED-ONCE-LOCALLY" },
-        "ipad": { "kind": "ipados-sim-on-windows", "deviceId": "CONFIGURED-ONCE-LOCALLY" }
+        "windows": { "kind": "windows-sim", "deviceId": "WINDOWS-SIM-SETUP-ONLY" },
+        "ios": { "kind": "ios-sim-on-windows", "deviceId": "IOS-SIM-SETUP-ONLY" },
+        "ipad": { "kind": "ipados-sim-on-windows", "deviceId": "IPADOS-SIM-SETUP-ONLY" }
       },
       "vault": { "kind": "disposable", "path": "SET-AT-SETUP" },
       "runtime": { "nodePath": "auto-discover", "compiledBvpRoot": "from-repository" },
