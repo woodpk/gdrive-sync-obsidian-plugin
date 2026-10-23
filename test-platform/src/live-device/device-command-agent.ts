@@ -163,6 +163,15 @@ function fixturePath(root: string, relativePath: string): string | undefined {
 }
 
 function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | undefined, status: DeviceCommandResult["status"], classification: string): DeviceCommandResult {
+  const claimed=classification==="prior-outcome-uncertain";
+  const diagnostic=status==="completed"?undefined:bvpDiagnostic({
+    classification,component:"device-agent",
+    phase:claimed?"sequence-reconciliation":status==="rejected"?"command-preflight":"device-command",
+    lastConfirmedBoundary:claimed?"sequence-claim-persisted":command?"device-command-decoded":"device-agent-entry",
+    firstUnconfirmedBoundary:claimed?"claimed-command-result":status==="rejected"?"command-acceptance":"device-operation-outcome",
+    effect:status==="rejected"?"none-confirmed":"unknown",
+    recommendedAction:claimed?"reconcile-claimed-command":status==="rejected"?"inspect-device-rejection":"reconcile-device-outcome",
+  });
   return {
     validationBuild: copy(options.validationBuild),
     runId: options.runId,
@@ -171,7 +180,8 @@ function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | 
     commandId: command?.commandId ?? "invalid",
     kind: command?.kind ?? "invalid",
     status,
-    classification,
+    classification:diagnostic?.classification??classification,
+    ...(diagnostic?{diagnostic}:{}),
   };
 }
 
