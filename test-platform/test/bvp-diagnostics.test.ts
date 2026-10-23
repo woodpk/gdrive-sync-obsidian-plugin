@@ -201,6 +201,10 @@ test("existing PHX-CI engineering operator accepts software-only feature ref wit
   const code = readFileSync(resolve(process.cwd(), "dev", "scripts",
     "Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
   strictEqual(code.includes("[string]$SoftwareOnlyBranch"), true);
+  strictEqual(code.includes("[switch]$SoftwareOnlyGovernance"), true);
+  strictEqual(code.includes("if ($SoftwareOnlyGovernance -and -not $SoftwareOnlyBranch)"), true);
+  strictEqual(code.includes("'authorized-governance'"), true);
+  strictEqual(code.includes("'ordinary'"), true);
   strictEqual(code.includes("$branch = $SoftwareOnlyBranch"), true);
   strictEqual(code.includes("if ($SoftwareOnlyBranch -and ("), true);
   strictEqual(code.includes("$RunWindowsPhysicalSmoke"), true);
