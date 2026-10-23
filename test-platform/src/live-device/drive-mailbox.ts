@@ -1,5 +1,5 @@
 import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "./device-command-agent";
-import { bvpDiagnostic, opaqueDiagnosticId, type BvpDiagnostic } from "./diagnostic-contract";
+import { bvpDiagnostic, opaqueDiagnosticId, type BvpDiagnostic, type BvpDiagnosticInput } from "./diagnostic-contract";
 
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -49,15 +49,7 @@ function result(value: unknown): DeviceCommandResult | undefined {
     effect:"unknown",recommendedAction:"inspect-correlated-result",
   }).classification;
   const rawDiagnostic=obj(v.diagnostic);
-  const diagnostic=rawDiagnostic?.schemaVersion===1?bvpDiagnostic({
-    classification:rawDiagnostic.classification,component:rawDiagnostic.component,
-    phase:rawDiagnostic.phase,lastConfirmedBoundary:rawDiagnostic.lastConfirmedBoundary,
-    firstUnconfirmedBoundary:rawDiagnostic.firstUnconfirmedBoundary,effect:rawDiagnostic.effect,
-    recommendedAction:rawDiagnostic.recommendedAction,stepId:rawDiagnostic.stepId,
-    identity:obj(rawDiagnostic.identity) as BvpDiagnostic["identity"],
-    hops:Array.isArray(rawDiagnostic.hops)?rawDiagnostic.hops:undefined,
-    causeClass:rawDiagnostic.causeClass,retriability:rawDiagnostic.retriability,
-  }):undefined;
+  const diagnostic=rawDiagnostic?.schemaVersion===1?bvpDiagnostic(rawDiagnostic as BvpDiagnosticInput):undefined;
   return {validationBuild:{schemaVersion:1,sourceCommit:build.sourceCommit.toLowerCase(),...(typeof build.artifactSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.artifactSha256)&&typeof build.manifestSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.manifestSha256)?{artifactSha256:build.artifactSha256.toLowerCase(),manifestSha256:build.manifestSha256.toLowerCase()}:{})},...h,kind:v.kind as DeviceCommandResult["kind"],status:v.status as DeviceCommandResult["status"],classification:safeClassification,...(v.replayed===true?{replayed:true as const}:{}),...(v.plan?{plan:structuredClone(v.plan)}:{}),...(v.actionResult?{actionResult:structuredClone(v.actionResult)}:{}),...(v.receipt?{receipt:structuredClone(v.receipt)}:{}),...(v.productStatus?{productStatus:structuredClone(v.productStatus)}:{}),...(v.fixture?{fixture:structuredClone(v.fixture)}:{}),...(diagnostic?{diagnostic}:{})};
 }
 function same(a: Header,b: Header): boolean { return a.runId===b.runId&&a.deviceId===b.deviceId&&a.sequence===b.sequence&&a.commandId===b.commandId; }
@@ -113,22 +105,22 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
 }
 
 export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:BoundedDeviceCommandAgent,runId:string,deviceId:string):Promise<{status:"ok";processed:number}|{status:"unavailable";processed:number;reason:string;diagnostic:BvpDiagnostic}>{
-  let processed=0,phase="command-fetch",last="device-poll-started",first="drive-command-list",classification="device-command-fetch-failed",current:DeviceCommand|undefined;
+  let processed=0,phase="command-fetch",current:DeviceCommand|undefined;
   try{
     for(const cmd of await mailbox.commands(runId,deviceId)){
-      current=cmd;last="device-command-read";phase="result-lookup";first="previous-result-observation";classification="device-result-lookup-failed";
-      if(await mailbox.resultFor(cmd))continue;
-      phase="device-execution";first="device-command-outcome";classification="device-command-execution-failed";
-      const response=await agent.execute(cmd);
-      phase="result-publication";last="device-handler-returned";first="drive-result-publication";classification="device-result-publication-failed";
-      await mailbox.publishResult(response);processed++;
+      current=cmd;phase="result-lookup";if(await mailbox.resultFor(cmd))continue;
+      phase="device-execution";const response=await agent.execute(cmd);
+      phase="result-publication";await mailbox.publishResult(response);processed++;
     }
     return{status:"ok",processed};
   }catch(e){
-    const reason=e instanceof MailboxUnavailableError?e.message:classification;
+    const reason=e instanceof MailboxUnavailableError?e.message:
+      phase==="device-execution"?"device-command-execution-failed":"device-"+phase+"-failed";
     const diagnostic=bvpDiagnostic({classification:reason,component:"device-agent",phase,
-      lastConfirmedBoundary:last,firstUnconfirmedBoundary:first,effect:"unknown",
-      recommendedAction:"reconcile-device-state",
+      lastConfirmedBoundary:phase==="command-fetch"?"device-poll-started":phase==="result-publication"?"device-handler-returned":"device-command-read",
+      firstUnconfirmedBoundary:phase==="result-lookup"?"previous-result-observation":
+        phase==="device-execution"?"device-command-outcome":phase==="result-publication"?"drive-result-publication":"drive-command-list",
+      effect:"unknown",recommendedAction:"reconcile-device-state",
       identity:{runId:await opaqueDiagnosticId(runId,"run"),scenarioId:"unavailable",stepIndex:null,
         executionMode:"unknown",correlationToken:current?await opaqueDiagnosticId(current.commandId,"corr"):"unavailable"}});
     return{status:"unavailable",processed,reason:diagnostic.classification,diagnostic};
