@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -45,7 +46,8 @@ export async function loadLateCompletionRecovery(options: RecoveryOptions): Prom
       !Array.isArray(prior.steps) || !record(prior.captures)) reject("prior-verdict-invalid");
   const identities = Object.values(deviceIds).sort();
   const machine = prior.evidence?.machine;
-  if (machine?.executionMode !== "live" || machine.liveIdentity?.runId !== runId ||
+  if (machine?.executionMode !== "live" ||
+      (machine.liveIdentity?.runId !== runId && machine.liveIdentity?.runId !== "run-sha256:"+createHash("sha256").update(runId).digest("hex").slice(0,24)) ||
       machine.liveIdentity?.sourceCommit !== sourceCommit ||
       JSON.stringify([...machine.deviceIdentities].sort()) !== JSON.stringify(identities)) {
     reject("prior-identity-mismatch");
