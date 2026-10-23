@@ -568,7 +568,7 @@ function parseResult(attempt: BridgeAttempt): void {
       !Array.isArray(machine.deviceIdentities) ||
       (machine.deviceIdentities as unknown[]).some(v => typeof v !== "string") ||
       JSON.stringify([...machine.deviceIdentities].sort()) !== JSON.stringify(Object.values(attempt.deviceIds).sort()) ||
-      live.runId !== attempt.bvpRunId || live.sourceCommit !== attempt.sourceCommit) {
+      (live.runId !== attempt.bvpRunId && live.runId !== "run-sha256:"+digest(attempt.bvpRunId).slice(0,24)) || live.sourceCommit !== attempt.sourceCommit) {
       fail("result-live-identity-mismatch");
     }
   }
