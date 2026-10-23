@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED IN BRAIN TEST-PLATFORM SOFTWARE; PHX-CI QUALIFICATION PENDING. NO PHYSICAL DISPATCH.**
+**IMPLEMENTED AND PHX-CI SOFTWARE-QUALIFIED; NO PHYSICAL DISPATCH.**
 
 Owner-directed continuation of S09A's real Windows/iPhone testing. Do not issue a Reviewer handoff without an explicit subsequent Owner instruction.
 
@@ -22,7 +22,7 @@ The shipping BRAIN 0.1.19 artifact is unchanged. The separate BVP validation art
 
 Use a fresh isolated clone of `fix/s09-bvp-live-controller-20261022` at the frozen candidate commit, a pinned `69c4aa077d4a1a46d1e85e59f39d36285be99e83` PHX-CI runtime, and the existing repository-controlled `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1 -ExpectedSourceSha <frozen-SHA>` **with no physical switches**.
 
-The operator's default focused stage is `npm run test:bvp-root`; the repository stage runs `npm test`. Both run under PHX-CI and publish original canonical evidence. Capture actual stage verdict, run ID, and evidence commit. Do not assert software PASS before PHX-CI returns it.
+The operator's default focused stage is `npm run test:bvp-root`; the repository stage runs `npm test`. Both run under PHX-CI and publish original canonical evidence. Original PHX-CI software qualification **PASS**: frozen implementation `c51791b9f6cf6336398d318f0330bb7cc7e65d29`, run `f8dd3c00-74fd-4607-813c-0383c65ef603`, published evidence commit `2669543eb7339cb099429f20fee46a9a88cb4f31`; 484 focused tests and 1,292 repository tests passed, 11/11 stages PASS. Preserve this run; do not rerun solely for administration. Any subsequent substantive operator implementation requires its own focused qualification.
 
 ## Outstanding physical gates
 
