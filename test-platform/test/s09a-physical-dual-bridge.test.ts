@@ -72,7 +72,7 @@ test("wrong iOS digest, swapped routes, duplicate private identity and missing i
     { windows: rawWindows, ios: rawWindows },
     { windows: rawWindows },
     { windows: rawWindows, ios: rawIos, extra: rawIos },
-  ]) throws(() => buildLiveRunnerArguments(attempt(), paths, [], false, unsafe),
+  ]) throws(() => buildLiveRunnerArguments(attempt(), paths, [], false, unsafe as Readonly<Record<string, string>>),
     /privacy|mapping|identity|device|routing|scope/i);
   throws(() => buildLiveRunnerArguments(attempt(), paths), /privacy|mapping|identity|device|routing|scope/i);
 });
