@@ -1,4 +1,5 @@
 import type { ProductionVerificationControl } from "../../../src/product/live-validation-control-seam";
+import { bvpDiagnostic, type BvpDiagnostic } from "../scenario/scenario-diagnostics";
 
 type ProductionReceipt = Exclude<ReturnType<ProductionVerificationControl["latestProductionRunReceipt"]>, undefined>;
 type ProductionStatus = ReturnType<ProductionVerificationControl["currentStatus"]>;
@@ -52,6 +53,7 @@ export interface DeviceCommandResult {
   readonly kind: DeviceCommand["kind"] | "invalid";
   readonly status: "completed" | "rejected" | "failed";
   readonly classification: string;
+  readonly diagnostic?: BvpDiagnostic;
   readonly replayed?: true;
   readonly plan?: {
     readonly planId: string; readonly trigger: string; readonly operationCount: number; readonly operationKinds?: readonly string[];
@@ -171,6 +173,16 @@ function resultFor(options: DeviceCommandAgentOptions, command: DeviceCommand | 
     status,
     classification,
   };
+}
+
+function uncertainCommandResult(options:DeviceCommandAgentOptions,command:DeviceCommand,classification:string,
+  phase:"command-execution"|"sequence-finalization"):DeviceCommandResult{
+  return {...resultFor(options,command,"failed",classification),diagnostic:bvpDiagnostic({
+    component:"device-agent",classification,phase,
+    lastConfirmedBoundary:phase==="command-execution"?"sequence-claim-persisted":"command-handler-returned",
+    firstUnconfirmedBoundary:phase==="command-execution"?"command-handler-outcome":"sequence-result-persisted",
+    effect:"unknown",recommendedAction:"reconcile-claimed-command",
+  })};
 }
 
 function verifiedFixture(observation: FixtureObservation, shouldExist: boolean): boolean {
@@ -313,15 +325,15 @@ export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptio
       try {
         terminal = await dispatch(command);
       } catch {
-        terminal = resultFor(options, command, "failed", "command-handler-failed");
+        terminal = uncertainCommandResult(options, command, "command-handler-failed", "command-execution");
       }
 
       try {
         const completed: DeviceSequenceState = { sequence: command.sequence, commandKey, phase: "completed", result: copy(terminal) };
         if (!await options.sequenceState.compareAndSave(options.runId, options.deviceId, claim, completed)) {
-          return resultFor(options, command, "failed", "sequence-state-finalization-failed");
+          return uncertainCommandResult(options, command, "sequence-state-finalization-failed", "sequence-finalization");
         }
-      } catch { return resultFor(options, command, "failed", "sequence-state-finalization-failed"); }
+      } catch { return uncertainCommandResult(options, command, "sequence-state-finalization-failed", "sequence-finalization"); }
       return terminal;
     },
   };
