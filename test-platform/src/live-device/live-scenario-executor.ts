@@ -7,7 +7,7 @@ import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition,
 import { assertScenarioObservation } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
-import { bvpDiagnostic } from "../scenario/scenario-diagnostics";
+import { BvpDiagnosticError, bvpDiagnostic } from "../scenario/scenario-diagnostics";
 
 export interface HumanCheckpointInstruction {
   readonly action: string; readonly device: string; readonly stopCondition: string;
@@ -25,7 +25,7 @@ export interface LiveScenarioExecutorOptions {
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; observedInstalledBuilds?(): Readonly<Record<string,{artifactSha256:string;manifestSha256:string}>>; }
 
-type RelayResult = DeviceCommandResult | null | undefined;
+type RelayResult = DeviceCommandResult | null | undefined | "malformed-result";
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const fail=(status:"failed"|"blocked"|"unsupported",classification:string,reason?:string):ScenarioCapabilityResult=>({status,classification,...(reason===undefined?{}:{reason})});
 const exists=async(path:string):Promise<boolean>=>stat(path).then(()=>true,()=>false);
@@ -45,6 +45,11 @@ function correlated(command:DeviceCommand,result:DeviceCommandResult,sourceCommi
   return result.validationBuild?.schemaVersion===1&&result.validationBuild.sourceCommit===sourceCommit&&(artifact===undefined||result.validationBuild.artifactSha256===artifact)&&(manifest===undefined||result.validationBuild.manifestSha256===manifest)&&command.runId===result.runId&&command.deviceId===result.deviceId&&command.sequence===result.sequence&&command.commandId===result.commandId&&command.kind===result.kind;
 }
 function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
+  if(value==="malformed-result")return {status:"failed",classification:"result-malformed",diagnostic:bvpDiagnostic({
+    classification:"result-malformed",component:"live-controller",phase:"receipt-validation",
+    lastConfirmedBoundary:"relay-inbox-record-observed",firstUnconfirmedBoundary:"receipt-decoding",
+    effect:"unknown",recommendedAction:"reconcile-receipt",
+  })};
   if(value===undefined)return {status:"blocked",classification:"device-result-unavailable",diagnostic:bvpDiagnostic({
     classification:"device-result-unavailable",component:"live-controller",phase:"response-wait",
     lastConfirmedBoundary:"relay-outbox-write",firstUnconfirmedBoundary:"device-result-receipt",
@@ -94,18 +99,24 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   }
 
   async function pendingRelayCommand():Promise<boolean>{for(const root of [out,sent])for(const name of await readdir(root).catch(()=>[])){try{const value=JSON.parse(await readFile(join(root,name),"utf8")) as Partial<DeviceCommand>;if(value.runId===options.runId)return true;}catch{}}return false;}
-  async function roundTrip(command:DeviceCommand):Promise<RelayResult>{
+  async function roundTrip(command:DeviceCommand,stepId:string):Promise<RelayResult>{
     const name=`${command.commandId}.json`,outPath=join(out,name),sentPath=join(sent,name),resultPath=join(inbox,`${name}.result.json`);
     if(!await exists(outPath)&&!await exists(sentPath)&&!await exists(resultPath)){
-      const temp=join(options.relayRoot,`.${name}.tmp`);await writeFile(temp,JSON.stringify(command),"utf8");await rename(temp,outPath);
+      const temp=join(options.relayRoot,`.${name}.tmp`);
+      try {await writeFile(temp,JSON.stringify(command),"utf8");await rename(temp,outPath);}
+      catch {throw new BvpDiagnosticError(bvpDiagnostic({
+        classification:"relay-outbox-write-failed",component:"live-controller",phase:"command-queue",
+        lastConfirmedBoundary:"controller-command-prepared",firstUnconfirmedBoundary:"relay-outbox-write",
+        effect:"unknown",recommendedAction:"inspect-local-relay",stepId,
+      }));}
     }
     const deadline=Date.now()+(command.kind==="production-execute"?productionTimeout:timeout);
     while(Date.now()<=deadline){
       if(await exists(resultPath)){
-        let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{await rm(resultPath,{force:true});return null;}
-        await rm(resultPath,{force:true});
+        let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{return "malformed-result";}
         const expectedManifest=names?.[labels.find(label=>options.deviceIds[label]===command.deviceId)??""]??m;
         if(!correlated(command,result,options.expectedValidationSourceCommit.toLowerCase(),a,expectedManifest))return null;
+        await rm(resultPath,{force:true});
         if(a&&expectedManifest)installedByDevice[command.deviceId]={artifactSha256:a,manifestSha256:expectedManifest};
         return result;
       }
@@ -117,7 +128,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
     const label=stepDevice(step);if(!label)throw new Error("live-command-target-unavailable");
     const deviceId=options.deviceIds[label];if(!deviceId)throw new Error("live-command-device-map-incomplete");
     const command={runId:options.runId,deviceId,sequence:liveSequenceFor(options.scenario,label,context.stepIndex,sub),commandId:liveCommandId(options.runId,options.scenario.id,context.stepIndex,sub),...body} as DeviceCommand;
-    return roundTrip(command);
+    return roundTrip(command,step.id);
   }
   function remember(index:number,step:ScenarioStep,result:ScenarioCapabilityResult):ScenarioCapabilityResult{
     history.push({index,stepId:step.id,kind:step.kind,status:result.status,...("classification" in result?{classification:result.classification}:{}),matchedExpectation:true});return result;
