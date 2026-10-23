@@ -1,5 +1,5 @@
 import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "./device-command-agent";
-import { bvpDiagnostic, opaqueDiagnosticId, type BvpDiagnostic, type BvpDiagnosticInput } from "./diagnostic-contract";
+import { bvpDiagnostic, diagnosticCode, opaqueDiagnosticId, type BvpDiagnostic, type BvpDiagnosticInput } from "./diagnostic-contract";
 
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -42,12 +42,8 @@ function command(value: unknown): DeviceCommand | undefined {
 const RESULT_KINDS=new Set(["fixture-put","fixture-remove","observe-file","production-preview","production-execute","production-control","observe-product","invalid"]);
 function result(value: unknown): DeviceCommandResult | undefined {
   const v=obj(value), h=header(v),build=obj(v?.validationBuild); if(!v||!h||!build||build.schemaVersion!==1||typeof build.sourceCommit!=="string"||!/^[0-9a-f]{40}$/i.test(build.sourceCommit)||typeof v.kind!=="string"||!RESULT_KINDS.has(v.kind)||typeof v.status!=="string"||typeof v.classification!=="string"||!["completed","rejected","failed"].includes(v.status)) return undefined;
-  // Remote records may contain arbitrary failure strings. Export only safe machine tokens.
-  const safeClassification=bvpDiagnostic({
-    classification:v.classification,component:"drive-mailbox",phase:"receipt-validation",
-    lastConfirmedBoundary:"device-result-read",firstUnconfirmedBoundary:"receipt-classification",
-    effect:"unknown",recommendedAction:"inspect-correlated-result",
-  }).classification;
+  // Same bounded classification allowlist applies to a remote result and its diagnosis.
+  const safeClassification=diagnosticCode(v.classification);
   const rawDiagnostic=obj(v.diagnostic);
   const diagnostic=rawDiagnostic?.schemaVersion===1?bvpDiagnostic(rawDiagnostic as BvpDiagnosticInput):undefined;
   return {validationBuild:{schemaVersion:1,sourceCommit:build.sourceCommit.toLowerCase(),...(typeof build.artifactSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.artifactSha256)&&typeof build.manifestSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.manifestSha256)?{artifactSha256:build.artifactSha256.toLowerCase(),manifestSha256:build.manifestSha256.toLowerCase()}:{})},...h,kind:v.kind as DeviceCommandResult["kind"],status:v.status as DeviceCommandResult["status"],classification:safeClassification,...(v.replayed===true?{replayed:true as const}:{}),...(v.plan?{plan:structuredClone(v.plan)}:{}),...(v.actionResult?{actionResult:structuredClone(v.actionResult)}:{}),...(v.receipt?{receipt:structuredClone(v.receipt)}:{}),...(v.productStatus?{productStatus:structuredClone(v.productStatus)}:{}),...(v.fixture?{fixture:structuredClone(v.fixture)}:{}),...(diagnostic?{diagnostic}:{})};
