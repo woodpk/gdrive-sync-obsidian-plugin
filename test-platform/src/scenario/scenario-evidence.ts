@@ -36,6 +36,7 @@ export interface ScenarioEvidenceInput {
   readonly classification?: string;
   readonly reason?: string;
   readonly diagnostic?: BvpDiagnostic;
+  readonly cleanupDiagnostic?: BvpDiagnostic;
   readonly runIdentity?: string;
   readonly buildIdentity?: string;
 }
@@ -68,6 +69,7 @@ export interface CanonicalScenarioEvidenceMachine {
     readonly classification?: string;
     readonly reason?: string;
     readonly diagnostic?: BvpDiagnostic;
+  readonly cleanupDiagnostic?: BvpDiagnostic;
   };
 }
 
@@ -319,6 +321,7 @@ export function buildScenarioEvidence(
       status: execution.status,
       ...(execution.classification === undefined ? {} : { classification: safeClassification(execution.classification) }),
       ...(execution.diagnostic === undefined ? {} : { diagnostic: execution.diagnostic }),
+      ...(execution.cleanupDiagnostic === undefined ? {} : { cleanupDiagnostic: execution.cleanupDiagnostic }),
       ...(execution.status === "completed" || execution.classification === undefined
         ? {}
         : { reason: safeReason(execution.reason ?? execution.classification, execution.classification) }),
