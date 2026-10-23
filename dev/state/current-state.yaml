@@ -8,7 +8,19 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/S09_WINDOWS_BVP_INSTALLED_RELAY"
 handoff-source-sha: "4708f18952702d98456530dfb9f9854a336bfeac"
-active_build_unit_status: "S09A_PHYSICAL_OPERATOR_CARDINALITY_CORRECTED_NEW_PHXCI_QUALIFICATION_PENDING_NO_IOS_EXECUTION_REVIEW_OWNER_DEFERRED"
+active_build_unit_status: "S09A_IOS_BRAT_TEST_PRERELEASE_REPORTED_INSTALLED_CROSS_DEVICE_MANIFEST_CONTROLLER_FIX_PENDING_PHXCI_QUALIFICATION_NO_PHYSICAL_EXECUTION_REVIEW_DEFERRED"
+s09a_brat_prerelease_manifest_correction_2026_10_23:
+  owner_install_report: "IOS_BRAT_0.1.20-bvp.1_INSTALLED_REPORTED_NOT_PHYSICALLY_VERIFIED"
+  installed_windows_validation_artifact_status: "UNCHANGED_0.1.19_BVP"
+  source_commit: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df"
+  main_sha256_both: "90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7"
+  windows_manifest_sha256: "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965"
+  ios_prerelease_manifest_sha256: "1788bcaa4a9dd05d22ec03b0ba56bd3a72d4fa4541e2e5ec74c1a43253ce54a5"
+  software_qualification: "PENDING_NEW_SUBSTANTIVE_PHXCI_RUN"
+  physical_execution: "NOT_AUTHORIZED_NOT_DISPATCHED"
+  reviewer_handoff: "DEFERRED_BY_OWNER"
+  next_gate: "PHXCI_SOFTWARE_PASS_THEN_IOS_ISOLATED_VAULT_OAUTH_PAIRING_CONFIRMATION_AND_SEPARATELY_APPROVED_PHYSICAL_READINESS"
+  authority: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09a-dual-device-physical-readiness-bridge-20261022.md"
 owner_current_testing_directive:
   date: "2026-10-22"
   reviewer_handoff: "DEFERRED_BY_OWNER_DO_NOT_ISSUE_ANY_REVIEW_PROMPT_UNTIL_OWNER_EXPLICITLY_INSTRUCTS"
