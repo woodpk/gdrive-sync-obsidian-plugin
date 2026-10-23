@@ -18,6 +18,8 @@ export interface LiveScenarioExecutorOptions {
   readonly checkpoints?: Readonly<Record<string, HumanCheckpointInstruction>>;
   readonly resumeEvidence?: readonly ScenarioResumeEvidence[];
   readonly expectedValidationSourceCommit: string; readonly expectedValidationArtifactSha256?: string; readonly expectedValidationManifestSha256?: string;
+  /** Exact manifest SHA for each named participant; only with full installed-build proof. */
+  readonly expectedValidationManifestSha256ByDevice?: Readonly<Record<string,string>>;
   readonly resultTimeoutMs?: number; readonly productionResultTimeoutMs?: number; readonly pollIntervalMs?: number;
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; observedInstalledBuilds?(): Readonly<Record<string,{artifactSha256:string;manifestSha256:string}>>; }
@@ -56,6 +58,17 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   const labels=Object.keys(options.deviceIds),deviceIdentities=labels.map(label=>options.deviceIds[label]!).sort();
   if(!options.scenario.executionModes.includes("live"))throw new Error("live-execution-mode-unavailable");
   if(!options.runId||options.runId.length>128||!/^[0-9a-f]{40}$/i.test(options.expectedValidationSourceCommit)||deviceIdentities.some(value=>!value||value.length>128)||new Set(deviceIdentities).size!==deviceIdentities.length)throw new Error("live-executor-identity-invalid");
+  const artifact=options.expectedValidationArtifactSha256, manifest=options.expectedValidationManifestSha256;
+  if((artifact===undefined)!==(manifest===undefined)||(artifact!==undefined&&(!/^[a-f0-9]{64}$/i.test(artifact)||!/^[a-f0-9]{64}$/i.test(manifest!))))throw new Error("live-expected-installed-build-invalid");
+  const namedManifests=options.expectedValidationManifestSha256ByDevice;
+  if(namedManifests && (artifact===undefined || !namedManifests || 
+      JSON.stringify(Object.keys(namedManifests).sort())!==JSON.stringify(labels.sort()) ||
+      Object.values(namedManifests).some(value=>typeof value!=="string"||!/^[a-f0-9]{64}$/i.test(value)))) {
+    throw new Error("live-expected-installed-build-manifest-map-invalid");
+  }
+  const manifestByDevice=new Map<string,string>(namedManifests
+    ? Object.entries(namedManifests).map(([label,hash])=>[options.deviceIds[label]!,hash])
+    : []);
   const timeout=options.resultTimeoutMs??30_000,productionTimeout=options.productionResultTimeoutMs??600_000,poll=options.pollIntervalMs??250;
   if(timeout<=0||productionTimeout<=0||poll<=0)throw new Error("live-executor-timing-invalid");
   const out=join(options.relayRoot,"outbox"),sent=join(options.relayRoot,"sent"),inbox=join(options.relayRoot,"inbox");
@@ -63,8 +76,7 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
   const leasedDevices=[...new Set(options.scenario.steps.map(stepDevice).filter((label):label is string=>Boolean(label)).map(label=>options.deviceIds[label]).filter((value):value is string=>Boolean(value)))].sort(),authorityFiles=new Map<string,string>(),activated=new Set<string>(),authorityEntries=leasedDevices.map(deviceId=>{const path=authorityPath(options.relayRoot,deviceId);authorityFiles.set(deviceId,path);return{deviceId,path};}),authorityLocks=await acquireAuthorityLocks(authorityEntries.map(value=>value.path));
   try{for(const {deviceId,path} of authorityEntries){let current:ControllerAuthority|undefined;if(await exists(path)){try{current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);}catch{}if(!current)throw new Error("live-controller-authority-invalid");}if(current?.runId&&current.runId!==options.runId)throw new Error("live-controller-device-run-conflict");if(current?.runId===options.runId)continue;const next:ControllerAuthority={schemaVersion:1,generation:(current?.generation??0)+1,runId:options.runId,deviceId};await writeFile(path,JSON.stringify(next),"utf8");activated.add(deviceId);}}catch(error){for(const deviceId of activated){const path=authorityFiles.get(deviceId)!,current=authority(JSON.parse(await readFile(path,"utf8")),deviceId);if(current?.runId===options.runId)await writeFile(path,JSON.stringify({...current,runId:null}),"utf8");}throw error;}finally{await releaseAuthorityLocks(authorityLocks);}
   const installedByDevice:Record<string,{artifactSha256:string;manifestSha256:string}>={};
-  const a=options.expectedValidationArtifactSha256,m=options.expectedValidationManifestSha256;
-  if((a===undefined)!==(m===undefined)||(a!==undefined&&(!/^[a-f0-9]{64}$/i.test(a)||!/^[a-f0-9]{64}$/i.test(m!))))throw new Error("live-expected-installed-build-invalid");
+  const a=artifact,m=manifest;
   let pending:HumanCheckpointInstruction|undefined,resume:ScenarioCheckpoint|undefined,resumeFailure:string|undefined;
   const history:ScenarioStepExecution[]=[];
   if(await exists(options.checkpointFile)){
@@ -84,8 +96,9 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
       if(await exists(resultPath)){
         let result:DeviceCommandResult;try{result=JSON.parse(await readFile(resultPath,"utf8")) as DeviceCommandResult;}catch{await rm(resultPath,{force:true});return null;}
         await rm(resultPath,{force:true});
-        if(!correlated(command,result,options.expectedValidationSourceCommit.toLowerCase(),a,m))return null;
-        if(a&&m)installedByDevice[command.deviceId]={artifactSha256:a,manifestSha256:m};
+        const expectedManifest=manifestByDevice.get(command.deviceId)??m;
+        if(!correlated(command,result,options.expectedValidationSourceCommit.toLowerCase(),a,expectedManifest))return null;
+        if(a&&expectedManifest)installedByDevice[command.deviceId]={artifactSha256:a,manifestSha256:expectedManifest};
         return result;
       }
       await sleep(poll);
