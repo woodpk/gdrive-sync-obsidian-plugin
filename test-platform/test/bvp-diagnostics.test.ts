@@ -2,7 +2,7 @@ import { deepStrictEqual, doesNotMatch, rejects, strictEqual } from "node:assert
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -13,7 +13,7 @@ import {
   bvpDiagnostic,
   safeUnexpectedFailure,
 } from "../src/scenario/scenario-diagnostics";
-import { createLiveScenarioExecutor } from "../src/live-device/live-scenario-executor";
+import { createLiveScenarioExecutor, liveCommandId } from "../src/live-device/live-scenario-executor";
 import { createDriveCommandMailbox, MailboxUnavailableError } from "../src/live-device/drive-mailbox";
 
 const fixture = (executionMode: "live" | "deterministic") => defineScenario({
@@ -210,4 +210,49 @@ test("existing PHX-CI engineering operator accepts software-only feature ref wit
   strictEqual(code.includes("$RunWindowsPhysicalSmoke"), true);
   strictEqual(code.includes("$RunS09ADualPhysicalReadiness"), true);
   strictEqual(code.includes("'npm run test:bvp-root'"), true);
+});
+
+test("relay write failures report a prepublication boundary without emitting a command", async () => {
+  const root=await mkdtemp(join(tmpdir(),"bvp-outbox-fault-"));
+  try{
+    const scenario=fixture("live"),relay=join(root,"relay"),runId="queue-fault-run";
+    const executor=await createLiveScenarioExecutor({
+      scenario,runId,deviceIds:{windows:"synthetic-device-secret"},
+      relayRoot:relay,checkpointFile:join(root,"checkpoint.json"),
+      expectedValidationSourceCommit:"a".repeat(40),resultTimeoutMs:10,pollIntervalMs:2,
+    });
+    const tempName="."+liveCommandId(runId,scenario.id,0,0)+".json.tmp";
+    await mkdir(join(relay,tempName));
+    const result=await new DeterministicScenarioRunner({},executor).run(scenario);
+    strictEqual(result.status,"failed");
+    strictEqual(result.classification,"relay-outbox-write-failed");
+    strictEqual(result.diagnostic?.phase,"command-queue");
+    strictEqual(result.diagnostic?.lastConfirmedBoundary,"controller-command-prepared");
+    strictEqual(result.diagnostic?.firstUnconfirmedBoundary,"relay-outbox-write");
+    strictEqual(result.diagnostic?.effect,"unknown");
+    strictEqual((await readdir(join(relay,"outbox"))).length,0);
+    doesNotMatch(JSON.stringify(result),/synthetic-device-secret|\.json\.tmp|node:internal/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test("malformed inbox receipts have a distinct failure classification without inventing execution", async () => {
+  const root=await mkdtemp(join(tmpdir(),"bvp-inbox-fault-"));
+  try{
+    const scenario=fixture("live"),relay=join(root,"relay"),runId="malformed-receipt-run";
+    const executor=await createLiveScenarioExecutor({
+      scenario,runId,deviceIds:{windows:"private-physical-id"},
+      relayRoot:relay,checkpointFile:join(root,"checkpoint.json"),
+      expectedValidationSourceCommit:"a".repeat(40),resultTimeoutMs:10,pollIntervalMs:2,
+    });
+    await mkdir(join(relay,"inbox"),{recursive:true});
+    const name=liveCommandId(runId,scenario.id,0,0)+".json.result.json";
+    await writeFile(join(relay,"inbox",name),"{broken: Bearer secret");
+    const result=await new DeterministicScenarioRunner({},executor).run(scenario);
+    strictEqual(result.classification,"result-malformed");
+    strictEqual(result.diagnostic?.phase,"receipt-validation");
+    strictEqual(result.diagnostic?.lastConfirmedBoundary,"relay-inbox-record-observed");
+    strictEqual(result.diagnostic?.firstUnconfirmedBoundary,"receipt-decoding");
+    strictEqual(result.diagnostic?.effect,"unknown");
+    doesNotMatch(JSON.stringify(result),/Bearer secret|private-physical-id/);
+  }finally{await rm(root,{recursive:true,force:true});}
 });
