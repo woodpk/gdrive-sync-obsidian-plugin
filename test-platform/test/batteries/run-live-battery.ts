@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
+import { S09A_VALIDATION_ARTIFACTS } from "../../src/live-device/s09a-validation-artifacts";
 import { loadLateCompletionRecovery, withLateCompletionRecovery } from "./late-completion-recovery";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
 import { getLiveBattery, listLiveBatteryNames } from "./battery-registry";
@@ -114,6 +115,16 @@ async function main(): Promise<void> {
       typeof expectedBuild.manifestSha256!=="string" || !/^[a-f0-9]{64}$/i.test(expectedBuild.manifestSha256))) {
     throw new Error("runner-installed-build-identity-invalid");
   }
+  // The Windows participant retains its exact qualified 0.1.19 manifest.
+  // The iOS BRAT install uses the same main.js/source but an exact 0.1.20-bvp.1
+  // manifest. Never accept an arbitrary cross-device manifest or version string.
+  const s09aDualInstalled = batteryName === "s09a-dual-device-readiness" && !!expectedBuild;
+  if(s09aDualInstalled && (
+      expectedBuild!.sourceCommit !== S09A_VALIDATION_ARTIFACTS.sourceCommit ||
+      expectedBuild!.artifactSha256 !== S09A_VALIDATION_ARTIFACTS.artifactSha256 ||
+      expectedBuild!.manifestSha256 !== S09A_VALIDATION_ARTIFACTS.windowsManifestSha256)) {
+    throw new Error("s09a-installed-windows-build-not-on-release-allowlist");
+  }
   const recoveryFile = optionalArg("--recover-timed-out-result-file");
   if (recoveryFile && resumeEvidenceArg().length !== 0) {
     throw new Error("late-completion recovery and human checkpoint resume are mutually exclusive");
@@ -133,6 +144,10 @@ async function main(): Promise<void> {
     ...(expectedBuild ? {
       expectedValidationArtifactSha256: expectedBuild.artifactSha256 as string,
       expectedValidationManifestSha256: expectedBuild.manifestSha256 as string,
+      ...(s09aDualInstalled ? {expectedValidationManifestSha256ByDevice: {
+        windows: S09A_VALIDATION_ARTIFACTS.windowsManifestSha256,
+        ios: S09A_VALIDATION_ARTIFACTS.iosManifestSha256,
+      }} : {}),
     } : {}),
     resultTimeoutMs: positiveIntegerArg("--result-timeout-ms", 60_000),
     productionResultTimeoutMs: positiveIntegerArg("--production-result-timeout-ms", 600_000),
