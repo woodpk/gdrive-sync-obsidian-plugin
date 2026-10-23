@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   assertNeverScenarioStep, validateScenarioDefinition,
   type ScenarioAssertionStep, type ScenarioCheckpointStep, type ScenarioDefinition,
@@ -100,6 +101,11 @@ export class DeterministicScenarioRunner {
         diagnostic:cleanupDiagnostic??diagnostic,...(cleanupDiagnostic?{cleanupDiagnostic}:{})};
     }
     const executionMode = this.executor?.executionMode ?? "deterministic";
+    const diagnosticIdentity=(index:number|null,correlationToken="unavailable")=>({
+      runId:this.executor?.runIdentity?"run-sha256:"+createHash("sha256").update(this.executor.runIdentity).digest("hex").slice(0,24):"unavailable",
+      scenarioId:scenario.id,stepIndex:index,
+      executionMode:executionMode==="live"?"windows-live" as const:"deterministic" as const,correlationToken,
+    });
     if (!scenario.executionModes.includes(executionMode)) {
       const cleanupDiagnostic=await safeDispose();
       const diagnostic=cleanupDiagnostic??bvpDiagnostic({
@@ -107,6 +113,7 @@ export class DeterministicScenarioRunner {
         phase:"execution-mode-preflight",lastConfirmedBoundary:"scenario-validated",
         firstUnconfirmedBoundary:"scenario-mode-dispatch",effect:"none-confirmed",
         recommendedAction:"select-supported-mode",
+        identity:diagnosticIdentity(null),
       });
       const core = { scenarioId: scenario.id, status: cleanupDiagnostic?"failed" as const:"unsupported" as const,
         steps: [], captures: {}, classification:diagnostic.classification,diagnostic,
@@ -159,13 +166,15 @@ export class DeterministicScenarioRunner {
       // even when a capability returns only a classification rather than throwing.
       if (actual.status !== "completed") {
         const diagnosis="diagnostic" in actual&&actual.diagnostic
-          ? bvpDiagnostic({...actual.diagnostic,stepId:step.id})
+          ? bvpDiagnostic({...actual.diagnostic,stepId:step.id,
+            identity:{...diagnosticIdentity(index),correlationToken:actual.diagnostic.identity.correlationToken}})
           : bvpDiagnostic({
             classification:actual.classification,component:"scenario-runner",
             phase:this.executor?"live-step-result":"simulated-step-result",
             lastConfirmedBoundary:"scenario-step-result-received",
             firstUnconfirmedBoundary:"expected-outcome-confirmation",
             effect:"unknown",recommendedAction:"inspect-step-evidence",stepId:step.id,
+            identity:diagnosticIdentity(index),
           });
         actual={...actual,classification:diagnosis.classification,diagnostic:diagnosis};
       }
