@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
-import { S09A_VALIDATION_ARTIFACTS } from "../../src/live-device/s09a-validation-artifacts";
+import { S09A_VALIDATION_ARTIFACTS } from "./s09a-validation-artifacts";
 import { loadLateCompletionRecovery, withLateCompletionRecovery } from "./late-completion-recovery";
 import type { ScenarioResumeEvidence } from "../../src/scenario/scenario-checkpoint";
 import { getLiveBattery, listLiveBatteryNames } from "./battery-registry";
