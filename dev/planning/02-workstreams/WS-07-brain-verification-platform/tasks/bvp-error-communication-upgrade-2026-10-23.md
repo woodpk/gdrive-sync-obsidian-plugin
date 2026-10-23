@@ -2,7 +2,7 @@
 
 ## Authority and status
 
-**Status: OWNER ARCHITECTURE DECISION RECORDED (DEC-349); GOVERNED CHANGE COMMITTED; BUILDER QUALIFICATION PENDING.** Owner-authorized under **DEC-348**, informed by **DEC-346** (PowerShell primary operational interface) and **DEC-347** (Windows / Windows-hosted iPhone-iPad simulation first). This is a BVP platform-core improvement, not a request to create a second runner, change the production synchronization system, launch a physical iPhone test, or use PHX-CI to OPERATE BVP. Ordinary software-change qualification remains a separate Windows-based engineering gate where governed; it must not be inserted into BVP user test execution.
+**Status: FIRST DIAGNOSTIC IMPLEMENTATION SLICE PHX-CI VERIFIED PASS (2026-10-23); COMPLETE DEC-348 ACCEPTANCE MATRIX AND INDEPENDENT REVIEW STILL PENDING.** Owner-authorized under **DEC-348**, informed by **DEC-346** (PowerShell primary operational interface) and **DEC-347** (Windows / Windows-hosted iPhone-iPad simulation first). This is a BVP platform-core improvement, not a request to create a second runner, change the production synchronization system, launch a physical iPhone test, or use PHX-CI to OPERATE BVP. Ordinary software-change qualification remains a separate Windows-based engineering gate where governed; it must not be inserted into BVP user test execution.
 
 Governing navigation: `dev/authority/decision-register.yaml`; this workstream's `02-ARCHITECTURE.md`, `03-BUILD-DECOMPOSITION.md`, `04-VERIFICATION-PLAN.md`; `dev/planning/01-target-system/bvp-subsystem-specification.md`. Preserve BVP source/test isolation, frozen boundaries, the two DEC-349 owner-amended numerical budgets and all unchanged budgets, and the existing simulator and scenario runner. If complying would exceed a hard budget, surface the proposed budget delta to the Owner before executable changes.
 
@@ -28,6 +28,13 @@ Governing navigation: `dev/authority/decision-register.yaml`; this workstream's 
 - Exact failing test: `test-platform/test/s09-windows-privacy-transport.test.ts`, "PHX-CI Windows operator is singular, complete, and source-drift guarded". It required the old one-line final physical-effect warning; the updated safe script correctly uses a conditional warning for software-only runs and retains the original warning for physical runs. The earlier exact string assertion no longer matched, although the PowerShell 7 AST parse and other operator safeguards passed.
 - Builder corrective commit `68ef1f252c8335c59d4701819916239342265645`: replace the stale assertion with exact expected **two-branch** footer validation; retain no-orphan-tail enforcement and assert both messages appear once. **Not yet requalified**; no claim of successful PHX-CI verification or Reviewer handoff.
 - Next: rerun the committed feature's Windows PHX-CI **software-only authorized-governance** qualification for its latest immutable source. If another gate fails, inspect its original published evidence before making further changes. Keep DEC-349's numeric ceilings and all other guards unchanged.
+
+## Third PHX-CI qualification — exact PASS, bounded scope
+
+- Original source `5c8d34ad9bee7f968eee47f5d8d26c2d27a7eb96` (tree `1398e81fc6ffd82e125d631c0817ef416ac0963f`) was qualified by genuine unchanged PHX-CI on Windows, run `6b6dd05b-33e2-4b63-ac29-3088477fdf64`. The original evidence was published at `569efcb54c75826b31c7d70a19193020ed7bb293`.
+- **Overall PASS, change-set PASS, repository PASS, 11/11 stages PASS, exit 0**; BVP focused **504/504 PASS** and product full suite **1292/1292 PASS**, no hardware/physical dispatch. The authorized DEC-349 4,500/950 budgets and governance guard passed.
+- This proves the exact *current first slice*, not completion of the broader DEC-348 requirements below. Still required: exhaustive fault-classification/phase/correlation/identity matrix across agent, relay, mailbox, simulator and bridge, CLI persistence failure safety and all 12 listed adversarial cases with observed structured diagnostic values; source-derived operator guide/coverage matrix. The detailed frozen DEC-348 contract remains unchanged.
+- **Next Builder action:** complete missing functional requirements/test coverage with tests first, preserve the now-proven source SHA as reference evidence, then run new exact-source Windows PHX-CI verification. No independent Reviewer handoff until complete feature qualification. The earlier Owner directive specifically deferring S09 physical review remains preserved.
 
 ## Problem established from source inspection
 
