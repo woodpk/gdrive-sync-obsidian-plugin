@@ -1,4 +1,4 @@
-import { deepStrictEqual, doesNotMatch, strictEqual } from "node:assert/strict";
+import { deepStrictEqual, doesNotMatch, rejects, strictEqual } from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,7 @@ import {
   safeUnexpectedFailure,
 } from "../src/scenario/scenario-diagnostics";
 import { createLiveScenarioExecutor } from "../src/live-device/live-scenario-executor";
+import { createDriveCommandMailbox, MailboxUnavailableError } from "../src/live-device/drive-mailbox";
 
 const fixture = (executionMode: "live" | "deterministic") => defineScenario({
   id: "diagnostic-fixture",
@@ -125,4 +126,25 @@ test("missing live response identifies an unknown receipt rather than claiming f
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("Drive mailbox distinguishes safe authorization, rate, provider and transport failures", async () => {
+  const samples: readonly [number, string][] = [
+    [401, "mailbox-drive-unauthorized"],
+    [403, "mailbox-drive-forbidden"],
+    [429, "mailbox-drive-rate-limited"],
+    [503, "mailbox-drive-provider-unavailable"],
+    [400, "mailbox-drive-request-rejected"],
+  ];
+  for (const [httpStatus, code] of samples) {
+    const mailbox = createDriveCommandMailbox(async () => new Response(null, { status: httpStatus }));
+    await rejects(() => mailbox.commands("test-run", "simulated-device"),
+      (error: unknown) => error instanceof MailboxUnavailableError && error.message === code);
+  }
+  const network = createDriveCommandMailbox(async () => {
+    throw new Error("Bearer leaked-token C:\\private\\vault");
+  });
+  await rejects(() => network.commands("test-run", "simulated-device"),
+    (error: unknown) => error instanceof MailboxUnavailableError &&
+      error.message === "mailbox-drive-transport-unavailable");
 });
