@@ -62,7 +62,21 @@ export interface DriveCommandMailbox {
 
 export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): DriveCommandMailbox {
   let root: Promise<string> | undefined;
-  async function call(url:string,init?:RequestInit):Promise<Response>{try{const r=await request(url,init);if(!r.ok)throw new Error("http-"+r.status);return r;}catch(e){throw e instanceof MailboxUnavailableError?e:new MailboxUnavailableError("mailbox-drive-unavailable");}}
+  async function call(url:string,init?:RequestInit):Promise<Response>{
+    try{
+      const response=await request(url,init);
+      if(response.ok)return response;
+      const code=response.status===401?"mailbox-drive-unauthorized":
+        response.status===403?"mailbox-drive-forbidden":
+        response.status===429?"mailbox-drive-rate-limited":
+        response.status>=500?"mailbox-drive-provider-unavailable":"mailbox-drive-request-rejected";
+      throw new MailboxUnavailableError(code);
+    }catch(error){
+      if(error instanceof MailboxUnavailableError)throw error;
+      // Never interpolate the raw transport error, URL, response body or credentials.
+      throw new MailboxUnavailableError("mailbox-drive-transport-unavailable");
+    }
+  }
   async function rootId():Promise<string>{return root??=(async()=>{const q=encodeURIComponent("trashed = false and appProperties has { key='brainBvpMailbox' and value='1' }");const found=await call(`${API}/files?q=${q}&spaces=drive&pageSize=10&fields=files(id,name,appProperties)`);const files=((await found.json()) as FileList).files??[];if(files.length>1)throw new Error("mailbox-root-ambiguous");if(files[0])return files[0].id;const created=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:ROOT_NAME,mimeType:FOLDER_MIME,appProperties:{brainBvpMailbox:"1"}})});const value=await created.json() as {id?:string};if(!value.id)throw new Error("mailbox-root-create-invalid");return value.id;})();}
   async function bindingListing(deviceId:string):Promise<FileList>{const parent=await rootId();const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='run-binding' } and appProperties has { key='brainBvpDeviceId' and value='${escapeQuery(deviceId)}' }`);const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=20&fields=nextPageToken,files(id,appProperties)`);const page=await response.json() as FileList;if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-run-binding-overflow");return page;}
   const bindingGeneration=(file:MailboxFile):number|undefined=>{const value=Number(file.appProperties?.brainBvpGeneration);return Number.isSafeInteger(value)&&value>0?value:undefined;};
