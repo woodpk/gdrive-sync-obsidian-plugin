@@ -73,9 +73,9 @@ export function bvpDiagnostic(input: BvpDiagnosticInput): BvpDiagnostic {
     },
     causeClass:token(input.causeClass,input.classification==="device-result-unavailable"?"device-result-unavailable":token(input.classification,"unexpected-internal-error")),
     retriability:input.effect==="unknown"?"requires-reconciliation":input.retriability==="safe-to-repeat"&&input.effect==="none-confirmed"?"safe-to-repeat":"not-applicable",
-    hops:(input.hops?.length&&input.hops.length<=12?input.hops:[
+    hops:(Array.isArray(input.hops)&&input.hops.length>0&&input.hops.length<=12?input.hops:[
       {boundary:input.lastConfirmedBoundary,status:input.lastConfirmedBoundary==="unknown"?"unknown":"confirmed"},
       {boundary:input.firstUnconfirmedBoundary,status:"unknown"},
-    ]).map(h=>({boundary:token(h.boundary,"unknown"),status:HOP_STATUS.has(h.status)?h.status:"unknown"})),
+    ]).map(h=>({boundary:token(h?.boundary,"unknown"),status:HOP_STATUS.has(h?.status)?h.status:"unknown"})),
   };
 }
