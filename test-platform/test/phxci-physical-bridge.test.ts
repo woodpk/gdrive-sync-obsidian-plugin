@@ -14,6 +14,7 @@ import { test } from "node:test";
 
 import { createScenarioCheckpoint, encodeScenarioCheckpoint, scenarioDefinitionDigest } from "../src/scenario/scenario-checkpoint";
 import { defineScenario } from "../src/scenario/scenario-contract";
+import { bvpDiagnostic } from "../src/live-device/diagnostic-contract";
 import {
   buildLiveRunnerArguments,
   decodeBridgeAttempt,
@@ -181,6 +182,24 @@ test("ER-01 authenticated bridge also accepts exact SHA-256 run identity while r
   deepStrictEqual(decodeBridgeAttempt(encodeBridgeAttempt(safe),expected(safe)),safe);
   parsed.result.evidence.machine.liveIdentity.runId="run-sha256:"+"f".repeat(24);
   throws(()=>encodeBridgeAttempt({...safe,resultJson:JSON.stringify(parsed)}),/identity|mismatch|result/i);
+});
+
+test("ER-01 bridge strictly validates typed nested diagnosis, rejecting untrusted fields",()=>{
+  const base=initial(3),parsed=JSON.parse(base.resultJson);
+  const diagnostic=bvpDiagnostic({
+    classification:"device-result-unavailable",component:"live-controller",phase:"response-wait",
+    lastConfirmedBoundary:"relay-outbox-write",firstUnconfirmedBoundary:"device-result-receipt",
+    effect:"unknown",recommendedAction:"inspect-pending-command",
+    identity:{runId:"run-sha256:"+sha(logicalRunId).slice(0,24),scenarioId:scenario.id,
+      stepIndex:0,executionMode:"windows-live",correlationToken:"corr-sha256:"+sha("test").slice(0,24)},
+    hops:[{boundary:"relay-outbox-write",status:"confirmed"},{boundary:"device-result-receipt",status:"unknown"}],
+  });
+  parsed.result.diagnostic=diagnostic;
+  parsed.result.evidence.machine.verdict.diagnostic=diagnostic;
+  const good={...base,resultJson:JSON.stringify(parsed)};
+  deepStrictEqual(decodeBridgeAttempt(encodeBridgeAttempt(good),expected(good)),good);
+  parsed.result.evidence.machine.verdict.diagnostic={...diagnostic,accessToken:"Bearer synthetic-secret"};
+  throws(()=>encodeBridgeAttempt({...good,resultJson:JSON.stringify(parsed)}),/privacy|diagnostic|invalid/i);
 });
 
 test("TDD-02 checkpoint: exit 3 and original v2 BVP checkpoint persist without manufacturing PASS", () => {
