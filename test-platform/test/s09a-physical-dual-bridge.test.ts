@@ -221,3 +221,28 @@ test("S09A operator accepts a Settings-screen bare 32-hex identity and forwards 
     strictEqual(/^device:[a-f0-9]{32}$/.test(normalized),false);
   }
 });
+
+
+test("S09A operator binds a fresh source at each invocation and does not depend on an obsolete pinned evidence SHA",()=>{
+  const operator=readFileSync(resolve(process.cwd(),"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
+  strictEqual(operator.includes("[Parameter(Mandatory = $true)]"),false);
+  strictEqual(operator.includes("if (-not $PSBoundParameters.ContainsKey('ExpectedSourceSha'))"),true);
+  strictEqual(operator.includes("$ExpectedSourceSha = $local[0].Trim()"),true);
+  strictEqual(operator.includes("if ($local[0].Trim() -cne $ExpectedSourceSha)"),true);
+  strictEqual(operator.includes("$remote[0].Trim() -cne $ExpectedSourceSha"),true);
+  strictEqual(operator.includes("Write-Output ('FROZEN_SOURCE_SHA=' + $ExpectedSourceSha)"),true);
+  strictEqual((operator.match(/Write-Output \('PHX-CI_EXIT_CODE='/g)??[]).length,1);
+  strictEqual((operator.match(/--run-approved-s09a-dual-readiness/g)??[]).length,1);
+});
+test("S09A iOS ID input is validated before expensive PHX-CI qualification and user consent remains after qualification",()=>{
+  const operator=readFileSync(resolve(process.cwd(),"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
+  const validated=operator.indexOf("if ($iosId -cnotmatch '^device:[a-f0-9]{32}$')");
+  const firstPHX=operator.indexOf("& $phxFrontDoor");
+  const approval=operator.indexOf("$confirmation = Read-Host $approvalPrompt");
+  const dispatched=operator.indexOf("& $phxFrontDoor",firstPHX+1);
+  strictEqual(validated>0&&validated<firstPHX,true);
+  strictEqual(approval>firstPHX,true);
+  strictEqual(dispatched>approval,true);
+  strictEqual(operator.includes("BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'"),true);
+  strictEqual(operator.includes("BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp'"),true);
+});
