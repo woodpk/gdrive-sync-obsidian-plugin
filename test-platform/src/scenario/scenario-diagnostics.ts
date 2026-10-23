@@ -27,6 +27,10 @@ const SAFE_COMPONENTS = new Set<BvpDiagnosticComponent>([
   "device-agent", "drive-mailbox", "windows-relay",
 ]);
 const SAFE_EFFECTS = new Set<BvpDiagnostic["effect"]>(["unknown", "none-confirmed", "confirmed"]);
+const TRUSTED_VIRTUAL_CRASH_REASONS = new Set([
+  "virtual-crash:before-remote-dispatch", "virtual-crash:after-remote-effect",
+  "virtual-crash:before-canonical-state-write", "virtual-crash:after-canonical-state-write",
+]);
 function token(value: unknown, fallback: string): string {
   return typeof value === "string" && TOKEN.test(value) ? value : fallback;
 }
@@ -53,10 +57,13 @@ export function safeUnexpectedFailure(
   context: Pick<BvpDiagnosticInput, "component" | "phase" | "lastConfirmedBoundary" |
     "firstUnconfirmedBoundary" | "stepId">,
   classification = "step-exception",
-): { readonly status: "failed"; readonly classification: string; readonly diagnostic: BvpDiagnostic } {
+): { readonly status: "failed"; readonly classification: string; readonly reason?: string; readonly diagnostic: BvpDiagnostic } {
   const diagnostic = bvpDiagnostic({
     ...context, classification, effect: "unknown",
     recommendedAction: "inspect-run-evidence",
   });
-  return { status: "failed", classification: diagnostic.classification, diagnostic };
+  const knownReason = _error instanceof Error && TRUSTED_VIRTUAL_CRASH_REASONS.has(_error.message)
+    ? _error.message : undefined;
+  return { status: "failed", classification: diagnostic.classification,
+    ...(knownReason ? { reason: knownReason } : {}), diagnostic };
 }
