@@ -286,3 +286,27 @@ test("invalid preflight scenarios fail safely without echoing private fields",as
   strictEqual(result.diagnostic?.effect,"none-confirmed");
   doesNotMatch(JSON.stringify(result),/secret-vault|private-token|secret-note|owner/);
 });
+
+test("result file persistence failure has a separate safe phase instead of pretending output was saved",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"bvp-persistence-fault-"));
+  try{
+    const destination=join(root,"occupied-output-directory");
+    await mkdir(destination);
+    const live=spawnSync(process.execPath,[
+      join(__dirname,"batteries","run-live-battery.js"),
+      "--battery","nonexistent-battery","--result-file",destination,
+    ],{encoding:"utf8"});
+    strictEqual(live.status,1);
+    strictEqual(live.stderr.includes('"classification":"result-persistence-failed"'),true);
+    strictEqual(live.stderr.includes('"phase":"result-persistence"'),true);
+    doesNotMatch(live.stderr,/at main|node:internal|occupied-output-directory/);
+    const deterministic=spawnSync(process.execPath,[
+      join(__dirname,"batteries","run-deterministic-battery.js"),
+      "--battery","nonexistent-battery","--result-file",destination,
+    ],{encoding:"utf8"});
+    strictEqual(deterministic.status,1);
+    strictEqual(deterministic.stderr.includes('"classification":"result-persistence-failed"'),true);
+    strictEqual(deterministic.stderr.includes('"phase":"result-persistence"'),true);
+    doesNotMatch(deterministic.stderr,/at main|node:internal|occupied-output-directory/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
