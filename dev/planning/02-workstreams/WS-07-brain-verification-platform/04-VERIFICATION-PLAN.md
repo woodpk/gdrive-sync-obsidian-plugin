@@ -1,5 +1,9 @@
 # Verification Plan — BRAIN Verification Platform
 
+## Owner-directed verification strategy amendment — 2026-10-23
+
+**DEC-346/347/348 control future BVP operation.** The default test environment is Windows Obsidian plus BVP's existing Windows-hosted virtual iPhone/iPad world. All iOS/iPad-relevant scenarios must be inventoried and mapped to that simulator; genuine OS/hardware behaviors that it cannot prove remain explicitly UNVERIFIED and must not be called physical PASS. Physical mobile runs are deferred pending an explicit future Owner decision. The complete BVP API is to be operated through a compact PowerShell library **directly**, never through PHX-CI; only engineering software-change verification (if required by the existing build rules) remains a separate PHX-CI concern. The planned error-reporting coverage, safety, and failure-injection matrix is at [BVP Error Communication and Diagnostic Upgrade](tasks/bvp-error-communication-upgrade-2026-10-23.md). Historical sections below describing physical/live acceptance are superseded **for the present Windows-first campaign**, not deleted or silently treated as proven.
+
 ## 1. Purpose
 
 This artifact proves that the replacement testing architecture covers both its own target specification and the BRAIN product target specification's completion-evidence obligations without preserving the oversized legacy harness architecture.
