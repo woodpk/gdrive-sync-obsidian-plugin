@@ -15,6 +15,7 @@ import {
 } from "../src/scenario/scenario-diagnostics";
 import { createLiveScenarioExecutor, liveCommandId } from "../src/live-device/live-scenario-executor";
 import { createDriveCommandMailbox, MailboxUnavailableError } from "../src/live-device/drive-mailbox";
+import { bridgeFailureDiagnostic } from "./batteries/phxci-physical-bridge";
 
 const fixture = (executionMode: "live" | "deterministic") => defineScenario({
   id: "diagnostic-fixture",
@@ -255,4 +256,19 @@ test("malformed inbox receipts have a distinct failure classification without in
     strictEqual(result.diagnostic?.effect,"unknown");
     doesNotMatch(JSON.stringify(result),/Bearer secret|private-physical-id/);
   }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test("bridge classifies known gate failures but hides arbitrary private exception text",()=>{
+  const known=bridgeFailureDiagnostic(new Error("bvp-phxci-bridge-physical-result-uncertain"));
+  strictEqual(known.code,"bvp-phxci-bridge-physical-result-uncertain");
+  strictEqual(known.diagnostic.classification,"bridge-physical-result-uncertain");
+  strictEqual(known.diagnostic.component,"battery-runner");
+  strictEqual(known.diagnostic.effect,"unknown");
+  strictEqual(known.diagnostic.firstUnconfirmedBoundary,"bridge-outcome");
+  const secret=bridgeFailureDiagnostic(new Error("Bearer oauth-secret C:\\private\\vault"));
+  strictEqual(secret.code,"bvp-phxci-bridge-unexpected-internal-error");
+  strictEqual(secret.diagnostic.classification,"bridge-unexpected-internal-error");
+  doesNotMatch(JSON.stringify(secret),/oauth-secret|private|vault|unclassified-error/);
+  const invalid=bridgeFailureDiagnostic(new Error("bvp-phxci-bridge-unsafe/path"));
+  strictEqual(invalid.code,"bvp-phxci-bridge-unexpected-internal-error");
 });
