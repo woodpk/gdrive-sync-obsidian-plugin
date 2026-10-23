@@ -3,7 +3,7 @@ import { createWriteStream } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
-import { safeUnexpectedFailure } from "../../src/scenario/scenario-diagnostics";
+import { bvpDiagnostic, safeUnexpectedFailure } from "../../src/scenario/scenario-diagnostics";
 
 import {
   getDeterministicBattery,
@@ -113,7 +113,13 @@ main().catch(async error => {
     try {
       await persist(resultFile, JSON.stringify({ result: failure }, null, 2) + "\n");
     } catch {
-      console.error("BVP_DIAGNOSTIC result-persistence-failed");
+      const diagnostic=bvpDiagnostic({
+        classification:"result-persistence-failed",component:"battery-runner",
+        phase:"result-persistence",lastConfirmedBoundary:"battery-failure-classified",
+        firstUnconfirmedBoundary:"result-file-write",effect:"unknown",
+        recommendedAction:"inspect-output-path",
+      });
+      console.error("BVP_DIAGNOSTIC "+JSON.stringify(diagnostic));
     }
   }
   console.error("BVP_DIAGNOSTIC " + JSON.stringify(failure.diagnostic));
