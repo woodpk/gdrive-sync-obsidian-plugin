@@ -310,3 +310,23 @@ test("result file persistence failure has a separate safe phase instead of prete
     doesNotMatch(deterministic.stderr,/at main|node:internal|occupied-output-directory/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("ordinary simulated assertion failures carry phase and uncertainty in canonical evidence",async()=>{
+  const scenario=defineScenario({
+    id:"simulated-assertion-failure",description:"Expected failure diagnostic coverage",
+    traceability:{targets:[{kind:"requirement",id:"BVP-EVID-005"}]},
+    executionModes:["deterministic"],
+    steps:[
+      {id:"read",kind:"observe",subject:"local-entry",device:"device-a",path:"not-present.md",captureAs:"local"},
+      {id:"assert",kind:"assert",assertion:"exists",observationRef:"local",expected:true},
+    ],
+  });
+  const result=await DeterministicScenarioRunner.canonical().run(scenario);
+  strictEqual(result.status,"failed");
+  strictEqual(result.classification,"assertion-mismatch");
+  strictEqual(result.diagnostic?.phase,"simulated-step-result");
+  strictEqual(result.diagnostic?.lastConfirmedBoundary,"scenario-step-result-received");
+  strictEqual(result.diagnostic?.firstUnconfirmedBoundary,"expected-outcome-confirmation");
+  strictEqual(result.evidence?.machine.verdict.diagnostic?.classification,"assertion-mismatch");
+  strictEqual(result.steps[1]?.diagnostic?.classification,"assertion-mismatch");
+});
