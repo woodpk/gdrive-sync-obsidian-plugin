@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { safeUnexpectedFailure } from "../../src/scenario/scenario-diagnostics";
 
 import { DeterministicScenarioRunner } from "../../src/scenario/scenario-runner";
 import { createLiveScenarioExecutor } from "../../src/live-device/live-scenario-executor";
@@ -183,26 +184,22 @@ async function main(): Promise<void> {
 }
 
 main().catch(async error => {
-  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  const failure = safeUnexpectedFailure(error, {
+    component: "battery-runner", phase: "battery-preflight",
+    lastConfirmedBoundary: "battery-entrypoint",
+    firstUnconfirmedBoundary: "battery-execution",
+  }, "battery-runner-exception");
   const resultFile = optionalArg("--result-file");
   if (resultFile) {
-    const batteryName = optionalArg("--battery") ?? "<unknown>";
     try {
       await persistResult(resultFile, {
-        battery: { name: batteryName },
-        result: {
-          status: "failed",
-          classification: "battery-runner-exception",
-          reason: message,
-        },
+        battery: { name: "unresolved" },
+        result: failure,
       });
-    } catch (persistError) {
-      console.error(
-        "Failed to persist battery exception result:",
-        persistError instanceof Error ? persistError.message : String(persistError),
-      );
+    } catch {
+      console.error("BVP_DIAGNOSTIC result-persistence-failed");
     }
   }
-  console.error(message);
+  console.error("BVP_DIAGNOSTIC " + JSON.stringify(failure.diagnostic));
   process.exitCode = 1;
 });
