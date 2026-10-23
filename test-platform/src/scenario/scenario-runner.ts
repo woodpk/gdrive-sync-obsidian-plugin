@@ -24,6 +24,7 @@ export interface ScenarioExecutionResult {
   readonly scenarioId: string; readonly status: ScenarioExecutionStatus;
   readonly steps: readonly ScenarioStepExecution[]; readonly captures: Readonly<Record<string, unknown>>;
   readonly classification?: string; readonly reason?: string; readonly diagnostic?: BvpDiagnostic;
+  readonly cleanupDiagnostic?: BvpDiagnostic;
   readonly evidence?: CanonicalScenarioEvidence;
 }
 export type ScenarioCapabilityResult =
@@ -72,21 +73,44 @@ export class DeterministicScenarioRunner {
   static canonical(): DeterministicScenarioRunner { return new DeterministicScenarioRunner(createScenarioEvidenceHooks()); }
 
   async run(scenario: ScenarioDefinition): Promise<ScenarioExecutionResult> {
+    const safeDispose = async(devices:Iterable<VirtualProductionDevice>=[]):Promise<BvpDiagnostic|undefined>=>{
+      let failed:BvpDiagnostic|undefined;
+      for(const device of devices){
+        try{await device.dispose();}catch{failed??=bvpDiagnostic({classification:"cleanup-failed",
+          component:"scenario-runner",phase:"scenario-cleanup",
+          lastConfirmedBoundary:"scenario-steps-observed",firstUnconfirmedBoundary:"device-disposal",
+          effect:"unknown",recommendedAction:"inspect-cleanup-state"});}
+      }
+      try{await this.executor?.dispose?.();}catch{failed??=bvpDiagnostic({classification:"cleanup-failed",
+        component:"scenario-runner",phase:"scenario-cleanup",
+        lastConfirmedBoundary:"scenario-steps-observed",firstUnconfirmedBoundary:"executor-disposal",
+        effect:"unknown",recommendedAction:"inspect-cleanup-state"});}
+      return failed;
+    };
     const validated = validateScenarioDefinition(scenario);
     if (!validated.ok) {
-      await this.executor?.dispose?.();
+      const cleanupDiagnostic=await safeDispose();
       const diagnostic=bvpDiagnostic({
         classification:"invalid-scenario",component:"scenario-runner",phase:"scenario-preflight",
         lastConfirmedBoundary:"scenario-input-received",firstUnconfirmedBoundary:"scenario-validation",
         effect:"none-confirmed",recommendedAction:"inspect-scenario-schema",
       });
-      return {scenarioId:"invalid-scenario",status:"unsupported",steps:[],captures:{},
-        classification:"invalid-scenario",diagnostic};
+      return {scenarioId:"invalid-scenario",status:cleanupDiagnostic?"failed":"unsupported",steps:[],captures:{},
+        classification:cleanupDiagnostic?.classification??"invalid-scenario",
+        diagnostic:cleanupDiagnostic??diagnostic,...(cleanupDiagnostic?{cleanupDiagnostic}:{})};
     }
     const executionMode = this.executor?.executionMode ?? "deterministic";
     if (!scenario.executionModes.includes(executionMode)) {
-      const core = { scenarioId: scenario.id, status: "unsupported" as const, steps: [], captures: {}, classification: "execution-mode-not-applicable" };
-      await this.executor?.dispose?.();
+      const cleanupDiagnostic=await safeDispose();
+      const diagnostic=cleanupDiagnostic??bvpDiagnostic({
+        classification:"execution-mode-not-applicable",component:"scenario-runner",
+        phase:"execution-mode-preflight",lastConfirmedBoundary:"scenario-validated",
+        firstUnconfirmedBoundary:"scenario-mode-dispatch",effect:"none-confirmed",
+        recommendedAction:"select-supported-mode",
+      });
+      const core = { scenarioId: scenario.id, status: cleanupDiagnostic?"failed" as const:"unsupported" as const,
+        steps: [], captures: {}, classification:diagnostic.classification,diagnostic,
+        ...(cleanupDiagnostic?{cleanupDiagnostic}:{}) };
       return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities: this.executor?.deviceIdentities??[], executionMode, runIdentity:this.executor?.runIdentity, buildIdentity:this.executor?.buildIdentity }) };
     }
 
@@ -103,11 +127,15 @@ export class DeterministicScenarioRunner {
       },
     } : undefined;
     const finish = async (status: ScenarioExecutionStatus, classification?: string, reason?: string, diagnostic?: BvpDiagnostic): Promise<ScenarioExecutionResult> => {
-      for (const device of devices.values()) await device.dispose();
-      await this.executor?.dispose?.();
-      const core = { scenarioId: scenario.id, status, steps, captures: Object.fromEntries(captures),
-        ...(classification === undefined ? {} : { classification }), ...(reason === undefined ? {} : { reason }),
-        ...(diagnostic === undefined ? {} : { diagnostic }) };
+      const cleanupDiagnostic=await safeDispose(devices.values());
+      const finalStatus=cleanupDiagnostic&&status==="completed"?"failed":status;
+      const finalDiagnostic=cleanupDiagnostic&&status==="completed"?cleanupDiagnostic:diagnostic;
+      const finalClassification=cleanupDiagnostic&&status==="completed"?cleanupDiagnostic.classification:classification;
+      const core = { scenarioId: scenario.id, status:finalStatus, steps, captures: Object.fromEntries(captures),
+        ...(finalClassification === undefined ? {} : { classification:finalClassification }),
+        ...(reason === undefined ? {} : { reason }),
+        ...(finalDiagnostic === undefined ? {} : { diagnostic:finalDiagnostic }),
+        ...(cleanupDiagnostic?{cleanupDiagnostic}:{}) };
       const deviceIdentities = this.executor?.deviceIdentities ?? [...names].map(name => String(world!.deviceBacking(name).deviceIdentity));
       return { ...core, evidence: buildScenarioEvidence(scenario, { ...core, deviceIdentities, executionMode, runIdentity:this.executor?.runIdentity, buildIdentity:this.executor?.buildIdentity }) };
     };
