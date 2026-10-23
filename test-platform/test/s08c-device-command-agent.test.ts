@@ -271,3 +271,44 @@ test("atomic durable claim permits only one concurrent physical execution", asyn
 test("validation-only path digest matches independent SHA-256 golden vector", async () => {
   equal(await bvpOpaquePathKey("BVP-VALIDATION/one-canary.md"), "path-sha256:b04c7a9d6d5485535ef8b220ee72f5a72854f033312a5f91667cbaa1bc210ec4");
 });
+
+test("handler exceptions preserve claimed-command uncertainty with safe public diagnostics", async () => {
+  const fixtures = fixtureHarness();
+  fixtures.port.putText = async () => { throw new Error("Bearer private-oauth-token /Users/owner/vault.md"); };
+  const state = new MemorySequenceStore();
+  const agent = createBoundedDeviceCommandAgent({
+    validationBuild, runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001",
+    fixtures: fixtures.port, sequenceState: state,
+  });
+  const action = command(1, { kind: "fixture-put", path: "sensitive.md", content: { type: "text", text: "private-note" } });
+  const result = await agent.execute(action);
+  equal(result.status, "failed");
+  equal(result.classification, "command-handler-failed");
+  equal(result.diagnostic?.component, "device-agent");
+  equal(result.diagnostic?.phase, "command-execution");
+  equal(result.diagnostic?.lastConfirmedBoundary, "sequence-claim-persisted");
+  equal(result.diagnostic?.firstUnconfirmedBoundary, "command-handler-outcome");
+  equal(result.diagnostic?.effect, "unknown");
+  equal(state.state?.phase, "completed");
+  equal((await agent.execute(action)).replayed, true);
+  equal((await agent.execute(action)).diagnostic?.classification, "command-handler-failed");
+  equal(/private-oauth-token|vault\.md|private-note/.test(JSON.stringify(result)), false);
+});
+
+test("failed result finalization retains unknown effects and never retries a claimed operation", async () => {
+  const fixtures = fixtureHarness(), store = new FailFinalizationStore();
+  const agent = createBoundedDeviceCommandAgent({
+    validationBuild, runId, deviceId, fixtureRoot: "BVP-VALIDATION/run-001",
+    fixtures: fixtures.port, sequenceState: store,
+  });
+  const action = command(1, { kind: "fixture-put", path: "committed.md", content: { type: "text", text: "once" } });
+  const result = await agent.execute(action);
+  equal(result.classification, "sequence-state-finalization-failed");
+  equal(result.diagnostic?.phase, "sequence-finalization");
+  equal(result.diagnostic?.lastConfirmedBoundary, "command-handler-returned");
+  equal(result.diagnostic?.firstUnconfirmedBoundary, "sequence-result-persisted");
+  equal(result.diagnostic?.effect, "unknown");
+  const repeat = await agent.execute(action);
+  equal(repeat.classification, "prior-outcome-uncertain");
+  equal(fixtures.calls.filter(c => c.startsWith("text:")).length, 1);
+});
