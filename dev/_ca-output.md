@@ -1,3 +1,16 @@
+# BVP Error Reporting Upgrade — Current Builder Session (2026-10-23)
+
+- Feature: `WS-07 / BVP_ERROR_REPORTING_UPGRADE`; branch `build/bvp-error-diagnostics-20261023`.
+- Work status: **IMPLEMENTATION IN PROGRESS — NOT QUALIFIED**.
+- Tests-first source commit: `d747f8dcc6315e9e35c9bfa4a149314036c9da22`; expanded fault-contract test commit: `3b305185256d33bfdb160f0c121fc081b06112fa`.
+- Source implementation includes bounded structured diagnostics, scenario/evidence propagation, privacy-safe CLI exceptions, live timeout/correlation boundaries and categorized Drive request failures.
+- Local Windows PHX-CI qualification: **NOT EXECUTED for this candidate**; no PASS, no source acceptance, no reviewer handoff and no physical activity are claimed.
+- Prior PHX-CI record below belongs to an earlier S09 physical readiness task, **not** this Builder feature.
+
+---
+
+## Prior verification output (historical, unchanged)
+
 STATUS: BLOCKED
 
 # phx-ci evidence - gdrive-sync-obsidian-plugin
