@@ -54,6 +54,10 @@ function transportFailure(value:RelayResult):ScenarioCapabilityResult|undefined{
     classification:"device-result-unavailable",component:"live-controller",phase:"response-wait",
     lastConfirmedBoundary:"relay-outbox-write",firstUnconfirmedBoundary:"device-result-receipt",
     effect:"unknown",recommendedAction:"inspect-pending-command",
+    hops:[{boundary:"relay-outbox-write",status:"confirmed"},
+      {boundary:"drive-command-publication",status:"unknown"},
+      {boundary:"device-command-consumed",status:"unknown"},
+      {boundary:"device-result-receipt",status:"unknown"}],
   })};
   if(value===null)return {status:"failed",classification:"result-correlation-mismatch",diagnostic:bvpDiagnostic({
     classification:"result-correlation-mismatch",component:"live-controller",phase:"receipt-validation",
@@ -116,6 +120,9 @@ export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOpt
         classification:"relay-outbox-write-failed",component:"live-controller",phase:"command-queue",
         lastConfirmedBoundary:"controller-command-prepared",firstUnconfirmedBoundary:"relay-outbox-write",
         effect:"unknown",recommendedAction:"inspect-local-relay",stepId,
+        hops:[{boundary:"controller-command-prepared",status:"confirmed"},
+          {boundary:"relay-outbox-write",status:"unknown"},
+          {boundary:"drive-command-publication",status:"not-observed"}],
       }));}
     }
     const deadline=Date.now()+(command.kind==="production-execute"?productionTimeout:timeout);
