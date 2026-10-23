@@ -15,7 +15,6 @@ const SAFE_COMPONENTS = new Set<BvpDiagnosticComponent>([
 ]);
 const SAFE_EFFECTS = new Set<BvpDiagnostic["effect"]>(["unknown", "none-confirmed", "confirmed"]);
 const OPAQUE = /^(?:run|corr)-sha256:[a-f0-9]{24}$/;
-const HOP_STATUS=new Set(["confirmed","not-observed","unknown"]);
 const MODES=new Set(["deterministic","windows-live","simulated-mobile","unknown"]);
 /** Browser-safe privacy-derived correlation; never emit the unhashed source. */
 export async function opaqueDiagnosticId(value:string,kind:"run"|"corr"):Promise<string>{
