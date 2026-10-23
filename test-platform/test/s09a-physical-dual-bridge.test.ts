@@ -139,14 +139,14 @@ test("dual readiness rejects forged capture, untrusted source evidence and stray
   }
 });
 
-test("S09A physical operator requires a separate explicit consent and cannot bypass PHX-CI", () => {
-  const script = readFileSync(resolve(process.cwd(), "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
-  strictEqual(script.includes("[switch]$RunS09ADualPhysicalReadiness"), true);
-  strictEqual(script.includes("BVP_S09A_DUAL_OWNER_APPROVAL"), true);
-  strictEqual(script.includes("BVP_IOS_VALIDATION_READY_CONFIRMED"), true);
-  strictEqual(script.includes("BVP_IOS_DEVICE_ID"), true);
-  strictEqual(script.includes("--run-approved-s09a-dual-readiness"), true);
-  strictEqual(script.includes("Read-Host"), true);
-  strictEqual(script.includes("-FocusedTestCommand $dualPhysicalCommand"), true);
-  strictEqual(script.includes("-PublicationMode push"), true);
+test("S09A dual physical entrypoint remains gated while the operator offers only software qualification", () => {
+  const bridge = readFileSync(resolve(process.cwd(), "test-platform/test/batteries/phxci-physical-bridge.ts"), "utf8");
+  const operator = readFileSync(resolve(process.cwd(), "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"), "utf8");
+  strictEqual(bridge.includes("BVP_S09A_DUAL_OWNER_APPROVAL"), true);
+  strictEqual(bridge.includes("BVP_IOS_VALIDATION_READY_CONFIRMED"), true);
+  strictEqual(bridge.includes("--run-approved-s09a-dual-readiness"), true);
+  // A verified dual physical operator is still a separate follow-up task.
+  strictEqual(operator.includes("[switch]$RunS09ADualPhysicalReadiness"), false);
+  strictEqual(operator.includes("npm run test:bvp-root"), true);
+  strictEqual(operator.includes("-PublicationMode push"), true);
 });
