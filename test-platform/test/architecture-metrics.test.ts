@@ -148,7 +148,12 @@ test("architecture metrics pass the actual BRAIN repository baseline", () => {
   strictEqual(value.current.productionSeamFileCount, 3);
   strictEqual(value.current.productionSeamLogicalLoc > 0, true);
   strictEqual(value.current.productionSeamLogicalLoc <= 350, true);
-  strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc <= 750, true);
+  // DEC-349 changes only these two frozen manifest limits; no budget bypass.
+  strictEqual(value.current.frameworkCoreLogicalTsLoc <= 4500, true);
+  strictEqual(value.current.liveDeviceAgentRelayLogicalTsLoc <= 950, true);
+  const ceilings = Object.fromEntries(value.budgets.map((entry: any) => [entry.id, entry.limit]));
+  strictEqual(ceilings.FRAMEWORK_CORE_LOC, 4500);
+  strictEqual(ceilings.LIVE_DEVICE_AGENT_RELAY_LOC, 950);
   const scenarios = value.current.scenarios ?? [];
   strictEqual(value.current.scenarioCount, scenarios.length);
   strictEqual(
@@ -291,6 +296,33 @@ test("framework core logical LOC over 4000 fails", () => {
 test("live-device agent and relay logical LOC over 750 fails", () => {
   withFixture((root) => {
     writeText(root, "test-platform/src/device-agent/agent.ts", lines(751));
+    assertBudgetFailure(runMetrics(root), "LIVE_DEVICE_AGENT_RELAY_LOC");
+  });
+});
+
+test("DEC-349 owner-authorized frozen manifest limits are exact and reject one extra logical line", () => {
+  const manifest = readFileSync(join(repositoryRoot,
+    "dev/authority/governance/locks/testing-platform-boundary.yaml"), "utf8");
+  strictEqual(manifest.includes("test_platform_framework_core_logical_ts_loc_max: 4500"), true);
+  strictEqual(manifest.includes("live_device_agent_logical_ts_loc_max: 950"), true);
+  withFixture((root) => {
+    const path = "dev/authority/governance/locks/testing-platform-boundary.yaml";
+    let fixture = readFileSync(join(root, ...path.split("/")), "utf8");
+    fixture = fixture.replace("test_platform_framework_core_logical_ts_loc_max: 4000",
+      "test_platform_framework_core_logical_ts_loc_max: 4500")
+      .replace("live_device_agent_logical_ts_loc_max: 750",
+        "live_device_agent_logical_ts_loc_max: 950");
+    writeText(root, path, fixture);
+    writeText(root, "test-platform/src/platform-root.ts", lines(4500));
+    const atCoreLimit = assertPass(runMetrics(root));
+    strictEqual(atCoreLimit.current.frameworkCoreLogicalTsLoc, 4500);
+    writeText(root, "test-platform/src/platform-root.ts", lines(4501));
+    assertBudgetFailure(runMetrics(root), "FRAMEWORK_CORE_LOC");
+    writeText(root, "test-platform/src/platform-root.ts", lines(1));
+    writeText(root, "test-platform/src/device-agent/agent.ts", lines(950));
+    const atLiveLimit = assertPass(runMetrics(root));
+    strictEqual(atLiveLimit.current.liveDeviceAgentRelayLogicalTsLoc, 950);
+    writeText(root, "test-platform/src/device-agent/agent.ts", lines(951));
     assertBudgetFailure(runMetrics(root), "LIVE_DEVICE_AGENT_RELAY_LOC");
   });
 });
