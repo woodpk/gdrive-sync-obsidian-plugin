@@ -420,6 +420,30 @@
       "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
     },
     {
+      "name": "BvpDiagnostic",
+      "kind": "reexport",
+      "signature": "export type { BvpDiagnostic, BvpDiagnosticInput, BvpDiagnosticComponent } from \"../live-device/diagnostic-contract\";",
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpDiagnosticInput",
+      "kind": "reexport",
+      "signature": "export type { BvpDiagnostic, BvpDiagnosticInput, BvpDiagnosticComponent } from \"../live-device/diagnostic-contract\";",
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpDiagnosticComponent",
+      "kind": "reexport",
+      "signature": "export type { BvpDiagnostic, BvpDiagnosticInput, BvpDiagnosticComponent } from \"../live-device/diagnostic-contract\";",
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
       "name": "BvpDiagnosticError",
       "kind": "class",
       "signature": "export class BvpDiagnosticError extends Error { constructor(readonly diagnostic:BvpDiagnostic,readonly status:\"failed\"|\"blocked\"=\"failed\"){",
