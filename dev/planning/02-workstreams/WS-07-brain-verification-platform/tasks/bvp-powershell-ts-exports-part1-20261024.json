@@ -1318,6 +1318,45 @@
       "operatorCommand": "Invoke-BvpScenario",
       "accessRequirement": "discovery-only-owner-physical-approval-required",
       "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "BvpDiagnostic",
+      "kind": "reexport",
+      "signature": "export type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from \"../diagnostic-types\";",
+      "source": "test-platform/src/live-device/diagnostic-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "COMPILE_TIME_ONLY",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "BvpDiagnosticComponent",
+      "kind": "reexport",
+      "signature": "export type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from \"../diagnostic-types\";",
+      "source": "test-platform/src/live-device/diagnostic-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "COMPILE_TIME_ONLY",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "BvpDiagnosticInput",
+      "kind": "reexport",
+      "signature": "export type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from \"../diagnostic-types\";",
+      "source": "test-platform/src/live-device/diagnostic-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "COMPILE_TIME_ONLY",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     }
   ],
   "notAnOperatorApi": true
