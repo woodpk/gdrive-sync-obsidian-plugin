@@ -62,7 +62,7 @@ async function main(argv: readonly string[]): Promise<void> {
     return;
   }
   // After preflight the request is always the verified execute variant.
-  if (request.kind !== "execute") return;
+  if (!request || request.kind !== "execute") return;
   let result;
   try {
     const definition = getDeterministicScenario(request.scenarioId);
