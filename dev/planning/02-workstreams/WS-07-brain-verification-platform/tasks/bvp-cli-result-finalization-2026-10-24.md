@@ -4,7 +4,7 @@
 **Builder working branch:** `build/bvp-cli-result-finalization-20261024`
 **Base:** `f34139ba380f2f9d39871a4ab4f31ede0dad531f` (DEC-351 independent accepted, closeout complete).
 **Owner authorization:** 2026-10-24 — begin the next Build Unit immediately; software-only, preserving all separate physical/security/release gates.
-**Status:** BUILDER IN PROGRESS — PLANNED, TEST-FIRST IMPLEMENTATION AND PHX-CI QUALIFICATION PENDING.
+**Status:** BUILDER SOURCE AND TESTS COMMITTED; genuine Windows PHX-CI qualification **NOT YET EXECUTED**; independent final review NOT YET ELIGIBLE.
 **Normative basis:** DEC-351, its R5 accepted public CLI contract, final review `dev/reviews/dec351-direct-scenario-cli-20261024-r5-independent-final.md` (M-03), AGENTS.md, governing Protocol/Manual and current WS-07 frozen architecture/PHX-CI rules.
 
 ## Required behavior and defect
@@ -47,3 +47,10 @@ Existing DEC-351 tests remain governing regression oracles. The new test must de
 Builder first writes/commits tests and test-only fixture, then corrects CLI, self-reviews, and uses **only installed pinned PHX-CI** via existing repository-controlled operator scripts on Windows 11/PowerShell 7.6.6 for full substantive 11-stage verification. Capture actual source SHA, Git tree, runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`, test discovery/counts, raw terminal, run ID, exit, immutable evidence and actual published paths. No standalone Node, tsc, npm or bespoke validation execution.
 
 Only after genuine PHX-CI PASS and canonical publication can Builder increment this **new** feature's handoff-count 0→1, publish recipient REVIEWER, and issue the exact blind-safe Builder→Reviewer prompt. No software acceptance, physical run, master merge, release, or new subsequent unit implied before that.
+
+## Source/test construction record (not verification)
+
+- Test-first authored commit: `6cb3fa5edcd13841c80fafba16e74fa9305f87fd` — compiled CLI end-to-end regression uses a local hardcoded Node `--require` fixture to intercept `fs.promises.open("wx")` and throw *after* real FileHandle.close. Requires child exit 1, empty stdout despite `completed` canonical JSON already written, redacted `result-close` diagnostic; verifies normal close still emits correctly matching completed summary and exit 0. Original DEC-351 tests unchanged except appended new test.
+- Implemented source commit: `7848906496db4c58ada79c9aa3ec953cf5643712` — holds pending status summary in memory until `await output.close()` succeeds; after close fault discards pending stdout, emits privacy-safe `scenario-result-persistence-failed` diagnostic in `result-close` phase and exits nonzero. Original request parsing, canonical runner/status machine evidence, reservations, public argv and schema unchanged.
+- Review for semantic risk: early `return` paths still close in `finally` and cannot emit a deferred success; noncompleted canonical statuses continue to print only after successful close with nonzero status; result-close failure with syntactically valid file must be rejected by actual exit and corroborating evidence. No no-success-to-success oracle relaxation.
+- **No executable validation performed.** Local Windows pinned PHX-CI is mandatory next. Invoke installed `69c4aa077d4a1a46d1e85e59f39d36285be99e83` using its verified `scripts/Invoke-PhxCi.ps1`, `-FocusedTestCommand 'npm run test:bvp-root'`, **`-BaseRef f34139ba380f2f9d39871a4ab4f31ede0dad531f`** to isolate the new Build Unit from previous DEC-349 frozen-budget changes. Never use `authorized-governance` as a blanket exception; the new change is ordinary, no lock/pin/guard change.

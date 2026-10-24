@@ -19,6 +19,10 @@ Planned/source-level CLI: `node .test-build/bvp/test-platform/test/batteries/run
 
 See `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md` and `dev/state/current-state.yaml` for exact current source, corrections and qualification. **Windows PHX-CI PASS and independent R5 software acceptance are confirmed.** Original R5 evidence is mirrored without byte changes at `dev/test-results/0c59579a-7625-4a8f-bad3-9aba147bea37/` (see `provenance.md`). Owner-reserved promotion/deployment and physical activity remain unauthorized.
 
+## New successor Build Unit — result-close stdout finalization (IN PROGRESS, UNVERIFIED)
+
+The separately authorized software-only successor `WS-07/BVP_CLI_RESULT_FINALIZATION` is under development on branch `build/bvp-cli-result-finalization-20261024`. It corrects the accepted DEC-351 M-03 observation that a `completed` summary can be printed before FileHandle.close succeeds. **No PHX-CI run or independent review exists yet for the successor**; its source and test edits must never be represented as accepted. Predecessor DEC-351 at `b532a9339fb631ffa03c3f74917e8370af138cff` remains the last accepted immutable feature. See `tasks/bvp-cli-result-finalization-2026-10-24.md`. No operator or physical activation is granted.
+
 ## 0. Mandatory agent re-entry procedure — do this before EVERY BVP-related answer
 
 1. Fetch **current remote** `woodpk/gdrive-sync-obsidian-plugin`; read repository root **`AGENTS.md` first** and follow its current protocol refresh gate. Do not treat prior chat memory as fresh authority.

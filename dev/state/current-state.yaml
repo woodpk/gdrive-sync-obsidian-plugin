@@ -8,7 +8,11 @@ handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_CLI_RESULT_FINALIZATION"
 handoff-source-sha: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
-active_build_unit_status: "BUILD_IN_PROGRESS_PLANNING_AND_TEST_FIRST"
+active_build_unit_status: "SOURCE_AND_TESTS_COMMITTED_PENDING_WINDOWS_PHXCI"
+active_build_unit_test_first_commit: "6cb3fa5edcd13841c80fafba16e74fa9305f87fd"
+active_build_unit_code_commit: "7848906496db4c58ada79c9aa3ec953cf5643712"
+active_build_unit_verification_status: "NOT_RUN_NO_PASS_CLAIM"
+active_build_unit_verification_base_sha: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
 active_build_unit_baseline_source: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
 active_build_unit_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-cli-result-finalization-2026-10-24.md"
 active_build_unit_scope: "DEC351_M03_CLOSE_FAILURE_STDOUT_ORDER_CORRECTION_SOFTWARE_ONLY"
@@ -876,7 +880,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "Builder owns BVP_CLI_RESULT_FINALIZATION: write close-error fault-injection regression first, implement deferred stdout after successful result close, PHX-CI-only qualify new source, then independent final Reviewer. No physical execution, merge or release."
+next_action: "Run existing pinned PHX-CI full software qualification on the exact new branch using focused npm run test:bvp-root and base f34139ba380f2f9d39871a4ab4f31ede0dad531f. Interpret evidence, repair Builder-owned failures. No Reviewer handoff until original PHX PASS is published."
 updated_at: "2026-10-24"
 
 context:
