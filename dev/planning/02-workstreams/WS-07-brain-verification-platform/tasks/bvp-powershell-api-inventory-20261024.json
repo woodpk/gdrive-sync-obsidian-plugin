@@ -3,7 +3,7 @@
   "feature": "WS-07/BVP_POWERSHELL_INTERFACE_LIBRARY",
   "snapshotCommit": "12a1dd839bf6a35aa0664ebd1f9dc420d35c0e94",
   "inventoryStage": "P1_SOURCE_SURFACES_CLASSIFIED_NOT_YET_FULL_PARITY_GUARD_RECONCILIATION_REQUIRED",
-  "classificationNote": "Source-mapped endpoints are candidates; a TypeScript export is not automatically an operator-safe public action.",
+  "classificationNote": "Source-mapped endpoints are candidates; a TypeScript export is not automatically an operator-safe public action. DEC-351 adds a real Node CLI but does not implement the paused PowerShell interface.",
   "batteries": [
     {
       "name": "platform-core",
@@ -1431,6 +1431,19 @@
       "effect": "writes-artifact",
       "powershellCommand": "Invoke-BvpCommand",
       "accessibility": "exported-TS-build-helper-no-safe-CLI-mapping-yet"
+    },
+    {
+      "entrypoint": "run-deterministic-scenario.js",
+      "source": "test-platform/test/batteries/run-deterministic-scenario.ts",
+      "arguments": [
+        "--scenario",
+        "--result-file",
+        "--list-scenarios"
+      ],
+      "mode": "deterministic",
+      "effect": "single-in-memory-scenario",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "source-implemented-PHXCI-not-qualified"
     }
   ],
   "libraryContracts": [
@@ -1586,10 +1599,10 @@
     "liveBatteries": 14,
     "deviceKinds": 7,
     "stepVariants": 42,
-    "cliEntrypoints": 3,
+    "cliEntrypoints": 4,
     "sourceContractFamilies": 12,
-    "typescriptExportsClassified": 158,
-    "typescriptFilesScanned": 27
+    "typescriptExportsClassified": 173,
+    "typescriptFilesScanned": 30
   },
   "typescriptExportInventory": [
     "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-powershell-ts-exports-part1-20261024.json",
