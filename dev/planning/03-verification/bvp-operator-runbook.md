@@ -5,9 +5,9 @@
 **Authority:** later Owner instruction (2026-10-24) favors driving existing Node/TypeScript BVP directly from PowerShell; the earlier comprehensive PowerShell-interface build is **not** necessary merely to run available BVP batteries. Governing protocol and PHX-CI qualification requirements still apply to **software changes**.  
 **Verification level:** source-audited instructions, **NOT YET locally Windows-executed or PHX-CI-qualified for this manual**. No physical-device authority granted.
 
-## DEC-351 public scenario-ID CLI — Reviewer corrective source NOT YET REQUALIFIED
+## DEC-351 public scenario-ID CLI — Corrected source PHX-CI-qualified; final Reviewer pending
 
-The original DEC-351 CLI candidate `d8a681ce07155dbfa7e121afd01ac59c9e8056a5` passed Windows PHX-CI R4 11/11 and 544/544 BVP tests. **Independent Reviewer verdict: CORRECTION REQUIRED**, not accepted (DEC351-F01/F02/F03). Corrective Builder code is now on `build/bvp-powershell-interface-20261024` and **must be requalified** with fresh PHX-CI, so do not treat its modified CLI as approved or deployed.
+The original DEC-351 CLI candidate `d8a681ce07155dbfa7e121afd01ac59c9e8056a5` passed Windows PHX-CI R4 11/11 and 544/544 BVP tests. **Independent Reviewer verdict: CORRECTION REQUIRED**, not accepted (DEC351-F01/F02/F03). Corrective Builder source **`b532a9339fb631ffa03c3f74917e8370af138cff`** completed Windows PHX-CI run **`0c59579a-7625-4a8f-bad3-9aba147bea37`** with 11/11 stages PASS, 547/547 BVP tests PASS, 1292/1292 product tests PASS, Overall PASS exit 0. Original evidence was published at **`bb40d7dd884ff12e73bc32786ea7e87731169f73`**. This is **Builder qualification, not independent Reviewer acceptance or deployment**.
 
 Planned/source-level CLI: `node .test-build/bvp/test-platform/test/batteries/run-deterministic-scenario.js --scenario <exact-id> --result-file <absolute-new-json>` or standalone `--list-scenarios`. It uses the existing `DeterministicScenarioRunner.canonical().run(scenario)` through a compile-time list of exactly 70 deterministic scenario definitions. No live/physical or third-party iPhone simulator is involved.
 
@@ -17,7 +17,7 @@ Planned/source-level CLI: `node .test-build/bvp/test-platform/test/batteries/run
 
 **DEC351-F03 governance provenance:** DEC-349 expressly authorized two *pre-existing* frozen budget increases (core 4,000→4,500, live 750→950), accepted before DEC-351. The prior R4 source-to-evidence PHX-CI run used the approved `authorized-governance` class because its comparison against `master` still includes those DEC-349 amendments. DEC-351 itself changed **no frozen guard/manifest/pin** and is an ordinary CLI feature, not a new governance amendment. Continue to enforce all numerical limits and the immutable PHX-CI pin. Never generalize the old classification into a bypass or approval for future ordinary work.
 
-See `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md` and `dev/state/current-state.yaml` for exact current source, corrections and qualification. **No new Windows PHX-CI PASS nor Reviewer acceptance is claimed for the corrected source.**
+See `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md` and `dev/state/current-state.yaml` for exact current source, corrections and qualification. **Windows PHX-CI PASS is confirmed for the corrected exact source. Independent final re-review and Owner-reserved promotion/deployment remain pending.**
 
 ## 0. Mandatory agent re-entry procedure — do this before EVERY BVP-related answer
 
