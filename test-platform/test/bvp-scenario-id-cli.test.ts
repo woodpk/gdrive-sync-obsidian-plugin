@@ -95,7 +95,7 @@ test("DEC-351 exact scenario ID dispatches one existing canonical BVP scenario",
   });
 });
 
-test("DEC-351 rejects malformed, unknown, repeated and live-only args before dispatch", () => {
+test("DEC-351 rejects malformed, repeated and invalid path arguments without output", () => {
   withScratch(root => {
     const destination = join(root, "forbidden.json");
     const bad: readonly string[][] = [
@@ -180,8 +180,23 @@ test("DEC351 F01 canonical failed, blocked and unsupported scenarios propagate t
       strictEqual(observed.result.evidence.verdict.status, testCase.status);
       strictEqual(observed.result.evidence.verdict.classification, testCase.classification);
       strictEqual(observed.result.evidence.verdict.diagnostic.classification, testCase.classification);
+      strictEqual(observed.result.evidence.verdict.diagnostic.identity.executionMode, "deterministic");
+      strictEqual(observed.result.evidence.verdict.diagnostic.identity.stepIndex,
+        testCase.status === "failed" ? 7 : testCase.status === "blocked" ? 4 : 1);
+      strictEqual(observed.result.evidence.verdict.diagnostic.phase, "simulated-step-result");
+      strictEqual(observed.result.evidence.verdict.diagnostic.effect, "unknown");
       strictEqual(observed.result.evidence.executionMode, "deterministic");
       strictEqual(observed.result.evidence.traceability.length > 0, true);
+      if (testCase.status === "blocked") {
+        const earlier = observed.result.evidence.assertions.find(
+          (x: { stepId: string }) => x.stepId === "assert-upload");
+        strictEqual(earlier?.status, "completed", "real prior assertion should be preserved");
+        strictEqual(earlier?.matchedExpectation, true);
+      }
+      if (testCase.status === "unsupported") {
+        strictEqual(observed.result.evidence.assertions.length, 0,
+          "unsupported preview must stop before later assertions");
+      }
       if (testCase.status === "failed") {
         const assertion = observed.result.evidence.assertions.find(
           (x: { stepId: string }) => x.stepId === testCase.step);
