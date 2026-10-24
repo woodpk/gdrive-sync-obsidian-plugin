@@ -13,7 +13,7 @@ const marker = process.env.BVP_DEC351_TEST_DISPATCH_MARKER;
 
 if (marker) {
   const execute = DeterministicScenarioRunner.prototype.run;
-  DeterministicScenarioRunner.prototype.run = function (scenario) {
+  DeterministicScenarioRunner.prototype.run = function (this: DeterministicScenarioRunner, scenario) {
     writeFileSync(marker, "runner-invoked", { flag: "wx" });
     return execute.call(this, scenario);
   };
