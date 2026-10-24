@@ -80,7 +80,7 @@ async function main(argv: readonly string[]): Promise<void> {
       phase: "scenario-execution", lastConfirmedBoundary: "scenario-selected",
       firstUnconfirmedBoundary: "scenario-result-validated", effect: "unknown",
       recommendedAction: "inspect-sanitized-test-evidence",
-      identity: { scenarioId: request.scenarioId, executionMode: "deterministic" },
+      identity: { runId: "unavailable", scenarioId: request.scenarioId, stepIndex: null, executionMode: "deterministic", correlationToken: "unavailable" },
     });
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
@@ -113,7 +113,7 @@ async function main(argv: readonly string[]): Promise<void> {
       phase: "result-persistence", lastConfirmedBoundary: "scenario-execution-finished",
       firstUnconfirmedBoundary: "result-file-write", effect: "none-confirmed",
       recommendedAction: "inspect-output-path",
-      identity: { scenarioId: request.scenarioId, executionMode: "deterministic" },
+      identity: { runId: "unavailable", scenarioId: request.scenarioId, stepIndex: null, executionMode: "deterministic", correlationToken: "unavailable" },
     });
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
