@@ -5,10 +5,10 @@ active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP_CLI_RESULT_FINALIZATION"
 handoff-count: 1
 handoff-owner-role: BUILDER
-handoff-recipient-role: REVIEWER
+handoff-recipient-role: BUILDER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_CLI_RESULT_FINALIZATION"
 handoff-source-sha: "c82041d3022fa23e3db2b7e3a50032453f7e6e14"
-active_build_unit_status: "BUILDER_QUALIFIED_PHXCI_R2_PASS_INDEPENDENT_FINAL_REVIEW_PENDING"
+active_build_unit_status: "OWNER_HALTED_REVIEW_REQUEST_BUILDER_CONTINUES_FULL_FEATURE_COVERAGE"
 active_build_unit_test_first_commit: "6cb3fa5edcd13841c80fafba16e74fa9305f87fd"
 active_build_unit_code_commit: "7848906496db4c58ada79c9aa3ec953cf5643712"
 active_build_unit_verification_status: "R2_11_STAGES_PASS_FOCUSED_548_PRODUCT_1292_OVERALL_PASS_EXIT_0"
@@ -27,12 +27,15 @@ active_build_unit_r2_focused_test_counts: "548_OF_548_PASS"
 active_build_unit_r2_full_test_counts: "1292_OF_1292_PASS"
 active_build_unit_r2_artifact_mode: "DEC343_DEVELOPMENT_OBSERVATION_ORDINARY"
 active_build_unit_r2_accepted_scope: "BUILDER_QUALIFIED_WINDOWS_SOFTWARE_ONLY_NOT_REVIEWER_ACCEPTED"
-active_build_unit_review_phase: "AWAIT_REVIEWER_BLIND_PASS_1_THEN_EVIDENCE_PASS_2"
+active_build_unit_review_phase: "WITHHELD_PENDING_COMPLETE_FEATURE_BUILDER_REQUALIFICATION"
+active_build_unit_handoff_history: "COUNT_1_PUBLISHED_AT_a47cb8ef2aa3d664b78939ccfdcd6b4c05b76e3e_OWNER_HALTED_BEFORE_REVIEWER_ACTION_NO_COUNT_REWIND"
+active_build_unit_current_owner_direction: "COMPLETE_FULL_FEATURE_INITIAL_BUILD_BEFORE_ANY_FINAL_REVIEWER_ACCESS"
+active_build_unit_remaining_work: "CLOSE_FAILURE_REGRESSION_ALL_FOUR_CANONICAL_OUTCOMES_AND_SELECTION_REJECTION_PLUS_COMPLETE_PHXCI"
 
 active_build_unit_baseline_source: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
 active_build_unit_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-cli-result-finalization-2026-10-24.md"
 active_build_unit_scope: "DEC351_M03_CLOSE_FAILURE_STDOUT_ORDER_CORRECTION_SOFTWARE_ONLY"
-active_build_unit_review_gate: "R2_PASSED_INDEPENDENT_REVIEWER_AUTHORIZED_COUNT_1"
+active_build_unit_review_gate: "OWNER_REVOKED_PREMATURE_REVIEWER_ACCESS_REQUALIFY_FINAL_FEATURE_FIRST"
 previous_dec351_handoff_count: 4
 previous_dec351_source: "b532a9339fb631ffa03c3f74917e8370af138cff"
 previous_dec351_closeout_commit: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
@@ -896,7 +899,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "REVIEWER count 1: perform independent final blind-first-pass source assessment of immutable qualified source c82041d3022fa23e3db2b7e3a50032453f7e6e14, freeze/publish dev/reviews assessment, then inspect original PHX-CI R2 and ten-family tests, publish final verdict and return Builder handoff. No code/test/script/evidence modification or software execution."
+next_action: "BUILDER remains owner by explicit Owner instruction: complete full BVP_CLI_RESULT_FINALIZATION behavior and tests, requalify changed exact source through pinned PHX-CI, preserve prior PASS evidence, do not contact Reviewer until whole feature initially built and qualified."
 updated_at: "2026-10-24"
 
 context:
