@@ -82,6 +82,12 @@ Do **not** remove/skip/disarm failing tests, create alternative verifiers, modif
 
 **R1 correction commits and verification limitations:** the obsolete P1 inventory test's CLI parsing was corrected without suppressing CLI-flag assertions (`4e2e35888f49645691b2dd29cd2a6f9fdbb4b176`). The source inventory and TS export inventories were reconciled (`47a7a2102759ba04f165afc364be1f2ad5fdae3b`, `e75f9b0f977e873b59de305577275030cd949818`) to enumerate 30 current TypeScript files, 173 individual source exports and 4 current CLI entrypoints. The unrelated live-executor test's expected `unsupported` verdict remains unchanged; only safe classification was added to its failed assertion (`3768d80440e254dd6c1a79f27e90c4e586bdcbcc`) to reveal the cause on the next PHX-CI run, without altering any live executor code or physical effects. A read-only GitHub tree and inventory comparison confirmed 30/30 source files and 173 unique contracts. **No new PHX-CI run or runtime proof is represented by those static comparisons.** The next run must use fresh remote branch HEAD and the same existing software-only PHX-CI operator. The old three failures are not yet declared closed.
 
+## PHX-CI R2 diagnosis and R3 repair
+
+R2 run 84ae286f-8d0b-4940-8b80-1b956c1b8584, verified source 8d92b265f3b227dd917f93c30393f76c8a18d68a, published evidence 7261c8510c4dac0e44a0880a07fe7c6ea9f19ad3: 543 passed, one failed, overall BLOCKED/201. All eight new scenario-ID tests passed. The earlier live checkpoint test passed this time, but intermittent behavior remains possible.
+
+The only remaining R2 failure was omission of three existing type-only exports from the historical API inventory. Corrections: c72b473772c0611aae3720f510882d17e1c54081 and 2bd781ecd8977b59e8129fa05db35d7038a751f1. Catalog now describes 176 TypeScript exports across 30 files. No PHX-CI run has yet verified these corrections; no Reviewer handoff.
+
 ## 7. Handoff readiness
 
 The Builder has committed source and authored tests on the bounded branch. Next, verify current remote source/evidence identity and conduct the **first Windows PHX-CI qualification** using the existing repository-controlled local scripts. Repair genuine failures and repeat PHX-CI until exact candidate PASS; then and only then issue the independent final Reviewer handoff. Until those gates pass, the code is unqualified and may not be promoted or represented as accepted. Handoff-count remains unchanged.
