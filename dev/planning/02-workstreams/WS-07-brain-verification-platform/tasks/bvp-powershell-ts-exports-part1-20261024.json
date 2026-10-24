@@ -1,0 +1,800 @@
+{
+  "schemaVersion": 1,
+  "sourceSnapshotBase": "bca73463778ab559d61742b4a7197d335f7473e7",
+  "status": "P1_CONTRACT_EXPORT_PART_1_OF_2",
+  "scannedPaths": [
+    "test-platform/src/architecture-governance.ts",
+    "test-platform/src/diagnostic-types.ts",
+    "test-platform/src/platform-root.ts",
+    "test-platform/src/repository-check.ts",
+    "test-platform/src/scenario/scenario-checkpoint.ts",
+    "test-platform/src/scenario/scenario-contract.ts",
+    "test-platform/src/scenario/scenario-diagnostics.ts",
+    "test-platform/src/scenario/scenario-evidence.ts",
+    "test-platform/src/scenario/scenario-runner.ts",
+    "test-platform/src/live-device/build-validation-artifact.ts",
+    "test-platform/src/live-device/device-command-agent.ts",
+    "test-platform/src/live-device/diagnostic-contract.ts",
+    "test-platform/src/live-device/drive-mailbox.ts",
+    "test-platform/src/live-device/live-scenario-executor.ts"
+  ],
+  "entries": [
+    {
+      "name": "ChangeClass",
+      "kind": "type",
+      "signature": "export type ChangeClass = \"ordinary\" | \"authorized-governance\";",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ArchitectureViolation",
+      "kind": "interface",
+      "signature": "export interface ArchitectureViolation {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "GuardResult",
+      "kind": "interface",
+      "signature": "export interface GuardResult {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioMetric",
+      "kind": "interface",
+      "signature": "export interface ScenarioMetric {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "MetricsSnapshot",
+      "kind": "interface",
+      "signature": "export interface MetricsSnapshot {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BudgetResult",
+      "kind": "interface",
+      "signature": "export interface BudgetResult {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "MetricsResultValue",
+      "kind": "interface",
+      "signature": "export interface MetricsResultValue {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "MetricsRunResult",
+      "kind": "interface",
+      "signature": "export interface MetricsRunResult {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "runArchitectureGuard",
+      "kind": "function",
+      "signature": "export function runArchitectureGuard(options: { readonly repoRoot: string; readonly changedPaths?: readonly string[]; readonly changeClass?: ChangeClass }): GuardResult {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "runArchitectureMetrics",
+      "kind": "function",
+      "signature": "export function runArchitectureMetrics(options: { readonly repoRoot: string; readonly baseSha?: string }): MetricsRunResult {",
+      "source": "test-platform/src/architecture-governance.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpDiagnosticComponent",
+      "kind": "type",
+      "signature": "export type BvpDiagnosticComponent = | \"scenario-runner\" | \"live-controller\" | \"battery-runner\"",
+      "source": "test-platform/src/diagnostic-types.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpDiagnostic",
+      "kind": "interface",
+      "signature": "export interface BvpDiagnostic {",
+      "source": "test-platform/src/diagnostic-types.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpDiagnosticInput",
+      "kind": "type",
+      "signature": "export type BvpDiagnosticInput = Omit<BvpDiagnostic, \"schemaVersion\"|\"identity\"|\"causeClass\"|\"retriability\"|\"hops\"> & Partial<Pick<BvpDiagnostic,\"identity\"|\"causeClass\"|\"retriability\"|\"hops\"",
+      "source": "test-platform/src/diagnostic-types.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL",
+      "kind": "const",
+      "signature": "export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = \"BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL\" as const;",
+      "source": "test-platform/src/platform-root.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioResumeDisposition",
+      "kind": "type",
+      "signature": "export type ScenarioResumeDisposition =",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioResumeEvidence",
+      "kind": "type",
+      "signature": "export type ScenarioResumeEvidence = | \"human-confirmation\"",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCheckpointStepResult",
+      "kind": "interface",
+      "signature": "export interface ScenarioCheckpointStepResult {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCheckpointEvidenceSummary",
+      "kind": "interface",
+      "signature": "export interface ScenarioCheckpointEvidenceSummary {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCheckpoint",
+      "kind": "type",
+      "signature": "export type ScenarioCheckpoint = ScenarioCheckpointData & {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCheckpointFailure",
+      "kind": "type",
+      "signature": "export type ScenarioCheckpointFailure =",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCheckpointResult",
+      "kind": "type",
+      "signature": "export type ScenarioCheckpointResult<T> =",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "CreateScenarioCheckpointInput",
+      "kind": "interface",
+      "signature": "export interface CreateScenarioCheckpointInput {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioResumeContext",
+      "kind": "interface",
+      "signature": "export interface ScenarioResumeContext { readonly scenario:ScenarioDefinition; readonly runId:string; readonly executionMode:ScenarioExecutionMode; readonly deviceIdentities?:readonly string",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "scenarioDefinitionDigest",
+      "kind": "function",
+      "signature": "export function scenarioDefinitionDigest(scenario:ScenarioDefinition):string{return \"sha256:\"+createHash(\"sha256\").update(canonical(scenario)).digest(\"hex\");}",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "createScenarioCheckpoint",
+      "kind": "function",
+      "signature": "export function createScenarioCheckpoint(input: CreateScenarioCheckpointInput): ScenarioCheckpointResult<ScenarioCheckpoint> {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "encodeScenarioCheckpoint",
+      "kind": "function",
+      "signature": "export function encodeScenarioCheckpoint(checkpoint: ScenarioCheckpoint): string {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "decodeScenarioCheckpoint",
+      "kind": "function",
+      "signature": "export function decodeScenarioCheckpoint(serialized: string): ScenarioCheckpointResult<ScenarioCheckpoint> {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "validateScenarioCheckpointForResume",
+      "kind": "function",
+      "signature": "export function validateScenarioCheckpointForResume(",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryScenarioCheckpointStore",
+      "kind": "class",
+      "signature": "export class InMemoryScenarioCheckpointStore {",
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioExecutionMode",
+      "kind": "type",
+      "signature": "export type ScenarioExecutionMode = \"deterministic\" | \"live\"; export type ScenarioTraceabilityKind = \"requirement\" | \"invariant\" | \"completion-evidence\";",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioTraceabilityKind",
+      "kind": "type",
+      "signature": "export type ScenarioTraceabilityKind = \"requirement\" | \"invariant\" | \"completion-evidence\";",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioTraceabilityTarget",
+      "kind": "interface",
+      "signature": "export interface ScenarioTraceabilityTarget {",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioTraceability",
+      "kind": "interface",
+      "signature": "export interface ScenarioTraceability {",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioExpectedOutcome",
+      "kind": "type",
+      "signature": "export type ScenarioExpectedOutcome =",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioFixtureContent",
+      "kind": "type",
+      "signature": "export type ScenarioFixtureContent =",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioFixtureStep",
+      "kind": "type",
+      "signature": "export type ScenarioFixtureStep = Step<",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioProductionStep",
+      "kind": "type",
+      "signature": "export type ScenarioProductionStep = Step<",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioExternalStateStep",
+      "kind": "type",
+      "signature": "export type ScenarioExternalStateStep = Step<",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCheckpointStep",
+      "kind": "type",
+      "signature": "export type ScenarioCheckpointStep = Step<",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioObservationStep",
+      "kind": "type",
+      "signature": "export type ScenarioObservationStep = Step<",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioLiteral",
+      "kind": "type",
+      "signature": "export type ScenarioLiteral = string | number | boolean | null | readonly string[] | readonly number[];",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioObservationField",
+      "kind": "type",
+      "signature": "export type ScenarioObservationField = | \"kind\" | \"status\" | \"hash\" | \"sizeBytes\" | \"remoteObjectId\" | \"revision\" | \"entityKind\"",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioAssertionStep",
+      "kind": "type",
+      "signature": "export type ScenarioAssertionStep = Step< | { readonly kind: \"assert\"; readonly assertion: \"equals\" | \"not-equals\"; readonly observationRef: string; readonly expected: ScenarioLiteral }",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioStep",
+      "kind": "type",
+      "signature": "export type ScenarioStep = ScenarioFixtureStep | ScenarioProductionStep | ScenarioExternalStateStep | ScenarioCheckpointStep | ScenarioObservationStep | ScenarioAssertionStep;",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioDefinition",
+      "kind": "interface",
+      "signature": "export interface ScenarioDefinition {",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioValidationResult",
+      "kind": "type",
+      "signature": "export type ScenarioValidationResult =",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "validateScenarioDefinition",
+      "kind": "function",
+      "signature": "export function validateScenarioDefinition(input: unknown): ScenarioValidationResult {",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "defineScenario",
+      "kind": "function",
+      "signature": "export function defineScenario(definition: ScenarioDefinition): ScenarioDefinition {",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "assertNeverScenarioStep",
+      "kind": "function",
+      "signature": "export function assertNeverScenarioStep(step: never): never {",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "bvpDiagnostic",
+      "kind": "reexport",
+      "signature": "export { bvpDiagnostic }",
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpDiagnosticError",
+      "kind": "class",
+      "signature": "export class BvpDiagnosticError extends Error { constructor(readonly diagnostic:BvpDiagnostic,readonly status:\"failed\"|\"blocked\"=\"failed\"){",
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "safeUnexpectedFailure",
+      "kind": "function",
+      "signature": "export function safeUnexpectedFailure( _error: unknown,",
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioEvidenceStepRecord",
+      "kind": "interface",
+      "signature": "export interface ScenarioEvidenceStepRecord {",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioEvidenceInput",
+      "kind": "interface",
+      "signature": "export interface ScenarioEvidenceInput {",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "CanonicalScenarioEvidenceMachine",
+      "kind": "interface",
+      "signature": "export interface CanonicalScenarioEvidenceMachine {",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "CanonicalScenarioEvidence",
+      "kind": "interface",
+      "signature": "export interface CanonicalScenarioEvidence {",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "assertScenarioObservation",
+      "kind": "function",
+      "signature": "export async function assertScenarioObservation(step: ScenarioAssertionStep, context: Pick<ScenarioRunnerHookContext, \"readCapture\">): Promise<ScenarioCapabilityResult> {",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "createScenarioEvidenceHooks",
+      "kind": "function",
+      "signature": "export function createScenarioEvidenceHooks(): ScenarioRunnerHooks {",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "buildScenarioEvidence",
+      "kind": "function",
+      "signature": "export function buildScenarioEvidence(",
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioExecutionStatus",
+      "kind": "type",
+      "signature": "export type ScenarioExecutionStatus = \"completed\" | \"failed\" | \"blocked\" | \"unsupported\";",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioStepExecution",
+      "kind": "interface",
+      "signature": "export interface ScenarioStepExecution { readonly index: number; readonly stepId: string; readonly kind: ScenarioStep[\"kind\"];",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioExecutionResult",
+      "kind": "interface",
+      "signature": "export interface ScenarioExecutionResult { readonly scenarioId: string; readonly status: ScenarioExecutionStatus;",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioCapabilityResult",
+      "kind": "type",
+      "signature": "export type ScenarioCapabilityResult = | { readonly status: \"completed\"; readonly value?: unknown }",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioRunnerHookContext",
+      "kind": "interface",
+      "signature": "export interface ScenarioRunnerHookContext { readonly world: VirtualSynchronizationWorld;",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioRunnerHooks",
+      "kind": "interface",
+      "signature": "export interface ScenarioRunnerHooks { observe?(step: ScenarioObservationStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult>;",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioExecutorContext",
+      "kind": "interface",
+      "signature": "export interface ScenarioExecutorContext { readonly stepIndex: number; readCapture(ref: string): unknown | undefined; } export interface ScenarioStepExecutor {",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ScenarioStepExecutor",
+      "kind": "interface",
+      "signature": "export interface ScenarioStepExecutor { readonly executionMode: ScenarioExecutionMode;",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeterministicScenarioRunner",
+      "kind": "class",
+      "signature": "export class DeterministicScenarioRunner {",
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ValidationArtifactBuildIdentity",
+      "kind": "interface",
+      "signature": "export interface ValidationArtifactBuildIdentity {",
+      "source": "test-platform/src/live-device/build-validation-artifact.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ValidationArtifactBuildResult",
+      "kind": "interface",
+      "signature": "export interface ValidationArtifactBuildResult extends ValidationArtifactBuildIdentity {",
+      "source": "test-platform/src/live-device/build-validation-artifact.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "buildValidationArtifact",
+      "kind": "function",
+      "signature": "export async function buildValidationArtifact(repositoryRoot = resolve(process.cwd())): Promise<ValidationArtifactBuildResult> {",
+      "source": "test-platform/src/live-device/build-validation-artifact.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeviceCommand",
+      "kind": "type",
+      "signature": "export type DeviceCommand = CommandHeader & (",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "bvpOpaquePathKey",
+      "kind": "function",
+      "signature": "export async function bvpOpaquePathKey(path: string): Promise<string> { const normalized = path.replace(/\\\\/g, \"/\").replace(/^\\.\\/+/, \"\").replace(/\\/{2,}/g, \"/\").replace(/\\/$/, \"\").normalize",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "FixtureObservation",
+      "kind": "interface",
+      "signature": "export interface FixtureObservation {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeviceFixturePort",
+      "kind": "interface",
+      "signature": "export interface DeviceFixturePort {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "ValidationBuildIdentity",
+      "kind": "interface",
+      "signature": "export interface ValidationBuildIdentity { readonly schemaVersion: 1; readonly sourceCommit: string; readonly artifactSha256?: string; readonly manifestSha256?: string; }",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeviceCommandResult",
+      "kind": "interface",
+      "signature": "export interface DeviceCommandResult {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeviceSequenceState",
+      "kind": "type",
+      "signature": "export type DeviceSequenceState =",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeviceSequenceStateStore",
+      "kind": "interface",
+      "signature": "export interface DeviceSequenceStateStore {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeviceCommandAgentOptions",
+      "kind": "interface",
+      "signature": "export interface DeviceCommandAgentOptions {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BoundedDeviceCommandAgent",
+      "kind": "interface",
+      "signature": "export interface BoundedDeviceCommandAgent {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "createBoundedDeviceCommandAgent",
+      "kind": "function",
+      "signature": "export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptions): BoundedDeviceCommandAgent {",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "opaqueDiagnosticId",
+      "kind": "function",
+      "signature": "export async function opaqueDiagnosticId(value:string,kind:\"run\"|\"corr\"):Promise<string>{ const bytes=await crypto.subtle.digest(\"SHA-256\",new TextEncoder().encode(value));",
+      "source": "test-platform/src/live-device/diagnostic-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "diagnosticCode",
+      "kind": "const",
+      "signature": "export const diagnosticCode=(value:unknown):string=>token(value,\"unexpected-internal-error\");",
+      "source": "test-platform/src/live-device/diagnostic-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "bvpDiagnostic",
+      "kind": "function",
+      "signature": "export function bvpDiagnostic(input: BvpDiagnosticInput): BvpDiagnostic { return {",
+      "source": "test-platform/src/live-device/diagnostic-contract.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "AuthenticatedDriveRequest",
+      "kind": "type",
+      "signature": "export type AuthenticatedDriveRequest = (url: string, init?: RequestInit) => Promise<Response>;",
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "MailboxUnavailableError",
+      "kind": "class",
+      "signature": "export class MailboxUnavailableError extends Error { constructor(message = \"mailbox-unavailable\") { super(message); this.name = \"MailboxUnavailableError\"; } }",
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DriveCommandMailbox",
+      "kind": "interface",
+      "signature": "export interface DriveCommandMailbox {",
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "createDriveCommandMailbox",
+      "kind": "function",
+      "signature": "export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): DriveCommandMailbox {",
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "pollDeviceMailboxOnce",
+      "kind": "function",
+      "signature": "export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:BoundedDeviceCommandAgent,runId:string,deviceId:string):Promise<{status:\"ok\";processed:number}|{status:\"unavaila",
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "createWindowsMailboxRelay",
+      "kind": "function",
+      "signature": "export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:RelayAdapter,root:string){ const out=`${root}/outbox`,sent=`${root}/sent`,inside=`${root}/inbox`,publisher=comma",
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "HumanCheckpointInstruction",
+      "kind": "interface",
+      "signature": "export interface HumanCheckpointInstruction {",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "LiveScenarioExecutorOptions",
+      "kind": "interface",
+      "signature": "export interface LiveScenarioExecutorOptions { readonly scenario: ScenarioDefinition; readonly runId: string; readonly deviceIds: Readonly<Record<string, string>>;",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "LiveScenarioExecutor",
+      "kind": "interface",
+      "signature": "export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; observedInstalledBuilds?(): Readonly<Record<string,{artifact",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "liveSequenceFor",
+      "kind": "function",
+      "signature": "export function liveSequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=0):number{let value=sub+1;for(let i=0;i<index;i++)if(stepDevice(scenario.steps[i]!)===device)value+",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "liveCommandId",
+      "kind": "function",
+      "signature": "export function liveCommandId(runId:string,scenarioId:string,index:number,sub:number):string{return \"bvp-\"+createHash(\"sha256\").update(`${runId}\\0${scenarioId}\\0${index}\\0${sub}`).digest(\"he",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "createLiveScenarioExecutor",
+      "kind": "function",
+      "signature": "export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOptions):Promise<LiveScenarioExecutor>{",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    }
+  ],
+  "notAnOperatorApi": true
+}
