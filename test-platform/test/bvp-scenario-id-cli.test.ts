@@ -321,3 +321,75 @@ test("BVP result-close failure cannot print completed before actual file finaliz
     strictEqual(finished.result.evidence.verdict.status, summary.status);
   });
 });
+
+
+test("BVP result-close fault across all canonical noncompleted statuses preserves fail-closed terminal semantics", () => {
+  withScratch(root => {
+    const closeFault = resolve(__dirname, "fixtures/bvp-cli-close-fault-preload.js");
+    for (const expectedStatus of ["failed", "blocked", "unsupported"] as const) {
+      const withoutFaultFile = join(root, expectedStatus + "-normal.json");
+      const withoutFault = probe([
+        "--scenario", "s06a-fresh-local-only", "--result-file", withoutFaultFile,
+      ], expectedStatus);
+      strictEqual(withoutFault.status, 1, expectedStatus + " normal exit");
+      strictEqual(withoutFault.stderr, "", expectedStatus + " should be a canonical scenario verdict");
+      const normalSummary = JSON.parse(withoutFault.stdout.trim());
+      const normalResult = JSON.parse(readFileSync(withoutFaultFile, "utf8"));
+      strictEqual(normalSummary.status, expectedStatus);
+      strictEqual(normalResult.result.status, expectedStatus);
+      strictEqual(normalResult.result.evidence.verdict.status, expectedStatus);
+
+      const failedCloseFile = join(root, expectedStatus + "-close-failed.json");
+      const withCloseFault = spawnSync(process.execPath, [
+        "--require", compiledProbe,
+        "--require", closeFault,
+        compiledCli, "--scenario", "s06a-fresh-local-only", "--result-file", failedCloseFile,
+      ], {
+        cwd: process.cwd(), encoding: "utf8", timeout: 120_000,
+        env: { ...process.env, NODE_TEST_CONTEXT: undefined, BVP_DEC351_TEST_CASE: expectedStatus },
+      });
+      if (withCloseFault.error) throw withCloseFault.error;
+      strictEqual(withCloseFault.status, 1, expectedStatus + " close fault exit");
+      strictEqual(withCloseFault.stdout, "",
+        expectedStatus + ": no canonical summary before successful close");
+      match(withCloseFault.stderr, /BVP_DIAGNOSTIC/);
+      match(withCloseFault.stderr, /"phase":"result-close"/);
+      match(withCloseFault.stderr, /"effect":"unknown"/);
+      strictEqual(withCloseFault.stderr.includes(root), false,
+        expectedStatus + ": no sensitive absolute output path");
+      const record = JSON.parse(readFileSync(failedCloseFile, "utf8"));
+      strictEqual(record.requestedScenarioId, "s06a-fresh-local-only");
+      strictEqual(record.result.status, expectedStatus);
+      strictEqual(record.result.evidence.verdict.status, expectedStatus);
+      strictEqual(record.result.captures, undefined);
+    }
+  });
+});
+
+test("BVP result-close failure during unexecuted catalog rejection stays rejected and never reports success", () => {
+  withScratch(root => {
+    const closeFault = resolve(__dirname, "fixtures/bvp-cli-close-fault-preload.js");
+    for (const id of ["unregistered-cli-id", "battery-s09a-ios-initial-sync-01"]) {
+      const dest = join(root, id + ".json");
+      const child = spawnSync(process.execPath, [
+        "--require", closeFault, compiledCli,
+        "--scenario", id, "--result-file", dest,
+      ], {
+        cwd: process.cwd(), encoding: "utf8", timeout: 120_000,
+        env: { ...process.env, NODE_TEST_CONTEXT: undefined },
+      });
+      if (child.error) throw child.error;
+      strictEqual(child.status, 1);
+      strictEqual(child.stdout, "", id + " cannot report a successful canonical run");
+      match(child.stderr, /"classification":"scenario-cli-selection-unavailable"/);
+      match(child.stderr, /"phase":"result-close"/);
+      strictEqual(child.stderr.includes(dest), false, id + " path must be private");
+      const rejection = JSON.parse(readFileSync(dest, "utf8"));
+      strictEqual(rejection.requestedScenarioId, id);
+      strictEqual(rejection.requestStatus, "rejected");
+      strictEqual(rejection.result, null);
+      strictEqual(rejection.diagnostic.effect, "none-confirmed");
+      strictEqual(JSON.stringify(rejection).includes('"verdict"'), false);
+    }
+  });
+});
