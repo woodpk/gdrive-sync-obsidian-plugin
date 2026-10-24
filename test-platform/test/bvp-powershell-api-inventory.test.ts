@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve, relative, join } from "node:path";
 import { test } from "node:test";
+import ts = require("typescript");
 
 // DEC-346 P1: inventory-only contract, authored before any PowerShell library.
 // This test checks source exhaustiveness; it NEVER executes batteries,
@@ -82,4 +83,63 @@ test("P1 inventory does not misstate pre-implementation parity or escape the scr
   strictEqual(value.gates.implementationAllowed, false);
   strictEqual(value.gates.qualification, "NOT_RUN");
   strictEqual(value.inventoryStage.includes("NOT_YET_FULL_PARITY"), true);
+});
+
+type ExportSurface = { scannedPaths: readonly string[]; entries: readonly {
+  source: string; name: string; kind: string; publicOperatorExposure: string;
+}[] };
+const exportedSurface = (part: 1 | 2): ExportSurface => JSON.parse(read(
+  "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/" +
+    "bvp-powershell-ts-exports-part" + part + "-20261024.json",
+)) as ExportSurface;
+function actualExports(path: string): string[] {
+  const ast = ts.createSourceFile(path, read(path), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const names: string[] = [];
+  for (const statement of ast.statements) {
+    if (ts.isExportDeclaration(statement) && statement.exportClause &&
+        ts.isNamedExports(statement.exportClause)) {
+      for (const element of statement.exportClause.elements)
+        names.push("reexport:" + element.name.text);
+      continue;
+    }
+    if (!ts.canHaveModifiers(statement) ||
+        !ts.getModifiers(statement)?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword))
+      continue;
+    if (ts.isFunctionDeclaration(statement) && statement.name)
+      names.push("function:" + statement.name.text);
+    if (ts.isClassDeclaration(statement) && statement.name)
+      names.push("class:" + statement.name.text);
+    if (ts.isTypeAliasDeclaration(statement))
+      names.push("type:" + statement.name.text);
+    if (ts.isInterfaceDeclaration(statement))
+      names.push("interface:" + statement.name.text);
+    if (ts.isEnumDeclaration(statement))
+      names.push("enum:" + statement.name.text);
+    if (ts.isVariableStatement(statement))
+      for (const declaration of statement.declarationList.declarations)
+        if (ts.isIdentifier(declaration.name)) names.push("const:" + declaration.name.text);
+  }
+  return ordered(names);
+}
+test("P1 exported TypeScript contracts are complete, including type-only reexports", () => {
+  const halves = [exportedSurface(1), exportedSurface(2)];
+  const source = ordered([
+    ...sourceFiles("test-platform/src"),
+    ...sourceFiles("test-platform/test/batteries"),
+  ]);
+  const scanned = halves.flatMap(h => h.scannedPaths);
+  deepStrictEqual(ordered(scanned), source, "new or removed TS contract file is unaccounted");
+  strictEqual(new Set(scanned).size, scanned.length);
+  for (const half of halves) for (const path of half.scannedPaths) {
+    const captured = half.entries.filter(item => item.source === path)
+      .map(item => item.kind + ":" + item.name);
+    deepStrictEqual(ordered(captured), actualExports(path), "unmapped export: " + path);
+  }
+});
+test("P1 export inventory distinguishes internal helpers from approved operator actions", () => {
+  const halves = [exportedSurface(1), exportedSurface(2)];
+  const all = halves.flatMap(half => half.entries);
+  strictEqual(all.every(x => x.publicOperatorExposure === "NOT_ASSUMED"), true);
+  strictEqual(all.some(x => x.source.endsWith("/phxci-physical-bridge.ts")), true);
+  strictEqual(inventory().gates.implementationAllowed, false);
 });
