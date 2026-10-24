@@ -58,8 +58,13 @@ async function main(): Promise<void> {
   const started = performance.now();
   const outcome = await new Promise<{ exitCode: number; signal: string | null; error?: string }>((resolveRun, rejectRun) => {
     const tap = createWriteStream(tapFile, { encoding: "utf8" });
+    // Node's outer test runner sets NODE_TEST_CONTEXT. Passing that flag to a
+    // nested --test command makes Node skip test execution and exit zero.
+    const childEnv = {...process.env};
+    delete childEnv.NODE_TEST_CONTEXT;
     const child = spawn(process.execPath, ["--test", "--test-reporter=tap", ...testPaths], {
       cwd: process.cwd(),
+      env: childEnv,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let launchError: Error | undefined;
