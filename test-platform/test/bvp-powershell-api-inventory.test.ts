@@ -87,6 +87,8 @@ test("P1 inventory does not misstate pre-implementation parity or escape the scr
 
 type ExportSurface = { scannedPaths: readonly string[]; entries: readonly {
   source: string; name: string; kind: string; publicOperatorExposure: string;
+  disposition: string; sideEffectClass: string; operatorCommand: string | null;
+  accessRequirement: string; coverageTest: string;
 }[] };
 const exportedSurface = (part: 1 | 2): ExportSurface => JSON.parse(read(
   "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/" +
@@ -136,6 +138,28 @@ test("P1 exported TypeScript contracts are complete, including type-only reexpor
     deepStrictEqual(ordered(captured), actualExports(path), "unmapped export: " + path);
   }
 });
+test("P1 every exported declaration has an explicit safe operator disposition", () => {
+  const all = [exportedSurface(1), exportedSurface(2)].flatMap(part => part.entries);
+  const allowed = new Set([
+    "TYPE_ONLY", "INTERNAL_IMPLEMENTATION", "ENGINEERING_GOVERNANCE_ONLY",
+    "BVP_READ_ONLY_DISCOVERY", "BVP_DETERMINISTIC_DISPATCH",
+    "BVP_SAFE_RESULT_OR_DIAGNOSTIC", "BVP_GUARDED_RECOVERY",
+    "LIVE_DEVICE_DEFERRED", "VALIDATION_ARTIFACT_DEVELOPMENT_ONLY",
+  ]);
+  strictEqual(all.length > 100, true);
+  for (const item of all) {
+    strictEqual(allowed.has(item.disposition), true, "unclassified export " + item.source + ":" + item.name);
+    strictEqual(item.sideEffectClass.length > 2, true);
+    strictEqual(item.accessRequirement.length > 2, true);
+    strictEqual(item.coverageTest, "bvp-powershell-api-inventory.test.ts");
+    if (["TYPE_ONLY", "INTERNAL_IMPLEMENTATION", "ENGINEERING_GOVERNANCE_ONLY"].includes(item.disposition)) {
+      strictEqual(item.operatorCommand, null, item.name + " must not become operator command");
+    } else {
+      strictEqual(typeof item.operatorCommand, "string", "public candidate needs planned mapping");
+    }
+  }
+});
+
 test("P1 export inventory distinguishes internal helpers from approved operator actions", () => {
   const halves = [exportedSurface(1), exportedSurface(2)];
   const all = halves.flatMap(half => half.entries);
