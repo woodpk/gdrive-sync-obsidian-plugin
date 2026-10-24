@@ -1,6 +1,6 @@
 # WS-07 — BVP Direct Scenario-ID CLI (Build Unit)
 
-**Status:** BUILDER REQUALIFIED AFTER REVIEWER F01–F03 CORRECTIONS / EXACT-SOURCE PHX-CI PASS / INDEPENDENT RE-REVIEW PENDING.  
+**Status:** INDEPENDENT R5 PASS WITH MINOR FINDINGS — WINDOWS SOFTWARE FEATURE ACCEPTED, ADMINISTRATIVE EVIDENCE CLOSEOUT COMPLETE.  
 **Owner directive:** 2026-10-24: make individual BVP scenarios callable by their stable scenario ID through a small public Node CLI, reusing the existing TypeScript BVP scenario runner. **Persist planning/decisions/state first; do not start development in this planning action.**  
 **Decision:** DEC-351; preserve DEC-350, DEC-347/348 and applicable prior frozen boundaries.  
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin` / WS-07; exact bound preimplementation source HEAD `d3f48e253c39e848b390aa4befed2b7cdb66cc04`, feature branch `build/bvp-powershell-interface-20261024`; source extension for the existing battery's test list explicitly rebound at `ce46ba777206a94e3c3a92f4b8d3a0d3a3dd86d5` (no new authority, no guard changes).  
@@ -120,6 +120,11 @@ The corrective code-and-test source **`b532a9339fb631ffa03c3f74917e8370af138cff`
 
 **Review status:** Earlier independent review `dev/reviews/dec351-direct-scenario-cli-20261024-independent-final.md` returned CORRECTION REQUIRED on the prior source, not this corrected source. F01/F02 test-first corrections and F03 documentation are committed; qualification provides eligibility, not independent acceptance. The next permitted step is a new Builder→Reviewer transfer with **handoff-count 3**, followed by Reviewer blind source assessment before accessing tests, Builder explanations, or PHX-CI evidence. No release, merge, installation, physical dispatch or unrelated feature work authorized.
 
-## 7. Handoff readiness
+## 7. R5 independently accepted feature and Builder closeout
 
-The Builder's exact source and test candidate is PHX-CI-qualified. Publish the per-feature Builder→Reviewer handoff count and current Reviewer recipient role in `dev/state/current-state.yaml` after verifying current remote ancestry; then supply the canonical neutral, blind-safe Reviewer handoff. Do not claim reviewer acceptance or modify candidate source.
+- **Verified source/tree:** `b532a9339fb631ffa03c3f74917e8370af138cff` / `b220cb95e24a09cc6faa3befa9252b97ece07ea2`.
+- **R5 final review:** PASS WITH MINOR FINDINGS — Windows software-only; `dev/reviews/dec351-direct-scenario-cli-20261024-r5-independent-final.md`, commit `5d380c0a2c66aee72de3c0556f8099d771d57bc9`. Blind source assessment committed at `e53d8e676e266abfa736262fdd4c8fb528acbd13`. DEC351-F01/F02/F03 CLOSED.
+- **Original PHX-CI qualification:** run `0c59579a-7625-4a8f-bad3-9aba147bea37`, evidence commit `bb40d7dd884ff12e73bc32786ea7e87731169f73` directly descended from the source; original `dev/test-results/20261024T220132Z-operator-build-bvp-powershell-interface-20261024-b532a9339fb6.{json,md,log}` remain untouched. PHX runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`; 11/11 stages PASS, 547/547 BVP tests PASS, 1292/1292 product tests PASS, change-set/repository/overall PASS, exit 0.
+- **M-01 completed:** `dev/test-results/0c59579a-7625-4a8f-bad3-9aba147bea37/result.json`, `result.md`, `terminal.log` refer to the **same original Git blob objects**, byte-for-byte. `dev/test-results/0c59579a-7625-4a8f-bad3-9aba147bea37/provenance.md` preserves source, tree, original evidence commit, file identities and review scope. This administrative mirror is **not a new verification run** and does not supersede the originals.
+- **Remaining minor findings:** M-02 execution exceptions can use `requestStatus:"rejected"` with authoritative `effect:"unknown"`; M-03 require real process exit 0 and complete matching stored evidence, never stdout alone; M-04 live-device budget remains 950/950 and no third-party iOS simulator or physical/Drive/vault acceptance was proven.
+- **Cross-role state:** `handoff-count: 4`, recipient BUILDER, remains unchanged. No additional handoff, no source/test/script/PHX-CI changes, no merge/install/activation/release or new Build Unit without Owner authorization.

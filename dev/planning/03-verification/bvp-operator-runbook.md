@@ -3,11 +3,11 @@
 **Audience:** every BRAIN Builder/agent producing an owner-facing BVP command, interpreting BVP results, resuming BVP work, or handing this project to a new chat session.  
 **Last source audit:** 2026-10-24 at BRAIN commit `d78385e485ec966505c8d5122e99a3121840c16a`; full source analysis `dev/research/bvp-operator-api-audit-2026-10-24.md`.  
 **Authority:** later Owner instruction (2026-10-24) favors driving existing Node/TypeScript BVP directly from PowerShell; the earlier comprehensive PowerShell-interface build is **not** necessary merely to run available BVP batteries. Governing protocol and PHX-CI qualification requirements still apply to **software changes**.  
-**Verification level:** source-audited instructions, **NOT YET locally Windows-executed or PHX-CI-qualified for this manual**. No physical-device authority granted.
+**Verification level:** the earlier DEC-350 operator API audit remains source-only, while the DEC-351 compiled deterministic scenario-ID CLI passed Windows PHX-CI R5 and final independent software review. No physical-device/iOS acceptance or deployment authority.
 
-## DEC-351 public scenario-ID CLI — Corrected source PHX-CI-qualified; final Reviewer pending
+## DEC-351 public scenario-ID CLI — R5 software-accepted; evidence closeout complete
 
-The original DEC-351 CLI candidate `d8a681ce07155dbfa7e121afd01ac59c9e8056a5` passed Windows PHX-CI R4 11/11 and 544/544 BVP tests. **Independent Reviewer verdict: CORRECTION REQUIRED**, not accepted (DEC351-F01/F02/F03). Corrective Builder source **`b532a9339fb631ffa03c3f74917e8370af138cff`** completed Windows PHX-CI run **`0c59579a-7625-4a8f-bad3-9aba147bea37`** with 11/11 stages PASS, 547/547 BVP tests PASS, 1292/1292 product tests PASS, Overall PASS exit 0. Original evidence was published at **`bb40d7dd884ff12e73bc32786ea7e87731169f73`**. This is **Builder qualification, not independent Reviewer acceptance or deployment**.
+The original DEC-351 CLI candidate `d8a681ce07155dbfa7e121afd01ac59c9e8056a5` passed Windows PHX-CI R4 11/11 and 544/544 BVP tests. **Independent Reviewer verdict: CORRECTION REQUIRED**, not accepted (DEC351-F01/F02/F03). Corrective Builder source **`b532a9339fb631ffa03c3f74917e8370af138cff`** completed Windows PHX-CI run **`0c59579a-7625-4a8f-bad3-9aba147bea37`** with 11/11 stages PASS, 547/547 BVP tests PASS, 1292/1292 product tests PASS, Overall PASS exit 0. Original evidence was published at **`bb40d7dd884ff12e73bc32786ea7e87731169f73`**. The corrected source received R5 **PASS WITH MINOR FINDINGS — SOFTWARE FEATURE ACCEPTED** at independent review commit `5d380c0a2c66aee72de3c0556f8099d771d57bc9`; it is **not** merge, installation, release or physical acceptance.
 
 Planned/source-level CLI: `node .test-build/bvp/test-platform/test/batteries/run-deterministic-scenario.js --scenario <exact-id> --result-file <absolute-new-json>` or standalone `--list-scenarios`. It uses the existing `DeterministicScenarioRunner.canonical().run(scenario)` through a compile-time list of exactly 70 deterministic scenario definitions. No live/physical or third-party iPhone simulator is involved.
 
@@ -17,7 +17,7 @@ Planned/source-level CLI: `node .test-build/bvp/test-platform/test/batteries/run
 
 **DEC351-F03 governance provenance:** DEC-349 expressly authorized two *pre-existing* frozen budget increases (core 4,000→4,500, live 750→950), accepted before DEC-351. The prior R4 source-to-evidence PHX-CI run used the approved `authorized-governance` class because its comparison against `master` still includes those DEC-349 amendments. DEC-351 itself changed **no frozen guard/manifest/pin** and is an ordinary CLI feature, not a new governance amendment. Continue to enforce all numerical limits and the immutable PHX-CI pin. Never generalize the old classification into a bypass or approval for future ordinary work.
 
-See `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md` and `dev/state/current-state.yaml` for exact current source, corrections and qualification. **Windows PHX-CI PASS is confirmed for the corrected exact source. Independent final re-review and Owner-reserved promotion/deployment remain pending.**
+See `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md` and `dev/state/current-state.yaml` for exact current source, corrections and qualification. **Windows PHX-CI PASS and independent R5 software acceptance are confirmed.** Original R5 evidence is mirrored without byte changes at `dev/test-results/0c59579a-7625-4a8f-bad3-9aba147bea37/` (see `provenance.md`). Owner-reserved promotion/deployment and physical activity remain unauthorized.
 
 ## 0. Mandatory agent re-entry procedure — do this before EVERY BVP-related answer
 
@@ -38,6 +38,7 @@ The current two important source entrypoints:
 | Intended operation | Compiled JS relative to repository | Availability |
 | --- | --- | --- |
 | Named deterministic battery | `.test-build/bvp/test-platform/test/batteries/run-deterministic-battery.js` | **Source-confirmed reachable**; direct operational use possible after compile/preflight |
+| One exact deterministic scenario ID | `.test-build/bvp/test-platform/test/batteries/run-deterministic-scenario.js` | **DEC-351 R5 independently accepted for Windows software-only**; 70 known deterministic IDs, no live dispatch |
 | Live battery / real relay | `.test-build/bvp/test-platform/test/batteries/run-live-battery.js` | Source-confirmed CLI exists; **not authorized for real Windows/iOS/Drive/vault execution**, and NOT the generic iPhone/iPad simulator |
 
 The prior `dev/scripts/Invoke-BVP-Battery.ps1` and `Invoke-BVP-Deterministic-Battery.ps1` **throw on purpose**; never send the owner to those retired scripts. Proposed `Get-BvpBattery`, `Invoke-BvpScenario`, `Bvp.psm1` etc. **do not exist**. The older PowerShell library plan is historical/unimplemented.
@@ -54,9 +55,21 @@ The prior `dev/scripts/Invoke-BVP-Battery.ps1` and `Invoke-BVP-Deterministic-Bat
 - `all-platform-tests` (normal suite)
 - `bvp-private-tap-canary` (**deliberate failure/privacy canary; not routine**)
 
-**Not yet a public CLI:** generic list/help, run arbitrary one of 84 TS scenario definitions by ID, enumerate typed device commands, interactive result query, persisted PowerShell config, or simulate *each* live S09 battery on virtual devices. Those exist only as TS contracts or proposed functionality. If requested, inspect the precise TS entrypoint and introduce **only** the smallest needed, source-audited TypeScript CLI accessibility change through the normal governed Builder/PHX-CI/Reviewer process; do not claim a fictitious flag, hardcode a second runner, or invent a PowerShell API clone.
+**Still not public:** general battery list/help, live-only or arbitrary non-deterministic scenario-ID execution, typed device commands, interactive result query, persisted PowerShell config, or complete S09 live-battery simulation. **DEC-351 now exposes exact-ID dispatch and read-only discovery for 70 deterministic definitions**, not all 84 TS definitions. Those exist only as TS contracts or proposed functionality. If requested, inspect the precise TS entrypoint and introduce **only** the smallest needed, source-audited TypeScript CLI accessibility change through the normal governed Builder/PHX-CI/Reviewer process; do not claim a fictitious flag, hardcode a second runner, or invent a PowerShell API clone.
 
 **Windows-hosted simulation:** `DeterministicScenarioRunner.canonical().run(scenario)` creates an in-memory multi-device virtual world. Its device names are **logical labels**, not native iPhone/iPadOS emulation. Scenario mode must include `deterministic`; live-only definitions cannot automatically use this executor. Some scenario steps are unsupported in deterministic mode (for example physical connectivity toggles and large-pattern fixture operation). Report those honestly. The internal PHX-only `s09-br02-simulated-checkpoint` fixture is not a public simulator option.
+
+### DEC-351 direct deterministic scenario-ID interface — source contract, not a paste-ready launcher
+
+Use only the existing compiled CLI in a freshly grounded, authorized disposable checkout. This is one selected scenario, not a test battery or live controller:
+
+```text
+node <compiled-run-deterministic-scenario.js> --scenario <exact-stable-id> --result-file <new-absolute-json-file>
+```
+
+Read-only listing: `node <compiled-run-deterministic-scenario.js> --list-scenarios`. The list enumerates 70 deterministic definitions without dispatch. Unknown/live-only IDs with a valid new destination return `requestStatus:"rejected", result:null` and a safe diagnostic, exit nonzero. Malformed argv is stderr-only; existing output files are never overwritten, and the output is atomically reserved before dispatch.
+
+**M-02:** A post-selection runner exception also uses `requestStatus:"rejected"` but `diagnostic.phase:"scenario-execution", diagnostic.effect:"unknown"`; the latter is authoritative and does NOT establish absence of execution. **M-03:** Successful stdout may be printed before `output.close()`, whose failure changes process exit to nonzero. Always require actual process exit **0**, complete JSON, correct requested/actual scenario identity, canonical machine evidence, deterministic mode and `result.status:"completed"`. Missing/incomplete output, `result:null`, or nonzero exit is **NOT VERIFIED** regardless of stdout. **M-04:** 950/950 live budget remains at its ceiling; no physical/third-party iOS simulation or live Drive/vault acceptance. Never claim this software-only command proves those capabilities.
 
 ## 3. Mandatory preparation for a Windows operational deterministic battery
 
@@ -88,7 +101,7 @@ The prior `dev/scripts/Invoke-BVP-Battery.ps1` and `Invoke-BVP-Deterministic-Bat
 | Diagnostic says `deterministic-subprocess-launch-failed` | Check Node executable, compiled test paths, child launch; raw subprocess errors are deliberately suppressed. |
 | Child TAP names/stack traces absent | Expected intentional privacy filter; do not disable redaction to make logs verbose. |
 | A named live scenario cannot run deterministically | Mode or step mismatch, **not** evidence that iOS simulation succeeded. |
-| User asks to run single declarative scenario ID | No current public generic scenario CLI; require controlled minimal TS dispatcher if genuinely necessary. |
+| User asks to run a single declarative scenario ID | The approved DEC-351 compiled CLI supports **one exact deterministic ID**; live-only or unknown IDs fail closed. Verify actual exit and complete matching JSON, not stdout alone. |
 
 ## 4. Live runner API — source reference ONLY, no owner execution authority
 
