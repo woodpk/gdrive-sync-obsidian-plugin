@@ -36,9 +36,11 @@ function registryNames(path: string): string[] {
   return [...read(path).matchAll(/"([a-z][a-z0-9-]+)"\s*:\s*\{\s*\n\s*name:/g)].map(match => match[1]!);
 }
 function actualCliFlags(path: string): string[] {
-  return [...read(path).matchAll(/(?:requiredArg|optionalArg|positiveIntegerArg)\(\s*["'](--[a-z][\w-]+)["']/g)]
-    .map(match => match[1]!);
+  const flags = [...read(path).matchAll(/["'](--[a-z][a-z0-9-]+)["']/g)]
+    .map(match => match[1]!).filter(flag => flag !== '--test');
+  return [...new Set(flags)];
 }
+
 test("P1 inventory includes every current declarative scenario with no duplicate or phantom source", () => {
   const value = inventory();
   strictEqual(value.schemaVersion, 1);
