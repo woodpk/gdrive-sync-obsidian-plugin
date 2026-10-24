@@ -10,6 +10,7 @@ const PLATFORM_CORE = [
   "battery-registry.test.js",
   "battery-support.test.js",
   "bvp-diagnostics.test.js",
+  "bvp-powershell-api-inventory.test.js",
   "bvp-private-tap-canary.test.js",
   "deterministic-battery-registry.test.js",
   "in-memory-google-drive.test.js",
