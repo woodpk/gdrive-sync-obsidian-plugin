@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceSnapshotBase": "bca73463778ab559d61742b4a7197d335f7473e7",
-  "status": "P1_CONTRACT_EXPORT_PART_2_OF_2",
+  "status": "P1_CONTRACT_EXPORT_CLASSIFIED_PART_2_OF_2_OPERATOR_PARITY_UNVERIFIED",
   "scannedPaths": [
     "test-platform/src/live-device/validation-entrypoint.ts",
     "test-platform/src/virtual-world/in-memory-google-drive.ts",
@@ -24,7 +24,12 @@
       "signature": "export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = \"BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL\";",
       "source": "test-platform/src/live-device/validation-entrypoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BVP_VALIDATION_BUILD_GLOBAL",
@@ -32,7 +37,12 @@
       "signature": "export const BVP_VALIDATION_BUILD_GLOBAL = \"__BRAIN_BVP_VALIDATION_BUILD__\"; export const BVP_MAILBOX_RUNTIME_GLOBAL = \"__BRAIN_BVP_MAILBOX_RUNTIME__\";",
       "source": "test-platform/src/live-device/validation-entrypoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BVP_MAILBOX_RUNTIME_GLOBAL",
@@ -40,7 +50,12 @@
       "signature": "export const BVP_MAILBOX_RUNTIME_GLOBAL = \"__BRAIN_BVP_MAILBOX_RUNTIME__\";",
       "source": "test-platform/src/live-device/validation-entrypoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpValidationBuildIdentity",
@@ -48,7 +63,12 @@
       "signature": "export interface BvpValidationBuildIdentity extends ValidationBuildIdentity { readonly sentinel: typeof BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL; }",
       "source": "test-platform/src/live-device/validation-entrypoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "installBvpValidationBuildIdentity",
@@ -56,7 +76,12 @@
       "signature": "export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValidationBuildIdentity {",
       "source": "test-platform/src/live-device/validation-entrypoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "validation-install-or-real-mailbox-activity",
+      "operatorCommand": "Get-BvpVersion",
+      "accessRequirement": "not-current-operator-authorization-physical-scope-deferred",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "installBvpMailboxRuntime",
@@ -64,7 +89,12 @@
       "signature": "export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){ const mailbox=createDriveCommandMailbox(request),relay=options.relay?creat",
       "source": "test-platform/src/live-device/validation-entrypoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "validation-install-or-real-mailbox-activity",
+      "operatorCommand": "Invoke-BvpCommand",
+      "accessRequirement": "not-current-operator-authorization-physical-scope-deferred",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "GoogleDriveCorePort",
@@ -72,7 +102,12 @@
       "signature": "export type GoogleDriveCorePort = GoogleDrivePort;",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryDriveBoundary",
@@ -80,7 +115,12 @@
       "signature": "export type InMemoryDriveBoundary =",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryDriveBoundaryFault",
@@ -88,7 +128,12 @@
       "signature": "export interface InMemoryDriveBoundaryFault {",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryDriveListingControl",
@@ -96,7 +141,12 @@
       "signature": "export interface InMemoryDriveListingControl {",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryDriveChangePageControl",
@@ -104,7 +154,12 @@
       "signature": "export interface InMemoryDriveChangePageControl {",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryDriveCursorInvalidation",
@@ -112,7 +167,12 @@
       "signature": "export type InMemoryDriveCursorInvalidation =",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryRemoteObjectSnapshot",
@@ -120,7 +180,12 @@
       "signature": "export interface InMemoryRemoteObjectSnapshot {",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "virtualRemoteObjectId",
@@ -128,7 +193,12 @@
       "signature": "export const virtualRemoteObjectId = (value: string): RemoteObjectId =>",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "virtualVaultIdentity",
@@ -136,7 +206,12 @@
       "signature": "export const virtualVaultIdentity = (value: string): VaultIdentity =>",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "virtualProtocolVersion",
@@ -144,7 +219,12 @@
       "signature": "export const virtualProtocolVersion = (value: string): ProtocolVersion =>",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "virtualChangeCursor",
@@ -152,7 +232,12 @@
       "signature": "export const virtualChangeCursor = (value: string): ChangeCursor =>",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "virtualDrivePath",
@@ -160,7 +245,12 @@
       "signature": "export const virtualDrivePath = (value: string): VaultPath =>",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryGoogleDriveCore",
@@ -168,7 +258,12 @@
       "signature": "export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRemoteChangePort {",
       "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryLocalVaultOptions",
@@ -176,7 +271,12 @@
       "signature": "export interface InMemoryLocalVaultOptions {",
       "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "SeedEntryOptions",
@@ -184,7 +284,12 @@
       "signature": "export interface SeedEntryOptions {",
       "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryLocalVaultError",
@@ -192,7 +297,12 @@
       "signature": "export class InMemoryLocalVaultError extends Error {",
       "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryLocalVaultStaleObservationError",
@@ -200,7 +310,12 @@
       "signature": "export class InMemoryLocalVaultStaleObservationError extends InMemoryLocalVaultError {",
       "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "virtualVaultPath",
@@ -208,7 +323,12 @@
       "signature": "export const virtualVaultPath = (value: string): VaultPath =>",
       "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryLocalVault",
@@ -216,7 +336,12 @@
       "signature": "export class InMemoryLocalVault implements LocalVaultPort {",
       "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "VirtualCrashBoundary",
@@ -224,7 +349,12 @@
       "signature": "export type VirtualCrashBoundary = \"before-remote-dispatch\" | \"after-remote-effect\" | \"before-canonical-state-write\" | \"after-canonical-state-write\";",
       "source": "test-platform/src/virtual-world/virtual-world.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryReliableRemoteMutationPort",
@@ -232,7 +362,12 @@
       "signature": "export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFolderCreateRecoveryReadPort {",
       "source": "test-platform/src/virtual-world/virtual-world.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "VirtualProductionDevice",
@@ -240,7 +375,12 @@
       "signature": "export class VirtualProductionDevice {",
       "source": "test-platform/src/virtual-world/virtual-world.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "VirtualSynchronizationWorld",
@@ -248,7 +388,12 @@
       "signature": "export class VirtualSynchronizationWorld {",
       "source": "test-platform/src/virtual-world/virtual-world.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "LiveBatteryDefinition",
@@ -256,7 +401,12 @@
       "signature": "export interface LiveBatteryDefinition {",
       "source": "test-platform/test/batteries/battery-registry.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "listLiveBatteryNames",
@@ -264,7 +414,12 @@
       "signature": "export function listLiveBatteryNames(): readonly string[] {",
       "source": "test-platform/test/batteries/battery-registry.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_READ_ONLY_DISCOVERY",
+      "sideEffectClass": "registry-read-no-test-execution",
+      "operatorCommand": "Get-BvpBattery",
+      "accessRequirement": "safe-metadata-through-existing-registry",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "getLiveBattery",
@@ -272,7 +427,12 @@
       "signature": "export function getLiveBattery(name: string): LiveBatteryDefinition | undefined {",
       "source": "test-platform/test/batteries/battery-registry.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_READ_ONLY_DISCOVERY",
+      "sideEffectClass": "registry-read-no-test-execution",
+      "operatorCommand": "Get-BvpBattery",
+      "accessRequirement": "safe-metadata-through-existing-registry",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeterministicBatteryDefinition",
@@ -280,7 +440,12 @@
       "signature": "export interface DeterministicBatteryDefinition { readonly name: string;",
       "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "listDeterministicBatteryNames",
@@ -288,7 +453,12 @@
       "signature": "export function listDeterministicBatteryNames(): readonly string[] {",
       "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_READ_ONLY_DISCOVERY",
+      "sideEffectClass": "registry-read-no-test-execution",
+      "operatorCommand": "Get-BvpBattery",
+      "accessRequirement": "safe-metadata-through-existing-registry",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "getDeterministicBattery",
@@ -296,7 +466,12 @@
       "signature": "export function getDeterministicBattery(name: string): DeterministicBatteryDefinition | undefined {",
       "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_READ_ONLY_DISCOVERY",
+      "sideEffectClass": "registry-read-no-test-execution",
+      "operatorCommand": "Get-BvpBattery",
+      "accessRequirement": "safe-metadata-through-existing-registry",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "LateCompletionRecovery",
@@ -304,7 +479,12 @@
       "signature": "export interface LateCompletionRecovery {",
       "source": "test-platform/test/batteries/late-completion-recovery.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "loadLateCompletionRecovery",
@@ -312,7 +492,12 @@
       "signature": "export async function loadLateCompletionRecovery(options: RecoveryOptions): Promise<LateCompletionRecovery> { const { scenario, runId, deviceIds, sourceCommit, relayRoot, previousResultFile ",
       "source": "test-platform/test/batteries/late-completion-recovery.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_GUARDED_RECOVERY",
+      "sideEffectClass": "conditional-late-result-reconciliation",
+      "operatorCommand": "Resolve-BvpRun",
+      "accessRequirement": "original-run-identity-and-nonreplay-guard-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "withLateCompletionRecovery",
@@ -320,7 +505,12 @@
       "signature": "export function withLateCompletionRecovery(executor: LiveScenarioExecutor, recovery: LateCompletionRecovery): LiveScenarioExecutor { return {",
       "source": "test-platform/test/batteries/late-completion-recovery.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_GUARDED_RECOVERY",
+      "sideEffectClass": "conditional-late-result-reconciliation",
+      "operatorCommand": "Resolve-BvpRun",
+      "accessRequirement": "original-run-identity-and-nonreplay-guard-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "publicPhysicalDeviceId",
@@ -328,7 +518,12 @@
       "signature": "export function publicPhysicalDeviceId(raw: string): string { if (typeof raw !== \"string\" || !/^device:[a-f0-9]{32}$/i.test(raw)) {",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "projectPhysicalResultForEvidence",
@@ -336,7 +531,12 @@
       "signature": "export function projectPhysicalResultForEvidence(resultJson: string, raw: string, publicId: string): string { if (publicPhysicalDeviceId(raw) !== publicId) fail(\"privacy-physical-device-mapp",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "projectPhysicalDualReadinessResultForEvidence",
@@ -344,7 +544,12 @@
       "signature": "export function projectPhysicalDualReadinessResultForEvidence( resultJson: string, rawByLabel: Readonly<Record<string, string>>,",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BridgeMode",
@@ -352,7 +557,12 @@
       "signature": "export type BridgeMode = \"initial\" | \"checkpoint-resume\" | \"verified-late-receipt\";",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BridgePredecessor",
@@ -360,7 +570,12 @@
       "signature": "export interface BridgePredecessor { readonly commitSha: string;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BridgeExpectation",
@@ -368,7 +583,12 @@
       "signature": "export interface BridgeExpectation { readonly bvpRunId: string;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BridgeAttempt",
@@ -376,7 +596,12 @@
       "signature": "export interface BridgeAttempt extends BridgeExpectation { readonly schemaVersion: 1;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "GitEvidencePort",
@@ -384,7 +609,12 @@
       "signature": "export interface GitEvidencePort { readBlobAtCommit(commitSha: string, historyPath: string): Promise<string>;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "PublishedAttemptRef",
@@ -392,7 +622,12 @@
       "signature": "export interface PublishedAttemptRef { readonly commitSha: string;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "LiveRunnerPaths",
@@ -400,7 +635,12 @@
       "signature": "export interface LiveRunnerPaths { readonly relayRoot: string;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "encodeBridgeAttempt",
@@ -408,7 +648,12 @@
       "signature": "export function encodeBridgeAttempt(attempt: BridgeAttempt): string { validateAttempt(attempt);",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "decodeBridgeAttempt",
@@ -416,7 +661,12 @@
       "signature": "export function decodeBridgeAttempt(stdout: string, expected: BridgeExpectation): BridgeAttempt { if (Buffer.byteLength(stdout, \"utf8\") > MAX_FRAME_BYTES * 4) fail(\"bridge-stdout-oversize\");",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "loadPublishedBridgeAttempt",
@@ -424,7 +674,12 @@
       "signature": "export async function loadPublishedBridgeAttempt( git: GitEvidencePort,",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "buildLiveRunnerArguments",
@@ -432,7 +687,12 @@
       "signature": "export function buildLiveRunnerArguments( attempt: BridgeAttempt,",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BridgeAttemptAuthority",
@@ -440,7 +700,12 @@
       "signature": "export interface BridgeAttemptAuthority { finish(outcome: \"blocked\" | \"completed\" | \"failed\"): void;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "claimBridgeAttemptAuthority",
@@ -448,7 +713,12 @@
       "signature": "export function claimBridgeAttemptAuthority( attempt: BridgeExpectation,",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "validateOriginalWindowsTimeoutReconciliation",
@@ -456,7 +726,12 @@
       "signature": "export function validateOriginalWindowsTimeoutReconciliation( original: unknown, late: unknown,",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "main",
@@ -464,7 +739,12 @@
       "signature": "export async function main(): Promise<void> { if (process.argv.includes(\"--recover-privacy-blocked-windows-smoke\")) {",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "bridgeFailureDiagnostic",
@@ -472,7 +752,12 @@
       "signature": "export function bridgeFailureDiagnostic(error:unknown):{ readonly code:string;readonly diagnostic:BvpDiagnostic;",
       "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "PHX-CI-engineering-or-physical-bridge",
+      "operatorCommand": null,
+      "accessRequirement": "never-invoke-for-BVP-user-operations",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "S09A_VALIDATION_ARTIFACTS",
@@ -480,7 +765,12 @@
       "signature": "export const S09A_VALIDATION_ARTIFACTS = Object.freeze({ sourceCommit: \"2bf51ca15aec9c752e3ac7769fcf3ac237df99df\",",
       "source": "test-platform/test/batteries/s09a-validation-artifacts.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     }
   ],
   "notAnOperatorApi": true
