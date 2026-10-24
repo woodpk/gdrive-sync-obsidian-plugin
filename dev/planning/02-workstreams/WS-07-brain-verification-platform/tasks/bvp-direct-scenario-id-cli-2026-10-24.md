@@ -1,6 +1,6 @@
 # WS-07 — BVP Direct Scenario-ID CLI (Build Unit)
 
-**Status:** INDEPENDENT REVIEW CORRECTION REQUIRED / F01-F03 CORRECTIVE SOURCE COMMITTED / FRESH PHX-CI NOT RUN / REVIEWER REACCEPTANCE PENDING.  
+**Status:** BUILDER REQUALIFIED AFTER REVIEWER F01–F03 CORRECTIONS / EXACT-SOURCE PHX-CI PASS / INDEPENDENT RE-REVIEW PENDING.  
 **Owner directive:** 2026-10-24: make individual BVP scenarios callable by their stable scenario ID through a small public Node CLI, reusing the existing TypeScript BVP scenario runner. **Persist planning/decisions/state first; do not start development in this planning action.**  
 **Decision:** DEC-351; preserve DEC-350, DEC-347/348 and applicable prior frozen boundaries.  
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin` / WS-07; exact bound preimplementation source HEAD `d3f48e253c39e848b390aa4befed2b7cdb66cc04`, feature branch `build/bvp-powershell-interface-20261024`; source extension for the existing battery's test list explicitly rebound at `ce46ba777206a94e3c3a92f4b8d3a0d3a3dd86d5` (no new authority, no guard changes).  
@@ -113,6 +113,12 @@ The exact source `d8a681ce07155dbfa7e121afd01ac59c9e8056a5` (tree `033582d4d778c
 **Reviewer F03 closure by documentation:** the `DEC-349` authorization for two frozen-budget increases `4,000→4,500` and `750→950` predates DEC-351 and is the reason the previous feature-branch-versus-master R4 PHX-CI used `authorized-governance`. DEC-351's CLI correction does NOT amend frozen contracts and may not use that historical category as blanket authorization. If the existing pinned Windows operator checks the whole branch versus master, use its established `-SoftwareOnlyGovernance` option **solely** for the previously approved DEC-349 divergence. Details also in `dev/planning/03-verification/bvp-operator-runbook.md`.
 
 **Qualification still pending:** No PHX-CI run has executed the corrective code or new test-only fixtures. Execute pinned PHX-CI with original Windows 11 / PowerShell 7.6.6 software-only operator; preserve complete immutable evidence, diagnose/fix failures, and publish a new exact qualified source SHA and evidence commit. Rehand off to independent Reviewer only after **Change-set PASS, Repository PASS, Overall PASS, exit 0** and ten-family test adequacy. Handoff count stays 2 during Builder internal corrections.
+
+## Corrected candidate qualification — R5
+
+The corrective code-and-test source **`b532a9339fb631ffa03c3f74917e8370af138cff`** (verified tree **`b220cb95e24a09cc6faa3befa9252b97ece07ea2`**) was qualified on Windows using pinned PHX-CI framework **`69c4aa077d4a1a46d1e85e59f39d36285be99e83`**. Original run **`0c59579a-7625-4a8f-bad3-9aba147bea37`**, baseline **`42460912847e363aa4fa11e23e0429944383889d`**, published evidence commit **`bb40d7dd884ff12e73bc32786ea7e87731169f73`**. All 11 PHX-CI stages PASS; focused BVP **547/547 PASS**, product **1292/1292 PASS**, Change-set PASS, Repository PASS, Overall PASS, exit 0. Published evidence commit is the direct child of the qualified source, changing only original `dev/_ca-output.{md,json}` and three `dev/test-results/` evidence files. The previously approved DEC-349 frozen-budget baseline remained unchanged; no new frozen authority or runtime change was performed.
+
+**Review status:** Earlier independent review `dev/reviews/dec351-direct-scenario-cli-20261024-independent-final.md` returned CORRECTION REQUIRED on the prior source, not this corrected source. F01/F02 test-first corrections and F03 documentation are committed; qualification provides eligibility, not independent acceptance. The next permitted step is a new Builder→Reviewer transfer with **handoff-count 3**, followed by Reviewer blind source assessment before accessing tests, Builder explanations, or PHX-CI evidence. No release, merge, installation, physical dispatch or unrelated feature work authorized.
 
 ## 7. Handoff readiness
 
