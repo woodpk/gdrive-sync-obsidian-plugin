@@ -3,23 +3,23 @@ project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
 active_build_unit: "BVP_DIRECT_SCENARIO_ID_CLI"
-handoff-count: 2
-handoff-owner-role: REVIEWER
-handoff-recipient-role: BUILDER
+handoff-count: 3
+handoff-owner-role: BUILDER
+handoff-recipient-role: REVIEWER
 handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_DIRECT_SCENARIO_ID_CLI"
-handoff-source-sha: "d8a681ce07155dbfa7e121afd01ac59c9e8056a5"
-active_build_unit_status: "DEC351_REVIEWER_F01_F02_SOURCE_CORRECTED_AWAITING_NEW_PHXCI"
+handoff-source-sha: "b532a9339fb631ffa03c3f74917e8370af138cff"
+active_build_unit_status: "DEC351_CORRECTED_SOURCE_PHXCI_PASS_INDEPENDENT_REVIEW_PENDING"
 active_powershell_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_POWERSHELL_INTERFACE_LIBRARY"
 active_bvp_operator_manual: "dev/planning/03-verification/bvp-operator-runbook.md"
 active_scenario_cli_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_DIRECT_SCENARIO_ID_CLI"
 active_scenario_cli_authority: "DEC-351_OWNER_APPROVED_NARROW_PUBLIC_DETERMINISTIC_CLI"
 active_scenario_cli_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md"
-active_scenario_cli_phase: "REVIEW_CORRECTIONS_COMMITTED_PENDING_NEW_WINDOWS_PHXCI"
+active_scenario_cli_phase: "CORRECTED_BUILDER_QUALIFIED_REVIEWER_HANDOFF_3"
 active_scenario_cli_proposed_entrypoint: "test-platform/test/batteries/run-deterministic-scenario.ts"
 active_scenario_cli_contract: "EXACT_ID_STATIC_DETERMINISTIC_CATALOG_EXISTING_RUNNER_JSON_RESULT_READ_ONLY_DISCOVERY_NO_LIVE_FALLBACK"
 active_scenario_cli_source_gate: "REQUIRE_FRESH_REMOTE_HEAD_IMMUTABLE_PREDECESSOR_SHA_EXACT_ALLOWED_PATHS_BEFORE_WRITES"
 active_scenario_cli_protocol_gate: "FRESH_ORIGINAL_GDRIVE_PROTOCOL_IMMEDIATELY_BEFORE_VALIDATION_CODE_OR_SCRIPT_AUTHORING"
-active_scenario_cli_test_status: "11_TOTAL_CLI_TESTS_3_NEW_F01_F02_UNEXECUTED_REQUIRES_NEW_PHXCI"
+active_scenario_cli_test_status: "11_OF_11_DEC351_TESTS_PASS_IN_FOCUSED_547_OF_547"
 active_scenario_cli_test_commit: "2169929b40db0ea142c10e73c674a84573c13def"
 active_scenario_cli_implementation_sha: "ae368c2c919c43c8a279bea27f31e63515881c87"
 active_scenario_cli_catalog_count: 70
@@ -50,14 +50,23 @@ active_scenario_cli_correction_selection_record: "VALID_NEW_RESULT_PATH_REJECTIO
 active_scenario_cli_correction_collision: "EXCLUSIVE_WX_OUTPUT_RESERVATION_BEFORE_CATALOG_LOOKUP_AND_RUNNER_DISPATCH"
 active_scenario_cli_correction_negative_test: "HARD_CODED_TEST_ONLY_PRELOAD_REAL_RUNNER_FAILED_BLOCKED_UNSUPPORTED"
 active_scenario_cli_correction_governance_note: "DEC349_PREEXISTING_APPROVED_FROZEN_BUDGETS_DEC351_ORDINARY_NON_FROZEN_FEATURE"
-active_scenario_cli_correction_verification_status: "NOT_RUN_NEW_PHXCI_REQUIRED"
+active_scenario_cli_correction_verification_status: "R5_ALL_11_STAGES_PASS_547_BVP_1292_PRODUCT_EXIT_0"
+active_scenario_cli_r5_run_id: "0c59579a-7625-4a8f-bad3-9aba147bea37"
+active_scenario_cli_r5_qualified_source_sha: "b532a9339fb631ffa03c3f74917e8370af138cff"
+active_scenario_cli_r5_verified_tree_sha: "b220cb95e24a09cc6faa3befa9252b97ece07ea2"
+active_scenario_cli_r5_original_evidence_commit: "bb40d7dd884ff12e73bc32786ea7e87731169f73"
+active_scenario_cli_r5_original_evidence_path: "dev/test-results/20261024T220132Z-operator-build-bvp-powershell-interface-20261024-b532a9339fb6.json"
+active_scenario_cli_r5_phxci_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+active_scenario_cli_r5_base_sha: "42460912847e363aa4fa11e23e0429944383889d"
+active_scenario_cli_r5_governance: "DEC349_EXISTING_AUTHORIZED_BUDGETS_NO_NEW_FROZEN_SOURCE_CHANGES"
 
 
 
-active_scenario_cli_reviewer_status: "CORRECTION_REQUIRED_SOURCE_UPDATED_NOT_YET_REVIEW_ACCEPTED"
+
+active_scenario_cli_reviewer_status: "INDEPENDENT_RE_REVIEW_ASSIGNED_BLIND_SOURCE_FIRST_NOT_YET_ACCEPTED"
 active_scenario_cli_owner_physical_scope: "SIMULATED_DETERMINISTIC_ONLY_NO_REAL_DRIVE_VAULT_DEVICE_DISPATCH"
 active_scenario_cli_external_ios_simulator: "NOT_VERIFIED_AS_INTEGRATED_SEPARATE_UNRESOLVED_SCOPE"
-active_scenario_cli_handoff: "REVIEWER_TO_BUILDER_COUNT_2_REPORTS_PUBLISHED"
+active_scenario_cli_handoff: "BUILDER_TO_REVIEWER_COUNT_3_CORRECTED_QUALIFIED_SOURCE"
 active_scenario_cli_final_review_path: "dev/reviews/dec351-direct-scenario-cli-20261024-independent-final.md"
 active_scenario_cli_final_review_commit: "5c0946829567fbd64a5f0880f0026d09b1168521"
 active_scenario_cli_source_review_path: "dev/reviews/dec351-direct-scenario-cli-20261024-independent-blind-source.md"
@@ -103,7 +112,7 @@ active_feature_branch: "build/bvp-powershell-interface-20261024"
 active_build_unit_planning_path: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md"
 active_build_unit_authorities: ["DEC-311", "DEC-313", "DEC-314", "DEC-347", "DEC-348", "DEC-349", "DEC-350", "DEC-351"]
 active_build_unit_test_first_commit: "2169929b40db0ea142c10e73c674a84573c13def"
-active_build_unit_qualification: "DEC351_R1_CHANGESET_FAIL_REPOSITORY_PASS_BLOCKED_201_REPAIR_UNQUALIFIED_REVIEW_NOT_RUN"
+active_build_unit_qualification: "DEC351_R5_CORRECTED_SOURCE_CHANGESET_REPOSITORY_OVERALL_PASS_REVIEW_PENDING"
 active_build_unit_r2_source_sha: "6cf0506dead876d3da96348ca714b06416b0a799"
 active_build_unit_r2_run_id: "ad70b5e2-dc1e-4108-b6f9-21de30e53a54"
 active_build_unit_r2_evidence_commit: "2f9b39c8e0af48aeca9252edf3a9f6369ed878b4"
