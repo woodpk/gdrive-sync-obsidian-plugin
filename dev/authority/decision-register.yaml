@@ -2,7 +2,7 @@ schema_version: 2
 record:
   title: "BRAIN Google Drive Sync Plugin — Decision Register"
   status: authoritative
-  as_of: "2026-10-23"
+  as_of: "2026-10-24"
   repository: "woodpk/gdrive-sync-obsidian-plugin"
   process: "Shared agent-led engineering standards listed in dev/authority/external-authorities.md"
   workflow: "Workflow A: Stage 0 -> Stage 1 -> Stage 2A -> Stage 3"
@@ -1084,6 +1084,13 @@ decisions:
     amends: [DEC-319, DEC-345]
     relates_to: [DEC-314, DEC-317, DEC-338, DEC-346, DEC-347, DEC-348]
     decision: "On 2026-10-23 the Owner explicitly selected OPTION 2, a controlled increase to the frozen BVP architecture code-size ceilings, to complete the DEC-348 diagnostic/error-communication upgrade while keeping clear maintainable code instead of artificial compression. This is explicit Owner authorization for a bounded authorized-governance amendment of dev/authority/governance/locks/testing-platform-boundary.yaml: framework-core maximum 4,000 -> 4,500 logical TypeScript source lines (+500; 12.5%), and live-device agent/relay maximum 750 -> 950 logical TypeScript source lines (+200; 26.7%). The original exact-source PHX-CI R1 measured 4,079 core / 778 live, so the increase provides 421 / 172 logical lines of additional space for still-required stage-aware instrumentation, redaction, and recovery diagnostics; remaining unused allowance is a ceiling, NOT a feature target. These two and ONLY these two budgets are amended. All other hard limits, source ownership rules, scenario/PowerShell budgets, private-data protections, architecture guard semantics, PHX-CI consumer pin, product source, and two-agent qualification/review requirements remain unchanged. Update the authoritative boundary manifest and corresponding architecture documentation/tests to enforce the new numerical limits, preserving the guard's strict PASS-within/FAIL-above behavior. Qualification of the frozen-manifest change MUST use BVP_CHANGE_CLASS=authorized-governance under real unchanged PHX-CI on Windows; do not represent an ordinary change as authorized governance absent this decision. No GitHub Actions, physical iPhone/iPad, live vault/Drive dispatch, verification bypass, reviewer acceptance, product installation, release, or merge is granted by this decision."
+
+  - id: DEC-350
+    status: locked
+    category: bvp_existing_node_operator_runbook_and_session_continuity
+    relates_to: [DEC-346, DEC-347, DEC-348, DEC-349]
+    decision: "On 2026-10-24 the Owner accepted direct operation of BVP's existing TypeScript/compiled JavaScript interfaces through carefully reviewed PowerShell terminal commands instead of continuing construction of the speculative comprehensive PowerShell API/library merely to run BVP. The planned Bvp.psm1/Bvp.psd1 operator-library implementation is PAUSED and is not a prerequisite for using source-confirmed existing deterministic Node CLI batteries. Where a requested behavior has no real public CLI, the Builder must identify the exact gap and, only if needed, propose the smallest safe native TypeScript accessibility change under normal test-first PHX-CI software qualification; no PowerShell API clone, second BVP runner or unfounded public CLI flags. For reliable chat-session continuity, persist the canonical BVP operator procedure at dev/planning/03-verification/bvp-operator-runbook.md, source audit at dev/research/bvp-operator-api-audit-2026-10-24.md, require repository-root AGENTS.md to direct every authorized BVP Builder/operator session to freshly read both and verify current source, and place a pointer in dev/state/current-state.yaml and dev/scripts/README.md. Do NOT edit the shared external session-inits. The static initializer cannot itself ensure a repo file is read before a new session is grounded; explicitly ground AGENTS.md in each BRAIN assignment/handoff. This decision supersedes DEC-346's requirement to first implement a full PowerShell module as the primary human interface, but PRESERVES direct BVP operation, strict source/identity/preflight, privacy, safe diagnostics, simulated-versus-live honesty, all frozen architecture budgets, physical/Drive/vault prohibition and PHX-CI exclusivity for changed-software qualification and independent final review. This documentation/audit step creates no acceptance PASS or live operation permission."
+
 
 superseded_decisions:
   - id: SUP-001
