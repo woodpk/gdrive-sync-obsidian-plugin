@@ -1,6 +1,6 @@
 # DEC-348 BVP diagnostics — fault/acceptance coverage
 
-**Status:** R10 current source is PHX-CI-qualified: source `7b7382ce303d097080dd5117638dba32f3ca9a82`, run `937b3682-acb1-47d6-801a-cb397ad96ae7`, evidence `aeb9a20166c33541a4a6086f462a0cf44acd3b9b`; ER-01–ER-04 were CLOSED in prior independent review, NEW-01/NEW-02 corrected test-first. Final independent R10 acceptance remains PENDING. No physical iPhone, live Google Drive or installed Obsidian proof.
+**Status:** FINAL R10 FEATURE ACCEPTED AND CLOSED FOR WINDOWS SOFTWARE-ONLY DEVELOPMENT. Reviewer verdict PASS WITH BOUNDED FINDINGS at `dev/reviews/bvp-error-reporting-20261024-review-brain-09-r10-final.md`; all ER-01–ER-04 and NEW-01/NEW-02 CLOSED. Source `7b7382ce303d097080dd5117638dba32f3ca9a82` qualified by run `937b3682-acb1-47d6-801a-cb397ad96ae7` (11/11, 529/529 focused, 1292/1292 product PASS). No physical iPhone, live Google Drive or installed Obsidian proof.
 
 ## Source-grounded acceptance map
 
@@ -91,3 +91,13 @@ Ten-family impact: nominal success/no spurious failure retained from existing su
 - **NEW-01:** A real failing deterministic test subprocess now asserts a bounded structured error in stored results and printed summary, preserving exit 1, sanitized TAP ordinal/counts, secret redaction, identity, phase, cause and safe operator action.
 - **NEW-02:** Deterministic and mocked-live tests now assert that an actually completed step conflicting with an expected failure retains its true completed step status, fails the scenario, and records the same safe diagnosis in the scenario result and canonical evidence.
 - Exact source `7b7382ce303d097080dd5117638dba32f3ca9a82`, Git tree `324e20aa9c7fe69f346baab3b8467ea8468c4b4b`, Windows PHX-CI run `937b3682-acb1-47d6-801a-cb397ad96ae7`, evidence commit `aeb9a20166c33541a4a6086f462a0cf44acd3b9b`. All 11 stages PASS; 529/529 focused, 1292/1292 product PASS, exit 0; architecture core 4145/4500, live 950/950; no physical activity. Independent assessment of the feature remains pending.
+
+
+
+## R10 FINAL accepted adequacy and bounded caveats (2026-10-24)
+
+- **Reviewer acceptance:** `PASS WITH BOUNDED FINDINGS` at `dev/reviews/bvp-error-reporting-20261024-review-brain-09-r10-final.md` (commit `884c89cdf968c396144265f4834d53bd935d303c`), returning to Builder at `handoff-count: 6` (`ef7e9c2a5d17cd1eaea96b58fad8faf67749e552`). All ER-01–ER-04 and NEW-01/NEW-02 are CLOSED. The complete software-only diagnostic feature is development-CLOSED.
+- **Independent test-family verdict:** 01 nominal ADEQUATE, 02 negative/malformed ADEQUATE, 03 state transitions ADEQUATE, 04 retry/recovery ADEQUATE, 05 concurrency/order ADEQUATE for simulation, 06 persistence/integrity ADEQUATE, 07 privacy/authorization ADEQUATE for synthetic input, 08 interface/evidence integration ADEQUATE, 09 architecture/governance ADEQUATE, 10 end-to-end fail-closed ADEQUATE for Windows software-only.
+- **Exact evidence:** source `7b7382ce303d097080dd5117638dba32f3ca9a82`, tree `324e20aa9c7fe69f346baab3b8468c4b4b`, original PHX-CI `937b3682-acb1-47d6-801a-cb397ad96ae7`, evidence publication `aeb9a20166c33541a4a6086f462a0cf44acd3b9b`; immutable canonical run folder `dev/test-results/937b3682-acb1-47d6-801a-cb397ad96ae7/`. All eleven stages and all 529 focused/1292 product tests PASS, exit 0.
+- **Nonblocking review notes:** M-01 live-device LOC 950/950; M-02 `unavailable` run/device identifiers remain honest unknowns rather than proven IDs; M-03 software-only cannot substitute for physical/real Drive/vault/release approval; M-04 same-session Reviewer prior exposure was disclosed. This does not reopen accepted issues or require a new Reviewer handoff.
+- **Historical caveat:** Prior R6/R7/R9 PENDING or REJECTED annotations above remain source-specific historical evidence, not a statement of current R10 acceptance. No new code/PHX-CI run for administrative closeout, and no PowerShell feature, merge, install, release or real-device action is authorized without a distinct Owner decision.
