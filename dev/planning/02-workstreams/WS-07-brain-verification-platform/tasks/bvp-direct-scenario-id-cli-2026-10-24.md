@@ -1,10 +1,20 @@
 # WS-07 — BVP Direct Scenario-ID CLI (Build Unit)
 
-**Status:** OWNER-AUTHORIZED PLANNING / IMPLEMENTATION NOT STARTED / PREPLANNED CONTRACT NOT YET EXECUTABLE.  
+**Status:** BOUND FOR AUTHORIZED BUILDER IMPLEMENTATION / TEST-FIRST / PHX-CI NOT_RUN / REVIEWER NOT_AUTHORIZED.  
 **Owner directive:** 2026-10-24: make individual BVP scenarios callable by their stable scenario ID through a small public Node CLI, reusing the existing TypeScript BVP scenario runner. **Persist planning/decisions/state first; do not start development in this planning action.**  
 **Decision:** DEC-351; preserve DEC-350, DEC-347/348 and applicable prior frozen boundaries.  
-**Repository:** `woodpk/gdrive-sync-obsidian-plugin` / WS-07; planning snapshot at `0d283a35326b93c5dcdb70f2fed2af19abc1a685` (refresh actual branch HEAD before dispatch).  
+**Repository:** `woodpk/gdrive-sync-obsidian-plugin` / WS-07; exact bound preimplementation source HEAD `d3f48e253c39e848b390aa4befed2b7cdb66cc04`, feature branch `build/bvp-powershell-interface-20261024`; bound to current code at this identity, rebinding required on unexpected drift.  
 **Intended development scope:** one bounded Builder implementation session for code + meaningful authored tests; PHX-CI qualification, evidence publication, independent Reviewer and integration are **separate subsequent gates**, not promised inside the one window.
+
+**Authorized implementation writable paths (exact, not a general pattern):**
+- `test-platform/test/bvp-scenario-id-cli.test.ts` — test-first contract/adversarial tests;
+- `test-platform/test/batteries/deterministic-scenario-registry.ts` — static type-safe catalog;
+- `test-platform/test/batteries/run-deterministic-scenario.ts` — thin public Node CLI;
+- `dev/state/current-state.yaml` — continuity only;
+- THIS task contract — status/evidence only;
+- `dev/planning/03-verification/bvp-operator-runbook.md` — accurate not-yet-qualified operator documentation only, not acceptance assertions.
+
+Frozen manifest, production `src/**`, PHX-CI configuration, existing scenario runner, existing tests/registries and all other paths are NOT writable under this implementation slice. The core runner `run(scenario)` is already public; do not edit it. This is an Owner-dispatched Builder continuation, not a Reviewer handoff; preserve handoff-count 6, no independent acceptance before PHX-CI PASS.
 
 ## 1. Exact source-grounded gap
 
