@@ -1,0 +1,1591 @@
+{
+  "schemaVersion": 1,
+  "feature": "WS-07/BVP_POWERSHELL_INTERFACE_LIBRARY",
+  "snapshotCommit": "12a1dd839bf6a35aa0664ebd1f9dc420d35c0e94",
+  "inventoryStage": "P1_SOURCED_PUBLIC_SURFACE_DRAFT_NOT_YET_FULL_PARITY",
+  "classificationNote": "Source-mapped endpoints are candidates; a TypeScript export is not automatically an operator-safe public action.",
+  "batteries": [
+    {
+      "name": "platform-core",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "s06-sync-semantics",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "s07-fault-recovery-safety",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "s08-live-platform-infrastructure",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "s09-late-completion-recovery",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "bvp-private-tap-canary",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "test-only-synthetic-failure",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "all-platform-tests",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "name": "windows-live-smoke",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09a-dual-device-readiness",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09a-ios-initial-sync",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09a-windows-initial-sync",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09a-request-attribution",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09b-bidirectional-sync",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09b-clean-text-merge",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09c-offline-reconnect",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09c-interruption-resume",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09d-unicode-path-roundtrip",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09d-large-transfer",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09e-auth-revocation-restore",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09e-plugin-disable-reenable",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    },
+    {
+      "name": "s09e-uninstall-reinstall",
+      "kind": "live",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "export": "getLiveBattery",
+      "mode": "live-physical-deferred",
+      "effect": "potential-real-device-drive-vault-operation",
+      "powershellCommand": "Get-BvpBattery",
+      "accessibility": "discoverable-execution-blocked-until-separate-owner-authorization"
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "06a/divergent-no-base-collision",
+      "source": "test-platform/scenarios/06a/divergent-no-base-collision.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06a/established-equal-no-op",
+      "source": "test-platform/scenarios/06a/established-equal-no-op.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06a/established-local-only-modification",
+      "source": "test-platform/scenarios/06a/established-local-only-modification.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06a/established-remote-only-modification",
+      "source": "test-platform/scenarios/06a/established-remote-only-modification.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06a/fresh-equal-collision",
+      "source": "test-platform/scenarios/06a/fresh-equal-collision.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06a/fresh-local-only",
+      "source": "test-platform/scenarios/06a/fresh-local-only.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06a/fresh-remote-only",
+      "source": "test-platform/scenarios/06a/fresh-remote-only.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06b/binary-conflict",
+      "source": "test-platform/scenarios/06b/binary-conflict.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06b/clean-text-merge",
+      "source": "test-platform/scenarios/06b/clean-text-merge.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06b/local-delete-remote-modify",
+      "source": "test-platform/scenarios/06b/local-delete-remote-modify.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06b/remote-delete-local-modify",
+      "source": "test-platform/scenarios/06b/remote-delete-local-modify.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06b/true-text-conflict",
+      "source": "test-platform/scenarios/06b/true-text-conflict.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/both-deleted",
+      "source": "test-platform/scenarios/06c/both-deleted.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/clock-skew",
+      "source": "test-platform/scenarios/06c/clock-skew.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/local-deletion",
+      "source": "test-platform/scenarios/06c/local-deletion.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/no-base-absence",
+      "source": "test-platform/scenarios/06c/no-base-absence.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/remote-deletion",
+      "source": "test-platform/scenarios/06c/remote-deletion.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/stale-device-return",
+      "source": "test-platform/scenarios/06c/stale-device-return.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06c/unreadable-local-path",
+      "source": "test-platform/scenarios/06c/unreadable-local-path.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/ambiguous-local-move",
+      "source": "test-platform/scenarios/06d/ambiguous-local-move.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/case-collision",
+      "source": "test-platform/scenarios/06d/case-collision.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/destination-collision",
+      "source": "test-platform/scenarios/06d/destination-collision.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/invalid-target-path",
+      "source": "test-platform/scenarios/06d/invalid-target-path.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/local-rename",
+      "source": "test-platform/scenarios/06d/local-rename.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/remote-rename",
+      "source": "test-platform/scenarios/06d/remote-rename.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06d/unicode-collision",
+      "source": "test-platform/scenarios/06d/unicode-collision.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/device-local-config",
+      "source": "test-platform/scenarios/06e/device-local-config.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/empty-local-folder",
+      "source": "test-platform/scenarios/06e/empty-local-folder.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/empty-remote-folder",
+      "source": "test-platform/scenarios/06e/empty-remote-folder.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/excluded-local-default",
+      "source": "test-platform/scenarios/06e/excluded-local-default.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/excluded-remote-default",
+      "source": "test-platform/scenarios/06e/excluded-remote-default.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/hidden-dotfile-included",
+      "source": "test-platform/scenarios/06e/hidden-dotfile-included.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/own-plugin-settings-protected",
+      "source": "test-platform/scenarios/06e/own-plugin-settings-protected.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/protected-config",
+      "source": "test-platform/scenarios/06e/protected-config.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/third-party-settings-excluded",
+      "source": "test-platform/scenarios/06e/third-party-settings-excluded.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/unknown-binary-local",
+      "source": "test-platform/scenarios/06e/unknown-binary-local.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "06e/unknown-binary-remote",
+      "source": "test-platform/scenarios/06e/unknown-binary-remote.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07a/after-canonical-state-write",
+      "source": "test-platform/scenarios/07a/after-canonical-state-write.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07a/after-remote-effect",
+      "source": "test-platform/scenarios/07a/after-remote-effect.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07a/ambiguous-applied",
+      "source": "test-platform/scenarios/07a/ambiguous-applied.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07a/ambiguous-not-applied",
+      "source": "test-platform/scenarios/07a/ambiguous-not-applied.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07a/before-canonical-state-write",
+      "source": "test-platform/scenarios/07a/before-canonical-state-write.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07a/before-remote-dispatch",
+      "source": "test-platform/scenarios/07a/before-remote-dispatch.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/corrupt-state",
+      "source": "test-platform/scenarios/07b/corrupt-state.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/incompatible-root-protocol",
+      "source": "test-platform/scenarios/07b/incompatible-root-protocol.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/incompatible-state-version",
+      "source": "test-platform/scenarios/07b/incompatible-state-version.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/lost-change-cursor",
+      "source": "test-platform/scenarios/07b/lost-change-cursor.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/missing-managed-root",
+      "source": "test-platform/scenarios/07b/missing-managed-root.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/partial-change-page",
+      "source": "test-platform/scenarios/07b/partial-change-page.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/partial-remote-listing",
+      "source": "test-platform/scenarios/07b/partial-remote-listing.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/root-identity-mismatch",
+      "source": "test-platform/scenarios/07b/root-identity-mismatch.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07b/truncated-state",
+      "source": "test-platform/scenarios/07b/truncated-state.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07c/cancel-after-effect",
+      "source": "test-platform/scenarios/07c/cancel-after-effect.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07c/cancel-before-effect",
+      "source": "test-platform/scenarios/07c/cancel-before-effect.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07c/cloned-state-detected",
+      "source": "test-platform/scenarios/07c/cloned-state-detected.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07c/repeated-cancellation",
+      "source": "test-platform/scenarios/07c/repeated-cancellation.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07c/restored-stale-state-reconciles",
+      "source": "test-platform/scenarios/07c/restored-stale-state-reconciles.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07d/download-integrity",
+      "source": "test-platform/scenarios/07d/download-integrity.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07d/local-source-changed-after-preview",
+      "source": "test-platform/scenarios/07d/local-source-changed-after-preview.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07d/remote-source-changed-after-preview",
+      "source": "test-platform/scenarios/07d/remote-source-changed-after-preview.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07d/transient-remote-failure",
+      "source": "test-platform/scenarios/07d/transient-remote-failure.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07d/upload-integrity",
+      "source": "test-platform/scenarios/07d/upload-integrity.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07e/destructive-below-threshold",
+      "source": "test-platform/scenarios/07e/destructive-below-threshold.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07e/destructive-threshold-blocked",
+      "source": "test-platform/scenarios/07e/destructive-threshold-blocked.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07e/lifecycle-reconstruction",
+      "source": "test-platform/scenarios/07e/lifecycle-reconstruction.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07e/local-disk-full",
+      "source": "test-platform/scenarios/07e/local-disk-full.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07e/protected-config-change",
+      "source": "test-platform/scenarios/07e/protected-config-change.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "07e/remote-quota-exhaustion",
+      "source": "test-platform/scenarios/07e/remote-quota-exhaustion.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09a-dual-device-readiness",
+      "source": "test-platform/scenarios/live/s09a-dual-device-readiness.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09a-ios-initial-sync",
+      "source": "test-platform/scenarios/live/s09a-ios-initial-sync.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09a-request-attribution",
+      "source": "test-platform/scenarios/live/s09a-request-attribution.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09a-windows-initial-sync",
+      "source": "test-platform/scenarios/live/s09a-windows-initial-sync.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09b-bidirectional-sync",
+      "source": "test-platform/scenarios/live/s09b-bidirectional-sync.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09b-clean-text-merge",
+      "source": "test-platform/scenarios/live/s09b-clean-text-merge.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09c-interruption-resume",
+      "source": "test-platform/scenarios/live/s09c-interruption-resume.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09c-offline-reconnect",
+      "source": "test-platform/scenarios/live/s09c-offline-reconnect.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09d-large-transfer",
+      "source": "test-platform/scenarios/live/s09d-large-transfer.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09d-unicode-path-roundtrip",
+      "source": "test-platform/scenarios/live/s09d-unicode-path-roundtrip.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09e-auth-revocation-restore",
+      "source": "test-platform/scenarios/live/s09e-auth-revocation-restore.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09e-plugin-disable-reenable",
+      "source": "test-platform/scenarios/live/s09e-plugin-disable-reenable.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/s09e-uninstall-reinstall",
+      "source": "test-platform/scenarios/live/s09e-uninstall-reinstall.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "live/windows-live-smoke",
+      "source": "test-platform/scenarios/live/windows-live-smoke.ts",
+      "mode": "live-deferred-until-simulator-parity",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "multi-device-conflict",
+      "source": "test-platform/scenarios/multi-device-conflict.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "ordinary-one-sided-sync",
+      "source": "test-platform/scenarios/ordinary-one-sided-sync.ts",
+      "mode": "deterministic-virtual-world",
+      "powershellCommand": "Invoke-BvpScenario",
+      "accessibility": "requires-bounded-existing-runner-dispatch",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    }
+  ],
+  "deviceCommands": [
+    {
+      "name": "fixture-put",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "may-change-state",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    },
+    {
+      "name": "fixture-remove",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "may-change-state",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    },
+    {
+      "name": "observe-file",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "observation-only",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    },
+    {
+      "name": "production-preview",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "observation-only",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    },
+    {
+      "name": "production-execute",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "may-change-state",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    },
+    {
+      "name": "production-control",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "may-change-state",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    },
+    {
+      "name": "observe-product",
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "export": "DeviceCommand",
+      "signature": "CommandHeader + kind-specific typed payload",
+      "mode": "installed-live-device",
+      "effect": "observation-only",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "not-standalone-cli-dispatch-requires-authenticated-gate"
+    }
+  ],
+  "scenarioSteps": [
+    {
+      "kind": "fixture",
+      "name": "put-local-file",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "put-local-pattern",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "put-local-folder",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "put-remote-file",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "put-remote-folder",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "move-local",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "move-remote",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "remove-local",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "fixture",
+      "name": "remove-remote",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "production",
+      "name": "execute-reviewed-plan",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "production",
+      "name": "preview",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "production",
+      "name": "synchronize",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "production",
+      "name": "reconcile",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "production",
+      "name": "automatic-sync",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "set-device-connectivity",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "set-local-access",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "advance-device-time",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "set-remote-listing-completeness",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "set-remote-change-completeness",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "inject-remote-mutation-fault",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "inject-post-mutation-observation-failure",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "request-cancellation",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "inject-crash-boundary",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "fault-device-state",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "invalidate-change-cursor",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "external-state",
+      "name": "fault-managed-root",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "checkpoint",
+      "name": "capture",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "checkpoint",
+      "name": "restart-device",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "controlled-simulator-step",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "observe",
+      "name": "local-entry",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "observe",
+      "name": "remote-entry",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "observe",
+      "name": "device-state",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "observe",
+      "name": "production-plan",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "observe",
+      "name": "production-result",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "observe",
+      "name": "remote-change-state",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "equals",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "not-equals",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "status",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "exists",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "field-equals",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "field-not-equals",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "contains",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    },
+    {
+      "kind": "assert",
+      "name": "count",
+      "source": "test-platform/src/scenario/scenario-contract.ts",
+      "type": "ScenarioStep",
+      "mode": "by-scenario",
+      "effect": "read-or-assert",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "typed-dispatch-required"
+    }
+  ],
+  "cliEntrypoints": [
+    {
+      "entrypoint": "run-deterministic-battery.js",
+      "source": "test-platform/test/batteries/run-deterministic-battery.ts",
+      "arguments": [
+        "--battery",
+        "--result-file",
+        "--tap-file"
+      ],
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
+      "entrypoint": "run-live-battery.js",
+      "source": "test-platform/test/batteries/run-live-battery.ts",
+      "arguments": [
+        "--battery",
+        "--device-map-json",
+        "--run-id",
+        "--relay-root",
+        "--validation-source-commit",
+        "--checkpoint-file",
+        "--validation-build-identity-file",
+        "--recover-timed-out-result-file",
+        "--resume-evidence-json",
+        "--result-timeout-ms",
+        "--production-result-timeout-ms",
+        "--poll-interval-ms",
+        "--result-file"
+      ],
+      "mode": "live-physical-deferred",
+      "effect": "may-dispatch-real-device-commands",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "live-execution-blocked-until-authorized"
+    },
+    {
+      "entrypoint": "buildValidationArtifact",
+      "source": "test-platform/src/live-device/build-validation-artifact.ts",
+      "arguments": [
+        "repositoryRoot (optional)"
+      ],
+      "mode": "build-development-only",
+      "effect": "writes-artifact",
+      "powershellCommand": "Invoke-BvpCommand",
+      "accessibility": "exported-TS-build-helper-no-safe-CLI-mapping-yet"
+    }
+  ],
+  "libraryContracts": [
+    {
+      "source": "test-platform/src/scenario/scenario-runner.ts",
+      "signature": "DeterministicScenarioRunner.run",
+      "powershellCommand": "Invoke-BvpScenario",
+      "scope": "scenario-execution",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/scenario/scenario-checkpoint.ts",
+      "signature": "createScenarioCheckpoint / decodeScenarioCheckpoint / validateScenarioCheckpointForResume",
+      "powershellCommand": "Get-BvpPendingCheckpoint / Resume-BvpRun",
+      "scope": "checkpoint-resume",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/scenario/scenario-evidence.ts",
+      "signature": "buildScenarioEvidence",
+      "powershellCommand": "Get-BvpEvidence",
+      "scope": "result-readback",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/scenario/scenario-diagnostics.ts",
+      "signature": "bvpDiagnostic / safeUnexpectedFailure",
+      "powershellCommand": "Get-BvpDiagnostic",
+      "scope": "failure-readback",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "signature": "createLiveScenarioExecutor / pendingCheckpoint / observedInstalledBuilds",
+      "powershellCommand": "Invoke-BvpScenario / Get-BvpPendingCheckpoint",
+      "scope": "live-execution-deferred",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/live-device/drive-mailbox.ts",
+      "signature": "createDriveCommandMailbox / pollDeviceMailboxOnce / createWindowsMailboxRelay",
+      "powershellCommand": "Invoke-BvpCommand",
+      "scope": "live-mailbox-deferred",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "signature": "installBvpValidationBuildIdentity / installBvpMailboxRuntime",
+      "powershellCommand": "Get-BvpCapability",
+      "scope": "installed-device-internal",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/live-device/device-command-agent.ts",
+      "signature": "createBoundedDeviceCommandAgent.execute",
+      "powershellCommand": "Invoke-BvpCommand",
+      "scope": "authenticated-device-control",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/test/batteries/late-completion-recovery.ts",
+      "signature": "loadLateCompletionRecovery / withLateCompletionRecovery",
+      "powershellCommand": "Resolve-BvpRun",
+      "scope": "recovery-no-replay",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/virtual-world/virtual-world.ts",
+      "signature": "VirtualSynchronizationWorld / VirtualProductionDevice",
+      "powershellCommand": "Invoke-BvpScenario",
+      "scope": "simulation",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "signature": "InMemoryGoogleDriveCore",
+      "powershellCommand": "Invoke-BvpScenario",
+      "scope": "simulation",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "signature": "InMemoryLocalVault",
+      "powershellCommand": "Invoke-BvpScenario",
+      "scope": "simulation",
+      "accessibility": "typed-library-export-not-yet-proven-operator-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    }
+  ],
+  "existingPowerShellScripts": [
+    "dev/scripts/Invoke-BVP-Battery.ps1",
+    "dev/scripts/Invoke-BVP-Deterministic-Battery.ps1",
+    "dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1",
+    "dev/scripts/Invoke-PHXCI-S09A-Deploy.ps1"
+  ],
+  "proposedPowerShellCommands": [
+    "Get-BvpCommand",
+    "Get-BvpBattery",
+    "Get-BvpScenario",
+    "Get-BvpCapability",
+    "Get-BvpVersion",
+    "Initialize-BvpConfig",
+    "Get-BvpConfig",
+    "Test-BvpConfig",
+    "Set-BvpConfig",
+    "Get-BvpProfile",
+    "Invoke-BvpBattery",
+    "Invoke-BvpScenario",
+    "Invoke-BvpCommand",
+    "Get-BvpRun",
+    "Get-BvpResult",
+    "Get-BvpDiagnostic",
+    "Get-BvpEvidence",
+    "Get-BvpPendingCheckpoint",
+    "Resume-BvpRun",
+    "Resolve-BvpRun"
+  ],
+  "budgets": {
+    "scriptLimit": 4,
+    "scriptCount": 4,
+    "logicalLocLimit": 1500,
+    "lastVerifiedLogicalLoc": 401,
+    "scenarioSpecificScriptLimit": 0,
+    "psm1IncludedInExistingGuard": false
+  },
+  "gates": {
+    "implementationAllowed": false,
+    "sourceDiscoveryDone": "source-listed-batteries-scenarios-commands-steps-cli",
+    "remaining": [
+      "Exhaustive TypeScript exports/flags accessibility disposition",
+      "Machine-checked source inventory and unmapped-API regression test",
+      "Frozen PowerShell module accounting/retirement strategy",
+      "Simulator coverage for live-only scenarios not established"
+    ],
+    "physicalDispatch": "NOT_AUTHORIZED",
+    "qualification": "NOT_RUN"
+  },
+  "counts": {
+    "scenarios": 84,
+    "deterministicBatteries": 7,
+    "liveBatteries": 14,
+    "deviceKinds": 7,
+    "stepVariants": 42,
+    "cliEntrypoints": 3,
+    "sourceContractFamilies": 12
+  }
+}
