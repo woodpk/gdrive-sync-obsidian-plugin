@@ -1,5 +1,5 @@
 import { deepStrictEqual, match, notStrictEqual, strictEqual } from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
@@ -136,6 +136,32 @@ test("DEC-351 independent invocation isolation and status mapping", () => {
     strictEqual(isAbsolute(one), true);
     strictEqual(basename(two), "two.json");
   });
+});
+
+test("DEC-351 concurrent isolated runs cannot exchange results or overwrite collision winner", async () => {
+  const root = mkdtempSync(join(tmpdir(), "bvp-dec351-concurrent-"));
+  const run = (file: string) => new Promise<number>((resolveRun, rejectRun) => {
+    const child = spawn(process.execPath, [compiledCli,
+      "--scenario", "s06a-fresh-local-only", "--result-file", file],
+      { cwd: process.cwd(), env: { ...process.env, NODE_TEST_CONTEXT: undefined },
+        stdio: ["ignore", "ignore", "pipe"] });
+    child.stderr?.resume();
+    child.on("error", rejectRun);
+    child.on("close", code => resolveRun(code ?? 1));
+  });
+  try {
+    const first = join(root, "first.json"), second = join(root, "second.json");
+    deepStrictEqual(await Promise.all([run(first), run(second)]), [0, 0]);
+    const a = JSON.parse(readFileSync(first, "utf8"));
+    const b = JSON.parse(readFileSync(second, "utf8"));
+    deepStrictEqual(a.result.evidence, b.result.evidence);
+    const shared = join(root, "shared.json");
+    const statuses = await Promise.all([run(shared), run(shared)]);
+    deepStrictEqual([...statuses].sort(), [0, 1]);
+    strictEqual(JSON.parse(readFileSync(shared, "utf8")).result.status, "completed");
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
 });
 
 test("DEC-351 result file is a sanitized canonical evidence projection", () => {
