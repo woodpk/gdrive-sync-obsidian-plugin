@@ -431,6 +431,33 @@ test("deterministic child TAP with private error text stays private while preser
     const result=JSON.parse(await readFile(resultPath,"utf8"));
     strictEqual(result.result.status,"failed");
     strictEqual(result.result.exitCode,1);
+    // NEW-01: A normally exiting, failing child must produce the complete
+    // diagnostic contract, not merely sanitized TAP plus a nonzero code.
+    const diagnostic=result.result.diagnostic;
+    strictEqual(diagnostic.schemaVersion,1);
+    strictEqual(diagnostic.classification,"deterministic-battery-failed");
+    strictEqual(diagnostic.component,"battery-runner");
+    strictEqual(diagnostic.phase,"test-verdict");
+    strictEqual(diagnostic.lastConfirmedBoundary,"test-subprocess-exited");
+    strictEqual(diagnostic.firstUnconfirmedBoundary,"battery-success-verdict");
+    strictEqual(diagnostic.effect,"unknown");
+    strictEqual(diagnostic.causeClass,"nonzero-test-exit");
+    strictEqual(diagnostic.retriability,"requires-reconciliation");
+    strictEqual(diagnostic.recommendedAction,"inspect-sanitized-test-evidence");
+    strictEqual(diagnostic.identity.scenarioId,"bvp-private-tap-canary");
+    strictEqual(diagnostic.identity.executionMode,"deterministic");
+    strictEqual(diagnostic.identity.stepIndex,null);
+    strictEqual(/^run-sha256:[a-f0-9]{24}$/.test(diagnostic.identity.runId),true);
+    strictEqual(/^corr-sha256:[a-f0-9]{24}$/.test(diagnostic.identity.correlationToken),true);
+    deepStrictEqual(diagnostic.hops,[
+      {boundary:"test-subprocess-exited",status:"confirmed"},
+      {boundary:"battery-success-verdict",status:"unknown"},
+    ]);
+    const lastSummaryLine=child.stdout.trim().split(/\\r?\\n/).at(-1);
+    const summary=JSON.parse(lastSummaryLine!);
+    strictEqual(summary.status,"failed");
+    strictEqual(summary.exitCode,1);
+    deepStrictEqual(summary.diagnostic,diagnostic);
     const tap=await readFile(tapPath,"utf8");
     strictEqual(tap.includes("not ok"),true);
     strictEqual(tap.includes("test-case-1"),true);
@@ -472,3 +499,64 @@ test("virtual device disposal failure preserves a completed observation and retu
   strictEqual(result.evidence?.machine.verdict.cleanupDiagnostic?.classification,"cleanup-failed");
   doesNotMatch(JSON.stringify(result),/synthetic-cleanup-secret|secret\.md/);
 });
+
+// NEW-02: An actually completed step must not satisfy a declared failure.
+// The *scenario* failed verdict needs a structured public diagnosis even
+// though the underlying step really did complete.
+for(const executionMode of ["deterministic","live"] as const){
+  test("unexpected successful step preserves observation and emits canonical diagnostic ("+executionMode+")",async()=>{
+    const scenario=defineScenario({
+      id:"expected-outcome-mismatch",
+      description:"Expected non-success must not be silently treated as a successful test",
+      executionModes:[executionMode],
+      traceability:{targets:[{kind:"requirement",id:"DEC-348"}]},
+      steps:[{
+        id:"observed-step",kind:"observe",subject:"device-state",device:"windows",
+        captureAs:"state",expect:{status:"blocked",classification:"missing-required-result"},
+      }],
+    });
+    const runner=executionMode==="live"
+      ?new DeterministicScenarioRunner({},{
+        executionMode:"live",runIdentity:"Bearer synthetic-private-run-id",
+        deviceIdentities:["synthetic-private-device-id"],
+        async execute(){return {status:"completed"};},
+      })
+      :DeterministicScenarioRunner.canonical();
+    const result=await runner.run(scenario);
+    strictEqual(result.status,"failed");
+    strictEqual(result.classification,"expected-outcome-not-observed");
+    strictEqual(result.steps.length,1);
+    strictEqual(result.steps[0]?.status,"completed");
+    strictEqual(result.steps[0]?.matchedExpectation,false);
+    strictEqual(result.steps[0]?.classification,undefined);
+    const diagnostic=result.diagnostic!;
+    strictEqual(diagnostic.schemaVersion,1);
+    strictEqual(diagnostic.classification,"expected-outcome-not-observed");
+    strictEqual(diagnostic.component,"scenario-runner");
+    strictEqual(diagnostic.phase,"expected-outcome-validation");
+    strictEqual(diagnostic.stepId,"observed-step");
+    strictEqual(diagnostic.lastConfirmedBoundary,"scenario-step-completed");
+    strictEqual(diagnostic.firstUnconfirmedBoundary,"expected-outcome-confirmation");
+    strictEqual(diagnostic.effect,"unknown");
+    strictEqual(diagnostic.causeClass,"expected-outcome-not-observed");
+    strictEqual(diagnostic.retriability,"requires-reconciliation");
+    strictEqual(diagnostic.recommendedAction,"inspect-step-evidence");
+    strictEqual(diagnostic.identity.scenarioId,"expected-outcome-mismatch");
+    strictEqual(diagnostic.identity.stepIndex,0);
+    strictEqual(diagnostic.identity.executionMode,executionMode==="live"?"windows-live":"deterministic");
+    strictEqual(/^corr-sha256:[a-f0-9]{24}$/.test(diagnostic.identity.correlationToken),true);
+    if(executionMode==="live")
+      strictEqual(/^run-sha256:[a-f0-9]{24}$/.test(diagnostic.identity.runId),true);
+    else strictEqual(diagnostic.identity.runId,"unavailable");
+    deepStrictEqual(diagnostic.hops,[
+      {boundary:"scenario-step-completed",status:"confirmed"},
+      {boundary:"expected-outcome-confirmation",status:"unknown"},
+    ]);
+    deepStrictEqual(result.evidence?.machine.verdict.diagnostic,diagnostic);
+    deepStrictEqual(JSON.parse(result.evidence!.machineJson).verdict.diagnostic,diagnostic);
+    strictEqual(result.evidence?.machine.verdict.status,"failed");
+    strictEqual(result.evidence?.machine.verdict.classification,"expected-outcome-not-observed");
+    strictEqual(result.evidence?.human.includes("verdict=failed"),true);
+    doesNotMatch(JSON.stringify(result),/Bearer|synthetic-private-(run|device)-id|PrivateVault/);
+  });
+}
