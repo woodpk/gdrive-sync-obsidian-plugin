@@ -279,3 +279,45 @@ test("DEC-351 result file is a sanitized canonical evidence projection", () => {
     strictEqual(raw.includes('"runId":"'), false);
   });
 });
+
+
+test("BVP result-close failure cannot print completed before actual file finalization", () => {
+  withScratch(root => {
+    const failedDestination = join(root, "close-failed.json");
+    const compiledCloseFault = resolve(__dirname, "fixtures/bvp-cli-close-fault-preload.js");
+    const child = spawnSync(process.execPath, [
+      "--require", compiledCloseFault, compiledCli,
+      "--scenario", "s06a-fresh-local-only", "--result-file", failedDestination,
+    ], {
+      cwd: process.cwd(), encoding: "utf8", timeout: 120_000,
+      env: { ...process.env, NODE_TEST_CONTEXT: undefined },
+    });
+    if (child.error) throw child.error;
+    strictEqual(child.status, 1, "close failure must override an otherwise completed scenario");
+    strictEqual(child.stdout, "", "no completed or other success-looking summary before successful close");
+    match(child.stderr, /BVP_DIAGNOSTIC/);
+    match(child.stderr, /"phase":"result-close"/);
+    strictEqual(existsSync(failedDestination), true,
+      "a syntactically completed record can still be unqualified when its handle close failed");
+    const original = JSON.parse(readFileSync(failedDestination, "utf8"));
+    strictEqual(original.result.status, "completed");
+    strictEqual(original.result.evidence.verdict.status, "completed");
+    strictEqual(original.requestedScenarioId, "s06a-fresh-local-only");
+    const safeTerminal = child.stdout + child.stderr;
+    strictEqual(safeTerminal.includes("fresh-local.bin"), false);
+    strictEqual(safeTerminal.includes(root), false, "operator diagnostic must not leak output path");
+
+    const successfulDestination = join(root, "close-ok.json");
+    const normal = invoke([
+      "--scenario", "s06a-fresh-local-only", "--result-file", successfulDestination,
+    ]);
+    strictEqual(normal.status, 0, normal.stderr);
+    strictEqual(normal.stderr, "");
+    const summary = JSON.parse(normal.stdout.trim());
+    const finished = JSON.parse(readFileSync(successfulDestination, "utf8"));
+    strictEqual(summary.scenarioId, "s06a-fresh-local-only");
+    strictEqual(summary.status, "completed");
+    strictEqual(finished.result.status, summary.status);
+    strictEqual(finished.result.evidence.verdict.status, summary.status);
+  });
+});
