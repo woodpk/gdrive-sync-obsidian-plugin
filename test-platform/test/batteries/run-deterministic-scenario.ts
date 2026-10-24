@@ -50,12 +50,14 @@ async function main(argv: readonly string[]): Promise<void> {
         selected.executionModes.includes("live")) {
       throw new Error("scenario-cli-selection-unavailable");
     }
-  } catch {
+  } catch (error) {
+    const selection = error instanceof Error && error.message === "scenario-cli-selection-unavailable";
     const diagnostic = bvpDiagnostic({
-      classification: "scenario-cli-preflight-rejected", component: "battery-runner",
+      classification: selection ? "scenario-cli-selection-unavailable" : "scenario-cli-arguments-invalid",
+      component: "battery-runner",
       phase: "scenario-selection", lastConfirmedBoundary: "cli-argv-received",
       firstUnconfirmedBoundary: "scenario-dispatch", effect: "none-confirmed",
-      recommendedAction: "inspect-scenario-cli-arguments",
+      recommendedAction: selection ? "inspect-scenario-catalog" : "inspect-scenario-cli-arguments",
     });
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
