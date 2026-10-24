@@ -95,6 +95,11 @@ async function main(argv: readonly string[]): Promise<void> {
     requestStatus: "rejected" as const, result: null, diagnostic,
   });
 
+  // Delay the result summary until the FileHandle has closed successfully.
+  // A completed canonical verdict inside an unfinalized file is never proof
+  // that persistence succeeded or that the CLI invocation passed.
+  let pendingSummary: string | undefined;
+  let pendingExitCode: number | undefined;
   try {
     const selected = getDeterministicScenario(request.scenarioId);
     if (!selected || !selected.executionModes.includes("deterministic") ||
@@ -143,11 +148,11 @@ async function main(argv: readonly string[]): Promise<void> {
       },
     };
     await output.writeFile(JSON.stringify(envelope, null, 2) + "\n", "utf8");
-    console.log(JSON.stringify({
+    pendingSummary = JSON.stringify({
       scenarioId: result.scenarioId, status: result.status,
       ...(machine.verdict.classification === undefined ? {} : { classification: machine.verdict.classification }),
-    }));
-    process.exitCode = exitCodeForScenarioStatus(result.status);
+    });
+    pendingExitCode = exitCodeForScenarioStatus(result.status);
   } catch {
     const diagnostic = diagnosticFor("scenario-result-persistence-failed",
       "result-persistence", "result-file-reserved", "result-file-write",
@@ -155,7 +160,22 @@ async function main(argv: readonly string[]): Promise<void> {
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
   } finally {
-    try { await output.close(); } catch { process.exitCode = 1; }
+    try {
+      await output.close();
+    } catch {
+      const diagnostic = diagnosticFor("scenario-result-persistence-failed",
+        "result-close", "result-file-write", "result-file-close",
+        "unknown", "inspect-output-path");
+      console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
+      pendingSummary = undefined;
+      process.exitCode = 1;
+    }
+  }
+  // The summary is intentionally absent after a close fault, even when the
+  // canonical runner returned "completed" and wrote syntactically valid JSON.
+  if (pendingSummary !== undefined && pendingExitCode !== undefined) {
+    process.exitCode = pendingExitCode;
+    console.log(pendingSummary);
   }
 }
 
