@@ -4,7 +4,7 @@
 **Builder working branch:** `build/bvp-cli-result-finalization-20261024`
 **Base:** `f34139ba380f2f9d39871a4ab4f31ede0dad531f` (DEC-351 independent accepted, closeout complete).
 **Owner authorization:** 2026-10-24 — begin the next Build Unit immediately; software-only, preserving all separate physical/security/release gates.
-**Status:** BUILDER SOURCE AND TESTS COMMITTED; genuine Windows PHX-CI qualification **NOT YET EXECUTED**; independent final review NOT YET ELIGIBLE.
+**Status:** Owner withheld the previous premature Reviewer handoff. Builder is completing full feature coverage. Prior R2 PHX-CI PASS applies only to the earlier source; latest expanded test matrix is UNVERIFIED.
 **Normative basis:** DEC-351, its R5 accepted public CLI contract, final review `dev/reviews/dec351-direct-scenario-cli-20261024-r5-independent-final.md` (M-03), AGENTS.md, governing Protocol/Manual and current WS-07 frozen architecture/PHX-CI rules.
 
 ## Required behavior and defect
@@ -54,3 +54,13 @@ Only after genuine PHX-CI PASS and canonical publication can Builder increment t
 - Implemented source commit: `7848906496db4c58ada79c9aa3ec953cf5643712` — holds pending status summary in memory until `await output.close()` succeeds; after close fault discards pending stdout, emits privacy-safe `scenario-result-persistence-failed` diagnostic in `result-close` phase and exits nonzero. Original request parsing, canonical runner/status machine evidence, reservations, public argv and schema unchanged.
 - Review for semantic risk: early `return` paths still close in `finally` and cannot emit a deferred success; noncompleted canonical statuses continue to print only after successful close with nonzero status; result-close failure with syntactically valid file must be rejected by actual exit and corroborating evidence. No no-success-to-success oracle relaxation.
 - **No executable validation performed.** Local Windows pinned PHX-CI is mandatory next. Invoke installed `69c4aa077d4a1a46d1e85e59f39d36285be99e83` using its verified `scripts/Invoke-PhxCi.ps1`, `-FocusedTestCommand 'npm run test:bvp-root'`, **`-BaseRef f34139ba380f2f9d39871a4ab4f31ede0dad531f`** to isolate the new Build Unit from previous DEC-349 frozen-budget changes. Never use `authorized-governance` as a blanket exception; the new change is ordinary, no lock/pin/guard change.
+
+## Full-feature initial build continuation — owner instruction 2026-10-24
+
+Owner required that the **entire feature** be fully implemented before final Reviewer access. The earlier published Builder-to-Reviewer handoff was withheld before a Reviewer assessment. Builder restored in dev/state/current-state.yaml; previously published handoff-count 1 remains historical, not rewound.
+
+The earlier substantive PHX-CI R2 run f8a19dc9-976a-437d-91c9-372d61c64da6 PASSED all 11 stages, 548 focused tests, 1292 product tests and repository guards on exact source c82041d3022fa23e3db2b7e3a50032453f7e6e14, published at b10bdd06882f16ffec0120ea44226e95e60ef32d. This does not qualify tests subsequently changed.
+
+Builder added required negative outcome coverage at 404b4a3f83ad7c18b25e18c5c7c5759974ec40ad. Beyond the completed-status close-fault regression, it exercises failed, blocked and unsupported canonical scenarios with *both normal close and injected failed close*, plus unknown and live-only selection rejections under close fault. It preserves request/result identity, correct exit status, privacy-safe diagnostics, canonical evidence semantics and no misleading pre-close stdout. The public CLI implementation was unchanged in this continuation; tests are not accepted before a new exact-source PHX-CI PASS. M-02 (post-dispatch exception envelope semantics) and M-04 (physical/iOS readiness) remain distinct from this close-finalization contract.
+
+Mandatory next action: Builder runs installed pinned PHX-CI with BRAIN_ARTIFACT_PURPOSE=development and BVP_CHANGE_CLASS=ordinary, focused npm run test:bvp-root, base f34139ba380f2f9d39871a4ab4f31ede0dad531f, exact new remote HEAD. Preserve prior original evidence. Do not request Reviewer until complete feature qualification and Owner's stated full-feature threshold are satisfied.
