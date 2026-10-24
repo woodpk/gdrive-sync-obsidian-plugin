@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "feature": "WS-07/BVP_POWERSHELL_INTERFACE_LIBRARY",
   "snapshotCommit": "12a1dd839bf6a35aa0664ebd1f9dc420d35c0e94",
-  "inventoryStage": "P1_SOURCED_PUBLIC_SURFACE_DRAFT_NOT_YET_FULL_PARITY",
+  "inventoryStage": "P1_SOURCE_SURFACES_CLASSIFIED_NOT_YET_FULL_PARITY_GUARD_RECONCILIATION_REQUIRED",
   "classificationNote": "Source-mapped endpoints are candidates; a TypeScript export is not automatically an operator-safe public action.",
   "batteries": [
     {
@@ -1571,10 +1571,11 @@
     "implementationAllowed": false,
     "sourceDiscoveryDone": "source-listed-batteries-scenarios-commands-steps-cli",
     "remaining": [
-      "Exhaustive TypeScript exports/flags accessibility disposition",
-      "Machine-checked source inventory and unmapped-API regression test",
-      "Frozen PowerShell module accounting/retirement strategy",
-      "Simulator coverage for live-only scenarios not established"
+      "Validate TypeScript export coverage tests under exact Windows PHX-CI (not yet run)",
+      "Classify exported class public methods and assert every supported callable endpoint has operator mapping",
+      "Governance owner decision on false-positive scenario-specific PS1 detection for genuine generic Get-BvpScenario/Invoke-BvpScenario functions",
+      "Test Import-Module on counted .ps1, direct execution sentinel and architecture metrics with PowerShell 7.6.6",
+      "Prove Windows iPhone/iPad simulation support rather than infer it from physical live registry"
     ],
     "physicalDispatch": "NOT_AUTHORIZED",
     "qualification": "NOT_RUN"
@@ -1586,6 +1587,22 @@
     "deviceKinds": 7,
     "stepVariants": 42,
     "cliEntrypoints": 3,
-    "sourceContractFamilies": 12
+    "sourceContractFamilies": 12,
+    "typescriptExportsClassified": 158,
+    "typescriptFilesScanned": 27
+  },
+  "typescriptExportInventory": [
+    "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-powershell-ts-exports-part1-20261024.json",
+    "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-powershell-ts-exports-part2-20261024.json"
+  ],
+  "moduleDesign": {
+    "path": "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-powershell-importable-module-budget-reconciliation-20261024.md",
+    "candidate": "Use existing counted dev/scripts/Invoke-BVP-Deterministic-Battery.ps1 as PowerShell 7.6 importable module root with optional static Bvp.psd1, keep direct execution fail-closed",
+    "why": "Microsoft Import-Module supports importing .ps1; no uncounted .psm1, extra .ps1 script, budget increase or hidden runtime code",
+    "budgetStatus": "Four existing scripts 401 logical LOC, limit four scripts / 1500 logical LOC; module work must fit remaining 1099",
+    "unresolvedGuardIssue": "Scenario-specific PowerShell matching regex treats *any* Get-BvpScenario/Invoke-BvpScenario general operator name as forbidden scenario-specific script, even absent a specific scenario id or path",
+    "frozenSurface": "test-platform/src/architecture-governance.ts",
+    "requiresOwnerArchitectureDecision": true,
+    "prohibitedBypass": "Do not rename/obfuscate command merely to evade matcher; do not add uncounted .psm1"
   }
 }
