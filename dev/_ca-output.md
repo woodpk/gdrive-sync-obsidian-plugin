@@ -4,17 +4,17 @@ STATUS: BLOCKED
 
 ## Verification summary
 
-- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited 1.
+- Change-set verification: PASS
 - Repository verification: PASS
-- Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
+- Overall verification: BLOCKED; REPOSITORY-GATE FAILURE; A required non-verification gate did not complete successfully.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 84ae286f-8d0b-4940-8b80-1b956c1b8584
-- Repository: C:/temp/c9ef801751394bffab5a70be0d62f624/phx-aa9b8561c44444a0/w
+- Run ID: 42809ae9-bf60-4a46-aec1-24038ceda146
+- Repository: C:/temp/49fd65127e264ed2a41917a9e3512dca/phx-cf01725beb544387/w
 - Branch:
-- Verified HEAD: 8d92b265f3b227dd917f93c30393f76c8a18d68a
-- Verified tree: 0b47df74f4c31a7397775120775a3fa1e55b0917
-- Expected HEAD: 8d92b265f3b227dd917f93c30393f76c8a18d68a
+- Verified HEAD: 85162274595aeec0d7671258335e93a843724e0e
+- Verified tree: e4598bcd34a43770786e6732e8d140256a727061
+- Expected HEAD: 85162274595aeec0d7671258335e93a843724e0e
 - Base SHA: 42460912847e363aa4fa11e23e0429944383889d
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,26 +24,26 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-24T20:11:24.5333890Z
-- Ended: 2026-10-24T20:13:55.6330722Z
+- Started: 2026-10-24T20:36:39.0886677Z
+- Ended: 2026-10-24T20:39:21.6318266Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- node-preflight: PASS (exit 0; NONE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- node-project-files: PASS (exit 0; NONE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- install: PASS (exit 0; NONE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- typecheck: PASS (exit 0; NONE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- test-focused: FAIL (exit 1; TEST FAILURE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- test: PASS (exit 0; NONE; run 84ae286f-8d0b-4940-8b80-1b956c1b8584)
-- build: MISSING (FRAMEWORK FAILURE)
-- repository-check: MISSING (FRAMEWORK FAILURE)
+- preflight: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- node-preflight: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- node-project-files: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- install: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- typecheck: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- test-focused: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- test: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- build: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- repository-check: FAIL (exit 1; REPOSITORY-GATE FAILURE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
+- artifacts: PASS (exit 0; NONE; run 42809ae9-bf60-4a46-aec1-24038ceda146)
 - check: MISSING (FRAMEWORK FAILURE)
-- artifacts: MISSING (FRAMEWORK FAILURE)
 
 ## Artifacts
 
-- None recorded for current run
+- main.js: 922631 bytes; SHA-256 6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d
 
 Final verdict: BLOCKED
-Failure classification: TEST FAILURE
+Failure classification: REPOSITORY-GATE FAILURE
