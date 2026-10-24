@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceSnapshotBase": "bca73463778ab559d61742b4a7197d335f7473e7",
-  "status": "P1_CONTRACT_EXPORT_PART_1_OF_2",
+  "status": "P1_CONTRACT_EXPORT_CLASSIFIED_PART_1_OF_2_OPERATOR_PARITY_UNVERIFIED",
   "scannedPaths": [
     "test-platform/src/architecture-governance.ts",
     "test-platform/src/diagnostic-types.ts",
@@ -25,7 +25,12 @@
       "signature": "export type ChangeClass = \"ordinary\" | \"authorized-governance\";",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ArchitectureViolation",
@@ -33,7 +38,12 @@
       "signature": "export interface ArchitectureViolation {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "GuardResult",
@@ -41,7 +51,12 @@
       "signature": "export interface GuardResult {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioMetric",
@@ -49,7 +64,12 @@
       "signature": "export interface ScenarioMetric {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "MetricsSnapshot",
@@ -57,7 +77,12 @@
       "signature": "export interface MetricsSnapshot {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BudgetResult",
@@ -65,7 +90,12 @@
       "signature": "export interface BudgetResult {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "MetricsResultValue",
@@ -73,7 +103,12 @@
       "signature": "export interface MetricsResultValue {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "MetricsRunResult",
@@ -81,7 +116,12 @@
       "signature": "export interface MetricsRunResult {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "runArchitectureGuard",
@@ -89,7 +129,12 @@
       "signature": "export function runArchitectureGuard(options: { readonly repoRoot: string; readonly changedPaths?: readonly string[]; readonly changeClass?: ChangeClass }): GuardResult {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "engineering-source-qualification-only",
+      "operatorCommand": null,
+      "accessRequirement": "never-use-as-BVP-user-operator",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "runArchitectureMetrics",
@@ -97,7 +142,12 @@
       "signature": "export function runArchitectureMetrics(options: { readonly repoRoot: string; readonly baseSha?: string }): MetricsRunResult {",
       "source": "test-platform/src/architecture-governance.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "ENGINEERING_GOVERNANCE_ONLY",
+      "sideEffectClass": "engineering-source-qualification-only",
+      "operatorCommand": null,
+      "accessRequirement": "never-use-as-BVP-user-operator",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnosticComponent",
@@ -105,7 +155,12 @@
       "signature": "export type BvpDiagnosticComponent = | \"scenario-runner\" | \"live-controller\" | \"battery-runner\"",
       "source": "test-platform/src/diagnostic-types.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnostic",
@@ -113,7 +168,12 @@
       "signature": "export interface BvpDiagnostic {",
       "source": "test-platform/src/diagnostic-types.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnosticInput",
@@ -121,7 +181,12 @@
       "signature": "export type BvpDiagnosticInput = Omit<BvpDiagnostic, \"schemaVersion\"|\"identity\"|\"causeClass\"|\"retriability\"|\"hops\"> & Partial<Pick<BvpDiagnostic,\"identity\"|\"causeClass\"|\"retriability\"|\"hops\"",
       "source": "test-platform/src/diagnostic-types.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL",
@@ -129,7 +194,12 @@
       "signature": "export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = \"BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL\" as const;",
       "source": "test-platform/src/platform-root.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioResumeDisposition",
@@ -137,7 +207,12 @@
       "signature": "export type ScenarioResumeDisposition =",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioResumeEvidence",
@@ -145,7 +220,12 @@
       "signature": "export type ScenarioResumeEvidence = | \"human-confirmation\"",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCheckpointStepResult",
@@ -153,7 +233,12 @@
       "signature": "export interface ScenarioCheckpointStepResult {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCheckpointEvidenceSummary",
@@ -161,7 +246,12 @@
       "signature": "export interface ScenarioCheckpointEvidenceSummary {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCheckpoint",
@@ -169,7 +259,12 @@
       "signature": "export type ScenarioCheckpoint = ScenarioCheckpointData & {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCheckpointFailure",
@@ -177,7 +272,12 @@
       "signature": "export type ScenarioCheckpointFailure =",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCheckpointResult",
@@ -185,7 +285,12 @@
       "signature": "export type ScenarioCheckpointResult<T> =",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "CreateScenarioCheckpointInput",
@@ -193,7 +298,12 @@
       "signature": "export interface CreateScenarioCheckpointInput {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioResumeContext",
@@ -201,7 +311,12 @@
       "signature": "export interface ScenarioResumeContext { readonly scenario:ScenarioDefinition; readonly runId:string; readonly executionMode:ScenarioExecutionMode; readonly deviceIdentities?:readonly string",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "scenarioDefinitionDigest",
@@ -209,7 +324,12 @@
       "signature": "export function scenarioDefinitionDigest(scenario:ScenarioDefinition):string{return \"sha256:\"+createHash(\"sha256\").update(canonical(scenario)).digest(\"hex\");}",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_SAFE_RESULT_OR_DIAGNOSTIC",
+      "sideEffectClass": "pure-observation-or-result-classification",
+      "operatorCommand": "Get-BvpScenario",
+      "accessRequirement": "existing-BVP-runtime-safe-readback-only",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "createScenarioCheckpoint",
@@ -217,7 +337,12 @@
       "signature": "export function createScenarioCheckpoint(input: CreateScenarioCheckpointInput): ScenarioCheckpointResult<ScenarioCheckpoint> {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_GUARDED_RECOVERY",
+      "sideEffectClass": "conditional-recovery-or-checkpoint-persistence",
+      "operatorCommand": "Get-BvpPendingCheckpoint",
+      "accessRequirement": "existing-recovery-guard-identity-no-replay",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "encodeScenarioCheckpoint",
@@ -225,7 +350,12 @@
       "signature": "export function encodeScenarioCheckpoint(checkpoint: ScenarioCheckpoint): string {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_GUARDED_RECOVERY",
+      "sideEffectClass": "conditional-recovery-or-checkpoint-persistence",
+      "operatorCommand": "Get-BvpPendingCheckpoint",
+      "accessRequirement": "existing-recovery-guard-identity-no-replay",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "decodeScenarioCheckpoint",
@@ -233,7 +363,12 @@
       "signature": "export function decodeScenarioCheckpoint(serialized: string): ScenarioCheckpointResult<ScenarioCheckpoint> {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_SAFE_RESULT_OR_DIAGNOSTIC",
+      "sideEffectClass": "pure-observation-or-result-classification",
+      "operatorCommand": "Get-BvpPendingCheckpoint",
+      "accessRequirement": "existing-BVP-runtime-safe-readback-only",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "validateScenarioCheckpointForResume",
@@ -241,7 +376,12 @@
       "signature": "export function validateScenarioCheckpointForResume(",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_GUARDED_RECOVERY",
+      "sideEffectClass": "conditional-recovery-or-checkpoint-persistence",
+      "operatorCommand": "Resume-BvpRun",
+      "accessRequirement": "existing-recovery-guard-identity-no-replay",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "InMemoryScenarioCheckpointStore",
@@ -249,7 +389,12 @@
       "signature": "export class InMemoryScenarioCheckpointStore {",
       "source": "test-platform/src/scenario/scenario-checkpoint.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioExecutionMode",
@@ -257,7 +402,12 @@
       "signature": "export type ScenarioExecutionMode = \"deterministic\" | \"live\"; export type ScenarioTraceabilityKind = \"requirement\" | \"invariant\" | \"completion-evidence\";",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioTraceabilityKind",
@@ -265,7 +415,12 @@
       "signature": "export type ScenarioTraceabilityKind = \"requirement\" | \"invariant\" | \"completion-evidence\";",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioTraceabilityTarget",
@@ -273,7 +428,12 @@
       "signature": "export interface ScenarioTraceabilityTarget {",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioTraceability",
@@ -281,7 +441,12 @@
       "signature": "export interface ScenarioTraceability {",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioExpectedOutcome",
@@ -289,7 +454,12 @@
       "signature": "export type ScenarioExpectedOutcome =",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioFixtureContent",
@@ -297,7 +467,12 @@
       "signature": "export type ScenarioFixtureContent =",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioFixtureStep",
@@ -305,7 +480,12 @@
       "signature": "export type ScenarioFixtureStep = Step<",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioProductionStep",
@@ -313,7 +493,12 @@
       "signature": "export type ScenarioProductionStep = Step<",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioExternalStateStep",
@@ -321,7 +506,12 @@
       "signature": "export type ScenarioExternalStateStep = Step<",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCheckpointStep",
@@ -329,7 +519,12 @@
       "signature": "export type ScenarioCheckpointStep = Step<",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioObservationStep",
@@ -337,7 +532,12 @@
       "signature": "export type ScenarioObservationStep = Step<",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioLiteral",
@@ -345,7 +545,12 @@
       "signature": "export type ScenarioLiteral = string | number | boolean | null | readonly string[] | readonly number[];",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioObservationField",
@@ -353,7 +558,12 @@
       "signature": "export type ScenarioObservationField = | \"kind\" | \"status\" | \"hash\" | \"sizeBytes\" | \"remoteObjectId\" | \"revision\" | \"entityKind\"",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioAssertionStep",
@@ -361,7 +571,12 @@
       "signature": "export type ScenarioAssertionStep = Step< | { readonly kind: \"assert\"; readonly assertion: \"equals\" | \"not-equals\"; readonly observationRef: string; readonly expected: ScenarioLiteral }",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioStep",
@@ -369,7 +584,12 @@
       "signature": "export type ScenarioStep = ScenarioFixtureStep | ScenarioProductionStep | ScenarioExternalStateStep | ScenarioCheckpointStep | ScenarioObservationStep | ScenarioAssertionStep;",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioDefinition",
@@ -377,7 +597,12 @@
       "signature": "export interface ScenarioDefinition {",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioValidationResult",
@@ -385,7 +610,12 @@
       "signature": "export type ScenarioValidationResult =",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "validateScenarioDefinition",
@@ -393,7 +623,12 @@
       "signature": "export function validateScenarioDefinition(input: unknown): ScenarioValidationResult {",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_SAFE_RESULT_OR_DIAGNOSTIC",
+      "sideEffectClass": "pure-observation-or-result-classification",
+      "operatorCommand": "Get-BvpScenario",
+      "accessRequirement": "existing-BVP-runtime-safe-readback-only",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "defineScenario",
@@ -401,7 +636,12 @@
       "signature": "export function defineScenario(definition: ScenarioDefinition): ScenarioDefinition {",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_DETERMINISTIC_DISPATCH",
+      "sideEffectClass": "simulated-in-memory-test-effects-only",
+      "operatorCommand": "Invoke-BvpScenario",
+      "accessRequirement": "typed-existing-BVP-virtual-runner-no-live-fallback",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "assertNeverScenarioStep",
@@ -409,7 +649,12 @@
       "signature": "export function assertNeverScenarioStep(step: never): never {",
       "source": "test-platform/src/scenario/scenario-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "bvpDiagnostic",
@@ -417,7 +662,12 @@
       "signature": "export { bvpDiagnostic }",
       "source": "test-platform/src/scenario/scenario-diagnostics.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_SAFE_RESULT_OR_DIAGNOSTIC",
+      "sideEffectClass": "pure-observation-or-result-classification",
+      "operatorCommand": "Get-BvpDiagnostic",
+      "accessRequirement": "existing-BVP-runtime-safe-readback-only",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnostic",
@@ -425,7 +675,12 @@
       "signature": "export type { BvpDiagnostic, BvpDiagnosticInput, BvpDiagnosticComponent } from \"../live-device/diagnostic-contract\";",
       "source": "test-platform/src/scenario/scenario-diagnostics.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnosticInput",
@@ -433,7 +688,12 @@
       "signature": "export type { BvpDiagnostic, BvpDiagnosticInput, BvpDiagnosticComponent } from \"../live-device/diagnostic-contract\";",
       "source": "test-platform/src/scenario/scenario-diagnostics.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnosticComponent",
@@ -441,7 +701,12 @@
       "signature": "export type { BvpDiagnostic, BvpDiagnosticInput, BvpDiagnosticComponent } from \"../live-device/diagnostic-contract\";",
       "source": "test-platform/src/scenario/scenario-diagnostics.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BvpDiagnosticError",
@@ -449,7 +714,12 @@
       "signature": "export class BvpDiagnosticError extends Error { constructor(readonly diagnostic:BvpDiagnostic,readonly status:\"failed\"|\"blocked\"=\"failed\"){",
       "source": "test-platform/src/scenario/scenario-diagnostics.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "safeUnexpectedFailure",
@@ -457,7 +727,12 @@
       "signature": "export function safeUnexpectedFailure( _error: unknown,",
       "source": "test-platform/src/scenario/scenario-diagnostics.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioEvidenceStepRecord",
@@ -465,7 +740,12 @@
       "signature": "export interface ScenarioEvidenceStepRecord {",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioEvidenceInput",
@@ -473,7 +753,12 @@
       "signature": "export interface ScenarioEvidenceInput {",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "CanonicalScenarioEvidenceMachine",
@@ -481,7 +766,12 @@
       "signature": "export interface CanonicalScenarioEvidenceMachine {",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "CanonicalScenarioEvidence",
@@ -489,7 +779,12 @@
       "signature": "export interface CanonicalScenarioEvidence {",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "assertScenarioObservation",
@@ -497,7 +792,12 @@
       "signature": "export async function assertScenarioObservation(step: ScenarioAssertionStep, context: Pick<ScenarioRunnerHookContext, \"readCapture\">): Promise<ScenarioCapabilityResult> {",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "createScenarioEvidenceHooks",
@@ -505,7 +805,12 @@
       "signature": "export function createScenarioEvidenceHooks(): ScenarioRunnerHooks {",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "buildScenarioEvidence",
@@ -513,7 +818,12 @@
       "signature": "export function buildScenarioEvidence(",
       "source": "test-platform/src/scenario/scenario-evidence.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_SAFE_RESULT_OR_DIAGNOSTIC",
+      "sideEffectClass": "pure-observation-or-result-classification",
+      "operatorCommand": "Get-BvpEvidence",
+      "accessRequirement": "existing-BVP-runtime-safe-readback-only",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioExecutionStatus",
@@ -521,7 +831,12 @@
       "signature": "export type ScenarioExecutionStatus = \"completed\" | \"failed\" | \"blocked\" | \"unsupported\";",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioStepExecution",
@@ -529,7 +844,12 @@
       "signature": "export interface ScenarioStepExecution { readonly index: number; readonly stepId: string; readonly kind: ScenarioStep[\"kind\"];",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioExecutionResult",
@@ -537,7 +857,12 @@
       "signature": "export interface ScenarioExecutionResult { readonly scenarioId: string; readonly status: ScenarioExecutionStatus;",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioCapabilityResult",
@@ -545,7 +870,12 @@
       "signature": "export type ScenarioCapabilityResult = | { readonly status: \"completed\"; readonly value?: unknown }",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioRunnerHookContext",
@@ -553,7 +883,12 @@
       "signature": "export interface ScenarioRunnerHookContext { readonly world: VirtualSynchronizationWorld;",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioRunnerHooks",
@@ -561,7 +896,12 @@
       "signature": "export interface ScenarioRunnerHooks { observe?(step: ScenarioObservationStep, context: ScenarioRunnerHookContext): Promise<ScenarioCapabilityResult>;",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioExecutorContext",
@@ -569,7 +909,12 @@
       "signature": "export interface ScenarioExecutorContext { readonly stepIndex: number; readCapture(ref: string): unknown | undefined; } export interface ScenarioStepExecutor {",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ScenarioStepExecutor",
@@ -577,7 +922,12 @@
       "signature": "export interface ScenarioStepExecutor { readonly executionMode: ScenarioExecutionMode;",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeterministicScenarioRunner",
@@ -585,7 +935,12 @@
       "signature": "export class DeterministicScenarioRunner {",
       "source": "test-platform/src/scenario/scenario-runner.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_DETERMINISTIC_DISPATCH",
+      "sideEffectClass": "simulated-in-memory-test-effects-only",
+      "operatorCommand": "Invoke-BvpScenario",
+      "accessRequirement": "typed-existing-BVP-virtual-runner-no-live-fallback",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ValidationArtifactBuildIdentity",
@@ -593,7 +948,12 @@
       "signature": "export interface ValidationArtifactBuildIdentity {",
       "source": "test-platform/src/live-device/build-validation-artifact.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ValidationArtifactBuildResult",
@@ -601,7 +961,12 @@
       "signature": "export interface ValidationArtifactBuildResult extends ValidationArtifactBuildIdentity {",
       "source": "test-platform/src/live-device/build-validation-artifact.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "buildValidationArtifact",
@@ -609,7 +974,12 @@
       "signature": "export async function buildValidationArtifact(repositoryRoot = resolve(process.cwd())): Promise<ValidationArtifactBuildResult> {",
       "source": "test-platform/src/live-device/build-validation-artifact.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "VALIDATION_ARTIFACT_DEVELOPMENT_ONLY",
+      "sideEffectClass": "writes-development-build-artifact",
+      "operatorCommand": "Get-BvpVersion",
+      "accessRequirement": "development-only-existing-build-authority-no-automatic-install",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeviceCommand",
@@ -617,7 +987,12 @@
       "signature": "export type DeviceCommand = CommandHeader & (",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "bvpOpaquePathKey",
@@ -625,7 +1000,12 @@
       "signature": "export async function bvpOpaquePathKey(path: string): Promise<string> { const normalized = path.replace(/\\\\/g, \"/\").replace(/^\\.\\/+/, \"\").replace(/\\/{2,}/g, \"/\").replace(/\\/$/, \"\").normalize",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "FixtureObservation",
@@ -633,7 +1013,12 @@
       "signature": "export interface FixtureObservation {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeviceFixturePort",
@@ -641,7 +1026,12 @@
       "signature": "export interface DeviceFixturePort {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "ValidationBuildIdentity",
@@ -649,7 +1039,12 @@
       "signature": "export interface ValidationBuildIdentity { readonly schemaVersion: 1; readonly sourceCommit: string; readonly artifactSha256?: string; readonly manifestSha256?: string; }",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeviceCommandResult",
@@ -657,7 +1052,12 @@
       "signature": "export interface DeviceCommandResult {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeviceSequenceState",
@@ -665,7 +1065,12 @@
       "signature": "export type DeviceSequenceState =",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeviceSequenceStateStore",
@@ -673,7 +1078,12 @@
       "signature": "export interface DeviceSequenceStateStore {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DeviceCommandAgentOptions",
@@ -681,7 +1091,12 @@
       "signature": "export interface DeviceCommandAgentOptions {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "BoundedDeviceCommandAgent",
@@ -689,7 +1104,12 @@
       "signature": "export interface BoundedDeviceCommandAgent {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "createBoundedDeviceCommandAgent",
@@ -697,7 +1117,12 @@
       "signature": "export function createBoundedDeviceCommandAgent(options: DeviceCommandAgentOptions): BoundedDeviceCommandAgent {",
       "source": "test-platform/src/live-device/device-command-agent.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "potential-real-device-or-Drive-side-effects",
+      "operatorCommand": "Invoke-BvpCommand",
+      "accessRequirement": "discovery-only-owner-physical-approval-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "opaqueDiagnosticId",
@@ -705,7 +1130,12 @@
       "signature": "export async function opaqueDiagnosticId(value:string,kind:\"run\"|\"corr\"):Promise<string>{ const bytes=await crypto.subtle.digest(\"SHA-256\",new TextEncoder().encode(value));",
       "source": "test-platform/src/live-device/diagnostic-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "diagnosticCode",
@@ -713,7 +1143,12 @@
       "signature": "export const diagnosticCode=(value:unknown):string=>token(value,\"unexpected-internal-error\");",
       "source": "test-platform/src/live-device/diagnostic-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "bvpDiagnostic",
@@ -721,7 +1156,12 @@
       "signature": "export function bvpDiagnostic(input: BvpDiagnosticInput): BvpDiagnostic { return {",
       "source": "test-platform/src/live-device/diagnostic-contract.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "BVP_SAFE_RESULT_OR_DIAGNOSTIC",
+      "sideEffectClass": "pure-observation-or-result-classification",
+      "operatorCommand": "Get-BvpDiagnostic",
+      "accessRequirement": "existing-BVP-runtime-safe-readback-only",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "AuthenticatedDriveRequest",
@@ -729,7 +1169,12 @@
       "signature": "export type AuthenticatedDriveRequest = (url: string, init?: RequestInit) => Promise<Response>;",
       "source": "test-platform/src/live-device/drive-mailbox.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "MailboxUnavailableError",
@@ -737,7 +1182,12 @@
       "signature": "export class MailboxUnavailableError extends Error { constructor(message = \"mailbox-unavailable\") { super(message); this.name = \"MailboxUnavailableError\"; } }",
       "source": "test-platform/src/live-device/drive-mailbox.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "DriveCommandMailbox",
@@ -745,7 +1195,12 @@
       "signature": "export interface DriveCommandMailbox {",
       "source": "test-platform/src/live-device/drive-mailbox.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "createDriveCommandMailbox",
@@ -753,7 +1208,12 @@
       "signature": "export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): DriveCommandMailbox {",
       "source": "test-platform/src/live-device/drive-mailbox.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "potential-real-device-or-Drive-side-effects",
+      "operatorCommand": "Invoke-BvpCommand",
+      "accessRequirement": "discovery-only-owner-physical-approval-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "pollDeviceMailboxOnce",
@@ -761,7 +1221,12 @@
       "signature": "export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:BoundedDeviceCommandAgent,runId:string,deviceId:string):Promise<{status:\"ok\";processed:number}|{status:\"unavaila",
       "source": "test-platform/src/live-device/drive-mailbox.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "potential-real-device-or-Drive-side-effects",
+      "operatorCommand": "Invoke-BvpCommand",
+      "accessRequirement": "discovery-only-owner-physical-approval-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "createWindowsMailboxRelay",
@@ -769,7 +1234,12 @@
       "signature": "export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:RelayAdapter,root:string){ const out=`${root}/outbox`,sent=`${root}/sent`,inside=`${root}/inbox`,publisher=comma",
       "source": "test-platform/src/live-device/drive-mailbox.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "potential-real-device-or-Drive-side-effects",
+      "operatorCommand": "Invoke-BvpCommand",
+      "accessRequirement": "discovery-only-owner-physical-approval-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "HumanCheckpointInstruction",
@@ -777,7 +1247,12 @@
       "signature": "export interface HumanCheckpointInstruction {",
       "source": "test-platform/src/live-device/live-scenario-executor.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "LiveScenarioExecutorOptions",
@@ -785,7 +1260,12 @@
       "signature": "export interface LiveScenarioExecutorOptions { readonly scenario: ScenarioDefinition; readonly runId: string; readonly deviceIds: Readonly<Record<string, string>>;",
       "source": "test-platform/src/live-device/live-scenario-executor.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "LiveScenarioExecutor",
@@ -793,7 +1273,12 @@
       "signature": "export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; observedInstalledBuilds?(): Readonly<Record<string,{artifact",
       "source": "test-platform/src/live-device/live-scenario-executor.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "liveSequenceFor",
@@ -801,7 +1286,12 @@
       "signature": "export function liveSequenceFor(scenario:ScenarioDefinition,device:string,index:number,sub=0):number{let value=sub+1;for(let i=0;i<index;i++)if(stepDevice(scenario.steps[i]!)===device)value+",
       "source": "test-platform/src/live-device/live-scenario-executor.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "liveCommandId",
@@ -809,7 +1299,12 @@
       "signature": "export function liveCommandId(runId:string,scenarioId:string,index:number,sub:number):string{return \"bvp-\"+createHash(\"sha256\").update(`${runId}\\0${scenarioId}\\0${index}\\0${sub}`).digest(\"he",
       "source": "test-platform/src/live-device/live-scenario-executor.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "not-an-operator-command",
+      "operatorCommand": null,
+      "accessRequirement": "internal-library-no-public-operator-contract",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
       "name": "createLiveScenarioExecutor",
@@ -817,7 +1312,12 @@
       "signature": "export async function createLiveScenarioExecutor(options:LiveScenarioExecutorOptions):Promise<LiveScenarioExecutor>{",
       "source": "test-platform/src/live-device/live-scenario-executor.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
-      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT",
+      "disposition": "LIVE_DEVICE_DEFERRED",
+      "sideEffectClass": "potential-real-device-or-Drive-side-effects",
+      "operatorCommand": "Invoke-BvpScenario",
+      "accessRequirement": "discovery-only-owner-physical-approval-required",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     }
   ],
   "notAnOperatorApi": true
