@@ -453,7 +453,7 @@ test("deterministic child TAP with private error text stays private while preser
       {boundary:"test-subprocess-exited",status:"confirmed"},
       {boundary:"battery-success-verdict",status:"unknown"},
     ]);
-    const lastSummaryLine=child.stdout.trim().split(/\\r?\\n/).at(-1);
+    const lastSummaryLine=child.stdout.trim().split(/\r?\n/).at(-1);
     const summary=JSON.parse(lastSummaryLine!);
     strictEqual(summary.status,"failed");
     strictEqual(summary.exitCode,1);
