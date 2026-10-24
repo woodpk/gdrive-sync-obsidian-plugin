@@ -10,6 +10,16 @@ import {
 import { exitCodeForScenarioStatus } from "./batteries/run-deterministic-scenario";
 
 const compiledCli = resolve(__dirname, "batteries/run-deterministic-scenario.js");
+const compiledProbe = resolve(__dirname, "fixtures/dec351-cli-failure-preload.js");
+function probe(args: readonly string[], scenarioCase?: string, marker?: string) {
+  const child = spawnSync(process.execPath, ["--require", compiledProbe, compiledCli, ...args], {
+    cwd: process.cwd(), encoding: "utf8", timeout: 120_000,
+    env: { ...process.env, NODE_TEST_CONTEXT: undefined,
+      BVP_DEC351_TEST_CASE: scenarioCase, BVP_DEC351_TEST_DISPATCH_MARKER: marker },
+  });
+  if (child.error) throw child.error;
+  return child;
+}
 const allNames = () => {
   const walk = (at: string): string[] => readdirSync(resolve(process.cwd(), "test-platform/scenarios", at),
     { withFileTypes: true }).flatMap(entry => {
@@ -90,8 +100,6 @@ test("DEC-351 rejects malformed, unknown, repeated and live-only args before dis
     const destination = join(root, "forbidden.json");
     const bad: readonly string[][] = [
       [], ["--scenario"], ["--scenario", ""],
-      ["--scenario", "not-a-scenario", "--result-file", destination],
-      ["--scenario", "battery-s09a-ios-initial-sync-01", "--result-file", destination],
       ["--scenario", "../s06a-fresh-local-only", "--result-file", destination],
       ["--scenario", "s06a-fresh-local-only", "--result-file", "../output.json"],
       ["--scenario", "s06a-fresh-local-only", "--result-file", destination, "--unexpected", "yes"],
@@ -107,6 +115,84 @@ test("DEC-351 rejects malformed, unknown, repeated and live-only args before dis
       match(result.stderr, /BVP_DIAGNOSTIC/);
       strictEqual(result.stdout.includes('"status":"completed"'), false);
       strictEqual(existsSync(destination), false, JSON.stringify(argv));
+    }
+  });
+});
+
+test("DEC351 F02 valid output path yields durable safe selection rejection without runner dispatch", () => {
+  withScratch(root => {
+    for (const id of ["not-a-scenario", "battery-s09a-ios-initial-sync-01"]) {
+      const dest = join(root, id + ".json"), marker = join(root, id + ".dispatched");
+      const child = probe(["--scenario", id, "--result-file", dest], undefined, marker);
+      strictEqual(child.status, 1);
+      match(child.stderr, /BVP_DIAGNOSTIC/);
+      strictEqual(child.stdout, "");
+      strictEqual(existsSync(marker), false, "selection must not invoke runner");
+      strictEqual(existsSync(dest), true, "known valid output path must contain rejection");
+      const record = JSON.parse(readFileSync(dest, "utf8"));
+      strictEqual(record.schemaVersion, 1);
+      strictEqual(record.requestedScenarioId, id);
+      strictEqual(record.executionMode, "deterministic");
+      strictEqual(record.requestStatus, "rejected");
+      strictEqual(record.result, null, "unexecuted request must never fabricate canonical verdict");
+      strictEqual(record.diagnostic.classification, "scenario-cli-selection-unavailable");
+      strictEqual(record.diagnostic.effect, "none-confirmed");
+      strictEqual(JSON.stringify(record).includes('"captures"'), false);
+      strictEqual(JSON.stringify(record).includes('"verdict"'), false);
+    }
+  });
+});
+
+test("DEC351 F02 reserves output before scenario dispatch; collision cannot replay", () => {
+  withScratch(root => {
+    const dest = join(root, "existing.json"), marker = join(root, "unexpected-dispatch.txt");
+    strictEqual(invoke(["--scenario", "s06a-fresh-local-only", "--result-file", dest]).status, 0);
+    const original = readFileSync(dest, "utf8");
+    const child = probe(["--scenario", "s06a-fresh-local-only", "--result-file", dest], "failed", marker);
+    strictEqual(child.status, 1);
+    match(child.stderr, /BVP_DIAGNOSTIC/);
+    strictEqual(child.stdout, "");
+    strictEqual(existsSync(marker), false, "existing output must be detected before run()");
+    strictEqual(readFileSync(dest, "utf8"), original, "exclusive reservation must never replace results");
+  });
+});
+
+test("DEC351 F01 canonical failed, blocked and unsupported scenarios propagate through compiled CLI", () => {
+  withScratch(root => {
+    const cases = [
+      { status: "failed", classification: "assertion-mismatch", step: "assert-size" },
+      { status: "blocked", classification: "missing-required-result", step: "execute" },
+      { status: "unsupported", classification: "production-input-reference-unsupported", step: "preview" },
+    ] as const;
+    for (const testCase of cases) {
+      const dest = join(root, testCase.status + ".json"), marker = join(root, testCase.status + ".dispatched");
+      const child = probe(["--scenario", "s06a-fresh-local-only", "--result-file", dest],
+        testCase.status, marker);
+      strictEqual(child.status, 1, testCase.status + " " + child.stderr);
+      strictEqual(existsSync(marker), true, testCase.status + " did not invoke real runner");
+      const observed = JSON.parse(readFileSync(dest, "utf8"));
+      strictEqual(observed.requestedScenarioId, "s06a-fresh-local-only");
+      strictEqual(observed.executionMode, "deterministic");
+      strictEqual(observed.result.scenarioId, "s06a-fresh-local-only");
+      strictEqual(observed.result.status, testCase.status);
+      strictEqual(observed.result.classification, testCase.classification);
+      strictEqual(observed.result.diagnostic.classification, testCase.classification);
+      strictEqual(observed.result.evidence.verdict.status, testCase.status);
+      strictEqual(observed.result.evidence.verdict.classification, testCase.classification);
+      strictEqual(observed.result.evidence.verdict.diagnostic.classification, testCase.classification);
+      strictEqual(observed.result.evidence.executionMode, "deterministic");
+      strictEqual(observed.result.evidence.traceability.length > 0, true);
+      if (testCase.status === "failed") {
+        const assertion = observed.result.evidence.assertions.find(
+          (x: { stepId: string }) => x.stepId === testCase.step);
+        strictEqual(assertion?.status, "failed");
+        strictEqual(assertion?.matchedExpectation, false);
+      }
+      const summary = JSON.parse(child.stdout.trim());
+      strictEqual(summary.status, testCase.status);
+      strictEqual(summary.classification, testCase.classification);
+      strictEqual(child.stderr.includes('"status":"completed"'), false);
+      strictEqual(readFileSync(dest, "utf8").includes('"captures"'), false);
     }
   });
 });
