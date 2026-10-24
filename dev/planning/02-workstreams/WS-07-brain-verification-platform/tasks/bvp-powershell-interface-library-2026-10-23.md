@@ -1,9 +1,13 @@
 # BVP PowerShell Operator Library + Persistent Configuration — Build Plan
 
-**Status:** OWNER AUTHORIZED / P1 SOURCE INVENTORY AND TEST-FIRST EXPORT AUDIT PUBLISHED / FROZEN POWER-SHELL GUARD OWNER DECISION PENDING / OPERATOR CODE NOT IMPLEMENTED OR QUALIFIED.  
+**Status:** SUPERSEDED AS AN ACTIVE IMPLEMENTATION PLAN by Owner DEC-350 (2026-10-24). No PowerShell module or frozen guard change is required merely to run the existing named BVP deterministic batteries. The earlier proposed library is PAUSED; its P1 source inventories/tests remain historical unqualified artifacts. Canonical current procedure: `dev/planning/03-verification/bvp-operator-runbook.md`. Source audit: `dev/research/bvp-operator-api-audit-2026-10-24.md`. **Do not resume the P1 module/guard owner-decision gate as if it were still an active blocker.**  
 **Owner directive:** 2026-10-23, DEC-346 (entire BVP API via PowerShell), DEC-347 (Windows/Windows-hosted iPhone/iPad simulation), DEC-348 (diagnostic quality).  
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin`, `WS-07-brain-verification-platform`.  
 **Engineering scope:** Operator-facing BVP invocation, configuration, discovery and interface parity; not a new test engine, independent verifier, simulation engine, or production-plugin feature. **Do not call PHX-CI to operate BVP.** Ordinary code-change/software qualification through existing governed local engineering tooling, if necessary, is a distinct activity.
+
+## DEC-350 — Later Owner decision governs this historical plan
+
+The Owner accepted direct PowerShell-to-Node invocation for BVP operations instead of requiring a complete new PowerShell API adapter. This later decision supersedes DEC-346's specific `Bvp.psm1` full-parity library prerequisite, but keeps strict identity, safety, privacy, clear diagnostics and appropriate software-change PHX-CI qualification. Do not conflate future CLI access gaps with a justification to implement the entire obsolete library. The remainder of this document preserves historical design but is **not a current implementation instruction**. For current operations, **read root `AGENTS.md` and the BVP Operator Runbook**.
 
 ## 1. Target user experience / non-negotiable requirements
 
