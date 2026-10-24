@@ -2,13 +2,20 @@ schema_version: 1
 project: "woodpk/gdrive-sync-obsidian-plugin"
 lifecycle_stage: "STAGE_2A_PHASE_6"
 active_workstream: "WS-07-brain-verification-platform"
-active_build_unit: "BVP_DIRECT_SCENARIO_ID_CLI"
-handoff-count: 4
-handoff-owner-role: REVIEWER
+active_build_unit: "BVP_CLI_RESULT_FINALIZATION"
+handoff-count: 0
+handoff-owner-role: BUILDER
 handoff-recipient-role: BUILDER
-handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_DIRECT_SCENARIO_ID_CLI"
-handoff-source-sha: "b532a9339fb631ffa03c3f74917e8370af138cff"
-active_build_unit_status: "DEC351_R5_REVIEW_ACCEPTED_BUILDER_CLOSEOUT_COMPLETE"
+handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_CLI_RESULT_FINALIZATION"
+handoff-source-sha: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
+active_build_unit_status: "BUILD_IN_PROGRESS_PLANNING_AND_TEST_FIRST"
+active_build_unit_baseline_source: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
+active_build_unit_task: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-cli-result-finalization-2026-10-24.md"
+active_build_unit_scope: "DEC351_M03_CLOSE_FAILURE_STDOUT_ORDER_CORRECTION_SOFTWARE_ONLY"
+active_build_unit_review_gate: "NEW_PHXCI_PASS_AND_INDEPENDENT_FINAL_REVIEW_PENDING"
+previous_dec351_handoff_count: 4
+previous_dec351_source: "b532a9339fb631ffa03c3f74917e8370af138cff"
+previous_dec351_closeout_commit: "f34139ba380f2f9d39871a4ab4f31ede0dad531f"
 active_powershell_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_POWERSHELL_INTERFACE_LIBRARY"
 active_bvp_operator_manual: "dev/planning/03-verification/bvp-operator-runbook.md"
 active_scenario_cli_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_DIRECT_SCENARIO_ID_CLI"
@@ -113,8 +120,8 @@ active_powershell_current_test_commit: "a275dae668dc8bc5cbe3dd4ff975e03f6e2abaf7
 active_powershell_physical_operations: "PROHIBITED"
 active_powershell_next_handoff: "NONE_DOC_ONLY_AUDIT_NO_SOURCE_VERIFICATION_OR_ROLE_TRANSFER"
 active_powershell_last_previous_handoff_count: 6
-next_build_unit: "UNSCHEDULED_AFTER_SCENARIO_ID_CLI"
-next_build_unit_status: "NO_OTHER_BUILD_UNIT_AUTHORIZED"
+next_build_unit: "BVP_CLI_RESULT_FINALIZATION"
+next_build_unit_status: "OWNER_AUTHORIZED_SOFTWARE_ONLY_BUILDER_IN_PROGRESS"
 next_build_unit_planning_path: ""
 active_feature_branch: "build/bvp-powershell-interface-20261024"
 active_build_unit_planning_path: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md"
@@ -869,7 +876,7 @@ historical_blockers:
   - "New G1-07 transactional runtime/UI correction is genuinely PHX-CI qualified: exact source 436afeee8897fc34764bbdddcdad0eea0be3365d, tree 5fb9940d814561e328262acb15eb7981899a3223; run bc2d2bf1-fc02-4b75-828c-4b3287725b25 PASS 11/11, BVP 403/403, product 1010/1010; canonical evidence 76651dbe3d91c1ffb2fb083b68ff742dff7e02e4. Previous BLOCKED run history remains accurate. G1-07 independent read-only correction-level reassessment and separate owner integration decision remain PENDING; no software merge authorization."
   - "Most recent independent review REJECTED source 436afeee8897fc34764bbdddcdad0eea0be3365d despite PHX-CI PASS: F-01 stale async Create/Pair could reverse deauthorization, F-02 stale UI relocation exclusion list could remove user rules. Reviewer identifies systemic incomplete concurrency workflow analysis and premature verification. Invariant-driven production correction has been committed through code HEAD 1dacb1e5213dac74135f98bce43e4fe3b449e8bc; includes additional stale OAuth/runtime initialization and scope-reconciliation guard repairs. CORRECTIVE CODE IS UNVERIFIED. All inspection and test-battery development now belong to the independent PHX-CI test writer under dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/s09/s09-g1-settings-lifecycle-phxci-test-writer-request.md. No further independent review or PHX-CI claim pending writer findings."
   - "S09A physical acceptance remains incomplete; actual data.json loss/corruption root cause remains unresolved. No activation, release, or Stage 3."
-next_action: "DEC351 independently accepted Windows software-only and administrative evidence mirror complete. Await explicit Owner authorization for any next Build Unit or merge, install, release, physical device, real Drive or vault activity."
+next_action: "Builder owns BVP_CLI_RESULT_FINALIZATION: write close-error fault-injection regression first, implement deferred stdout after successful result close, PHX-CI-only qualify new source, then independent final Reviewer. No physical execution, merge or release."
 updated_at: "2026-10-24"
 
 context:
