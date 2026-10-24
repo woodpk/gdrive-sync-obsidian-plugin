@@ -2,6 +2,18 @@
 
 This file applies to every engineering agent, every persisted task prompt under `dev/planning/02-workstreams/**/tasks/**`, and every branch of this repository.
 
+## Mandatory BVP operator re-entry (Owner DEC-350; 2026-10-24)
+
+**Once an authorized new session is assigned to BRAIN BVP Builder/operator work**, it MUST, **before generating a BVP invocation, selecting a battery/scenario, interpreting a BVP outcome or proposing BVP interface changes**, fetch the current repository remote state and read these **in full**:
+
+1. `dev/planning/03-verification/bvp-operator-runbook.md` — canonical BVP operator manual, actual Node CLI arguments, safety and evidence gates.
+2. `dev/research/bvp-operator-api-audit-2026-10-24.md` — immutable-source TypeScript API audit, accessibility limits and simulation-vs-physical distinctions.
+3. `dev/state/current-state.yaml`, current BVP decisions in `dev/authority/decision-register.yaml`, and source files named by the manual (to detect API/branch drift).
+
+The external generic `session-inits` is **not editable** and cannot silently preload this repository. This top-level repository entrypoint plus the state pointer is therefore the mandatory repo-side discovery path. When a newly initialized session is given a BRAIN assignment/handoff, it must **explicitly open this AGENTS.md**; if it has not read the manual it MUST report `BVP_MANUAL_NOT_READ` and must not improvise a launch command. A README link, cache, old summary or memory does not satisfy the fresh-read requirement.
+
+This is an **additive BVP operator instruction**. It does not replace the separate fresh Google Drive operating-protocol gate below, does not allow GitHub Actions, and does not weaken PHX-CI software-change qualification or any source/physical/review restriction. **Independent Reviewer's blind-first-pass restrictions prevail:** this operator manual is not authority to read Builder narrative/test findings before a blind review has been frozen.
+
 ## Mandatory fresh-protocol gate
 
 Before authoring, generating, modifying, extending, or printing **any code or script whose purpose is wholly or partly validation or verification**, including any verifier, validator, validation/verification harness, test-orchestration harness, runner, launcher, evidence verifier/publisher, repository-check script, acceptance-gate script, or similar tooling, the agent MUST:
