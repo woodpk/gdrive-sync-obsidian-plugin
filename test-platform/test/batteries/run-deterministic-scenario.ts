@@ -89,7 +89,7 @@ async function main(argv: readonly string[]): Promise<void> {
 
   // The runner's raw captures contain fixture/runtime data; publish only its existing
   // privacy-filtered canonical machine evidence. Never serialize the raw result.
-  const machine = result.evidence.machine;
+  const machine = result.evidence!.machine; // Checked for presence and identity before this point.
   const envelope = {
     schemaVersion: 1,
     requestedScenarioId: request.scenarioId,
