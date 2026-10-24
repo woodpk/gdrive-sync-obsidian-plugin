@@ -1,6 +1,6 @@
 # DEC-348 BVP diagnostics — fault/acceptance coverage
 
-**Status:** R6 source `fd9ccf9f99ebc73de54f3553fd62b265ed0f86fb` legitimately PHX-CI-qualified (run `612f2abd-560c-4375-8458-e2a1586bea40`, evidence `b212c36cd98f2f035d539a84434834c25ae99a75`), BUT independent Reviewer ruled **CORRECTION REQUIRED ER-01–ER-04**. R7 correction tests and source are committed, **new exact-source PHX-CI PENDING**. No physical iPhone, live Google Drive or installed Obsidian proof.
+**Status:** R10 current source is PHX-CI-qualified: source `7b7382ce303d097080dd5117638dba32f3ca9a82`, run `937b3682-acb1-47d6-801a-cb397ad96ae7`, evidence `aeb9a20166c33541a4a6086f462a0cf44acd3b9b`; ER-01–ER-04 were CLOSED in prior independent review, NEW-01/NEW-02 corrected test-first. Final independent R10 acceptance remains PENDING. No physical iPhone, live Google Drive or installed Obsidian proof.
 
 ## Source-grounded acceptance map
 
@@ -84,3 +84,10 @@ The existing ten-family map and ER-01–ER-04 regression tests are now exercised
 | NEW-02 actual completion versus required non-success | `bvp-diagnostics.test.ts` adds deterministic + mocked-live result and canonical evidence assertions, preserving actually completed step and failed expectation, safe correlated diagnosis and unknown effect | `scenario-runner.ts` diagnoses completed-step expectation mismatch at failed scenario verdict, reusing existing evidence projector; no replay | Same immutable commits; PHX-CI NOT RUN for new source |
 
 Ten-family impact: nominal success/no spurious failure retained from existing suites; negative terminal outcomes and expected-state transitions now have direct oracles; retry/cancellation semantics remain fail-closed; identity/privacy, persistence/result JSON, interface/evidence equivalence and end-to-end failure safety are asserted. No physical evidence or independent acceptance is claimed. Original ER-01–ER-04 closures remain intact.
+
+
+## R10 NEW-01/NEW-02 qualification
+
+- **NEW-01:** A real failing deterministic test subprocess now asserts a bounded structured error in stored results and printed summary, preserving exit 1, sanitized TAP ordinal/counts, secret redaction, identity, phase, cause and safe operator action.
+- **NEW-02:** Deterministic and mocked-live tests now assert that an actually completed step conflicting with an expected failure retains its true completed step status, fails the scenario, and records the same safe diagnosis in the scenario result and canonical evidence.
+- Exact source `7b7382ce303d097080dd5117638dba32f3ca9a82`, Git tree `324e20aa9c7fe69f346baab3b8467ea8468c4b4b`, Windows PHX-CI run `937b3682-acb1-47d6-801a-cb397ad96ae7`, evidence commit `aeb9a20166c33541a4a6086f462a0cf44acd3b9b`. All 11 stages PASS; 529/529 focused, 1292/1292 product PASS, exit 0; architecture core 4145/4500, live 950/950; no physical activity. Independent assessment of the feature remains pending.
