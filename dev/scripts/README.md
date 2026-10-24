@@ -12,6 +12,12 @@ Authority status: scripts are executable tooling, not governing product or valid
 
 Naming: PHX-CI operating scripts use `Invoke-PHXCI-<scope>.ps1` where applicable. Other permitted engineering scripts use clear verb-noun names consistent with repository conventions.
 
+## DEC-350 operator runbook (current as of 2026-10-24)
+
+**Every assigned BVP Builder/operator session must freshly read root `AGENTS.md` and `dev/planning/03-verification/bvp-operator-runbook.md` before preparing a PowerShell invocation.** Source-level audit: `dev/research/bvp-operator-api-audit-2026-10-24.md`. Authoritative later Owner DEC-350 selects direct invocation of existing compiled **BVP Node deterministic battery CLI** from audited PowerShell, instead of constructing a full PowerShell adapter just to run existing batteries. Earlier documentation below concerning PHX-CI as the only **BVP operator** is historical where conflicting; it remains strictly applicable to **source-change software acceptance** and prior physical safety restrictions.
+
+Current source: `test-platform/test/batteries/run-deterministic-battery.ts` (`--battery`, `--result-file`, `--tap-file`). Do not invent `--scenario` or `--list` flags. The existing 2 `Invoke-BVP-*.ps1` files still **throw** and must not be launched. The real-device `run-live-battery.ts` exists but remains **not authorized** for physical/Drive/vault execution and does not provide the desired Windows-hosted iOS simulator. A direct BVP operator result is not a PHX-CI/Reviewer source-change acceptance result.
+
 ## BVP battery operators
 
 F1 resolution (PR #150): `Invoke-BVP-Battery.ps1` and `Invoke-BVP-Deterministic-Battery.ps1` are **fail-closed compatibility sentinels**, not operators. Neither compiles, executes tests or physical scenarios, creates results, or commits/pushes evidence. Any future execution must be a PHX-CI-owned stage or explicitly PHX-CI-coordinated adapter, with PHX-CI-issued evidence. Do not revive standalone BVP validation authority.
