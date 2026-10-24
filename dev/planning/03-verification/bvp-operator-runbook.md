@@ -5,6 +5,10 @@
 **Authority:** later Owner instruction (2026-10-24) favors driving existing Node/TypeScript BVP directly from PowerShell; the earlier comprehensive PowerShell-interface build is **not** necessary merely to run available BVP batteries. Governing protocol and PHX-CI qualification requirements still apply to **software changes**.  
 **Verification level:** source-audited instructions, **NOT YET locally Windows-executed or PHX-CI-qualified for this manual**. No physical-device authority granted.
 
+## DEC-351 public scenario-ID CLI — planned, NOT available yet
+
+The Owner approved a **small TypeScript/Node CLI** that will accept `--scenario <exact-id> --result-file <path>` to look up one deterministic scenario definition and delegate to the existing public `DeterministicScenarioRunner.canonical().run(scenario)`. The detailed authoritative planning/task contract is `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-direct-scenario-id-cli-2026-10-24.md`; see DEC-351 and `dev/state/current-state.yaml`. A read-only discovery mode is planned. **No implementation, compiled scenario-ID entrypoint, test execution, PHX-CI PASS or Reviewer approval has occurred** at this documentation checkpoint. Do not print a command that assumes `--scenario` already works. Until a qualified CLI exists, continue using existing Node test/battery selection and the programmatic TypeScript API, with existing scope restrictions. Next Builder must refresh current source/authorization, bind exact writable paths and protocol, implement with test-first coverage, then qualify through PHX-CI and final independent Reviewer before this section can claim availability. This work does not resolve the separate question of a third-party iPhone simulator.
+
 ## 0. Mandatory agent re-entry procedure — do this before EVERY BVP-related answer
 
 1. Fetch **current remote** `woodpk/gdrive-sync-obsidian-plugin`; read repository root **`AGENTS.md` first** and follow its current protocol refresh gate. Do not treat prior chat memory as fresh authority.
