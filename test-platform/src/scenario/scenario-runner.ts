@@ -187,10 +187,27 @@ export class DeterministicScenarioRunner {
         ...("diagnostic" in actual && actual.diagnostic !== undefined ? { diagnostic: actual.diagnostic } : {}),
       });
       if (!matchedExpectation) {
-        if (actual.status === "completed") return finish(
-          "failed", "expected-outcome-not-observed",
-          `step ${step.id} completed but expected ${step.expect?.status}`,
-        );
+        if (actual.status === "completed") {
+          // The action completed, but did not produce the declared non-success.
+          // Keep the observed step intact and diagnose the scenario verdict.
+          const correlationToken = "corr-sha256:" + createHash("sha256")
+            .update(this.executor?.runIdentity ?? "").update("\0")
+            .update(scenario.id).update("\0").update(String(index))
+            .update("\0").update(step.id).digest("hex").slice(0,24);
+          const diagnostic = bvpDiagnostic({
+            classification: "expected-outcome-not-observed",
+            component: "scenario-runner",
+            phase: "expected-outcome-validation",
+            lastConfirmedBoundary: "scenario-step-completed",
+            firstUnconfirmedBoundary: "expected-outcome-confirmation",
+            effect: "unknown",
+            recommendedAction: "inspect-step-evidence",
+            stepId: step.id,
+            identity: diagnosticIdentity(index, correlationToken),
+          });
+          return finish("failed", diagnostic.classification,
+            diagnostic.classification, diagnostic);
+        }
         return finish(actual.status, actual.classification, actual.reason, actual.diagnostic);
       }
     }

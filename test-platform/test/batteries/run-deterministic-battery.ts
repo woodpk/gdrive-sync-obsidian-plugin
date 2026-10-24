@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -104,7 +105,36 @@ async function main(): Promise<void> {
     });
   });
   const durationMs = Math.round(performance.now() - started);
-  const { exitCode } = outcome;
+  const failed = outcome.exitCode !== 0 || Boolean(outcome.signal || outcome.error);
+  // Never turn an observed nonzero child exit into a synthetic success.
+  const exitCode = failed && outcome.exitCode === 0 ? 1 : outcome.exitCode;
+  const boundary = outcome.error ? "test-subprocess-start" : "battery-success-verdict";
+  const lastConfirmed = outcome.error ? "battery-selected" : "test-subprocess-exited";
+  const attempt = failed ? randomUUID() : undefined;
+  const hashedId = (kind: "run" | "corr", value: string) =>
+    kind + "-sha256:" + createHash("sha256").update(value).digest("hex").slice(0, 24);
+  // A normal test failure is a failed BVP operation, not an exception:
+  // record the same privacy-safe machine diagnosis in result and CLI summary.
+  const diagnostic = failed && attempt ? bvpDiagnostic({
+    classification: outcome.error ? "deterministic-subprocess-launch-failed"
+      : outcome.signal ? "deterministic-subprocess-interrupted" : "deterministic-battery-failed",
+    component: "battery-runner",
+    phase: outcome.error ? "test-subprocess-launch" : "test-verdict",
+    lastConfirmedBoundary: lastConfirmed,
+    firstUnconfirmedBoundary: boundary,
+    effect: "unknown",
+    recommendedAction: "inspect-sanitized-test-evidence",
+    causeClass: outcome.error ? "subprocess-launch-error"
+      : outcome.signal ? "subprocess-interrupted" : "nonzero-test-exit",
+    identity: {
+      runId: hashedId("run", attempt),
+      scenarioId: battery.name,
+      stepIndex: null,
+      executionMode: "deterministic",
+      correlationToken: hashedId("corr", attempt + "\0" + battery.name),
+    },
+  }) : undefined;
+  const status = failed ? "failed" : "completed";
   const envelope = {
     battery: {
       name: battery.name,
@@ -113,11 +143,12 @@ async function main(): Promise<void> {
       testFiles: battery.testFiles,
     },
     result: {
-      status: exitCode === 0 ? "completed" : "failed",
+      status,
       exitCode,
       durationMs,
       ...(outcome.signal ? { signal: outcome.signal } : {}),
       ...(outcome.error ? { error: "subprocess-execution-failed" } : {}),
+      ...(diagnostic ? { diagnostic } : {}),
     },
   };
 
@@ -125,7 +156,8 @@ async function main(): Promise<void> {
   console.log("\nBVP deterministic battery summary:");
   // Never print subprocess error text or untrusted test output into shared logs.
   console.log(JSON.stringify({
-    battery:battery.name,status:exitCode===0?"completed":"failed",exitCode,durationMs,
+    battery: battery.name, status, exitCode, durationMs,
+    ...(diagnostic ? { diagnostic } : {}),
   }));
   process.exitCode = exitCode;
 }
