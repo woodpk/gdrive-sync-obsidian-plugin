@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, open } from "node:fs/promises";
 import { isAbsolute, dirname } from "node:path";
 import { bvpDiagnostic } from "../../src/scenario/scenario-diagnostics";
 import { DeterministicScenarioRunner, type ScenarioExecutionResult, type ScenarioExecutionStatus } from "../../src/scenario/scenario-runner";
@@ -36,96 +36,127 @@ export function exitCodeForScenarioStatus(status: ScenarioExecutionStatus): numb
 }
 
 async function main(argv: readonly string[]): Promise<void> {
-  let request: Request | undefined;
+  let request: Request;
   try {
     request = parseRequest(argv);
-    if (request.kind === "list") {
-      process.stdout.write(JSON.stringify({
-        schemaVersion: 1, scenarios: listDeterministicScenarios(),
-      }) + "\n");
-      return;
-    }
-    const selected = getDeterministicScenario(request.scenarioId);
-    if (!selected || !selected.executionModes.includes("deterministic") ||
-        selected.executionModes.includes("live")) {
-      throw new Error("scenario-cli-selection-unavailable");
-    }
-  } catch (error) {
-    const selection = error instanceof Error && error.message === "scenario-cli-selection-unavailable";
+  } catch {
     const diagnostic = bvpDiagnostic({
-      classification: selection ? "scenario-cli-selection-unavailable" : "scenario-cli-arguments-invalid",
-      component: "battery-runner",
+      classification: "scenario-cli-arguments-invalid", component: "battery-runner",
       phase: "scenario-selection", lastConfirmedBoundary: "cli-argv-received",
       firstUnconfirmedBoundary: "scenario-dispatch", effect: "none-confirmed",
-      recommendedAction: selection ? "inspect-scenario-catalog" : "inspect-scenario-cli-arguments",
+      recommendedAction: "inspect-scenario-cli-arguments",
     });
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
     return;
   }
-  // After preflight the request is always the verified execute variant.
-  if (!request || request.kind !== "execute") return;
-  let result!: ScenarioExecutionResult;
+  if (request.kind === "list") {
+    process.stdout.write(JSON.stringify({
+      schemaVersion: 1, scenarios: listDeterministicScenarios(),
+    }) + "\n");
+    return;
+  }
+
+  // Reserve the complete result destination BEFORE scenario lookup or execution.
+  // Exclusive wx provides cross-process collision protection without prechecking
+  // and racing. A stranded empty/incomplete reservation can never claim PASS.
+  let output!: Awaited<ReturnType<typeof open>>;
   try {
-    const definition = getDeterministicScenario(request.scenarioId);
-    if (!definition) throw new Error("scenario-catalog-changed");
-    result = await DeterministicScenarioRunner.canonical().run(definition);
-    if (result.scenarioId !== request.scenarioId ||
-        !result.evidence || result.evidence.machine.scenarioId !== request.scenarioId ||
-        result.evidence.machine.executionMode !== "deterministic" ||
-        result.evidence.machine.verdict.status !== result.status) {
-      throw new Error("scenario-result-identity-invalid");
-    }
+    await mkdir(dirname(request.resultFile), { recursive: true });
+    output = await open(request.resultFile, "wx");
   } catch {
     const diagnostic = bvpDiagnostic({
-      classification: "scenario-cli-execution-failed", component: "battery-runner",
-      phase: "scenario-execution", lastConfirmedBoundary: "scenario-selected",
-      firstUnconfirmedBoundary: "scenario-result-validated", effect: "unknown",
-      recommendedAction: "inspect-sanitized-test-evidence",
-      identity: { runId: "unavailable", scenarioId: request.scenarioId, stepIndex: null, executionMode: "deterministic", correlationToken: "unavailable" },
+      classification: "scenario-result-persistence-failed", component: "battery-runner",
+      phase: "result-reservation", lastConfirmedBoundary: "cli-argv-validated",
+      firstUnconfirmedBoundary: "result-file-exclusive-open", effect: "none-confirmed",
+      recommendedAction: "inspect-output-path",
+      identity: { runId: "unavailable", scenarioId: request.scenarioId,
+        stepIndex: null, executionMode: "deterministic", correlationToken: "unavailable" },
     });
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
     return;
   }
 
-  // The runner's raw captures contain fixture/runtime data; publish only its existing
-  // privacy-filtered canonical machine evidence. Never serialize the raw result.
-  const machine = result.evidence!.machine; // Checked for presence and identity before this point.
-  const envelope = {
-    schemaVersion: 1,
-    requestedScenarioId: request.scenarioId,
+  const diagnosticFor = (classification: string, phase: string,
+    lastConfirmedBoundary: string, firstUnconfirmedBoundary: string,
+    effect: "none-confirmed" | "unknown", recommendedAction: string) => bvpDiagnostic({
+    classification, component: "battery-runner", phase,
+    lastConfirmedBoundary, firstUnconfirmedBoundary, effect, recommendedAction,
+    identity: { runId: "unavailable", scenarioId: request.scenarioId,
+      stepIndex: null, executionMode: "deterministic", correlationToken: "unavailable" },
+  });
+
+  // A request-level rejection is NOT a canonical scenario result: the runner
+  // was never called, so do not synthesize a machine verdict or evidence.
+  const rejected = (diagnostic: ReturnType<typeof bvpDiagnostic>) => ({
+    schemaVersion: 1, requestedScenarioId: request.scenarioId,
     executionMode: "deterministic" as const,
-    result: {
-      scenarioId: result.scenarioId,
-      status: result.status,
-      ...(machine.verdict.classification === undefined ? {} : { classification: machine.verdict.classification }),
-      ...(machine.verdict.diagnostic === undefined ? {} : { diagnostic: machine.verdict.diagnostic }),
-      evidence: machine,
-    },
-  };
+    requestStatus: "rejected" as const, result: null, diagnostic,
+  });
+
   try {
-    await mkdir(dirname(request.resultFile), { recursive: true });
-    // Never destroy a previous verdict: a repeated invocation needs a fresh output path.
-    await writeFile(request.resultFile, JSON.stringify(envelope, null, 2) + "\n",
-      { encoding: "utf8", flag: "wx" });
+    const selected = getDeterministicScenario(request.scenarioId);
+    if (!selected || !selected.executionModes.includes("deterministic") ||
+        selected.executionModes.includes("live")) {
+      const diagnostic = diagnosticFor("scenario-cli-selection-unavailable",
+        "scenario-selection", "cli-argv-validated", "scenario-dispatch",
+        "none-confirmed", "inspect-scenario-catalog");
+      await output.writeFile(JSON.stringify(rejected(diagnostic), null, 2) + "\n", "utf8");
+      console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
+      process.exitCode = 1;
+      return;
+    }
+
+    let result!: ScenarioExecutionResult;
+    try {
+      result = await DeterministicScenarioRunner.canonical().run(selected);
+      if (result.scenarioId !== request.scenarioId ||
+          !result.evidence || result.evidence.machine.scenarioId !== request.scenarioId ||
+          result.evidence.machine.executionMode !== "deterministic" ||
+          result.evidence.machine.verdict.status !== result.status) {
+        throw new Error("scenario-result-identity-invalid");
+      }
+    } catch {
+      const diagnostic = diagnosticFor("scenario-cli-execution-failed",
+        "scenario-execution", "scenario-selected", "scenario-result-validated",
+        "unknown", "inspect-sanitized-test-evidence");
+      await output.writeFile(JSON.stringify(rejected(diagnostic), null, 2) + "\n", "utf8");
+      console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
+      process.exitCode = 1;
+      return;
+    }
+
+    const machine = result.evidence!.machine;
+    // Never expose raw captures; the runner's machine evidence is already
+    // privacy-filtered by the canonical evidence subsystem.
+    const envelope = {
+      schemaVersion: 1,
+      requestedScenarioId: request.scenarioId,
+      executionMode: "deterministic" as const,
+      result: {
+        scenarioId: result.scenarioId,
+        status: result.status,
+        ...(machine.verdict.classification === undefined ? {} : { classification: machine.verdict.classification }),
+        ...(machine.verdict.diagnostic === undefined ? {} : { diagnostic: machine.verdict.diagnostic }),
+        evidence: machine,
+      },
+    };
+    await output.writeFile(JSON.stringify(envelope, null, 2) + "\n", "utf8");
+    console.log(JSON.stringify({
+      scenarioId: result.scenarioId, status: result.status,
+      ...(machine.verdict.classification === undefined ? {} : { classification: machine.verdict.classification }),
+    }));
+    process.exitCode = exitCodeForScenarioStatus(result.status);
   } catch {
-    const diagnostic = bvpDiagnostic({
-      classification: "scenario-result-persistence-failed", component: "battery-runner",
-      phase: "result-persistence", lastConfirmedBoundary: "scenario-execution-finished",
-      firstUnconfirmedBoundary: "result-file-write", effect: "none-confirmed",
-      recommendedAction: "inspect-output-path",
-      identity: { runId: "unavailable", scenarioId: request.scenarioId, stepIndex: null, executionMode: "deterministic", correlationToken: "unavailable" },
-    });
+    const diagnostic = diagnosticFor("scenario-result-persistence-failed",
+      "result-persistence", "result-file-reserved", "result-file-write",
+      "unknown", "inspect-output-path");
     console.error("BVP_DIAGNOSTIC " + JSON.stringify(diagnostic));
     process.exitCode = 1;
-    return;
+  } finally {
+    try { await output.close(); } catch { process.exitCode = 1; }
   }
-  console.log(JSON.stringify({
-    scenarioId: result.scenarioId, status: result.status,
-    ...(machine.verdict.classification === undefined ? {} : { classification: machine.verdict.classification }),
-  }));
-  process.exitCode = exitCodeForScenarioStatus(result.status);
 }
 
 if (require.main === module) {
