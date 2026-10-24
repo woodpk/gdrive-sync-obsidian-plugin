@@ -1,5 +1,9 @@
 # Architecture — BRAIN Verification Platform
 
+## DEC-351 architecture interpretation — direct deterministic scenario-ID CLI
+
+This is an **interface-only** feature within existing BVP architecture and frozen limits, not an exception to the contracts below. A narrow, generic Node/TypeScript entrypoint and compile-time deterministic scenario definition lookup may be added under `test-platform/test/batteries/**` **only** to resolve exact `scenario.id` to an existing immutable `ScenarioDefinition` and call `DeterministicScenarioRunner.canonical().run(definition)`. Source-discovered catalog completeness and duplicate/mode protection must be tested. The public `run(scenario)` method is already present; the missing functionality is *CLI name resolution*, not scenario execution. Read-only ID discovery may reuse the catalog. No changes to core runner, typed step execution, production `src/**`, existing battery behavior, new orchestrator/plugin router, live/physical dispatch, hardware simulator assumptions, code-size budgets, PHX-CI pin or frozen guard are authorized. A needed deviation must stop for review under BVP-GOV-005 through BVP-GOV-009. Detailed prospective Build Unit: `tasks/bvp-direct-scenario-id-cli-2026-10-24.md`; source changes require PHX-CI and independent Reviewer qualification.
+
 ## Frozen shared contracts
 
 ## 3. Shared Contracts Frozen Before New Platform Construction
