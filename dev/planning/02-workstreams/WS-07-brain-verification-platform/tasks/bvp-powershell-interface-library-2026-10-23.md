@@ -1,6 +1,6 @@
 # BVP PowerShell Operator Library + Persistent Configuration — Build Plan
 
-**Status:** PLANNED / NOT IMPLEMENTED / NOT VERIFIED.  
+**Status:** OWNER AUTHORIZED / P1 SOURCE-API INVENTORY IN PROGRESS / OPERATOR CODE NOT IMPLEMENTED / NOT VERIFIED.  
 **Owner directive:** 2026-10-23, DEC-346 (entire BVP API via PowerShell), DEC-347 (Windows/Windows-hosted iPhone/iPad simulation), DEC-348 (diagnostic quality).  
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin`, `WS-07-brain-verification-platform`.  
 **Engineering scope:** Operator-facing BVP invocation, configuration, discovery and interface parity; not a new test engine, independent verifier, simulation engine, or production-plugin feature. **Do not call PHX-CI to operate BVP.** Ordinary code-change/software qualification through existing governed local engineering tooling, if necessary, is a distinct activity.
@@ -118,3 +118,15 @@ Current `dev/planning/02-workstreams/WS-07-brain-verification-platform/02-ARCHIT
 ## 8. Deferred / explicitly excluded
 
 No live real iPhone/iPad tests, no real-device command-mailbox dispatch, no production-vault action, no OAuth credential capture or sharing, no GitHub Actions, and no source modifications under this *planning* task. Exact exported function names/config file schema will be locked against the complete source inventory and test-first contracts before coding. The presence of a planned API does **not** mean it is already callable or all iOS behaviors are simulated.
+
+
+
+## Owner authorization and P1 activation (2026-10-24)
+
+- **Owner explicitly authorized:** `BVP_POWERSHELL_INTERFACE_LIBRARY` may begin immediately, after independent acceptance and Builder closeout of the predecessor `BVP_ERROR_REPORTING_UPGRADE`. No extra review of the previous accepted diagnostics Build Unit is permitted or required.
+- **Separate feature branch:** `build/bvp-powershell-interface-20261024`, forked from exact accepted diagnostics closeout commit `bca73463778ab559d61742b4a7197d335f7473e7`. R10 qualified source/tree and evidence remain unchanged and independently accepted for Windows software only.
+- **Current implementation slice:** P1 **full source/API inventory and parity contract**, before any operator module, dispatcher, persistence or config-writing code. Classify actual public callable operations, registered batteries/scenarios and command kinds; record source signature/flags, safe modes, effect class, target PowerShell function and test traceability. Do not describe a proposed PowerShell command as already implemented.
+- **Independent validation authority:** PHX-CI remains the sole software-change qualification authority. The PowerShell interface must delegate BVP user operation to existing BVP run/diagnostic systems, never create an independent verification engine or route normal BVP user tests through PHX-CI.
+- **Frozen boundaries:** existing operational PowerShell max **4 scripts**, combined **1,500** logical PowerShell lines, zero scenario-specific scripts; existing repository currently has four `.ps1` BVP scripts, two of which are fail-closed compatibility sentinels. Current guard counts `.ps1` and does not measure an introduced `.psm1`; P1 must determine compliant reuse/module accounting and raise any necessary frozen-guard interpretation/budget decision to Owner **before** code that would be unmeasured or noncompliant. Do not evade the guard through extension or folder changes.
+- **Physical safety:** No physical iPhone/iPad, production Windows, live Drive/vault, installation, merge, release or Stage 3 action is authorized by starting this Build Unit. The simulated-mobile path must be proved real on the existing Windows virtual world, not assumed from live battery registry names.
+- **Qualification:** This P1 activation is administrative planning and inventory only. No PHX-CI verification may be claimed for new code, and no code or runtime behavior has been introduced by this declaration.
