@@ -70,4 +70,4 @@ BVP already has **individual-scenario execution**, not a private/unimplemented r
 
 ## 6. Handoff readiness
 
-This task is durable planning **only**. Before coding, the receiving Builder must refresh remote HEAD, confirm current recipient role and handoff authorization, bind exact predecessor SHA/allowed paths, freshly read protocol before each script-authoring action, and update current state from PLANNED to IMPLEMENTING. **No tests, Node CLI code, PHX-CI run, independent review, or acceptance were performed by this planning update.**
+The Builder has committed source and authored tests on the bounded branch. Next, verify current remote source/evidence identity and conduct the **first Windows PHX-CI qualification** using the existing repository-controlled local scripts. Repair genuine failures and repeat PHX-CI until exact candidate PASS; then and only then issue the independent final Reviewer handoff. Until those gates pass, the code is unqualified and may not be promoted or represented as accepted. Handoff-count remains unchanged.
