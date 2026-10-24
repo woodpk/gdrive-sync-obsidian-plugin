@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { isAbsolute, dirname } from "node:path";
 import { bvpDiagnostic } from "../../src/scenario/scenario-diagnostics";
-import { DeterministicScenarioRunner, type ScenarioExecutionStatus } from "../../src/scenario/scenario-runner";
+import { DeterministicScenarioRunner, type ScenarioExecutionResult, type ScenarioExecutionStatus } from "../../src/scenario/scenario-runner";
 import { getDeterministicScenario, listDeterministicScenarios } from "./deterministic-scenario-registry";
 
 type Request = { readonly kind: "list" } |
@@ -63,7 +63,7 @@ async function main(argv: readonly string[]): Promise<void> {
   }
   // After preflight the request is always the verified execute variant.
   if (!request || request.kind !== "execute") return;
-  let result;
+  let result!: ScenarioExecutionResult;
   try {
     const definition = getDeterministicScenario(request.scenarioId);
     if (!definition) throw new Error("scenario-catalog-changed");
