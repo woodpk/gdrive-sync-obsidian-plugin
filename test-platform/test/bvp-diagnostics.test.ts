@@ -425,7 +425,7 @@ test("deterministic child TAP with private error text stays private while preser
     const cli=join(__dirname,"batteries","run-deterministic-battery.js");
     const child=spawnSync(process.execPath,[cli,"--battery","bvp-private-tap-canary",
       "--result-file",resultPath,"--tap-file",tapPath],{
-      encoding:"utf8",env:{...process.env,BVP_PRIVACY_TAP_INJECT:"1"},
+      encoding:"utf8",env:{...process.env,BVP_PRIVACY_TAP_INJECT:"1",NODE_TEST_CONTEXT:"child-v8"},
     });
     strictEqual(child.status,1);
     const result=JSON.parse(await readFile(resultPath,"utf8"));
