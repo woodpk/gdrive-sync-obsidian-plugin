@@ -1,0 +1,487 @@
+{
+  "schemaVersion": 1,
+  "sourceSnapshotBase": "bca73463778ab559d61742b4a7197d335f7473e7",
+  "status": "P1_CONTRACT_EXPORT_PART_2_OF_2",
+  "scannedPaths": [
+    "test-platform/src/live-device/validation-entrypoint.ts",
+    "test-platform/src/virtual-world/in-memory-google-drive.ts",
+    "test-platform/src/virtual-world/in-memory-local-vault.ts",
+    "test-platform/src/virtual-world/virtual-world.ts",
+    "test-platform/test/batteries/battery-registry.ts",
+    "test-platform/test/batteries/deterministic-battery-registry.ts",
+    "test-platform/test/batteries/run-deterministic-battery.ts",
+    "test-platform/test/batteries/run-live-battery.ts",
+    "test-platform/test/batteries/late-completion-recovery.ts",
+    "test-platform/test/batteries/phxci-physical-bridge.ts",
+    "test-platform/test/batteries/phxci-actual-runner-probe.ts",
+    "test-platform/test/batteries/phxci-transport-probe.ts",
+    "test-platform/test/batteries/s09a-validation-artifacts.ts"
+  ],
+  "entries": [
+    {
+      "name": "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL",
+      "kind": "const",
+      "signature": "export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = \"BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL\";",
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BVP_VALIDATION_BUILD_GLOBAL",
+      "kind": "const",
+      "signature": "export const BVP_VALIDATION_BUILD_GLOBAL = \"__BRAIN_BVP_VALIDATION_BUILD__\"; export const BVP_MAILBOX_RUNTIME_GLOBAL = \"__BRAIN_BVP_MAILBOX_RUNTIME__\";",
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BVP_MAILBOX_RUNTIME_GLOBAL",
+      "kind": "const",
+      "signature": "export const BVP_MAILBOX_RUNTIME_GLOBAL = \"__BRAIN_BVP_MAILBOX_RUNTIME__\";",
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BvpValidationBuildIdentity",
+      "kind": "interface",
+      "signature": "export interface BvpValidationBuildIdentity extends ValidationBuildIdentity { readonly sentinel: typeof BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL; }",
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "installBvpValidationBuildIdentity",
+      "kind": "function",
+      "signature": "export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValidationBuildIdentity {",
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "installBvpMailboxRuntime",
+      "kind": "function",
+      "signature": "export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){ const mailbox=createDriveCommandMailbox(request),relay=options.relay?creat",
+      "source": "test-platform/src/live-device/validation-entrypoint.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "GoogleDriveCorePort",
+      "kind": "type",
+      "signature": "export type GoogleDriveCorePort = GoogleDrivePort;",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryDriveBoundary",
+      "kind": "type",
+      "signature": "export type InMemoryDriveBoundary =",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryDriveBoundaryFault",
+      "kind": "interface",
+      "signature": "export interface InMemoryDriveBoundaryFault {",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryDriveListingControl",
+      "kind": "interface",
+      "signature": "export interface InMemoryDriveListingControl {",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryDriveChangePageControl",
+      "kind": "interface",
+      "signature": "export interface InMemoryDriveChangePageControl {",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryDriveCursorInvalidation",
+      "kind": "type",
+      "signature": "export type InMemoryDriveCursorInvalidation =",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryRemoteObjectSnapshot",
+      "kind": "interface",
+      "signature": "export interface InMemoryRemoteObjectSnapshot {",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "virtualRemoteObjectId",
+      "kind": "const",
+      "signature": "export const virtualRemoteObjectId = (value: string): RemoteObjectId =>",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "virtualVaultIdentity",
+      "kind": "const",
+      "signature": "export const virtualVaultIdentity = (value: string): VaultIdentity =>",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "virtualProtocolVersion",
+      "kind": "const",
+      "signature": "export const virtualProtocolVersion = (value: string): ProtocolVersion =>",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "virtualChangeCursor",
+      "kind": "const",
+      "signature": "export const virtualChangeCursor = (value: string): ChangeCursor =>",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "virtualDrivePath",
+      "kind": "const",
+      "signature": "export const virtualDrivePath = (value: string): VaultPath =>",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryGoogleDriveCore",
+      "kind": "class",
+      "signature": "export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRemoteChangePort {",
+      "source": "test-platform/src/virtual-world/in-memory-google-drive.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryLocalVaultOptions",
+      "kind": "interface",
+      "signature": "export interface InMemoryLocalVaultOptions {",
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "SeedEntryOptions",
+      "kind": "interface",
+      "signature": "export interface SeedEntryOptions {",
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryLocalVaultError",
+      "kind": "class",
+      "signature": "export class InMemoryLocalVaultError extends Error {",
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryLocalVaultStaleObservationError",
+      "kind": "class",
+      "signature": "export class InMemoryLocalVaultStaleObservationError extends InMemoryLocalVaultError {",
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "virtualVaultPath",
+      "kind": "const",
+      "signature": "export const virtualVaultPath = (value: string): VaultPath =>",
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryLocalVault",
+      "kind": "class",
+      "signature": "export class InMemoryLocalVault implements LocalVaultPort {",
+      "source": "test-platform/src/virtual-world/in-memory-local-vault.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "VirtualCrashBoundary",
+      "kind": "type",
+      "signature": "export type VirtualCrashBoundary = \"before-remote-dispatch\" | \"after-remote-effect\" | \"before-canonical-state-write\" | \"after-canonical-state-write\";",
+      "source": "test-platform/src/virtual-world/virtual-world.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "InMemoryReliableRemoteMutationPort",
+      "kind": "class",
+      "signature": "export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutationPort, RemoteUpdateFinalizationPort, RemoteFolderCreateRecoveryReadPort {",
+      "source": "test-platform/src/virtual-world/virtual-world.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "VirtualProductionDevice",
+      "kind": "class",
+      "signature": "export class VirtualProductionDevice {",
+      "source": "test-platform/src/virtual-world/virtual-world.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "VirtualSynchronizationWorld",
+      "kind": "class",
+      "signature": "export class VirtualSynchronizationWorld {",
+      "source": "test-platform/src/virtual-world/virtual-world.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "LiveBatteryDefinition",
+      "kind": "interface",
+      "signature": "export interface LiveBatteryDefinition {",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "listLiveBatteryNames",
+      "kind": "function",
+      "signature": "export function listLiveBatteryNames(): readonly string[] {",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "getLiveBattery",
+      "kind": "function",
+      "signature": "export function getLiveBattery(name: string): LiveBatteryDefinition | undefined {",
+      "source": "test-platform/test/batteries/battery-registry.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "DeterministicBatteryDefinition",
+      "kind": "interface",
+      "signature": "export interface DeterministicBatteryDefinition { readonly name: string;",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "listDeterministicBatteryNames",
+      "kind": "function",
+      "signature": "export function listDeterministicBatteryNames(): readonly string[] {",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "getDeterministicBattery",
+      "kind": "function",
+      "signature": "export function getDeterministicBattery(name: string): DeterministicBatteryDefinition | undefined {",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "LateCompletionRecovery",
+      "kind": "interface",
+      "signature": "export interface LateCompletionRecovery {",
+      "source": "test-platform/test/batteries/late-completion-recovery.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "loadLateCompletionRecovery",
+      "kind": "function",
+      "signature": "export async function loadLateCompletionRecovery(options: RecoveryOptions): Promise<LateCompletionRecovery> { const { scenario, runId, deviceIds, sourceCommit, relayRoot, previousResultFile ",
+      "source": "test-platform/test/batteries/late-completion-recovery.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "withLateCompletionRecovery",
+      "kind": "function",
+      "signature": "export function withLateCompletionRecovery(executor: LiveScenarioExecutor, recovery: LateCompletionRecovery): LiveScenarioExecutor { return {",
+      "source": "test-platform/test/batteries/late-completion-recovery.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "publicPhysicalDeviceId",
+      "kind": "function",
+      "signature": "export function publicPhysicalDeviceId(raw: string): string { if (typeof raw !== \"string\" || !/^device:[a-f0-9]{32}$/i.test(raw)) {",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "projectPhysicalResultForEvidence",
+      "kind": "function",
+      "signature": "export function projectPhysicalResultForEvidence(resultJson: string, raw: string, publicId: string): string { if (publicPhysicalDeviceId(raw) !== publicId) fail(\"privacy-physical-device-mapp",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "projectPhysicalDualReadinessResultForEvidence",
+      "kind": "function",
+      "signature": "export function projectPhysicalDualReadinessResultForEvidence( resultJson: string, rawByLabel: Readonly<Record<string, string>>,",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BridgeMode",
+      "kind": "type",
+      "signature": "export type BridgeMode = \"initial\" | \"checkpoint-resume\" | \"verified-late-receipt\";",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BridgePredecessor",
+      "kind": "interface",
+      "signature": "export interface BridgePredecessor { readonly commitSha: string;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BridgeExpectation",
+      "kind": "interface",
+      "signature": "export interface BridgeExpectation { readonly bvpRunId: string;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BridgeAttempt",
+      "kind": "interface",
+      "signature": "export interface BridgeAttempt extends BridgeExpectation { readonly schemaVersion: 1;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "GitEvidencePort",
+      "kind": "interface",
+      "signature": "export interface GitEvidencePort { readBlobAtCommit(commitSha: string, historyPath: string): Promise<string>;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "PublishedAttemptRef",
+      "kind": "interface",
+      "signature": "export interface PublishedAttemptRef { readonly commitSha: string;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "LiveRunnerPaths",
+      "kind": "interface",
+      "signature": "export interface LiveRunnerPaths { readonly relayRoot: string;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "encodeBridgeAttempt",
+      "kind": "function",
+      "signature": "export function encodeBridgeAttempt(attempt: BridgeAttempt): string { validateAttempt(attempt);",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "decodeBridgeAttempt",
+      "kind": "function",
+      "signature": "export function decodeBridgeAttempt(stdout: string, expected: BridgeExpectation): BridgeAttempt { if (Buffer.byteLength(stdout, \"utf8\") > MAX_FRAME_BYTES * 4) fail(\"bridge-stdout-oversize\");",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "loadPublishedBridgeAttempt",
+      "kind": "function",
+      "signature": "export async function loadPublishedBridgeAttempt( git: GitEvidencePort,",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "buildLiveRunnerArguments",
+      "kind": "function",
+      "signature": "export function buildLiveRunnerArguments( attempt: BridgeAttempt,",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "BridgeAttemptAuthority",
+      "kind": "interface",
+      "signature": "export interface BridgeAttemptAuthority { finish(outcome: \"blocked\" | \"completed\" | \"failed\"): void;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "claimBridgeAttemptAuthority",
+      "kind": "function",
+      "signature": "export function claimBridgeAttemptAuthority( attempt: BridgeExpectation,",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "validateOriginalWindowsTimeoutReconciliation",
+      "kind": "function",
+      "signature": "export function validateOriginalWindowsTimeoutReconciliation( original: unknown, late: unknown,",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "main",
+      "kind": "function",
+      "signature": "export async function main(): Promise<void> { if (process.argv.includes(\"--recover-privacy-blocked-windows-smoke\")) {",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "bridgeFailureDiagnostic",
+      "kind": "function",
+      "signature": "export function bridgeFailureDiagnostic(error:unknown):{ readonly code:string;readonly diagnostic:BvpDiagnostic;",
+      "source": "test-platform/test/batteries/phxci-physical-bridge.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    },
+    {
+      "name": "S09A_VALIDATION_ARTIFACTS",
+      "kind": "const",
+      "signature": "export const S09A_VALIDATION_ARTIFACTS = Object.freeze({ sourceCommit: \"2bf51ca15aec9c752e3ac7769fcf3ac237df99df\",",
+      "source": "test-platform/test/batteries/s09a-validation-artifacts.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "UNCLASSIFIED_TYPED_EXPORT_REQUIRES_SAFE_ADAPTER_AUDIT"
+    }
+  ],
+  "notAnOperatorApi": true
+}
