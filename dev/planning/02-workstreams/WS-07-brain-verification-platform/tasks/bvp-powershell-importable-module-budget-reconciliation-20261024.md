@@ -31,3 +31,21 @@
 - Verify Windows `Import-Module` behavior on PowerShell 7.6.6 using test-first contracts; these are not validated merely by Microsoft documentation.
 - Determine whether complete API parity, persistent-config privacy, iOS/iPad simulation and recovery adapters can actually be implemented in **1,099** remaining logical PowerShell lines. Use thin delegates to existing BVP TypeScript/Node runtimes. If not, seek an Owner-specified budget change *before* adding any unmeasured module.
 - Full TS export/method accessibility and BVP runtime operation classification must be completed before the module can be considered a production-ready primary interface.
+
+
+## Identified frozen-guard false positive — Owner decision required
+
+During P1 source review, `test-platform/src/architecture-governance.ts` classifies any counted PowerShell script containing this expression as a **scenario-specific** script:
+
+```text
+/(?:test-platform\/scenarios\/|\bscenario[A-Za-z0-9_-]*\b|\b[A-Za-z0-9_-]*Scenario[A-Za-z0-9_-]*\b|...)/i
+```
+
+The actual matcher rejects both **generic operator names** `Get-BvpScenario` and `Invoke-BvpScenario` even though these names alone do not select, contain or hardcode any particular scenario. It treats these as violation of `scenario_specific_powershell_scripts_max: 0`, independent of behavior. Existing 4-script capacity is already full.
+
+**Owner architectural decision needed before implementing the counted importable script:**
+
+- **Recommended: Approve a narrow, test-first semantic correction of the supervisor-frozen `test-platform/src/architecture-governance.ts` guard** so general-purpose, allowlisted `Get-BvpScenario`/`Invoke-BvpScenario` cmdlets are not mistaken for scenario-specific verifier scripts. Preserve strict rejection of per-scenario launchers, embedded scenario names/IDs, path-specific routing, direct physical dispatch and any new script count/LOC. Add adversarial tests in `test-platform/test/architecture-metrics.test.ts` that specifically prove generic imports pass and hardcoded scenario-specific scripts continue failing. **Do not** change `testing-platform-boundary.yaml`, its 4-script/1500-LOC/zero-scenario limit, PHX-CI or pin.
+- Alternative: explicitly direct a different general-purpose public naming/API arrangement that can fulfill 100% BVP API parity under the existing unchanged matcher *without* obfuscating, renaming solely to avoid enforcement, or adding an unmeasured module. Do not infer this approval from the broader start authorization.
+
+**Gate:** Until Owner chooses, P1 may continue with source inventory, tests and design records, but implementation touching a frozen source file or attempting to route generic scenario operation through an uncounted `.psm1` remains **unauthorized**.
