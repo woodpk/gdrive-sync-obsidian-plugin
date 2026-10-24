@@ -1,6 +1,6 @@
 # WS-07 — BVP Direct Scenario-ID CLI (Build Unit)
 
-**Status:** BUILDER IMPLEMENTATION IN PROGRESS / TEST-FIRST COMMITTED / PHX-CI NOT_RUN / REVIEWER NOT_AUTHORIZED.  
+**Status:** BUILDER SOURCE IMPLEMENTED / TESTS AUTHORED FIRST / PHX-CI NOT_RUN / REVIEWER NOT_AUTHORIZED / NO ACCEPTANCE CLAIM.  
 **Owner directive:** 2026-10-24: make individual BVP scenarios callable by their stable scenario ID through a small public Node CLI, reusing the existing TypeScript BVP scenario runner. **Persist planning/decisions/state first; do not start development in this planning action.**  
 **Decision:** DEC-351; preserve DEC-350, DEC-347/348 and applicable prior frozen boundaries.  
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin` / WS-07; exact bound preimplementation source HEAD `d3f48e253c39e848b390aa4befed2b7cdb66cc04`, feature branch `build/bvp-powershell-interface-20261024`; source extension for the existing battery's test list explicitly rebound at `ce46ba777206a94e3c3a92f4b8d3a0d3a3dd86d5` (no new authority, no guard changes).  
@@ -58,6 +58,16 @@ BVP already has **individual-scenario execution**, not a private/unimplemented r
 
 **Not in scope:** BVP comprehensive PowerShell API or persistent profile system; implementation/replacement of scenario runner; full physical/live scenario-ID entry; any real Windows Obsidian, Google Drive, iPhone/iPad or third-party simulator interaction; system-wide PHX-CI changes; new simulator dependency; frozen architecture-budget or guard changes; production/plugin behavior; unrelated source refactors. A future **explicit** follow-on may expose authorized live scenario-by-ID routing, but NOT through this deterministic-first front door.
 
-## 5. Handoff readiness
+## 5. Actual Builder execution record — unqualified source
+
+- Initial bounded source HEAD: `d3f48e253c39e848b390aa4befed2b7cdb66cc04`.
+- Test-first authored/committed: `2169929b40db0ea142c10e73c674a84573c13def`, `test-platform/test/bvp-scenario-id-cli.test.ts`, covering catalog completeness/uniqueness, exact ID execution, read-only discovery, unknown/malformed/live-only selectors, repeat/output-overwrite behavior, result/evidence privacy and status mapping.
+- Implementation: `test-platform/test/batteries/deterministic-scenario-registry.ts` (70 static source-bound deterministic scenarios); `test-platform/test/batteries/run-deterministic-scenario.ts` (read-only discovery; strict `--scenario` plus `--result-file`; invokes existing `DeterministicScenarioRunner.canonical().run(definition)` without runner modifications). Existing `deterministic-battery-registry.ts` explicitly includes the new test in both `platform-core` and `all-platform-tests`.
+- Current code source includes TypeScript strict-typing and diagnostic identity corrections through `da37997e1b0f303d0b46ebbcbf5866cb05eace62`. **Not PHX-CI verified**; branch may advance for documentation/state.
+- Existing `test-platform/src/scenario/scenario-runner.ts`, production `src/**`, frozen governance/PHX-CI configuration and operating PowerShell scripts were not changed.
+- Test adequacy mapped to required ten families: nominal (exact selected ID), boundary (missing/empty/duplicate/unknown flags), adversarial (live-only/traversal rejection), negative/error (nonzero status and safe diagnostic), state/repeatability (separate runs and no prior-result overwrite), interaction/integration (compiled CLI/Node and existing scenario runner), privacy/security (sanitized machine evidence, no captures), regression (existing battery registry, all-platform inclusion), concurrency (separate invocations via independent Node processes; simultaneous collision remains an explicit future review/PHX-CI test-adequacy check), and environment/architecture (source registry coverage with tests; PHX-CI frozen guard/metrics still pending). **This is authored-test coverage, not executed PASS or independent adequacy acceptance.**
+- **Qualification blocker:** The connected GitHub interface cannot execute on the Owner's Windows 11 environment; no genuine repository-controlled PHX-CI run, terminal evidence, change-set PASS, or independent final Reviewer decision exists. Do not issue a Reviewer handoff or merge before exact-source Windows PHX-CI PASS and independent final review. Any runtime defect found must be repaired within authorized scope and requalified.
+
+## 6. Handoff readiness
 
 This task is durable planning **only**. Before coding, the receiving Builder must refresh remote HEAD, confirm current recipient role and handoff authorization, bind exact predecessor SHA/allowed paths, freshly read protocol before each script-authoring action, and update current state from PLANNED to IMPLEMENTING. **No tests, Node CLI code, PHX-CI run, independent review, or acceptance were performed by this planning update.**
