@@ -43,7 +43,8 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
   async function pollCore(){activeRunId=undefined;const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};activeRunId=runId;if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable",diagnostic:bvpDiagnostic({
       classification:"device-sequence-storage-unavailable",component:"device-agent",phase:"sequence-storage-preflight",
       lastConfirmedBoundary:"active-run-read",firstUnconfirmedBoundary:"durable-sequence-storage",effect:"none-confirmed",
-      recommendedAction:"enable-device-sequence-storage"})};// Installed file bytes, not caller-supplied claims or controller build output.
+      recommendedAction:"enable-device-sequence-storage"})};
+    // Installed file bytes, not caller-supplied claims or controller build output.
     const installedRoot=options.root.replace(/\\/g,"/").replace(/\/\.bvp-relay$/,"");
     if(!/\/plugins\/[A-Za-z0-9._-]+$/.test(installedRoot))throw new Error("validation-installed-plugin-root-invalid");
     const artifactSha256=await sha256(await options.adapter.readBinary(installedRoot+"/main.js")),manifestSha256=await sha256(await options.adapter.readBinary(installedRoot+"/manifest.json"));
@@ -61,7 +62,7 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
     const source=()=>({runId:activeRunId??null,deviceId:options.deviceId});
     try{const result=await pollDeviceOnce();if(result.status==="unavailable"){failed=true;await journal.record(result.diagnostic,source());}}
     catch(error){failed=true;await journal.record(unexpected("device-agent","device-poll",error),source());}
-    if(relay)try{const result=await relay.pumpOnce();if(result.status==="unavailable"&&result.diagnostic){failed=true;await journal.record(result.diagnostic);}}
+    if(relay)try{const result=await relay.pumpOnce();if(result.status==="unavailable"&&result.diagnostic){failed=true;await journal.record(result.diagnostic,{runId:null,deviceId:options.deviceId});}}
     catch(error){failed=true;await journal.record(unexpected("windows-relay","relay-pump",error),{runId:null,deviceId:options.deviceId});}
     if(!failed){
       const recovered=bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",
