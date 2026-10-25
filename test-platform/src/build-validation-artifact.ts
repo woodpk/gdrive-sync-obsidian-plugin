@@ -145,11 +145,11 @@ export async function buildValidationArtifact(repositoryRoot = resolve(process.c
   // Only the nonshipping validation manifest may carry the separately approved BRAT prerelease version.
   const prereleaseVersion=process.env.BVP_VALIDATION_PRERELEASE_VERSION;
   if(prereleaseVersion!==undefined){
-    if(!/^\\d+\\.\\d+\\.\\d+-bvp\\.[1-9]\\d*$/.test(prereleaseVersion))
+    if(!/^\d+\.\d+\.\d+-bvp\.[1-9]\d*$/.test(prereleaseVersion))
       throw new Error("bvp-validation-prerelease-version-invalid");
     const manifest=JSON.parse(readFileSync(manifestPath,"utf8")) as Record<string,unknown>;
     manifest.version=prereleaseVersion;
-    writeFileSync(manifestPath,JSON.stringify(manifest,null,2)+"\\n","utf8");
+    writeFileSync(manifestPath,JSON.stringify(manifest,null,2)+"\n","utf8");
   }
   const artifactBytes = readFileSync(artifactPath);
   const manifestBytes = readFileSync(manifestPath);
