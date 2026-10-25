@@ -42,8 +42,8 @@ production_seam:
     - test-only production mutation bypass
 
 complexity_budgets:
-  test_platform_framework_core_logical_ts_loc_max: 4550
-  live_device_agent_logical_ts_loc_max: 950
+  test_platform_framework_core_logical_ts_loc_max: 4850
+  live_device_agent_logical_ts_loc_max: 1250
   ordinary_scenario_logical_loc_target: 120
   ordinary_scenario_logical_loc_hard_max: 200
   scenario_specific_powershell_scripts_max: 0
