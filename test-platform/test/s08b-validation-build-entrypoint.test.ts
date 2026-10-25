@@ -103,16 +103,18 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   base.onload=async function(){};base.onunload=async function(){};base.loadData=async function(){return{settings:{oauthClientId:"client",oauthRedirectUri:"https://example.invalid/callback",deviceIdentity:deviceId,vaultIdentity:"",remoteRootId:"",firstSyncCompleted:false}}};base.productionVerificationControl=function(){return production};
   const fixture={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}},control={runId,deviceId,sequence:2,commandId:"cmd-2",kind:"production-control",action:"pause"};
   const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.deviceId,deviceId);ok(intervalCallback);intervalCallback!();intervalCallback!();await new Promise(resolve=>setTimeout(resolve,0));equal(listCalls,desktop?2:0);runtime.mailbox.activeRun=async()=>runId;runtime.mailbox.resultFor=async()=>undefined;
-  // DEC-352: actual installed validation runtime journals a polling exception.
+  // DEC-352: inspect the scheduled poll first; its startup error may already be journaled.
+  const preJournal=await runtime.journal.snapshot();
+  const beforeOccurrences=preJournal.entries.reduce((sum:number,e:any)=>sum+e.occurrences,0);
   runtime.mailbox.activeRun=async()=>{throw new Error("unexpected internal connection detail");};
   await runtime.pollAndReportOnce();
   const journaled=await runtime.journal.snapshot();
-  equal(journaled.entries.length,1);
-  equal(journaled.entries[0].diagnostic.classification,"bvp-unexpected-runtime-failure");
+  equal(journaled.entries.reduce((sum:number,e:any)=>sum+e.occurrences,0),beforeOccurrences+1);
+  equal(journaled.entries[journaled.entries.length-1]?.diagnostic.classification,"bvp-unexpected-runtime-failure");
   equal(JSON.stringify(journaled).includes("connection detail"),false);
   runtime.mailbox.activeRun=async()=>undefined;
   await runtime.pollAndReportOnce();
-  equal((await runtime.journal.snapshot()).entries.length,2);
+  equal((await runtime.journal.snapshot()).entries.some((e:any)=>e.diagnostic.classification==="bvp-runtime-poll-recovered"),true);
   runtime.mailbox.activeRun=async()=>runId;
   // Missing durable sequence storage must return a typed preflight diagnosis,
   // not an unstructured unavailable result or a claimed device dispatch.

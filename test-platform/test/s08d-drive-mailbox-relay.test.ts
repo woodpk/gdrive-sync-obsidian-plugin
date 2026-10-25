@@ -37,6 +37,7 @@ class FakeDrive {
     if(path==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}")),id="f"+this.next++;this.files.set(id,{meta,content:""});return Response.json({id});}
     const upload=path.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);if(upload&&method==="PATCH"){const file=this.files.get(upload[1]);if(!file)return new Response("",{status:404});file.content=String(init.body??"");return new Response("",{status:200});}
     const media=path.match(/^\/drive\/v3\/files\/([^/]+)$/);if(media&&method==="GET"&&url.searchParams.get("alt")==="media"){const file=this.files.get(media[1]);return file?new Response(file.content,{status:200}):new Response("",{status:404});}
+    if(media&&method==="PATCH"){const file=this.files.get(media[1]);if(!file)return new Response("",{status:404});const update=JSON.parse(String(init.body??"{}"));file.meta.appProperties={...file.meta.appProperties,...update.appProperties};return Response.json({id:media[1]});}
     if(media&&method==="DELETE"){this.files.delete(media[1]);return new Response(null,{status:204});}
     return new Response("",{status:400});};
   folder(){return [...this.files.values()].find(v=>v.meta.appProperties?.brainBvpMailbox==="1");}
@@ -254,4 +255,18 @@ test("DEC-352 invalid addressed diagnostic blocks ingest and preserves relay sta
   equal(response.diagnostic?.component,"windows-relay");
   equal(response.diagnostic?.phase,"diagnostic-ingest");
   equal(response.reason,"mailbox-record-malformed");
+});
+
+test("DEC-352 interrupted diagnostic media upload stays hidden from the relay",async()=>{
+  const drive=new FakeDrive();
+  const request:AuthenticatedDriveRequest=async(url,init={})=>{
+    if(url.includes("uploadType=media")&&(init.method??"GET")==="PATCH")return new Response("",{status:503});
+    return drive.request(url,init);
+  };
+  const mailbox=createDriveCommandMailbox(request);
+  const value={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
+    lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure()};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",value),/mailbox-drive-provider-unavailable/);
+  equal((await mailbox.diagnostics("run-a","device-a")).length,0);
+  equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="diagnostic"&&f.meta.appProperties?.brainBvpRecord==="0"),true);
 });
