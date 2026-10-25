@@ -1,8 +1,8 @@
 /**
  * The one browser-safe BVP diagnostic contract used by validation-device
  * adapters and the external scenario runner. This module is intentionally
- * inside live-device/ so S08B's installed validation artifact cannot import
- * scenario execution, evidence, test harnesses or external orchestration.
+ * in shared test-platform/src so S08B's installed validation artifact can
+ * reuse its typed error semantics without importing scenario orchestration.
  */
 import type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from "./diagnostic-types";
 export type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from "./diagnostic-types";

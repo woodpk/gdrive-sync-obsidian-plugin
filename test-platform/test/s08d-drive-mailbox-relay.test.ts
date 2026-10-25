@@ -282,3 +282,16 @@ test("DEC-352 malformed relay lease is a reported failure, never silently skippe
   equal(result.diagnostic?.phase,"diagnostic-ingest");
   equal(result.diagnostic?.effect,"unknown");
 });
+
+test("DEC-352 saturated offline journal persists a bounded overflow counter before reporting failure",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  const journal=new BvpRuntimeErrorJournal(files,root);
+  for(let i=0;i<24;i++)await journal.record(bvpPollFailure("error-class-"+i));
+  await rejects(()=>journal.record(bvpPollFailure("error-class-overflow")),
+    e=>e instanceof BvpJournalError&&e.code==="bvp-journal-persistence-failed");
+  const restarted=new BvpRuntimeErrorJournal(files,root);
+  const status=await restarted.snapshot();
+  equal(status.entries.length,24);
+  equal(status.overflow,1);
+  equal(status.outstanding,true);
+});

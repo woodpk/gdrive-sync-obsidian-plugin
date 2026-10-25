@@ -53,7 +53,7 @@ export class BvpRuntimeErrorJournal {
     else{
       if(state.entries.length===MAX_EVENTS){
         const removable=state.entries.findIndex(e=>e.deliveredCount===e.occurrences);
-        if(removable<0){state.overflow++;throw new BvpJournalError("bvp-journal-persistence-failed");}
+        if(removable<0){state.overflow++;await this.save(state);throw new BvpJournalError("bvp-journal-persistence-failed");}
         state.entries.splice(removable,1);
       }
       state.entries.push({schemaVersion:1,eventId:crypto.randomUUID(),firstAt:now,lastAt:now,
