@@ -46,3 +46,12 @@ Prohibited: `src/**` shipping logic, PHX-CI source/pin/taskfiles, frozen archite
 
 ## Known limitations
 If iOS terminates Obsidian or denies all persistent storage, no JavaScript callback can guarantee telemetry; record a failure code on restart if detectable and never claim guaranteed delivery. Directly proving iOS mailbox polling requires an approved device run, not code review or desktop simulation.
+
+## Builder implementation checkpoint — 2026-10-25
+
+- Candidate source/test commit before this state-only publication: `92f848bb5519488242be4fbb398ea1754cad5788` on `build/bvp-poll-error-observability-20261025`.
+- Structured BVP runtime errors are journaled under the validation-only plugin's `.bvp-relay/runtime-errors.json`; repeated errors are coalesced and pending delivery is retained through restart. BVP Google Drive mailbox `diagnostic` records are distinct from BRAIN sync, command, and result records. Diagnostic metadata stays unlisted until content upload completes. Windows relay projects exact leased diagnostic events into its own inbox; invalid records and corrupt controller leases report typed errors.
+- Focused regression authoring: `test-platform/test/s08b-validation-build-entrypoint.test.ts` and `test-platform/test/s08d-drive-mailbox-relay.test.ts`. Existing product artifact exclusion and architecture tests must be re-run, unchanged, through PHX-CI.
+- Node-only artifact builder moved to `test-platform/src/build-validation-artifact.ts` with the original live-device entrypoint as a compatible wrapper. The original shipping `manifest.json` remains `0.1.19`; the validation-only build accepts an explicit version override (planned `0.1.20-bvp.2`).
+- Operator distribution: two owner-executed PowerShell artifact scripts, `Install-BvpValidation.ps1` and `New-BvpPrerelease.ps1`, are delivered separately to the owner. These scripts have **not** been executed or qualified by PHX-CI. They require exact PHX-CI PASS identities, the accepted independent review report, approved artifact digest and an explicit owner approval before installation or GitHub prerelease publication.
+- **No execution evidence:** A connected GitHub repository interface is not a Windows 11 PHX-CI runtime. Source and test presence do not establish a compiler/test/architecture PASS. Do not issue Builder→Reviewer handoff until qualified original canonical evidence exists. Do not install, release, or physically dispatch any iPhone commands from this feature state.
