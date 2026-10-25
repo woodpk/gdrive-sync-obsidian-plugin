@@ -200,4 +200,17 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(second.artifactSha256, first.artifactSha256);
   equal(second.manifestSha256, first.manifestSha256);
   deepEqual(second.testPlatformInputs, first.testPlatformInputs);
+  // DEC-352 prerelease packaging must not alter tracked shipping manifest.
+  const previousVersion=process.env.BVP_VALIDATION_PRERELEASE_VERSION;
+  try{
+    process.env.BVP_VALIDATION_PRERELEASE_VERSION="0.1.20-bvp.2";
+    const candidate=await buildValidationArtifact(repositoryRoot);
+    equal(JSON.parse(readFileSync(candidate.manifestPath,"utf8")).version,"0.1.20-bvp.2");
+    equal(candidate.manifestSha256,sha256(readFileSync(candidate.manifestPath)));
+    equal(candidate.sourceCommit,first.sourceCommit);
+    equal(JSON.parse(readFileSync(resolve(repositoryRoot,"manifest.json"),"utf8")).version,"0.1.19");
+  }finally{
+    if(previousVersion===undefined)delete process.env.BVP_VALIDATION_PRERELEASE_VERSION;
+    else process.env.BVP_VALIDATION_PRERELEASE_VERSION=previousVersion;
+  }
 });
