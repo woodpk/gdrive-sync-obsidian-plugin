@@ -11,7 +11,7 @@ const MAX_RECORD_BYTES = 128 * 1024;
 export type AuthenticatedDriveRequest = (url: string, init?: RequestInit) => Promise<Response>;
 export class MailboxUnavailableError extends Error { constructor(message = "mailbox-unavailable") { super(message); this.name = "MailboxUnavailableError"; } }
 
-interface MailboxFile { id: string; size?: string; appProperties?: Record<string,string>; }
+interface MailboxFile { id: string; size?: string; createdTime?:string; appProperties?: Record<string,string>; }
 interface FileList { files?: MailboxFile[]; nextPageToken?: string; }
 interface Header { runId: string; deviceId: string; sequence: number; commandId: string; }
 interface RelayAdapter {
@@ -71,6 +71,7 @@ async function controllerAuthorityPath(root:string,deviceId:string):Promise<stri
 export interface DriveCommandMailbox {
   publishResult(value: DeviceCommandResult): Promise<void>;
   reserveDiagnosticId():Promise<string>;
+  archiveVerifiedDiagnostic(deviceId:string,eventId:string,archiveId:string):Promise<{status:"verified";eventId:string;sha256:string}>;
   publishDiagnostic(runId:string|null,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
   diagnosticsForDevice(deviceId:string,pageToken?:string):Promise<{entries:RuntimeErrorRecord[];nextPageToken?:string}>;
   diagnostics(runId:string,deviceId:string):Promise<RuntimeErrorRecord[]>;
@@ -108,6 +109,38 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
   async function publish(kind:"command"|"result",value:unknown,generation?:number):Promise<void>{const safe=kind==="command"?command(value):result(value);if(!safe)throw new Error("mailbox-record-invalid");if(sensitive(safe))throw new Error("mailbox-sensitive-field");const encoded=jsonBytes(safe);if(encoded.bytes>MAX_RECORD_BYTES)throw new Error("mailbox-record-too-large");if(kind==="command"){if(!Number.isSafeInteger(generation)||generation!<=0)throw new MailboxUnavailableError("mailbox-controller-generation-invalid");await ensureRunBinding(safe.runId,safe.deviceId,generation!);}const parent=await rootId(),props:{[key:string]:string}={brainBvpRecord:"1",brainBvpKind:kind,brainBvpRunId:safe.runId,brainBvpDeviceId:safe.deviceId};if(kind==="command")props.brainBvpGeneration=String(generation);const meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-${kind}-${crypto.randomUUID()}.json`,parents:[parent],mimeType:"application/json",appProperties:props})}),m=await meta.json() as{id?:string};if(!m.id)throw new Error("mailbox-record-create-invalid");await call(`${UPLOAD}/files/${encodeURIComponent(m.id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});}
   async function listing(kind:"command"|"result"|"run-binding"|"diagnostic",runId:string,deviceId:string):Promise<FileList>{const parent=await rootId();const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='${kind}' } and appProperties has { key='brainBvpRunId' and value='${escapeQuery(runId)}' } and appProperties has { key='brainBvpDeviceId' and value='${escapeQuery(deviceId)}' }`);const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=200&fields=nextPageToken,files(id,size,appProperties)`);return await response.json() as FileList;}
   async function records(kind:"command"|"result"|"diagnostic",runId:string,deviceId:string):Promise<{file:MailboxFile;value:unknown}[]>{const page=await listing(kind,runId,deviceId);if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-current-run-overflow");const output:{file:MailboxFile;value:unknown}[]=[];for(const file of page.files??[]){if(file.size&&Number(file.size)>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-record-too-large");const media=await call(`${API}/files/${encodeURIComponent(file.id)}?alt=media`);const text=await media.text();if(new TextEncoder().encode(text).byteLength>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-record-too-large");try{output.push({file,value:JSON.parse(text)});}catch{throw new MailboxUnavailableError("mailbox-record-malformed");}}return output;}
+
+  const ageMs=90*24*60*60*1000;
+  // Read at most 5000 active remote objects; archives never count as active.
+  // Both published and ambiguous reserved objects are counted to prevent silent overflow.
+  async function admitActive(deviceId:string):Promise<void>{
+    const parent=await rootId(),q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='diagnostic' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' }";
+    let count=0,token:string|undefined;const seen=new Set<string>(),tokens=new Set<string>(),cutoff=Date.now()-ageMs;
+    do{
+      const url=API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=200&fields=nextPageToken,files(id,size,createdTime,appProperties)"+(token?"&pageToken="+encodeURIComponent(token):"");
+      const response=await call(url,undefined,Boolean(token)),page=await response.json() as FileList;
+      if(!Array.isArray(page.files)||page.files.length>200)throw new MailboxUnavailableError("mailbox-diagnostic-retention-unconfirmed");
+      for(const file of page.files){
+        if(!file.id||seen.has(file.id)||file.appProperties?.brainBvpKind!=="diagnostic"||file.appProperties?.brainBvpDeviceId!==deviceId)
+          throw new MailboxUnavailableError("mailbox-diagnostic-retention-unconfirmed");
+        seen.add(file.id);count++;
+        if(count>=5000)throw new MailboxUnavailableError("mailbox-diagnostic-active-capacity");
+        // Legacy providers without createdTime require a bounded content fallback, never assumed fresh.
+        let age=file.createdTime;
+        if(!age){
+          const media=await call(API+"/files/"+encodeURIComponent(file.id)+"?alt=media"),raw=await media.text();
+          if(new TextEncoder().encode(raw).byteLength>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-diagnostic-retention-unconfirmed");
+          try{age=cleanDiagnostic(JSON.parse(raw))?.firstAt;}catch{}
+        }
+        if(!age||!Number.isFinite(Date.parse(age)))throw new MailboxUnavailableError("mailbox-diagnostic-retention-unconfirmed");
+        if(Date.parse(age)<cutoff)throw new MailboxUnavailableError("mailbox-diagnostic-active-expired");
+      }
+      token=page.nextPageToken;
+      if(token&&(!token.length||token.length>1024||tokens.has(token)||count>=5000))
+        throw new MailboxUnavailableError("mailbox-diagnostic-retention-unconfirmed");
+      if(token)tokens.add(token);
+    }while(token);
+  }
   const mailbox:DriveCommandMailbox={
     publishResult:value=>publish("result",value),
     async reserveDiagnosticId(){
@@ -131,6 +164,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       if(records.length>1||records.some(f=>f.id!==id||f.appProperties?.brainBvpRunId!==(runId??undefined)||f.appProperties?.brainBvpDeviceId!==deviceId||f.appProperties?.brainBvpKind!=="diagnostic"||(runId===null?f.appProperties?.brainBvpOriginBound!=="0":f.appProperties?.brainBvpOriginBound==="0")))throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
       let existing=records[0];
       if(!existing){
+        await admitActive(deviceId);
         // Drive file ID is reserved and durably journaled BEFORE this create. A lost
         // create response can only cause a retry of this SAME ID, never a second object.
         const meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",...(runId===null?{}:{brainBvpRunId:runId}),...(runId===null?{brainBvpOriginBound:"0"}:{}),brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})});
@@ -160,6 +194,64 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const verified=await confirmation.json() as MailboxFile;
       if(verified.id!==id||verified.appProperties?.brainBvpRecord!=="1"||verified.appProperties?.brainBvpEventId!==safe.eventId||verified.appProperties?.brainBvpRunId!==(runId??undefined)||verified.appProperties?.brainBvpDeviceId!==deviceId||(runId===null?verified.appProperties?.brainBvpOriginBound!=="0":verified.appProperties?.brainBvpOriginBound==="0"))
         throw new MailboxUnavailableError("mailbox-diagnostic-visibility-unconfirmed");
+    },
+
+    // Archive is non-destructive. No event can be retired by this operation:
+    // a delivered inbox receipt is not a trusted event-specific resolution.
+    async archiveVerifiedDiagnostic(deviceId,eventId,archiveId){
+      if(!/^[a-zA-Z0-9._:-]{1,128}$/.test(deviceId)||!/^[0-9a-f-]{36}$/.test(eventId)||
+        !/^[A-Za-z0-9_-]{2,128}$/.test(archiveId))throw new MailboxUnavailableError("mailbox-archive-identity-invalid");
+      const parent=await rootId(),query=(kind:string)=>"'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='"+kind+"' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' } and appProperties has { key='brainBvpEventId' and value='"+escapeQuery(eventId)+"' }";
+      const fetchOne=async(kind:string)=>{
+        const response=await call(API+"/files?q="+encodeURIComponent(query(kind))+"&spaces=drive&pageSize=2&fields=nextPageToken,files(id,size,appProperties)");
+        const page=await response.json() as FileList;
+        if(page.nextPageToken||(page.files??[]).length!==1)throw new MailboxUnavailableError("mailbox-archive-source-ambiguous");
+        return page.files![0];
+      };
+      const source=await fetchOne("diagnostic"),props=source.appProperties;
+      if(props?.brainBvpRecord!=="1"||props.brainBvpKind!=="diagnostic"||props.brainBvpDeviceId!==deviceId||props.brainBvpEventId!==eventId||
+        source.size===undefined||!/^[0-9]+$/.test(source.size)||Number(source.size)>MAX_RECORD_BYTES)
+        throw new MailboxUnavailableError("mailbox-archive-source-invalid");
+      const raw=await (await call(API+"/files/"+encodeURIComponent(source.id)+"?alt=media")).text();
+      if(new TextEncoder().encode(raw).byteLength>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-archive-source-invalid");
+      let safe:RuntimeErrorRecord|undefined;try{safe=cleanDiagnostic(JSON.parse(raw));}catch{}
+      if(!safe||safe.eventId!==eventId)throw new MailboxUnavailableError("mailbox-archive-source-invalid");
+      const bound=props.brainBvpOriginBound!=="0",run=props.brainBvpRunId;
+      if(bound?(typeof run!=="string"||safe.diagnostic.identity.runId!==await opaqueDiagnosticId(run,"run")):
+        (run!==undefined||safe.diagnostic.identity.runId!=="unavailable"))
+        throw new MailboxUnavailableError("mailbox-diagnostic-origin-conflict");
+      const sha=[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw)))].map(x=>x.toString(16).padStart(2,"0")).join("");
+      const existingResponse=await call(API+"/files?q="+encodeURIComponent(query("diagnostic-archive"))+"&spaces=drive&pageSize=2&fields=nextPageToken,files(id,size,appProperties)");
+      const existingPage=await existingResponse.json() as FileList;
+      if(existingPage.nextPageToken||(existingPage.files??[]).length>1)throw new MailboxUnavailableError("mailbox-archive-conflict");
+      let archived=existingPage.files?.[0];
+      if(archived&&(archived.id!==archiveId||archived.appProperties?.brainBvpSourceId!==source.id||archived.appProperties?.brainBvpArchiveSha256!==sha))
+        throw new MailboxUnavailableError("mailbox-archive-conflict");
+      if(!archived){
+        const created=await call(API+"/files?fields=id",{method:"POST",headers:{"content-type":"application/json"},
+          body:JSON.stringify({id:archiveId,name:"bvp-diagnostic-archive-"+eventId+".json",parents:[parent],mimeType:"application/json",
+            appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic-archive",brainBvpEventId:eventId,brainBvpDeviceId:deviceId,
+              brainBvpSourceId:source.id,brainBvpArchiveSha256:sha,...(bound?{brainBvpRunId:run}:{brainBvpOriginBound:"0"})}})});
+        if((await created.json() as {id?:string}).id!==archiveId)throw new MailboxUnavailableError("mailbox-archive-create-unconfirmed");
+        archived={id:archiveId,size:"0",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic-archive",brainBvpEventId:eventId,
+          brainBvpDeviceId:deviceId,brainBvpSourceId:source.id,brainBvpArchiveSha256:sha}};
+      }
+      let media="";
+      if(archived.size&&Number(archived.size)>0)media=await (await call(API+"/files/"+encodeURIComponent(archiveId)+"?alt=media")).text();
+      if(media&&media!==raw)throw new MailboxUnavailableError("mailbox-archive-conflict");
+      if(media!==raw)await call(UPLOAD+"/files/"+encodeURIComponent(archiveId)+"?uploadType=media",
+        {method:"PATCH",headers:{"content-type":"application/json"},body:raw});
+      if(await (await call(API+"/files/"+encodeURIComponent(archiveId)+"?alt=media")).text()!==raw)
+        throw new MailboxUnavailableError("mailbox-archive-integrity-unconfirmed");
+      if(archived.appProperties?.brainBvpRecord!=="1")
+        await call(API+"/files/"+encodeURIComponent(archiveId)+"?fields=id",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:{brainBvpRecord:"1"}})});
+      const verified=await (await call(API+"/files/"+encodeURIComponent(archiveId)+"?fields=id,appProperties")).json() as MailboxFile;
+      if(verified.id!==archiveId||verified.appProperties?.brainBvpRecord!=="1"||verified.appProperties?.brainBvpArchiveSha256!==sha||
+        verified.appProperties?.brainBvpSourceId!==source.id||verified.appProperties?.brainBvpDeviceId!==deviceId||
+        verified.appProperties?.brainBvpEventId!==eventId)throw new MailboxUnavailableError("mailbox-archive-visibility-unconfirmed");
+      if(await (await call(API+"/files/"+encodeURIComponent(source.id)+"?alt=media")).text()!==raw)
+        throw new MailboxUnavailableError("mailbox-archive-source-changed");
+      return{status:"verified" as const,eventId,sha256:sha};
     },
     async diagnostics(runId,deviceId){
       const remote=await records("diagnostic",runId,deviceId),seen=new Set<string>(),values:RuntimeErrorRecord[]=[];
