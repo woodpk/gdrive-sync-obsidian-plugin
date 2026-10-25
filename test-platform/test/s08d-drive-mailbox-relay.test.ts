@@ -353,3 +353,23 @@ test("DEC352-F02 conflicting event origin or payload fails closed without second
   await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,diagnostic:bvpPollFailure("different-classification")}),/mailbox-diagnostic-event-conflict/);
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
 });
+
+test("DEC352-F03 relay refuses same-event conflicting inbox evidence and duplicate remote records",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-a","device-a",1);
+  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),
+    occurrences:1,diagnostic:bvpPollFailure(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await mailbox.publishDiagnostic("run-a","device-a",event);
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  await relay.pumpOnce();
+  const path=root+"/inbox/bvp-diagnostic-"+event.eventId+".error.json",old=JSON.parse(await files.read(path));
+  const tampered={...old,diagnostic:bvpPollFailure("forged-origin")};
+  await files.write(path,JSON.stringify(tampered));
+  const blocked=await relay.pumpOnce();
+  equal(blocked.status,"unavailable");
+  equal(blocked.reason,"relay-diagnostic-inbox-conflict");
+  deepEqual(JSON.parse(await files.read(path)),tampered);
+  const duplicate=[...drive.files.entries()].find(([,v])=>v.meta.appProperties?.brainBvpEventId===event.eventId)!;
+  drive.files.set("forged-duplicate",{meta:{...duplicate[1].meta},content:duplicate[1].content});
+  await rejects(()=>mailbox.diagnostics("run-a","device-a"),/mailbox-diagnostic-event-conflict/);
+});
