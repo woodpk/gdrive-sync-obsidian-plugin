@@ -154,7 +154,16 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         await call(`${API}/files/${encodeURIComponent(id)}?fields=id`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:{brainBvpRecord:"1"}})});
       }
     },
-    async diagnostics(runId,deviceId){const values=(await records("diagnostic",runId,deviceId)).map(record=>cleanDiagnostic(record.value));if(values.some(value=>!value))throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");return values.filter((value):value is RuntimeErrorRecord=>Boolean(value));},
+    async diagnostics(runId,deviceId){
+      const remote=await records("diagnostic",runId,deviceId),seen=new Set<string>(),values:RuntimeErrorRecord[]=[];
+      for(const record of remote){
+        const v=cleanDiagnostic(record.value),props=record.file.appProperties;
+        if(!v||props?.brainBvpRunId!==runId||props?.brainBvpDeviceId!==deviceId||props?.brainBvpEventId!==v.eventId)throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");
+        if(seen.has(v.eventId))throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+        seen.add(v.eventId);values.push(v);
+      }
+      return values;
+    },
     async commands(runId,deviceId){const values=(await records("command",runId,deviceId)).map(v=>command(v.value));if(values.some(v=>!v))throw new MailboxUnavailableError("mailbox-command-invalid");return values.filter((v):v is DeviceCommand=>Boolean(v&&v.runId===runId&&v.deviceId===deviceId)).sort((a,b)=>a.sequence-b.sequence);},
     async resultFor(value){const target=header(value)!;const parsed=(await records("result",target.runId,target.deviceId)).map(v=>result(v.value));if(parsed.some(v=>!v))throw new MailboxUnavailableError("mailbox-result-invalid");const values=parsed.filter((v):v is DeviceCommandResult=>Boolean(v&&same(v,target)));if(!values.length)return undefined;const first=JSON.stringify(values[0]);if(values.some(v=>JSON.stringify(v)!==first))throw new Error("mailbox-conflicting-result");return values[0];},
     activeRun,
@@ -243,7 +252,14 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
         for(const entry of await mailbox.diagnostics(lease.runId,lease.deviceId)){
           const path=`${inside}/bvp-diagnostic-${entry.eventId}.error.json`;
           if(await adapter.exists(path)){
-            try{const old=obj(JSON.parse(await adapter.read(path)));if(Number(old?.occurrences)>=entry.occurrences)continue;}catch{}
+            let old:RuntimeErrorRecord|undefined;
+            try{old=cleanDiagnostic(JSON.parse(await adapter.read(path)));}catch{}
+            if(!old||old.eventId!==entry.eventId||old.firstAt!==entry.firstAt||
+              JSON.stringify(old.diagnostic)!==JSON.stringify(entry.diagnostic)||
+              (old.occurrences>entry.occurrences&&old.lastAt<entry.lastAt)||
+              (old.occurrences<entry.occurrences&&old.lastAt>entry.lastAt))
+              throw new MailboxUnavailableError("relay-diagnostic-inbox-conflict");
+            if(old.occurrences>=entry.occurrences)continue;
           }
           await adapter.write(path,JSON.stringify(entry));
         }
