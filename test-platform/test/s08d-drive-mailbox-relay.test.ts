@@ -232,3 +232,26 @@ test("DEC-352 mailbox rejects unsafe diagnostic codes and forged identifiers",as
     ...event.diagnostic,classification:"Bearer hidden-token"}}),/mailbox-diagnostic-invalid/);
   await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,eventId:"../../bad-path"}),/mailbox-diagnostic-invalid/);
 });
+
+test("DEC-352 addressed malformed mailbox entries are diagnosed, never silently skipped",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
+  const record=command(),badId="bad-"+randomUUID();
+  seedCommand(drive,record,badId);
+  drive.files.get(badId)!.content="not-valid-json";
+  await rejects(()=>mailbox.commands(record.runId,record.deviceId),/mailbox-record-malformed/);
+  drive.files.get(badId)!.content=JSON.stringify({...record,kind:"unknown-kind"});
+  await rejects(()=>mailbox.commands(record.runId,record.deviceId),/mailbox-command-invalid/);
+});
+
+test("DEC-352 invalid addressed diagnostic blocks ingest and preserves relay status",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files();
+  const root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-a","device-a");
+  drive.files.set("malformed-diagnostic",{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",
+    brainBvpRunId:"run-a",brainBvpDeviceId:"device-a"}},content:"{malformed"});
+  const response=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();
+  equal(response.status,"unavailable");
+  equal(response.diagnostic?.component,"windows-relay");
+  equal(response.diagnostic?.phase,"diagnostic-ingest");
+  equal(response.reason,"mailbox-record-malformed");
+});
