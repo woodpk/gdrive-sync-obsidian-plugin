@@ -65,6 +65,8 @@ test("DEC354 archive: verified SHA-256 content, source retained and idempotent",
   equal(drive.files.get(id)?.content,JSON.stringify(v));
   const two=await mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,archiveId);
   equal(one.sha256,two.sha256);
+  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,await mailbox.reserveDiagnosticId()),/mailbox-archive-conflict/);
+  equal(drive.files.get(id)?.content,JSON.stringify(v),"successful archive never retires unresolved original");
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,1);
 });
 test("DEC354 archive: ambiguous remote upload fails closed without touching original",async()=>{
