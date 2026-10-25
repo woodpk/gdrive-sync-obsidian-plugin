@@ -316,7 +316,7 @@ test("DEC-355 owner-approved hard ceilings reject one extra logical line", () =>
     writeText(root, "test-platform/src/platform-root.ts", lines(4850));
     const atCoreLimit = assertPass(runMetrics(root));
     strictEqual(atCoreLimit.current.frameworkCoreLogicalTsLoc, 4850);
-    writeText(root, "test-platform/src/platform-root.ts", lines(4551));
+    writeText(root, "test-platform/src/platform-root.ts", lines(4851));
     assertBudgetFailure(runMetrics(root), "FRAMEWORK_CORE_LOC");
     writeText(root, "test-platform/src/platform-root.ts", lines(1));
     writeText(root, "test-platform/src/device-agent/agent.ts", lines(1250));
