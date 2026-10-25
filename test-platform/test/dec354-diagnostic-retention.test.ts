@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { strictEqual as equal, rejects } from "node:assert";
-import { createDriveCommandMailbox, type AuthenticatedDriveRequest } from "../src/live-device/drive-mailbox";
+import { createDriveCommandMailbox, createWindowsMailboxRelay, type AuthenticatedDriveRequest } from "../src/live-device/drive-mailbox";
 import { bvpDiagnostic, opaqueDiagnosticId } from "../src/diagnostic-contract";
 import type { RuntimeErrorRecord } from "../src/bvp-runtime-error-journal";
 
@@ -104,4 +104,28 @@ test("DEC354 ambiguous archive create is reconciled with the identical reserved 
   const recovered=createDriveCommandMailbox(request),result=await recovered.archiveVerifiedDiagnostic("device-a",old.eventId,archiveId);
   equal(result.status,"verified");equal(drive.files.get(source)?.content,JSON.stringify(old));
   equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,1);
+});
+
+class RelayFiles{
+  dirs=new Set<string>();values=new Map<string,string>();
+  async exists(p:string){return this.dirs.has(p)||this.values.has(p);}
+  async mkdir(p:string){this.dirs.add(p);}
+  async list(p:string){const prefix=p+"/";return{files:[...this.values.keys()].filter(v=>v.startsWith(prefix)&&!v.slice(prefix.length).includes("/")),folders:[]};}
+  async read(p:string){const v=this.values.get(p);if(v===undefined)throw Error("missing");return v;}
+  async write(p:string,v:string){this.values.set(p,v);}
+  async rename(a:string,b:string){this.values.set(b,await this.read(a));this.values.delete(a);}
+  async remove(p:string){this.values.delete(p);}
+}
+test("DEC354 Windows relay autonomously archives one aged diagnostic without deleting unresolved source",async()=>{
+  const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request),files=new RelayFiles();
+  const root=".obsidian/plugins/brain/.bvp-relay";
+  files.dirs.add(root+"/controller-authority");
+  const key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:2,runId:"run-b",deviceId:"device-a"}));
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  const result=await relay.pumpOnce();
+  equal(result.status,"ok");
+  equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,1);
+  equal(drive.files.get(id)?.content,JSON.stringify(v));
+  equal(await files.exists(root+"/inbox/bvp-diagnostic-"+v.eventId+".error.json"),true);
 });
