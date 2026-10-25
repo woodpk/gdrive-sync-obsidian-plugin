@@ -82,3 +82,26 @@ test("DEC354 archive: falsified run metadata is rejected before copied evidence 
   await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,await mailbox.reserveDiagnosticId()),/mailbox-diagnostic-origin-conflict/);
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,0);
 });
+
+test("DEC354 89-day active history permits new publication without changing older record",async()=>{
+  const drive=new Fake(),old=await sample(),id=drive.seed(old,89),mailbox=createDriveCommandMailbox(drive.request);
+  const item=await sample(),remoteFileId=await mailbox.reserveDiagnosticId();
+  await mailbox.publishDiagnostic("run-a","device-a",{...item,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId});
+  equal(drive.files.get(id)?.content,JSON.stringify(old));
+  equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,2);
+});
+test("DEC354 ambiguous archive create is reconciled with the identical reserved ID after restart",async()=>{
+  const drive=new Fake(),old=await sample(),source=drive.seed(old,91);let drop=true;
+  const request:AuthenticatedDriveRequest=async(url,init={})=>{
+    const isArchive=new URL(url).pathname==="/drive/v3/files"&&(init.method??"GET")==="POST"&&
+      String(init.body??"").includes('diagnostic-archive');
+    const response=await drive.request(url,init);
+    if(isArchive&&drop){drop=false;return new Response("",{status:503});}
+    return response;
+  };
+  const mailbox=createDriveCommandMailbox(request),archiveId=await mailbox.reserveDiagnosticId();
+  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",old.eventId,archiveId),/mailbox-drive-provider-unavailable/);
+  const recovered=createDriveCommandMailbox(request),result=await recovered.archiveVerifiedDiagnostic("device-a",old.eventId,archiveId);
+  equal(result.status,"verified");equal(drive.files.get(source)?.content,JSON.stringify(old));
+  equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,1);
+});
