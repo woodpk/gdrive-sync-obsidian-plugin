@@ -373,3 +373,14 @@ test("DEC352-F03 relay refuses same-event conflicting inbox evidence and duplica
   drive.files.set("forged-duplicate",{meta:{...duplicate[1].meta},content:duplicate[1].content});
   await rejects(()=>mailbox.diagnostics("run-a","device-a"),/mailbox-diagnostic-event-conflict/);
 });
+
+test("DEC352-F03 malicious persisted journal fields are blocked without publishing leaked values",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",journal=new BvpRuntimeErrorJournal(files,root);
+  await journal.record(bvpPollFailure(),{runId:"run-a",deviceId:"device-a"});
+  const path=root+"/runtime-errors.json",corrupt=JSON.parse(await files.read(path));
+  corrupt.entries[0].diagnostic.classification="Bearer secret-path";
+  const raw=JSON.stringify(corrupt);await files.write(path,raw);
+  await rejects(()=>new BvpRuntimeErrorJournal(files,root).flush(async()=>{throw new Error("must not publish");}),
+    e=>e instanceof BvpJournalError&&e.code==="bvp-journal-corrupt");
+  equal(await files.read(path),raw);
+});
