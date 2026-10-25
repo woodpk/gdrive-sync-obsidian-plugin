@@ -71,7 +71,7 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
       await journal.recover(recovered,source());
       if(await journal.acquireDeliveryWindow()){
         try{
-          await journal.flush(entry=>mailbox.publishDiagnostic(entry.origin!.runId!,entry.origin!.deviceId!,entry),()=>mailbox.reserveDiagnosticId());
+          await journal.flush(entry=>mailbox.publishDiagnostic(entry.origin!.runId,entry.origin!.deviceId!,entry),()=>mailbox.reserveDiagnosticId());
         }catch(error){
           // A transport error is local-only to avoid recursively reporting its own failed delivery.
           await journal.record(unexpected("drive-mailbox","diagnostic-publication",error),{runId:null,deviceId:options.deviceId});
