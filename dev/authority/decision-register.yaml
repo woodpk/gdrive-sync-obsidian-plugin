@@ -1105,6 +1105,13 @@ decisions:
     relates_to: [DEC-316, DEC-345, DEC-347, DEC-348, DEC-349, DEC-350, DEC-351]
     decision: "On 2026-10-25 the Owner directed a bounded BVP validation-only error-observability repair before continued physical iPhone command testing. BVP command polling, active-run discovery, installed-build measurement, result publication, relay pumping and asynchronous handler failures must never be silently discarded. Persist privacy-safe structured error events on the originating device independently of Google Drive availability, coalesce repetitive identical failures with attempt counts, keep an observable failure/recovery boundary and retain pending reports across plugin restart; deliver pending error records via the EXISTING BVP Google Drive mailbox when possible and enable the Windows BVP relay to persist received diagnostic records without converting them to passing command results. Preserve existing diagnostic contract and command identity/sequence semantics; never use production BRAIN synchronization to transport BVP telemetry. When local persistence or remote delivery itself fails, surface a safe explicit fallback rather than claiming delivery or PASS. Do not log raw exception messages, URLs, credentials, content, device identities or filesystem paths. This authorizes planning, test-driven BVP-only implementation and local verification through unchanged PHX-CI, but does not itself approve unqualified binary installation, physical dispatch, product synchronization, release publication, promotion or Reviewer acceptance. New Windows installation / GitHub prerelease scripts must enforce exact source/build hashes, be owner-executed, and remain unusable for promotion until substantive PHX-CI PASS, independent final Reviewer acceptance and separate explicit Owner release authorization. All unchanged complexity budgets, frozen architecture guard, two-agent and no-GitHub-Actions requirements remain binding."
 
+
+  - id: DEC-353
+    status: locked
+    category: bvp_dec352_owner_architecture_budget_amendment
+    relates_to: [DEC-349, DEC-352]
+    decision: "On 2026-10-25 the Owner authorized a read-only historical-run and unbound-device diagnostic extension to the existing authenticated BVP mailbox without historical command authority. The Owner separately approved increasing only the BVP framework-core logical TypeScript maximum from 4500 to 4550. Live-device agent/relay maximum remains 950. All other budgets and verification, safety and product boundaries remain unchanged. This decision does not authorize bypassing the architecture guard, software qualification, Reviewer acceptance, physical-device tests, live Drive/vault operations, merge or release."
+
 superseded_decisions:
   - id: SUP-001
     status: superseded
