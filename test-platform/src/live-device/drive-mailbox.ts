@@ -95,7 +95,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       throw new MailboxUnavailableError("mailbox-drive-transport-unavailable");
     }
   }
-  async function rootId():Promise<string>{return root??=(async()=>{const q=encodeURIComponent("trashed = false and appProperties has { key='brainBvpMailbox' and value='1' }");const found=await call(`${API}/files?q=${q}&spaces=drive&pageSize=10&fields=files(id,name,appProperties)`);const files=((await found.json()) as FileList).files??[];if(files.length>1)throw new Error("mailbox-root-ambiguous");if(files[0])return files[0].id;const created=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:ROOT_NAME,mimeType:FOLDER_MIME,appProperties:{brainBvpMailbox:"1"}})});const value=await created.json() as {id?:string};if(!value.id)throw new Error("mailbox-root-create-invalid");return value.id;})().catch(error=>{root=undefined;throw error;});}
+  async function rootId():Promise<string>{return root??=(async()=>{const q=encodeURIComponent("trashed = false and appProperties has { key='brainBvpMailbox' and value='1' }");const found=await call(`${API}/files?q=${q}&spaces=drive&pageSize=10&fields=files(id,name,appProperties)`);const files=((await found.json()) as FileList).files??[];if(files.length>1)throw new MailboxUnavailableError("mailbox-root-ambiguous");if(files[0])return files[0].id;const created=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:ROOT_NAME,mimeType:FOLDER_MIME,appProperties:{brainBvpMailbox:"1"}})});const value=await created.json() as {id?:string};if(!value.id)throw new MailboxUnavailableError("mailbox-root-create-invalid");return value.id;})().catch(error=>{root=undefined;throw error;});}
   async function bindingListing(deviceId:string):Promise<FileList>{const parent=await rootId();const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='run-binding' } and appProperties has { key='brainBvpDeviceId' and value='${escapeQuery(deviceId)}' }`);const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=20&fields=nextPageToken,files(id,appProperties)`);const page=await response.json() as FileList;if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-run-binding-overflow");return page;}
   const bindingGeneration=(file:MailboxFile):number|undefined=>{const value=Number(file.appProperties?.brainBvpGeneration);return Number.isSafeInteger(value)&&value>0?value:undefined;};
   async function activeRun(deviceId:string):Promise<string|undefined>{const files=(await bindingListing(deviceId)).files??[];if(!files.length)return undefined;const parsed=files.map(file=>({run:file.appProperties?.brainBvpRunId,generation:bindingGeneration(file)}));if(parsed.some(value=>!value.run||value.generation===undefined))throw new MailboxUnavailableError("mailbox-run-binding-invalid");const max=Math.max(...parsed.map(value=>value.generation!)),runs=[...new Set(parsed.filter(value=>value.generation===max).map(value=>value.run!))];if(runs.length!==1)throw new MailboxUnavailableError("mailbox-run-binding-ambiguous");return runs[0];}
@@ -197,10 +197,11 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
       phase="diagnostic-ingest";first="remote-diagnostic-observation";failureClass="relay-diagnostic-ingest-failed";
       const leases=root+"/controller-authority";
       if(await adapter.exists(leases))for(const file of (await adapter.list(leases)).files){
-        let v:Record<string,unknown>|undefined;try{v=obj(JSON.parse(await adapter.read(file)));}catch{continue;}
-        if(!v||typeof v.deviceId!=="string")continue;
+        let v:Record<string,unknown>|undefined;try{v=obj(JSON.parse(await adapter.read(file)));}catch{throw new MailboxUnavailableError("relay-controller-authority-invalid");}
+        if(!v||typeof v.deviceId!=="string")throw new MailboxUnavailableError("relay-controller-authority-invalid");
         const lease=controllerAuthority(v,v.deviceId);
-        if(!lease||!lease.runId||lease.generation<=0)continue;
+        if(!lease||lease.generation<=0)throw new MailboxUnavailableError("relay-controller-authority-invalid");
+        if(!lease.runId)continue;
         for(const entry of await mailbox.diagnostics(lease.runId,lease.deviceId)){
           const path=`${inside}/bvp-diagnostic-${entry.eventId}.error.json`;
           if(await adapter.exists(path)){

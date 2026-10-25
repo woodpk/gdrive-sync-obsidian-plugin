@@ -270,3 +270,15 @@ test("DEC-352 interrupted diagnostic media upload stays hidden from the relay",a
   equal((await mailbox.diagnostics("run-a","device-a")).length,0);
   equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="diagnostic"&&f.meta.appProperties?.brainBvpRecord==="0"),true);
 });
+
+test("DEC-352 malformed relay lease is a reported failure, never silently skipped",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files();
+  const root=".obsidian/plugins/brain/.bvp-relay";
+  files.dirs.add(root+"/controller-authority");
+  files.values.set(root+"/controller-authority/corrupt.json","not-json");
+  const result=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();
+  equal(result.status,"unavailable");
+  equal(result.reason,"relay-controller-authority-invalid");
+  equal(result.diagnostic?.phase,"diagnostic-ingest");
+  equal(result.diagnostic?.effect,"unknown");
+});
