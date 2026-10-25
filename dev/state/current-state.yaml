@@ -1156,12 +1156,12 @@ bvp_poll_error_observability_2026_10_25:
   planning: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-runtime-poll-error-observability-2026-10-25.md"
   branch: "build/bvp-poll-error-observability-20261025"
   original_base_sha: "ecb4d26e85444d24d07cffb57b966ed2d5f7f6df"
-  status: "R1_CORRECTION_REQUIRED_BUILDER_REPAIRS_UNQUALIFIED"
+  status: "R5_BUILDER_QUALIFIED_R2_INDEPENDENT_REVIEW_PENDING"
   physical_dispatch: "NONE"
   pre_release: "NOT_AUTHORIZED"
-  independent_review: "R1_CORRECTION_REQUIRED_NOT_ACCEPTED"
+  independent_review: "R1_CORRECTION_REQUIRED_NOT_ACCEPTED_R2_PENDING"
   builder_source_and_tests_commit: "92f848bb5519488242be4fbb398ea1754cad5788"
-  builder_refactor: "F01_F02_F03_CORRECTIONS_AND_ADVERSARIAL_TESTS_COMMITTED_PHXCI_REQUALIFICATION_PENDING"
+  builder_refactor: "R5_CORRECTIVE_SOURCE_AND_ADVERSARIAL_TESTS_QUALIFIED"
   original_evidence_run_id: "08400703-ef66-4ae9-8332-644648f07378"
   original_evidence_commit: "2c51e3c9b6b5af264167990a89cee3921a2794d5"
   original_verified_source_sha: "eeccd74e1c578af0ad17d9dd0df26b2eafaae338"
@@ -1187,13 +1187,13 @@ bvp_poll_error_observability_2026_10_25:
   r3_original_evidence_path: "dev/test-results/20261025T171255Z-operator-build-bvp-poll-error-observability-20261025-800b8b3dd228.json"
   r3_result: "11_OF_11_STAGES_PASS; BVP_559_OF_559_PASS; PRODUCT_1292_OF_1292_PASS; EXIT_0"
   r3_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
-  handoff-count: 2
+  handoff-count: 3
   handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
-  handoff-sender-role: REVIEWER
-  handoff-owner-role: REVIEWER
-  handoff-recipient-role: BUILDER
-  handoff-source-sha: "800b8b3dd2287c6c66d05b1ff2bff7fd1f91df64"
-  handoff-status: "CORRECTION_REQUIRED_REVIEWER_TO_BUILDER_FINAL_REVIEW_PUBLISHED"
+  handoff-sender-role: BUILDER
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: REVIEWER
+  handoff-source-sha: "5465f3a44a10943d71dd6aa39f73cad47efd076b"
+  handoff-status: "BUILDER_TO_REVIEWER_R5_FINAL_INDEPENDENT_REVIEW_PUBLISHED"
   source_mutation_after_qualification: "NEW_UNQUALIFIED_CORRECTION_AFTER_HISTORIC_R3_SOURCE"
   r1_reviewed_source_sha: "800b8b3dd2287c6c66d05b1ff2bff7fd1f91df64"
   r1_source_review_path: "dev/reviews/bvp-runtime-error-observability-20261025-r1-source.md"
@@ -1205,7 +1205,7 @@ bvp_poll_error_observability_2026_10_25:
   corrective_test_first_commit: "5cb2f38f967e46489df2c1372be30f3362f42ae0"
   corrective_evidence_mirror_commit: "a42f163eee4b50891362f4339ecf2c884698b8ff"
   corrective_original_run_id_mirror: "dev/test-results/23fd83ff-613e-4543-a66e-514e37132d59/"
-  corrective_verification_status: "R4_CHANGESET_FAIL_REPOSITORY_PASS_OVERALL_BLOCKED_EXIT_201_BVP_TSC_TS1308"
+  corrective_verification_status: "R5_ALL_11_STAGES_CHANGESET_REPOSITORY_OVERALL_PASS_EXIT_0"
   corrective_r4_source_sha: "c39bad0717244044f72739f151a8833928410495"
   corrective_r4_git_tree: "e7df3c3ef0ab3a992b41ddbd35114b97f092de3c"
   corrective_r4_run_id: "03aee3d0-bd29-4215-8201-eeb93b7769a5"
@@ -1213,6 +1213,18 @@ bvp_poll_error_observability_2026_10_25:
   corrective_r4_original_evidence_json: "dev/test-results/20261025T200014Z-operator-build-bvp-poll-error-observability-20261025-c39bad071724.json"
   corrective_r4_failure: "TS1308_s08d-drive-mailbox-relay.test.ts_line_270_in_rejects_lambda"
   corrective_compiler_repair_commit: "70b06f4d847566b7bd4222a5ba2ba78e6b0e4b79"
-  corrective_compiler_repair_status: "SOURCE_COMMITTED_NOT_PHXCI_QUALIFIED"
-  corrective_next_action: "REPEAT_EXACT_SOURCE_WINDOWS_PINNED_PHXCI_SOFTWARE_ONLY_AFTER_TS1308_CORRECTION_NO_PHYSICAL_DISPATCH"
-
+  corrective_compiler_repair_status: "R5_VERIFIED_RERUN_PASS"
+  corrective_next_action: "R2_INDEPENDENT_FINAL_REVIEW_BLIND_SOURCE_THEN_TESTS_EVIDENCE"
+  corrective_r5_source_sha: "5465f3a44a10943d71dd6aa39f73cad47efd076b"
+  corrective_r5_git_tree: "9452eb587b4e5bd09fb28b0e13545bea7e688a29"
+  corrective_r5_original_run_id: "096ba9a5-aba5-41e8-84b9-1c7990d906e6"
+  corrective_r5_original_evidence_commit: "2c028c9b69941b15634fd3ec79b1e8f923cc9689"
+  corrective_r5_original_json: "dev/test-results/20261025T200944Z-operator-build-bvp-poll-error-observability-20261025-5465f3a44a10.json"
+  corrective_r5_canonical_mirror: "dev/test-results/096ba9a5-aba5-41e8-84b9-1c7990d906e6/"
+  corrective_r5_verdict: "CHANGESET_PASS_REPOSITORY_PASS_OVERALL_PASS_EXIT_0"
+  corrective_r5_focused_tests: "566_OF_566_PASS"
+  corrective_r5_product_tests: "1292_OF_1292_PASS"
+  corrective_r5_stages: "11_OF_11_PASS"
+  corrective_r5_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+  corrective_r5_physical_dispatch: "NONE"
+  corrective_r5_merge_and_release: "NOT_AUTHORIZED"
