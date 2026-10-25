@@ -190,7 +190,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
           throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");
         const media=await call(API+"/files/"+encodeURIComponent(file.id)+"?alt=media"),raw=await media.text();
         if(new TextEncoder().encode(raw).byteLength>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-record-too-large");
-        let safe:RuntimeErrorRecord|undefined;try{safe=cleanDiagnostic(JSON.parse(raw));}catch{}
+        let safe:RuntimeErrorRecord|undefined;try{safe=cleanDiagnostic(JSON.parse(raw));}catch{throw new MailboxUnavailableError("mailbox-record-malformed");}
         if(!safe||safe.eventId!==props.brainBvpEventId||seen.has(safe.eventId))
           throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");
         seen.add(safe.eventId);
