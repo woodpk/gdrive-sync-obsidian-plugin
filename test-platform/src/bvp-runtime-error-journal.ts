@@ -54,7 +54,7 @@ export class BvpRuntimeErrorJournal {
       await this.store.write(this.path,JSON.stringify(snapshot));
     }catch{throw new BvpJournalError("bvp-journal-persistence-failed");}
   }
-  /** Collapse identical repeated failures; never persist exception bodies or raw identities. */
+  /** Coalesce only proven same-run failures; local route keys never enter remote diagnostic content. */
   record(diagnostic:BvpDiagnostic,origin?:DiagnosticOrigin):Promise<void>{return this.serial(async()=>{
     const route=bound(origin);if((route.runId&&!safeRoute(route.runId))||(route.deviceId&&!safeRoute(route.deviceId)))throw new BvpJournalError("bvp-journal-corrupt");
     const state=await this.load(),now=new Date().toISOString();
