@@ -1187,13 +1187,13 @@ bvp_poll_error_observability_2026_10_25:
   r3_original_evidence_path: "dev/test-results/20261025T171255Z-operator-build-bvp-poll-error-observability-20261025-800b8b3dd228.json"
   r3_result: "11_OF_11_STAGES_PASS; BVP_559_OF_559_PASS; PRODUCT_1292_OF_1292_PASS; EXIT_0"
   r3_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
-  handoff-count: 3
+  handoff-count: 4
   handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
-  handoff-sender-role: BUILDER
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-sender-role: REVIEWER
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   handoff-source-sha: "5465f3a44a10943d71dd6aa39f73cad47efd076b"
-  handoff-status: "BUILDER_TO_REVIEWER_R5_FINAL_INDEPENDENT_REVIEW_PUBLISHED"
+  handoff-status: "CORRECTION_REQUIRED_R2_REVIEWER_TO_BUILDER"
   source_mutation_after_qualification: "NEW_UNQUALIFIED_CORRECTION_AFTER_HISTORIC_R3_SOURCE"
   r1_reviewed_source_sha: "800b8b3dd2287c6c66d05b1ff2bff7fd1f91df64"
   r1_source_review_path: "dev/reviews/bvp-runtime-error-observability-20261025-r1-source.md"
