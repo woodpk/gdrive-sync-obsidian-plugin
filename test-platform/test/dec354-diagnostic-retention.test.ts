@@ -1,0 +1,82 @@
+import { createHash, randomUUID } from "node:crypto";
+import { test } from "node:test";
+import { strictEqual as equal, rejects } from "node:assert";
+import { createDriveCommandMailbox, type AuthenticatedDriveRequest } from "../src/live-device/drive-mailbox";
+import { bvpDiagnostic, opaqueDiagnosticId } from "../src/diagnostic-contract";
+import type { RuntimeErrorRecord } from "../src/bvp-runtime-error-journal";
+
+class Fake {
+  files=new Map<string,{meta:any;content:string;createdTime:string}>(); next=0; uploadFails=false;
+  request:AuthenticatedDriveRequest=async(input,init={})=>{
+    const url=new URL(input),method=(init.method??"GET").toUpperCase(),path=url.pathname;
+    if(path==="/drive/v3/files"&&method==="GET"){
+      const q=decodeURIComponent(url.searchParams.get("q")??""),prop=(k:string)=>q.match(new RegExp(k+"' and value='([^']+)'"))?.[1],
+        kind=prop("brainBvpKind"),device=prop("brainBvpDeviceId"),event=prop("brainBvpEventId");
+      const root=q.includes("brainBvpMailbox");
+      const matched=[...this.files].filter(([,f])=>root?f.meta.appProperties?.brainBvpMailbox==="1":
+        (!kind||f.meta.appProperties?.brainBvpKind===kind)&&(!device||f.meta.appProperties?.brainBvpDeviceId===device)&&(!event||f.meta.appProperties?.brainBvpEventId===event));
+      const offset=Number(url.searchParams.get("pageToken")??"0"),size=Number(url.searchParams.get("pageSize")??"100");
+      if(!Number.isSafeInteger(offset)||offset<0||size>200)return new Response("",{status:400});
+      return Response.json({files:matched.slice(offset,offset+size).map(([id,v])=>({id,createdTime:v.createdTime,
+        size:String(new TextEncoder().encode(v.content).byteLength),appProperties:v.meta.appProperties})),
+        ...(matched.length>offset+size?{nextPageToken:String(offset+size)}:{})});
+    }
+    if(path==="/drive/v3/files/generateIds")return Response.json({ids:["a"+ ++this.next]});
+    if(path==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}")),id=meta.id??"f"+ ++this.next;
+      if(this.files.has(id))return new Response("",{status:409});this.files.set(id,{meta,content:"",createdTime:new Date().toISOString()});return Response.json({id});}
+    const upload=path.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);
+    if(upload&&method==="PATCH"){if(this.uploadFails)return new Response("",{status:503});
+      const f=this.files.get(upload[1]);if(!f)return new Response("",{status:404});f.content=String(init.body??"");return new Response("",{status:200});}
+    const id=path.match(/^\/drive\/v3\/files\/([^/]+)$/)?.[1],file=id?this.files.get(id):undefined;
+    if(!file)return new Response("",{status:404});
+    if(method==="GET"&&url.searchParams.get("alt")==="media")return new Response(file.content);
+    if(method==="GET")return Response.json({id,appProperties:file.meta.appProperties,
+      createdTime:file.createdTime,size:String(new TextEncoder().encode(file.content).byteLength)});
+    if(method==="PATCH"){const meta=JSON.parse(String(init.body??"{}"));file.meta.appProperties={...file.meta.appProperties,...meta.appProperties};return Response.json({id});}
+    if(method==="DELETE"){this.files.delete(id);return new Response(null,{status:204});}
+    return new Response("",{status:400});
+  };
+  seed(v:RuntimeErrorRecord,days=0,run="run-a"){const id="seed"+ ++this.next;this.files.set(id,{
+    meta:{appProperties:{brainBvpKind:"diagnostic",brainBvpRecord:"1",brainBvpRunId:run,brainBvpDeviceId:"device-a",brainBvpEventId:v.eventId}},
+    content:JSON.stringify(v),createdTime:new Date(Date.now()-days*86400000).toISOString()});return id;}
+}
+async function sample():Promise<RuntimeErrorRecord>{
+  const diagnostic=bvpDiagnostic({classification:"device-result-unavailable",component:"device-agent",phase:"poll",
+    lastConfirmedBoundary:"poll-entered",firstUnconfirmedBoundary:"result-unknown",effect:"unknown",
+    recommendedAction:"inspect-run-evidence",identity:{runId:await opaqueDiagnosticId("run-a","run")}});
+  return{schemaVersion:1,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic};
+}
+test("DEC354 capacity: new event 5001 blocked; all 5000 unresolved originals retained",async()=>{
+  const drive=new Fake(),v=await sample();for(let i=0;i<5000;i++)drive.seed({...v,eventId:randomUUID()});
+  const mailbox=createDriveCommandMailbox(drive.request),remoteFileId=await mailbox.reserveDiagnosticId();
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...await sample(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-capacity/);
+  equal(drive.files.size,5000);
+});
+test("DEC354 age: 91-day unresolved source blocks new unique remote event without deletion",async()=>{
+  const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request);
+  const remoteFileId=await mailbox.reserveDiagnosticId();
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...await sample(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-expired/);
+  equal(drive.files.get(id)?.content,JSON.stringify(v));equal(drive.files.size,1);
+});
+test("DEC354 archive: verified SHA-256 content, source retained and idempotent",async()=>{
+  const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request),archiveId=await mailbox.reserveDiagnosticId();
+  const one=await mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,archiveId);
+  equal(one.status,"verified");equal(one.sha256,createHash("sha256").update(JSON.stringify(v)).digest("hex"));
+  equal(drive.files.get(id)?.content,JSON.stringify(v));
+  const two=await mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,archiveId);
+  equal(one.sha256,two.sha256);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,1);
+});
+test("DEC354 archive: ambiguous remote upload fails closed without touching original",async()=>{
+  const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request);
+  drive.uploadFails=true;
+  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,await mailbox.reserveDiagnosticId()),/mailbox-drive-provider-unavailable/);
+  equal(drive.files.get(id)?.content,JSON.stringify(v));
+});
+test("DEC354 archive: falsified run metadata is rejected before copied evidence is trusted",async()=>{
+  const drive=new Fake(),v=await sample(),id=drive.seed(v,91);
+  drive.files.get(id)!.meta.appProperties.brainBvpRunId="run-b";
+  const mailbox=createDriveCommandMailbox(drive.request);
+  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,await mailbox.reserveDiagnosticId()),/mailbox-diagnostic-origin-conflict/);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,0);
+});
