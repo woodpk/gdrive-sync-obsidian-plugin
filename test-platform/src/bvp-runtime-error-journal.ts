@@ -44,6 +44,8 @@ export class BvpRuntimeErrorJournal {
       if(!await this.store.exists(this.path))return{schemaVersion:1,entries:[],outstanding:false,overflow:0};
       const raw=JSON.parse(await this.store.read(this.path));
       if(!valid(raw))throw new Error("invalid");
+      for(const entry of raw.entries)if(entry.origin?.runId&&entry.diagnostic.identity.runId!==await opaqueDiagnosticId(entry.origin.runId,"run"))
+        throw new Error("origin mismatch");
       return raw;
     }catch{throw new BvpJournalError("bvp-journal-corrupt");}
   }
