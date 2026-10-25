@@ -213,7 +213,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         source.size===undefined||!/^[0-9]+$/.test(source.size)||Number(source.size)>MAX_RECORD_BYTES)
         throw new MailboxUnavailableError("mailbox-archive-source-invalid");
       const raw=await (await call(API+"/files/"+encodeURIComponent(source.id)+"?alt=media")).text();
-      if(new TextEncoder().encode(raw).byteLength>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-archive-source-invalid");
+      if(new TextEncoder().encode(raw).byteLength>MAX_RECORD_BYTES||new TextEncoder().encode(raw).byteLength!==Number(source.size))throw new MailboxUnavailableError("mailbox-archive-source-invalid");
       let safe:RuntimeErrorRecord|undefined;try{safe=cleanDiagnostic(JSON.parse(raw));}catch{}
       if(!safe||safe.eventId!==eventId)throw new MailboxUnavailableError("mailbox-archive-source-invalid");
       const bound=props.brainBvpOriginBound!=="0",run=props.brainBvpRunId;
@@ -225,7 +225,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const existingPage=await existingResponse.json() as FileList;
       if(existingPage.nextPageToken||(existingPage.files??[]).length>1)throw new MailboxUnavailableError("mailbox-archive-conflict");
       let archived=existingPage.files?.[0];
-      if(archived&&(archived.id!==archiveId||archived.appProperties?.brainBvpSourceId!==source.id||archived.appProperties?.brainBvpArchiveSha256!==sha))
+      if(archived&&(archived.id!==archiveId||archived.appProperties?.brainBvpSourceId!==source.id||archived.appProperties?.brainBvpArchiveSha256!==sha||archived.appProperties?.brainBvpDeviceId!==deviceId||archived.appProperties?.brainBvpEventId!==eventId||archived.appProperties?.brainBvpRunId!==run||(bound?archived.appProperties?.brainBvpOriginBound==="0":archived.appProperties?.brainBvpOriginBound!=="0")||!["0","1"].includes(archived.appProperties?.brainBvpRecord??"")||!/^\d+$/.test(archived.size??"")||Number(archived.size)>MAX_RECORD_BYTES))
         throw new MailboxUnavailableError("mailbox-archive-conflict");
       if(!archived){
         const created=await call(API+"/files?fields=id",{method:"POST",headers:{"content-type":"application/json"},
@@ -248,7 +248,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const verified=await (await call(API+"/files/"+encodeURIComponent(archiveId)+"?fields=id,appProperties")).json() as MailboxFile;
       if(verified.id!==archiveId||verified.appProperties?.brainBvpRecord!=="1"||verified.appProperties?.brainBvpArchiveSha256!==sha||
         verified.appProperties?.brainBvpSourceId!==source.id||verified.appProperties?.brainBvpDeviceId!==deviceId||
-        verified.appProperties?.brainBvpEventId!==eventId)throw new MailboxUnavailableError("mailbox-archive-visibility-unconfirmed");
+        verified.appProperties?.brainBvpEventId!==eventId||verified.appProperties?.brainBvpRunId!==run||(bound?verified.appProperties?.brainBvpOriginBound==="0":verified.appProperties?.brainBvpOriginBound!=="0"))throw new MailboxUnavailableError("mailbox-archive-visibility-unconfirmed");
       if(await (await call(API+"/files/"+encodeURIComponent(source.id)+"?alt=media")).text()!==raw)
         throw new MailboxUnavailableError("mailbox-archive-source-changed");
       return{status:"verified" as const,eventId,sha256:sha};
