@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { BvpRuntimeErrorJournal, BvpJournalError } from "../src/bvp-runtime-error-journal";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deepEqual, equal, rejects } from "node:assert/strict";
@@ -164,4 +165,70 @@ test("device mailbox polling ordinary failure is classified instead of rejecting
   equal(res.diagnostic?.component,"device-agent");
   equal(res.diagnostic?.firstUnconfirmedBoundary,"device-command-outcome");
   equal(JSON.stringify(res).includes("local-device-secret"),false);
+});
+
+function bvpPollFailure(classification="mailbox-drive-unauthorized"){return bvpDiagnostic({
+  classification,component:"drive-mailbox",phase:"active-run-read",
+  lastConfirmedBoundary:"device-poll-started",firstUnconfirmedBoundary:"drive-binding-read",
+  effect:"unknown",recommendedAction:"inspect-device-journal",
+});}
+
+test("DEC-352 durable journal persists offline failures, deduplicates and records one recovery",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  const first=new BvpRuntimeErrorJournal(files,root);
+  await Promise.all(Array.from({length:8},()=>first.record(bvpPollFailure())));
+  const restarted=new BvpRuntimeErrorJournal(files,root);
+  equal((await restarted.snapshot()).entries[0]?.occurrences,8);
+  await restarted.recover(bvpDiagnostic({classification:"bvp-runtime-poll-recovered",
+    component:"device-agent",phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",
+    firstUnconfirmedBoundary:"none",effect:"none-confirmed",recommendedAction:"none"}));
+  await restarted.recover(bvpPollFailure("not-another-recovery"));
+  equal((await restarted.snapshot()).entries.length,2);
+  const delivered:string[]=[];
+  await restarted.flush(async e=>{delivered.push(e.eventId);});
+  equal(delivered.length,2);
+  equal((await restarted.snapshot()).entries.every(e=>e.deliveredCount===e.occurrences),true);
+  await restarted.flush(async()=>{throw new Error("unexpected duplicate");});
+  equal(delivered.length,2);
+});
+
+test("DEC-352 failed delivery remains pending and journal errors are explicit",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",journal=new BvpRuntimeErrorJournal(files,root);
+  await journal.record(bvpPollFailure());
+  await rejects(()=>journal.flush(async()=>{throw new Error("Bearer secret /private/vault");}),/Bearer/);
+  const replay=new BvpRuntimeErrorJournal(files,root);
+  equal((await replay.snapshot()).entries[0]?.deliveredCount,0);
+  let safe="";
+  await replay.flush(async event=>{safe=JSON.stringify(event);});
+  equal(/Bearer|private\/vault/.test(safe),false);
+  files.values.set(root+"/runtime-errors.json",'{"invalid":true}');
+  await rejects(()=>replay.record(bvpPollFailure()),e=>e instanceof BvpJournalError&&e.code==="bvp-journal-corrupt");
+});
+
+test("DEC-352 device diagnostics arrive in exact leased Windows relay inbox idempotently",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files();
+  const root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-a","device-a",2);
+  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
+    lastAt:new Date().toISOString(),occurrences:3,diagnostic:bvpPollFailure()};
+  await mailbox.publishDiagnostic("run-a","device-a",event);
+  equal((await mailbox.diagnostics("run-a","device-a")).length,1);
+  equal((await mailbox.diagnostics("other-run","device-a")).length,0);
+  const relay=createWindowsMailboxRelay(mailbox,files,root),dest=root+"/inbox/bvp-diagnostic-"+event.eventId+".error.json";
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  equal(JSON.parse(await files.read(dest)).occurrences,3);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  await mailbox.publishDiagnostic("run-a","device-a",{...event,occurrences:4});
+  await relay.pumpOnce();
+  equal(JSON.parse(await files.read(dest)).occurrences,4);
+  equal([...files.values.keys()].filter(k=>k.endsWith(".error.json")).length,1);
+});
+
+test("DEC-352 mailbox rejects unsafe diagnostic codes and forged identifiers",async()=>{
+  const mailbox=createDriveCommandMailbox(new FakeDrive().request);
+  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
+    lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure()};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,diagnostic:{
+    ...event.diagnostic,classification:"Bearer hidden-token"}}),/mailbox-diagnostic-invalid/);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,eventId:"../../bad-path"}),/mailbox-diagnostic-invalid/);
 });
