@@ -394,3 +394,16 @@ test("DEC352-F01 tampered local run origin cannot launder diagnostic into a diff
   await rejects(()=>new BvpRuntimeErrorJournal(files,root).flush(async()=>{throw new Error("must never route");}),
     e=>e instanceof BvpJournalError&&e.code==="bvp-journal-corrupt");
 });
+
+test("DEC352-F03 diagnostic retry cooldown survives journal reconstruction and does not falsely complete pending work",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",first=new BvpRuntimeErrorJournal(files,root);
+  equal(await first.acquireDeliveryWindow(),false); // Empty journal never schedules a remote retry.
+  await first.record(bvpPollFailure(),{runId:"run-a",deviceId:"device-a"});
+  equal(await first.acquireDeliveryWindow(),true);
+  const restarted=new BvpRuntimeErrorJournal(files,root);
+  equal(await restarted.acquireDeliveryWindow(),false);
+  const snap=await restarted.snapshot();
+  equal(snap.entries.length,1);equal(snap.entries[0].deliveredCount,0);
+  equal(typeof snap.nextDeliveryAt,"number");
+  equal(snap.nextDeliveryAt!>Date.now(),true);
+});
