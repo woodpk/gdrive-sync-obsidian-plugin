@@ -69,6 +69,7 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
         phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",
         effect:"none-confirmed",recommendedAction:"none"});
       await journal.recover(recovered,source());
+      await journal.recover(recovered,{runId:null,deviceId:options.deviceId});
       if(await journal.acquireDeliveryWindow()){
         try{
           await journal.flush(entry=>mailbox.publishDiagnostic(entry.origin!.runId,entry.origin!.deviceId!,entry),()=>mailbox.reserveDiagnosticId());
