@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { deepEqual, equal, rejects } from "node:assert/strict";
 import { test } from "node:test";
 import { bvpDiagnostic } from "../src/scenario/scenario-diagnostics";
+import { opaqueDiagnosticId } from "../src/diagnostic-contract";
 import {
   MailboxUnavailableError,
   createDriveCommandMailbox,
@@ -513,4 +514,101 @@ test("DEC352-R2-F03 diagnostic publication failures remain local-only without re
   equal(snap.entries.length,1,"reporting failures must not invent a remote recovery record");
   equal(snap.entries[0].deliveredCount,0);
   equal(snap.entries[0].diagnostic.phase,"diagnostic-publication");
+});
+
+async function r3Record(runId:string|null,classification="r3-diagnostic"){
+  const d=bvpPollFailure(classification);
+  return {schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,
+    diagnostic:bvpDiagnostic({...d,identity:{...d.identity,runId:runId===null?"unavailable":await opaqueDiagnosticId(runId,"run")}})};
+}
+function r3Seed(drive:FakeDrive,record:Awaited<ReturnType<typeof r3Record>>,runId:string|null,deviceId="device-a",fileId="r3-"+drive.next++){
+  drive.files.set(fileId,{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",brainBvpDeviceId:deviceId,
+    ...(runId===null?{brainBvpOriginBound:"0"}:{brainBvpRunId:runId}),brainBvpEventId:record.eventId}},content:JSON.stringify(record)});
+}
+
+test("DEC352-R3-F01 bound run metadata substitution A to B is rejected before inbox creation",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-b","device-a",2);
+  const original=await r3Record("run-a");
+  r3Seed(drive,original,"run-a");
+  const filed=[...drive.files.values()][0];
+  filed.meta.appProperties.brainBvpRunId="run-b"; // Valid-looking metadata, unchanged privacy-derived run A in JSON.
+  await rejects(()=>mailbox.diagnosticsForDevice("device-a"),/mailbox-diagnostic-origin-conflict/);
+  const result=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();
+  assertRelayUnavailable(result,"mailbox-diagnostic-origin-conflict");
+  equal(await files.exists(root+"/inbox/bvp-diagnostic-"+original.eventId+".error.json"),false);
+  equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="result"),false);
+});
+
+test("DEC352-R3-F01 unbound marker contradicting hashed run rejects; genuine bound and unbound remain accepted",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
+  const bound=await r3Record("run-a"),unbound=await r3Record(null);
+  r3Seed(drive,bound,"run-a");r3Seed(drive,unbound,null);
+  const legitimate=await mailbox.diagnosticsForDevice("device-a");
+  equal(legitimate.entries.length,2);
+  deepEqual(legitimate.entries.map(e=>e.origin?.runId),["run-a",null]);
+  const spoof=[...drive.files.values()].find(f=>f.meta.appProperties?.brainBvpEventId===bound.eventId)!;
+  delete spoof.meta.appProperties.brainBvpRunId;
+  spoof.meta.appProperties.brainBvpOriginBound="0";
+  await rejects(()=>mailbox.diagnosticsForDevice("device-a"),/mailbox-diagnostic-origin-conflict/);
+  spoof.meta.appProperties.brainBvpRunId="run-b";
+  spoof.meta.appProperties.brainBvpOriginBound="1";
+  await rejects(()=>mailbox.diagnosticsForDevice("device-a"),/mailbox-diagnostic-origin-conflict/);
+});
+
+test("DEC352-R3-F01 same-event cross-page origin reattribution cannot overwrite durable inbox evidence",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-b","device-a",2);
+  const record=await r3Record("run-a");r3Seed(drive,record,"run-a");
+  for(let i=0;i<24;i++)r3Seed(drive,await r3Record("run-b"),"run-b");
+  r3Seed(drive,record,"run-b","device-a","cross-page-spoof");
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  const path=root+"/inbox/bvp-diagnostic-"+record.eventId+".error.json",before=await files.read(path);
+  assertRelayUnavailable(await relay.pumpOnce(),"mailbox-diagnostic-origin-conflict");
+  equal(await files.read(path),before,"tampered later page must not overwrite prior evidence");
+});
+
+test("DEC352-R3-F03 rejected Drive page cursor restarts bounded read and preserves durable inbox across relay restart",async()=>{
+  const drive=new FakeDrive(),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  for(let i=0;i<30;i++)r3Seed(drive,await r3Record("run-a"),"run-a");
+  await authorize(files,root,"run-b","device-a",2);
+  let expireOnce=true,rejected=0,requests=0;
+  const request:AuthenticatedDriveRequest=async(input,init={})=>{
+    const url=new URL(input),kind=decodeURIComponent(url.searchParams.get("q")??"").includes("brainBvpKind' and value='diagnostic'");
+    if(kind&&(init.method??"GET").toUpperCase()==="GET"){requests++;if(url.searchParams.has("pageToken")&&expireOnce){expireOnce=false;rejected++;return new Response("",{status:400});}}
+    return drive.request(input,init);
+  };
+  const mailbox=createDriveCommandMailbox(request),first=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await first.pumpOnce(),{status:"ok",published:0,completed:0});
+  const before=[...files.values.entries()].filter(([p])=>p.endsWith(".error.json"));
+  equal(before.length,25);
+  const afterRestart=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await afterRestart.pumpOnce(),{status:"ok",published:0,completed:0});
+  equal(rejected,1);equal([...files.values.keys()].filter(p=>p.endsWith(".error.json")).length,25);
+  for(let i=0;i<4&&[...files.values.keys()].filter(p=>p.endsWith(".error.json")).length<30;i++)
+    deepEqual(await afterRestart.pumpOnce(),{status:"ok",published:0,completed:0});
+  equal([...files.values.keys()].filter(p=>p.endsWith(".error.json")).length,30);
+  equal(before.every(([p,content])=>files.values.get(p)===content),true,"replay must not alter already-ingested evidence");
+  equal(drive.diagnosticPageSizes.every(n=>n<=25),true);equal(requests<=8,true,"cursor reconciliation must remain bounded");
+});
+
+test("DEC352-R3-F03 persistent cursor rejection fails closed without clearing checkpoint or deleting records",async()=>{
+  const drive=new FakeDrive(),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  for(let i=0;i<30;i++)r3Seed(drive,await r3Record("run-a"),"run-a");
+  await authorize(files,root,"run-b","device-a",2);
+  let reject=false;
+  const request:AuthenticatedDriveRequest=async(input,init={})=>{
+    const url=new URL(input),kind=decodeURIComponent(url.searchParams.get("q")??"").includes("brainBvpKind' and value='diagnostic'");
+    if(reject&&kind)return new Response("",{status:400});
+    return drive.request(input,init);
+  };
+  const relay=createWindowsMailboxRelay(createDriveCommandMailbox(request),files,root);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  const cursors=[...files.values.entries()].filter(([p])=>p.includes("/diagnostic-cursors/"));
+  equal(cursors.length,1);const [cursorPath,cursor]=cursors[0];reject=true;
+  assertRelayUnavailable(await relay.pumpOnce());
+  equal(await files.read(cursorPath),cursor,"failed restart must keep prior durable cursor");
+  equal([...files.values.keys()].filter(p=>p.endsWith(".error.json")).length,25);
+  equal(drive.files.size>=30,true,"no remote evidence deletion");
 });
