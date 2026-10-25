@@ -70,6 +70,7 @@ async function controllerAuthorityPath(root:string,deviceId:string):Promise<stri
 
 export interface DriveCommandMailbox {
   publishResult(value: DeviceCommandResult): Promise<void>;
+  reserveDiagnosticId():Promise<string>;
   publishDiagnostic(runId:string,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
   diagnostics(runId:string,deviceId:string):Promise<RuntimeErrorRecord[]>;
   commands(runId: string, deviceId: string): Promise<DeviceCommand[]>;
@@ -106,15 +107,52 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
   async function records(kind:"command"|"result"|"diagnostic",runId:string,deviceId:string):Promise<{file:MailboxFile;value:unknown}[]>{const page=await listing(kind,runId,deviceId);if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-current-run-overflow");const output:{file:MailboxFile;value:unknown}[]=[];for(const file of page.files??[]){if(file.size&&Number(file.size)>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-record-too-large");const media=await call(`${API}/files/${encodeURIComponent(file.id)}?alt=media`);const text=await media.text();if(new TextEncoder().encode(text).byteLength>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-record-too-large");try{output.push({file,value:JSON.parse(text)});}catch{throw new MailboxUnavailableError("mailbox-record-malformed");}}return output;}
   const mailbox:DriveCommandMailbox={
     publishResult:value=>publish("result",value),
+    async reserveDiagnosticId(){
+      const response=await call(`${API}/files/generateIds?count=1&space=drive&fields=ids`);
+      const body=await response.json() as {ids?:string[]};
+      const id=body.ids?.[0];if(!id||!/^[A-Za-z0-9_-]{2,128}$/.test(id))throw new MailboxUnavailableError("mailbox-diagnostic-id-invalid");
+      return id;
+    },
     async publishDiagnostic(runId,deviceId,value){
       if(!/^[a-zA-Z0-9._:-]{1,128}$/.test(runId)||!/^[a-zA-Z0-9._:-]{1,128}$/.test(deviceId))throw new Error("mailbox-diagnostic-identity-invalid");
-      const safe=cleanDiagnostic(value);if(!safe)throw new Error("mailbox-diagnostic-invalid");
+      const safe=cleanDiagnostic(value),id=value.remoteFileId;
+      if(!safe||value.origin?.runId!==runId||value.origin?.deviceId!==deviceId||!id||!/^[A-Za-z0-9_-]{2,128}$/.test(id))throw new Error("mailbox-diagnostic-invalid");
       const encoded=jsonBytes(safe);if(encoded.bytes>MAX_RECORD_BYTES)throw new Error("mailbox-record-too-large");
-      const parent=await rootId(),meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})}),created=await meta.json() as{id?:string};
-      if(!created.id)throw new MailboxUnavailableError("mailbox-diagnostic-create-invalid");
-      await call(`${UPLOAD}/files/${encodeURIComponent(created.id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});
-      // Publish a discoverable mailbox record only after its bytes are durable.
-      await call(`${API}/files/${encodeURIComponent(created.id)}?fields=id`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:{brainBvpRecord:"1"}})});
+      const parent=await rootId();
+      // Includes unpublished (brainBvpRecord=0) objects after lost POST/UPLOAD/PATCH responses.
+      const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='diagnostic' } and appProperties has { key='brainBvpEventId' and value='${safe.eventId}' }`);
+      const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=200&fields=nextPageToken,files(id,size,appProperties)`);
+      const page=await response.json() as FileList;
+      if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+      const records=page.files??[];
+      if(records.length>1||records.some(f=>f.id!==id||f.appProperties?.brainBvpRunId!==runId||f.appProperties?.brainBvpDeviceId!==deviceId||f.appProperties?.brainBvpKind!=="diagnostic"))throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+      let existing=records[0];
+      if(!existing){
+        // Drive file ID is reserved and durably journaled BEFORE this create. A lost
+        // create response can only cause a retry of this SAME ID, never a second object.
+        const meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})});
+        const created=await meta.json() as {id?:string};
+        if(created.id!==id)throw new MailboxUnavailableError("mailbox-diagnostic-create-invalid");
+        existing={id,size:"0",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}};
+      }
+      if(existing.appProperties?.brainBvpRecord!=="0"&&existing.appProperties?.brainBvpRecord!=="1")throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+      if(Number(existing.size??0)>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+      const media=await call(`${API}/files/${encodeURIComponent(id)}?alt=media`);
+      const text=await media.text();
+      if(text){
+        let prior:RuntimeErrorRecord|undefined;try{prior=cleanDiagnostic(JSON.parse(text));}catch{}
+        if(!prior||prior.eventId!==safe.eventId||prior.firstAt!==safe.firstAt||JSON.stringify(prior.diagnostic)!==JSON.stringify(safe.diagnostic)||prior.occurrences>safe.occurrences||prior.lastAt>safe.lastAt)
+          throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+      }
+      if(text!==encoded.text){
+        await call(`${UPLOAD}/files/${encodeURIComponent(id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});
+        const check=await call(`${API}/files/${encodeURIComponent(id)}?alt=media`);
+        if(await check.text()!==encoded.text)throw new MailboxUnavailableError("mailbox-diagnostic-media-unconfirmed");
+      }
+      if(existing.appProperties?.brainBvpRecord!=="1"){
+        // Publication is never confirmed by an ambiguous PATCH result.
+        await call(`${API}/files/${encodeURIComponent(id)}?fields=id`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:{brainBvpRecord:"1"}})});
+      }
     },
     async diagnostics(runId,deviceId){const values=(await records("diagnostic",runId,deviceId)).map(record=>cleanDiagnostic(record.value));if(values.some(value=>!value))throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");return values.filter((value):value is RuntimeErrorRecord=>Boolean(value));},
     async commands(runId,deviceId){const values=(await records("command",runId,deviceId)).map(v=>command(v.value));if(values.some(v=>!v))throw new MailboxUnavailableError("mailbox-command-invalid");return values.filter((v):v is DeviceCommand=>Boolean(v&&v.runId===runId&&v.deviceId===deviceId)).sort((a,b)=>a.sequence-b.sequence);},
