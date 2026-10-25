@@ -384,3 +384,13 @@ test("DEC352-F03 malicious persisted journal fields are blocked without publishi
     e=>e instanceof BvpJournalError&&e.code==="bvp-journal-corrupt");
   equal(await files.read(path),raw);
 });
+
+test("DEC352-F01 tampered local run origin cannot launder diagnostic into a different lease",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",j=new BvpRuntimeErrorJournal(files,root);
+  await j.record(bvpPollFailure(),{runId:"run-a",deviceId:"device-a"});
+  const path=root+"/runtime-errors.json",data=JSON.parse(await files.read(path));
+  data.entries[0].origin.runId="run-b";
+  await files.write(path,JSON.stringify(data));
+  await rejects(()=>new BvpRuntimeErrorJournal(files,root).flush(async()=>{throw new Error("must never route");}),
+    e=>e instanceof BvpJournalError&&e.code==="bvp-journal-corrupt");
+});
