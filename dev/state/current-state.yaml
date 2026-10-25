@@ -1149,3 +1149,14 @@ context:
     current_work_unit_surface: "dev/_ca-output.md"
     historical_phx_ci_root: "dev/test-results/"
     historical_run_count: 105
+
+bvp_poll_error_observability_2026_10_25:
+  feature: "WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
+  decision: "DEC-352"
+  planning: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-runtime-poll-error-observability-2026-10-25.md"
+  branch: "build/bvp-poll-error-observability-20261025"
+  original_base_sha: "ecb4d26e85444d24d07cffb57b966ed2d5f7f6df"
+  status: "AUTHORIZED_IN_PROGRESS_NOT_QUALIFIED"
+  physical_dispatch: "NONE"
+  pre_release: "NOT_AUTHORIZED"
+  independent_review: "PENDING_AFTER_SUBSTANTIVE_PHXCI_PASS"
