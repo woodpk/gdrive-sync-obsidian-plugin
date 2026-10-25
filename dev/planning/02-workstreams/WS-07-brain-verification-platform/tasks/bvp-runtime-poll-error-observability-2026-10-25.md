@@ -1,6 +1,6 @@
 # BVP — Durable receiver and relay error observability (2026-10-25)
 
-**Status:** OWNER-AUTHORIZED SOFTWARE BUILD; NOT PHX-CI QUALIFIED; NO PHYSICAL DISPATCH/RELEASE.
+**Status:** BUILDER-QUALIFIED BY EXACT-SOURCE PHX-CI; AWAITING FINAL INDEPENDENT REVIEW; NO PHYSICAL DISPATCH/RELEASE.
 **Repository:** woodpk/gdrive-sync-obsidian-plugin
 **Feature:** WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY
 **Base SHA:** ecb4d26e85444d24d07cffb57b966ed2d5f7f6df
@@ -70,3 +70,12 @@ If iOS terminates Obsidian or denies all persistent storage, no JavaScript callb
 - Only focused failure: `P1 exported TypeScript contracts are complete, including type-only reexports` reports that the frozen **classified** TypeScript API inventory omitted `test-platform/src/build-validation-artifact.ts`, `test-platform/src/bvp-runtime-error-journal.ts`, and `test-platform/src/diagnostic-contract.ts`, and retained outdated exports for two relocated/wrapper modules.
 - Repair: update the *authoritative P1 export classification inventory*, not the assertion, by enumerating the new declarations and reexports; clearly classify the Node-only validation builder, browser-safe diagnostic contract, and private BVP journal, and reclassify the compatibility wrappers. All new BVP journal exports remain **internal** (no public operator privileges); no CLI parity, physical dispatch, or frozen architecture relaxations are authorized.
 - This inventory-only correction is unverified until a new exact-source PHX-CI software run. The substantive missed focused test and later unexecuted build/repository-check/architecture stages make a bounded qualified rerun eligible under protocol §37.1. Do not promote or release.
+
+## R3 verified qualification and final-review boundary — 2026-10-25
+
+- Verified immutable source SHA: `800b8b3dd2287c6c66d05b1ff2bff7fd1f91df64`; source Git tree: `475ee95499d7c9ef3522dbc5ed4da724d9b43851`; original PHX-CI runtime: `69c4aa077d4a1a46d1e85e59f39d36285be99e83`.
+- Original PHX-CI run ID: `23fd83ff-613e-4543-a66e-514e37132d59`; original evidence commit `ad1bd817388ff976f9877c71b72e8c3ce1e5eb12`; original result path `dev/test-results/20261025T171255Z-operator-build-bvp-poll-error-observability-20261025-800b8b3dd228.json` with sibling terminal log and Markdown summary, plus `dev/_ca-output.json` and `dev/_ca-output.md`.
+- **Substantive PHX-CI qualification PASS:** all 11 named stages PASS, focused BVP tests 559/559 PASS, product tests 1,292/1,292 PASS; change-set PASS, repository PASS, overall PASS, exit 0, original evidence published. Verified source and evidence identities are distinct: the evidence commit's first parent is the exact source SHA.
+- Builder is qualified to hand off for a SINGLE FINAL independent Reviewer engagement. No independent review has yet been performed for DEC-352, and no feature acceptance is claimed. For blind Pass 1 read ONLY the neutral original feature contract sections (Failure and required outcome, Normative contract, Scope, Mandatory test adequacy, Known limitations) and exact immutable production source. Do not inspect the Builder implementation checkpoint or R1/R2/R3 history, test files, code history, review findings, PHX-CI results or Builder reasoning until the independent blind-source assessment has been frozen and published.
+- Final review then evaluates the authored tests and mandatory ten families, exact immutable source/tree, original PHX-CI evidence and remaining defects; Reviewer may write only `dev/reviews/` reports and narrowly scoped handoff metadata in `dev/state/current-state.yaml`. No Reviewer software verification execution, source/test/script edits or installation. No GitHub Actions.
+- No merge, installation, prerelease, iPhone command dispatch, OAuth reauthentication, sync enablement, product-data mutation or production release is authorized by PHX-CI PASS. Reserved Owner authorization is still required after independent acceptance.
