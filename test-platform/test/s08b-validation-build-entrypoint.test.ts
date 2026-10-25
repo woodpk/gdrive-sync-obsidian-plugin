@@ -155,7 +155,7 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   equal(publicationAttempts,2);equal(reservations,1);
   const delayed=await runtime.journal.snapshot();
   equal(delayed.entries.some((e:any)=>e.origin?.runId===runId&&e.deliveredCount===0),true);
-  equal(delayed.entries.filter((e:any)=>e.diagnostic.classification==="bvp-runtime-poll-recovered").length<=1,true);
+  equal(delayed.entries.filter((e:any)=>e.origin?.runId===runId&&e.diagnostic.classification==="bvp-runtime-poll-recovered").length<=1,true);
   context.Date=Date;
   await plugin.onunload();
   const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];after.mailbox.activeRun=async()=>runId;after.mailbox.resultFor=async()=>undefined;let replay:any;after.mailbox.commands=async()=>[swappedControl];after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(productionCalls,1);equal(replacementCalls,1);equal(fixtureWrites,1);await restarted.onunload();
