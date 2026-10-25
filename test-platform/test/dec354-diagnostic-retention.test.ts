@@ -43,7 +43,7 @@ class Fake {
 async function sample():Promise<RuntimeErrorRecord>{
   const diagnostic=bvpDiagnostic({classification:"device-result-unavailable",component:"device-agent",phase:"poll",
     lastConfirmedBoundary:"poll-entered",firstUnconfirmedBoundary:"result-unknown",effect:"unknown",
-    recommendedAction:"inspect-run-evidence",identity:{runId:await opaqueDiagnosticId("run-a","run")}});
+    recommendedAction:"inspect-run-evidence",identity:{runId:await opaqueDiagnosticId("run-a","run"),scenarioId:"unavailable",stepIndex:null,executionMode:"unknown",correlationToken:"unavailable"}});
   return{schemaVersion:1,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic};
 }
 test("DEC354 capacity: new event 5001 blocked; all 5000 unresolved originals retained",async()=>{
