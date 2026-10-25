@@ -225,8 +225,9 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const existingPage=await existingResponse.json() as FileList;
       if(existingPage.nextPageToken||(existingPage.files??[]).length>1)throw new MailboxUnavailableError("mailbox-archive-conflict");
       let archived=existingPage.files?.[0];
-      if(archived&&(archived.id!==archiveId||archived.appProperties?.brainBvpSourceId!==source.id||archived.appProperties?.brainBvpArchiveSha256!==sha||archived.appProperties?.brainBvpDeviceId!==deviceId||archived.appProperties?.brainBvpEventId!==eventId||archived.appProperties?.brainBvpRunId!==run||(bound?archived.appProperties?.brainBvpOriginBound==="0":archived.appProperties?.brainBvpOriginBound!=="0")||!["0","1"].includes(archived.appProperties?.brainBvpRecord??"")||!/^\d+$/.test(archived.size??"")||Number(archived.size)>MAX_RECORD_BYTES))
+      if(archived&&(archived.appProperties?.brainBvpSourceId!==source.id||archived.appProperties?.brainBvpArchiveSha256!==sha||archived.appProperties?.brainBvpDeviceId!==deviceId||archived.appProperties?.brainBvpEventId!==eventId||archived.appProperties?.brainBvpRunId!==run||(bound?archived.appProperties?.brainBvpOriginBound==="0":archived.appProperties?.brainBvpOriginBound!=="0")||!["0","1"].includes(archived.appProperties?.brainBvpRecord??"")||!/^\d+$/.test(archived.size??"")||Number(archived.size)>MAX_RECORD_BYTES))
         throw new MailboxUnavailableError("mailbox-archive-conflict");
+      if(archived)archiveId=archived.id; // Restart or lost reservation reconciles the original copy.
       if(!archived){
         const created=await call(API+"/files?fields=id",{method:"POST",headers:{"content-type":"application/json"},
           body:JSON.stringify({id:archiveId,name:"bvp-diagnostic-archive-"+eventId+".json",parents:[parent],mimeType:"application/json",
@@ -410,6 +411,12 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
             if(old.occurrences>=entry.occurrences)continue;
           }
           await adapter.write(path,JSON.stringify(entry));
+        }
+        // Opportunistically copy one aged event per tick; never retire unresolved originals.
+        const aged=page.entries.find(e=>Number.isFinite(Date.parse(e.firstAt))&&Date.parse(e.firstAt)<Date.now()-90*86400_000);
+        if(aged){
+          phase="diagnostic-archive";first="archive-integrity-confirmation";failureClass="relay-diagnostic-archive-failed";
+          await mailbox.archiveVerifiedDiagnostic(lease.deviceId,aged.eventId,await mailbox.reserveDiagnosticId());
         }
         // Advance only after all 25-or-fewer inbox records are durable; restart replays safely.
         await adapter.write(cursorPath,JSON.stringify({schemaVersion:1,deviceId:lease.deviceId,pageToken:page.nextPageToken??null}));
