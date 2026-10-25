@@ -5,7 +5,7 @@
  * scenario execution, evidence, test harnesses or external orchestration.
  */
 import type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from "./diagnostic-types";
-export type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from "../diagnostic-types";
+export type { BvpDiagnostic, BvpDiagnosticComponent, BvpDiagnosticInput } from "./diagnostic-types";
 
 const TOKEN = /^[a-z][a-z0-9-]{0,95}$/;
 const STEP = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$/;
