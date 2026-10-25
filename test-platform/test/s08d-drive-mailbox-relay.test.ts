@@ -491,3 +491,21 @@ test("DEC352-R2 cross-device diagnostic retrieval and falsified remote origins f
   other.meta.appProperties.brainBvpOriginBound="0";
   await rejects(()=>mailbox.diagnosticsForDevice("device-other"),/mailbox-diagnostic-record-invalid|mailbox-diagnostic-origin-conflict/);
 });
+
+test("DEC352-R2-F03 diagnostic publication failures remain local-only without recursive retry",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",journal=new BvpRuntimeErrorJournal(files,root);
+  const publication=bvpDiagnostic({classification:"mailbox-drive-transport-unavailable",component:"drive-mailbox",phase:"diagnostic-publication",
+    lastConfirmedBoundary:"timer-entered",firstUnconfirmedBoundary:"runtime-operation-complete",
+    effect:"unknown",recommendedAction:"inspect-device-journal"});
+  await journal.record(publication,{runId:null,deviceId:"device-a"});
+  equal(await journal.acquireDeliveryWindow(),false,"publication-failure-only journal must not cause another publish");
+  const sent=await journal.flush(async()=>{throw new Error("recursive publication forbidden");});
+  equal(sent,0);
+  await journal.recover(bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",phase:"poll-recovery",
+    lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",effect:"none-confirmed",recommendedAction:"none"}),
+    {runId:null,deviceId:"device-a"});
+  const snap=await journal.snapshot();
+  equal(snap.entries.length,1,"reporting failures must not invent a remote recovery record");
+  equal(snap.entries[0].deliveredCount,0);
+  equal(snap.entries[0].diagnostic.phase,"diagnostic-publication");
+});
