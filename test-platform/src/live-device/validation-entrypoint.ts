@@ -39,7 +39,7 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
   const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
   let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
   const journal=new BvpRuntimeErrorJournal(options.adapter,options.root);
-  let ticking:Promise<void>|undefined, nextDiagnosticRetryAt=0;
+  let ticking:Promise<void>|undefined;
   async function pollCore(){activeRunId=undefined;const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};activeRunId=runId;if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable",diagnostic:bvpDiagnostic({
       classification:"device-sequence-storage-unavailable",component:"device-agent",phase:"sequence-storage-preflight",
       lastConfirmedBoundary:"active-run-read",firstUnconfirmedBoundary:"durable-sequence-storage",effect:"none-confirmed",
@@ -69,8 +69,7 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
         phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",
         effect:"none-confirmed",recommendedAction:"none"});
       await journal.recover(recovered,source());
-      if(Date.now()>=nextDiagnosticRetryAt){
-        nextDiagnosticRetryAt=Date.now()+30_000;
+      if(await journal.acquireDeliveryWindow()){
         try{
           await journal.flush(entry=>mailbox.publishDiagnostic(entry.origin!.runId!,entry.origin!.deviceId!,entry),()=>mailbox.reserveDiagnosticId());
         }catch(error){
