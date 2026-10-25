@@ -52,8 +52,8 @@ function result(value: unknown): DeviceCommandResult | undefined {
 function cleanDiagnostic(value:unknown):RuntimeErrorRecord|undefined{
   const v=obj(value),d=obj(v?.diagnostic);
   if(!v||v.schemaVersion!==1||typeof v.eventId!=="string"||!/^[0-9a-f-]{36}$/.test(v.eventId)||
-    typeof v.firstAt!=="string"||typeof v.lastAt!=="string"||!/^\\d{4}-\\d{2}-\\d{2}T/.test(v.firstAt)||
-    !/^\\d{4}-\\d{2}-\\d{2}T/.test(v.lastAt)||!Number.isSafeInteger(v.occurrences)||v.occurrences<1||!d||d.schemaVersion!==1)return undefined;
+    typeof v.firstAt!=="string"||typeof v.lastAt!=="string"||!/^\d{4}-\d{2}-\d{2}T/.test(v.firstAt)||
+    !/^\d{4}-\d{2}-\d{2}T/.test(v.lastAt)||!Number.isSafeInteger(v.occurrences)||v.occurrences<1||!d||d.schemaVersion!==1)return undefined;
   const sanitized=bvpDiagnostic(d as BvpDiagnosticInput);
   // Untrusted diagnostic fields must match the exact reduced safe contract; never publish raw extras.
   if(JSON.stringify(d)!==JSON.stringify(sanitized))return undefined;
