@@ -33,10 +33,11 @@ function assertRelayUnavailable(result:{status:string;published:number;completed
 class FakeDrive {
   next=1; files=new Map<string,{meta:any;content:string}>();
   request:AuthenticatedDriveRequest=async(input,init={})=>{const url=new URL(input),method=(init.method??"GET").toUpperCase(),path=url.pathname;
-    if(path==="/drive/v3/files"&&method==="GET"){const q=decodeURIComponent(url.searchParams.get("q")??"");const root=q.includes("brainBvpMailbox")&&!q.includes("brainBvpRecord"),prop=(key:string)=>q.match(new RegExp(key+"' and value='([^']+)"))?.[1],kind=prop("brainBvpKind"),run=prop("brainBvpRunId"),device=prop("brainBvpDeviceId");const matched=[...this.files].filter(([,v])=>root?v.meta.appProperties?.brainBvpMailbox==="1":v.meta.appProperties?.brainBvpRecord==="1"&&(!kind||v.meta.appProperties?.brainBvpKind===kind)&&(!run||v.meta.appProperties?.brainBvpRunId===run)&&(!device||v.meta.appProperties?.brainBvpDeviceId===device));const files=matched.slice(0,200).map(([id,v])=>({id,name:v.meta.name,size:String(new TextEncoder().encode(v.content).byteLength),appProperties:v.meta.appProperties}));return Response.json({files,...(matched.length>200?{nextPageToken:"more"}:{})});}
-    if(path==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}")),id="f"+this.next++;this.files.set(id,{meta,content:""});return Response.json({id});}
+    if(path==="/drive/v3/files"&&method==="GET"){const q=decodeURIComponent(url.searchParams.get("q")??"");const root=q.includes("brainBvpMailbox")&&!q.includes("brainBvpRecord")&&!q.includes("brainBvpKind"),prop=(key:string)=>q.match(new RegExp(key+"' and value='([^']+)"))?.[1],kind=prop("brainBvpKind"),run=prop("brainBvpRunId"),device=prop("brainBvpDeviceId");const event=prop("brainBvpEventId");const matched=[...this.files].filter(([,v])=>root?v.meta.appProperties?.brainBvpMailbox==="1":(!q.includes("brainBvpRecord")||v.meta.appProperties?.brainBvpRecord==="1")&&(!kind||v.meta.appProperties?.brainBvpKind===kind)&&(!run||v.meta.appProperties?.brainBvpRunId===run)&&(!device||v.meta.appProperties?.brainBvpDeviceId===device)&&(!event||v.meta.appProperties?.brainBvpEventId===event));const files=matched.slice(0,200).map(([id,v])=>({id,name:v.meta.name,size:String(new TextEncoder().encode(v.content).byteLength),appProperties:v.meta.appProperties}));return Response.json({files,...(matched.length>200?{nextPageToken:"more"}:{})});}
+    if(path==="/drive/v3/files/generateIds"&&method==="GET")return Response.json({ids:["reserved-"+this.next++]});
+    if(path==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}")),id=meta.id??"f"+this.next++;if(this.files.has(id))return new Response("",{status:409});this.files.set(id,{meta,content:""});return Response.json({id});}
     const upload=path.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);if(upload&&method==="PATCH"){const file=this.files.get(upload[1]);if(!file)return new Response("",{status:404});file.content=String(init.body??"");return new Response("",{status:200});}
-    const media=path.match(/^\/drive\/v3\/files\/([^/]+)$/);if(media&&method==="GET"&&url.searchParams.get("alt")==="media"){const file=this.files.get(media[1]);return file?new Response(file.content,{status:200}):new Response("",{status:404});}
+    const media=path.match(/^\/drive\/v3\/files\/([^/]+)$/);if(media&&method==="GET"&&url.searchParams.get("alt")!=="media"){const file=this.files.get(media[1]);return file?Response.json({id:media[1],size:String(new TextEncoder().encode(file.content).byteLength),appProperties:file.meta.appProperties}):new Response("",{status:404});}if(media&&method==="GET"&&url.searchParams.get("alt")==="media"){const file=this.files.get(media[1]);return file?new Response(file.content,{status:200}):new Response("",{status:404});}
     if(media&&method==="PATCH"){const file=this.files.get(media[1]);if(!file)return new Response("",{status:404});const update=JSON.parse(String(init.body??"{}"));file.meta.appProperties={...file.meta.appProperties,...update.appProperties};return Response.json({id:media[1]});}
     if(media&&method==="DELETE"){this.files.delete(media[1]);return new Response(null,{status:204});}
     return new Response("",{status:400});};
@@ -177,13 +178,13 @@ function bvpPollFailure(classification="mailbox-drive-unauthorized"){return bvpD
 test("DEC-352 durable journal persists offline failures, deduplicates and records one recovery",async()=>{
   const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
   const first=new BvpRuntimeErrorJournal(files,root);
-  await Promise.all(Array.from({length:8},()=>first.record(bvpPollFailure())));
+  await Promise.all(Array.from({length:8},()=>first.record(bvpPollFailure(),{runId:"run-a",deviceId:"device-a"})));
   const restarted=new BvpRuntimeErrorJournal(files,root);
   equal((await restarted.snapshot()).entries[0]?.occurrences,8);
   await restarted.recover(bvpDiagnostic({classification:"bvp-runtime-poll-recovered",
     component:"device-agent",phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",
-    firstUnconfirmedBoundary:"none",effect:"none-confirmed",recommendedAction:"none"}));
-  await restarted.recover(bvpPollFailure("not-another-recovery"));
+    firstUnconfirmedBoundary:"none",effect:"none-confirmed",recommendedAction:"none"}),{runId:"run-a",deviceId:"device-a"});
+  await restarted.recover(bvpPollFailure("not-another-recovery"),{runId:"run-a",deviceId:"device-a"});
   equal((await restarted.snapshot()).entries.length,2);
   const delivered:string[]=[];
   await restarted.flush(async e=>{delivered.push(e.eventId);});
@@ -195,7 +196,7 @@ test("DEC-352 durable journal persists offline failures, deduplicates and record
 
 test("DEC-352 failed delivery remains pending and journal errors are explicit",async()=>{
   const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",journal=new BvpRuntimeErrorJournal(files,root);
-  await journal.record(bvpPollFailure());
+  await journal.record(bvpPollFailure(),{runId:"run-a",deviceId:"device-a"});
   await rejects(()=>journal.flush(async()=>{throw new Error("Bearer secret /private/vault");}),/Bearer/);
   const replay=new BvpRuntimeErrorJournal(files,root);
   equal((await replay.snapshot()).entries[0]?.deliveredCount,0);
@@ -212,14 +213,14 @@ test("DEC-352 device diagnostics arrive in exact leased Windows relay inbox idem
   await authorize(files,root,"run-a","device-a",2);
   const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
     lastAt:new Date().toISOString(),occurrences:3,diagnostic:bvpPollFailure()};
-  await mailbox.publishDiagnostic("run-a","device-a",event);
+  await mailbox.publishDiagnostic("run-a","device-a",{...event,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()});
   equal((await mailbox.diagnostics("run-a","device-a")).length,1);
   equal((await mailbox.diagnostics("other-run","device-a")).length,0);
   const relay=createWindowsMailboxRelay(mailbox,files,root),dest=root+"/inbox/bvp-diagnostic-"+event.eventId+".error.json";
   deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
   equal(JSON.parse(await files.read(dest)).occurrences,3);
   deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
-  await mailbox.publishDiagnostic("run-a","device-a",{...event,occurrences:4});
+  await mailbox.publishDiagnostic("run-a","device-a",{...event,occurrences:4,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:[...drive.files.entries()].find(([,v])=>v.meta.appProperties?.brainBvpEventId===event.eventId)![0]});
   await relay.pumpOnce();
   equal(JSON.parse(await files.read(dest)).occurrences,4);
   equal([...files.values.keys()].filter(k=>k.endsWith(".error.json")).length,1);
@@ -229,9 +230,9 @@ test("DEC-352 mailbox rejects unsafe diagnostic codes and forged identifiers",as
   const mailbox=createDriveCommandMailbox(new FakeDrive().request);
   const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
     lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure()};
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,diagnostic:{
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:"reserved-invalid",diagnostic:{
     ...event.diagnostic,classification:"Bearer hidden-token"}}),/mailbox-diagnostic-invalid/);
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,eventId:"../../bad-path"}),/mailbox-diagnostic-invalid/);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:"reserved-invalid",eventId:"../../bad-path"}),/mailbox-diagnostic-invalid/);
 });
 
 test("DEC-352 addressed malformed mailbox entries are diagnosed, never silently skipped",async()=>{
@@ -266,7 +267,7 @@ test("DEC-352 interrupted diagnostic media upload stays hidden from the relay",a
   const mailbox=createDriveCommandMailbox(request);
   const value={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
     lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure()};
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",value),/mailbox-drive-provider-unavailable/);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...value,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()}),/mailbox-drive-provider-unavailable/);
   equal((await mailbox.diagnostics("run-a","device-a")).length,0);
   equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="diagnostic"&&f.meta.appProperties?.brainBvpRecord==="0"),true);
 });
@@ -294,4 +295,61 @@ test("DEC-352 saturated offline journal persists a bounded overflow counter befo
   equal(status.entries.length,24);
   equal(status.overflow,1);
   equal(status.outstanding,true);
+});
+
+test("DEC352-F01 originating run survives A to B, no-run and restart; no cross-run coalescence",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",a={runId:"run-a",deviceId:"device-a"},b={runId:"run-b",deviceId:"device-a"};
+  const first=new BvpRuntimeErrorJournal(files,root);
+  await first.record(bvpPollFailure(),a);
+  await first.record(bvpPollFailure(),b);
+  await first.record(bvpPollFailure(),a);
+  const restarted=new BvpRuntimeErrorJournal(files,root);
+  const before=await restarted.snapshot();
+  deepEqual(before.entries.map(e=>e.origin?.runId),["run-a","run-b","run-a"]);
+  await restarted.recover(bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",effect:"none-confirmed",recommendedAction:"none"}),b);
+  const emitted:{runId:string|null;deviceId:string|null;eventId:string}[]=[];
+  await restarted.flush(async event=>{emitted.push({runId:event.origin?.runId??null,deviceId:event.origin?.deviceId??null,eventId:event.eventId});});
+  equal(emitted.some(e=>e.runId==="run-a"),true);
+  equal(emitted.some(e=>e.runId==="run-b"),true);
+  await restarted.record(bvpPollFailure(),{runId:null,deviceId:"device-a"});
+  const count=emitted.length;
+  await restarted.flush(async()=>{throw new Error("unbound event must never be silently rebound");});
+  equal((await restarted.snapshot()).entries.some(e=>e.origin?.runId===null&&e.deliveredCount===0),true);
+  equal(emitted.length,count);
+});
+
+test("DEC352-F02 uncertain create/media/visibility responses replay with one reserved Drive object",async()=>{
+  for(const stage of ["create","upload","visible"]){
+    const drive=new FakeDrive(),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+    const journal=new BvpRuntimeErrorJournal(files,root);
+    await journal.record(bvpPollFailure(),{runId:"run-a",deviceId:"device-a"});
+    let drop=true,mutations=0;
+    const request:AuthenticatedDriveRequest=async(url,init={})=>{
+      const path=new URL(url).pathname,method=(init.method??"GET").toUpperCase();
+      const target=stage==="create"?path==="/drive/v3/files"&&method==="POST"&&String(init.body).includes("bvp-diagnostic-"):stage==="upload"?path.includes("/upload/")&&method==="PATCH":path.startsWith("/drive/v3/files/")&&method==="PATCH"&&String(init.body).includes("brainBvpRecord");
+      const response=await drive.request(url,init);
+      if(target){mutations++;if(drop){drop=false;throw new Error("lost response after remote success");}}
+      return response;
+    };
+    const mailbox=createDriveCommandMailbox(request);
+    const flush=()=>journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
+    await rejects(flush,/mailbox-drive-transport-unavailable/);
+    equal((await journal.snapshot()).entries[0].deliveredCount,0);
+    const restarted=new BvpRuntimeErrorJournal(files,root);
+    await restarted.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
+    const remote=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic");
+    equal(remote.length,1,stage);
+    equal(remote[0].meta.appProperties.brainBvpRecord,"1");
+    equal((await restarted.snapshot()).entries[0].deliveredCount,1);
+    equal((await mailbox.diagnostics("run-a","device-a")).length,1);
+    equal(mutations<=3,true);
+  }
+});
+
+test("DEC352-F02 conflicting event origin or payload fails closed without second creation",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await mailbox.publishDiagnostic("run-a","device-a",event);
+  await rejects(()=>mailbox.publishDiagnostic("run-b","device-a",{...event,origin:{...event.origin,runId:"run-b"}}),/mailbox-diagnostic-event-conflict/);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,diagnostic:bvpPollFailure("different-classification")}),/mailbox-diagnostic-event-conflict/);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
 });
