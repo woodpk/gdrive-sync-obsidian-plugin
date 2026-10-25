@@ -1440,6 +1440,19 @@
       "coverageTest": "bvp-powershell-api-inventory.test.ts"
     },
     {
+      "name": "DiagnosticOrigin",
+      "kind": "interface",
+      "signature": "export interface DiagnosticOrigin {",
+      "source": "test-platform/src/bvp-runtime-error-journal.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "COMPILE_TIME_ONLY",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect",
+      "operatorCommand": null,
+      "accessRequirement": "type-only-not-directly-callable",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
       "name": "RuntimeErrorRecord",
       "kind": "interface",
       "signature": "export interface RuntimeErrorRecord {",
