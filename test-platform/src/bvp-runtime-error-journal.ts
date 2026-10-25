@@ -26,7 +26,8 @@ function valid(value:any):value is Snapshot {
       e.deliveredCount>=0&&e.deliveredCount<=e.occurrences&&
       (e.origin===undefined||(e.origin!==null&&(e.origin.runId===null||safeRoute(e.origin.runId))&&(e.origin.deviceId===null||safeRoute(e.origin.deviceId))))&&
       (e.remoteFileId===undefined||(typeof e.remoteFileId==="string"&&/^[a-zA-Z0-9_-]{2,128}$/.test(e.remoteFileId)))&&
-      e.diagnostic?.schemaVersion===1&&typeof e.diagnostic.classification==="string");
+      e.diagnostic?.schemaVersion===1&&typeof e.diagnostic.classification==="string"&&
+      JSON.stringify(bvpDiagnostic(e.diagnostic))===JSON.stringify(e.diagnostic));
 }
 export class BvpJournalError extends Error {
   constructor(readonly code:"bvp-journal-persistence-failed"|"bvp-journal-corrupt"){super(code);this.name="BvpJournalError";}
