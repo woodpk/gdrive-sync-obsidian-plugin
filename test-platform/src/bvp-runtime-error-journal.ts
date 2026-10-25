@@ -16,6 +16,7 @@ const safeRoute=(s:unknown)=>typeof s==="string"&&/^[a-zA-Z0-9._:-]{1,128}$/.tes
 const bound=(origin?:DiagnosticOrigin):DiagnosticOrigin=>({runId:origin?.runId??null,deviceId:origin?.deviceId??null});
 const sameOrigin=(a?:DiagnosticOrigin,b?:DiagnosticOrigin)=>JSON.stringify(bound(a))===JSON.stringify(bound(b));
 const isRecovery=(e:Entry)=>e.diagnostic.classification==="bvp-runtime-poll-recovered";
+const localOnly=(e:Entry)=>e.diagnostic.component==="drive-mailbox"&&e.diagnostic.phase==="diagnostic-publication";
 function hasUnrecovered(entries:Entry[]):boolean{const newest=new Map<string,boolean>();for(const e of entries){const key=JSON.stringify(bound(e.origin));newest.set(key,!isRecovery(e));}return [...newest.values()].some(Boolean);}
 function valid(value:any):value is Snapshot {
   return value?.schemaVersion===1&&Array.isArray(value.entries)&&value.entries.length<=MAX_EVENTS&&
@@ -80,7 +81,7 @@ export class BvpRuntimeErrorJournal {
   recover(diagnostic:BvpDiagnostic,origin?:DiagnosticOrigin):Promise<void>{return this.serial(async()=>{
     const state=await this.load(),route=bound(origin);
     if(route.runId)diagnostic=bvpDiagnostic({...diagnostic,identity:{...diagnostic.identity,runId:await opaqueDiagnosticId(route.runId,"run")}});
-    const latest=[...state.entries].reverse().find(e=>sameOrigin(e.origin,route));
+    const latest=[...state.entries].reverse().find(e=>sameOrigin(e.origin,route)&&!localOnly(e));
     if(!latest||isRecovery(latest))return;
     const now=new Date().toISOString();
     if(state.entries.length===MAX_EVENTS){
@@ -96,7 +97,7 @@ export class BvpRuntimeErrorJournal {
   flush(publish:(entry:RuntimeErrorRecord)=>Promise<void>,reserve?:()=>Promise<string>):Promise<number>{return this.serial(async()=>{
     const state=await this.load();let sent=0;
     for(const entry of state.entries){
-      if(entry.deliveredCount===entry.occurrences||!entry.origin?.deviceId)continue;
+      if(entry.deliveredCount===entry.occurrences||!entry.origin?.deviceId||localOnly(entry))continue;
       if(reserve&&!entry.remoteFileId){entry.remoteFileId=await reserve();await this.save(state);}
       await publish({schemaVersion:1,eventId:entry.eventId,firstAt:entry.firstAt,
         lastAt:entry.lastAt,occurrences:entry.occurrences,diagnostic:entry.diagnostic,origin:entry.origin,remoteFileId:entry.remoteFileId});
@@ -107,7 +108,7 @@ export class BvpRuntimeErrorJournal {
   /** Persist cooldown before any remote mutation; restart never resets bounded retry timing. */
   acquireDeliveryWindow():Promise<boolean>{return this.serial(async()=>{
     const state=await this.load(),now=Date.now();
-    if(!state.entries.some(e=>e.origin?.deviceId&&e.deliveredCount<e.occurrences))return false;
+    if(!state.entries.some(e=>e.origin?.deviceId&&!localOnly(e)&&e.deliveredCount<e.occurrences))return false;
     if((state.nextDeliveryAt??0)>now)return false;
     state.nextDeliveryAt=now+30_000;await this.save(state);return true;
   });}
