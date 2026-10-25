@@ -136,9 +136,9 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         existing={id,size:"0",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}};
       }
       if(existing.appProperties?.brainBvpRecord!=="0"&&existing.appProperties?.brainBvpRecord!=="1")throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
-      if(Number(existing.size??0)>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
-      const media=await call(`${API}/files/${encodeURIComponent(id)}?alt=media`);
-      const text=await media.text();
+      if(existing.size===undefined||!/^[0-9]+$/.test(existing.size)||Number(existing.size)>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-diagnostic-size-unconfirmed");
+      let text="";
+      if(Number(existing.size)>0){const media=await call(`${API}/files/${encodeURIComponent(id)}?alt=media`);text=await media.text();}
       if(text){
         let prior:RuntimeErrorRecord|undefined;try{prior=cleanDiagnostic(JSON.parse(text));}catch{}
         if(!prior||prior.eventId!==safe.eventId||prior.firstAt!==safe.firstAt||JSON.stringify(prior.diagnostic)!==JSON.stringify(safe.diagnostic)||prior.occurrences>safe.occurrences||prior.lastAt>safe.lastAt)
@@ -153,6 +153,10 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         // Publication is never confirmed by an ambiguous PATCH result.
         await call(`${API}/files/${encodeURIComponent(id)}?fields=id`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:{brainBvpRecord:"1"}})});
       }
+      const confirmation=await call(`${API}/files/${encodeURIComponent(id)}?fields=id,appProperties`);
+      const verified=await confirmation.json() as MailboxFile;
+      if(verified.id!==id||verified.appProperties?.brainBvpRecord!=="1"||verified.appProperties?.brainBvpEventId!==safe.eventId||verified.appProperties?.brainBvpRunId!==runId||verified.appProperties?.brainBvpDeviceId!==deviceId)
+        throw new MailboxUnavailableError("mailbox-diagnostic-visibility-unconfirmed");
     },
     async diagnostics(runId,deviceId){
       const remote=await records("diagnostic",runId,deviceId),seen=new Set<string>(),values:RuntimeErrorRecord[]=[];
