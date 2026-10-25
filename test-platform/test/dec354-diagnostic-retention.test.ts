@@ -129,3 +129,20 @@ test("DEC354 Windows relay autonomously archives one aged diagnostic without del
   equal(drive.files.get(id)?.content,JSON.stringify(v));
   equal(await files.exists(root+"/inbox/bvp-diagnostic-"+v.eventId+".error.json"),true);
 });
+
+test("DEC354 archives all aged records by durable one-per-cycle checkpoint across relay reconstruction",async()=>{
+  const drive=new Fake(),ids:string[]=[];
+  for(let i=0;i<4;i++)ids.push(drive.seed(await sample(),91));
+  const mailbox=createDriveCommandMailbox(drive.request),files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay";
+  files.dirs.add(root+"/controller-authority");
+  const key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:2,runId:"run-b",deviceId:"device-a"}));
+  for(let i=0;i<4;i++){
+    const relay=createWindowsMailboxRelay(mailbox,files,root);
+    equal((await relay.pumpOnce()).status,"ok");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,i+1);
+  }
+  for(const id of ids)equal(drive.files.has(id),true,"all unresolved originals remain active");
+  equal((await createWindowsMailboxRelay(mailbox,files,root).pumpOnce()).status,"ok");
+  equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,4);
+});
