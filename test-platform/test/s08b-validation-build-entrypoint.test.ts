@@ -15,6 +15,7 @@ import {
   BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL,
   BVP_VALIDATION_BUILD_GLOBAL,
 } from "../src/live-device/validation-entrypoint";
+import { bvpDiagnostic } from "../src/diagnostic-contract";
 
 const repositoryRoot = resolve(process.cwd());
 
@@ -136,6 +137,26 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   base.productionVerificationControl=function(){return replacement};
   const swappedControl={...control,sequence:3,commandId:"cmd-3"};
   current=swappedControl;await runtime.pollDeviceOnce();equal(last.classification,"production-control-accepted");equal(replacementCalls,1);equal(productionCalls,1);
+  // DEC352-F03: sustained remote outage cannot trigger a new diagnostic create every 1s.
+  let clock=Date.now()+60_000;context.Date=class extends Date {static now(){return clock;}};
+  let publicationAttempts=0, reservations=0;
+  runtime.mailbox.activeRun=async()=>runId;
+  runtime.mailbox.commands=async()=>[];
+  runtime.mailbox.reserveDiagnosticId=async()=>{reservations++;return "bounded-reservation-1";};
+  runtime.mailbox.publishDiagnostic=async()=>{publicationAttempts++;throw new Error("remote response unavailable");};
+  const pollError=bvpDiagnostic({classification:"mailbox-drive-provider-unavailable",component:"drive-mailbox",phase:"command-fetch",
+    lastConfirmedBoundary:"device-poll-started",firstUnconfirmedBoundary:"drive-command-list",effect:"unknown",recommendedAction:"reconcile-device-state"});
+  await runtime.journal.record(pollError,{runId,deviceId});
+  await runtime.pollAndReportOnce();
+  equal(publicationAttempts,1);equal(reservations,1);
+  for(let i=0;i<20;i++)await runtime.pollAndReportOnce();
+  equal(publicationAttempts,1);
+  clock+=30_001;await runtime.pollAndReportOnce();
+  equal(publicationAttempts,2);equal(reservations,1);
+  const delayed=await runtime.journal.snapshot();
+  equal(delayed.entries.some((e:any)=>e.origin?.runId===runId&&e.deliveredCount===0),true);
+  equal(delayed.entries.filter((e:any)=>e.diagnostic.classification==="bvp-runtime-poll-recovered").length<=1,true);
+  context.Date=Date;
   await plugin.onunload();
   const restarted=new PluginClass(app,manifest);await restarted.onload();const after:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];after.mailbox.activeRun=async()=>runId;after.mailbox.resultFor=async()=>undefined;let replay:any;after.mailbox.commands=async()=>[swappedControl];after.mailbox.publishResult=async(value:any)=>{replay=value};await after.pollDeviceOnce();equal(replay.replayed,true);equal(productionCalls,1);equal(replacementCalls,1);equal(fixtureWrites,1);await restarted.onunload();
 }
