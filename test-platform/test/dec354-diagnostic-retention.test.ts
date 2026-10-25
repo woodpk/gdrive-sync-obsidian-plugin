@@ -33,7 +33,7 @@ class Fake {
     if(method==="GET")return Response.json({id,appProperties:file.meta.appProperties,
       createdTime:file.createdTime,size:String(new TextEncoder().encode(file.content).byteLength)});
     if(method==="PATCH"){const meta=JSON.parse(String(init.body??"{}"));file.meta.appProperties={...file.meta.appProperties,...meta.appProperties};return Response.json({id});}
-    if(method==="DELETE"){this.files.delete(id);return new Response(null,{status:204});}
+    if(method==="DELETE"){this.files.delete(id!);return new Response(null,{status:204});}
     return new Response("",{status:400});
   };
   seed(v:RuntimeErrorRecord,days=0,run="run-a"){const id="seed"+ ++this.next;this.files.set(id,{
