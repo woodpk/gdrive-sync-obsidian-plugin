@@ -113,6 +113,7 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   runtime.mailbox.activeRun=async()=>undefined;
   await runtime.pollAndReportOnce();
   equal((await runtime.journal.snapshot()).entries.length,2);
+  runtime.mailbox.activeRun=async()=>runId;
   // Missing durable sequence storage must return a typed preflight diagnosis,
   // not an unstructured unavailable result or a claimed device dispatch.
   delete context.localStorage;
