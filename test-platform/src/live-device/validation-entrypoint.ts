@@ -39,12 +39,11 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
   const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
   let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
   const journal=new BvpRuntimeErrorJournal(options.adapter,options.root);
-  let ticking:Promise<void>|undefined;
-  async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable",diagnostic:bvpDiagnostic({
+  let ticking:Promise<void>|undefined, nextDiagnosticRetryAt=0;
+  async function pollCore(){activeRunId=undefined;const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};activeRunId=runId;if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable",diagnostic:bvpDiagnostic({
       classification:"device-sequence-storage-unavailable",component:"device-agent",phase:"sequence-storage-preflight",
       lastConfirmedBoundary:"active-run-read",firstUnconfirmedBoundary:"durable-sequence-storage",effect:"none-confirmed",
-      recommendedAction:"enable-device-sequence-storage"})};activeRunId=runId;
-    // Installed file bytes, not caller-supplied claims or controller build output.
+      recommendedAction:"enable-device-sequence-storage"})};// Installed file bytes, not caller-supplied claims or controller build output.
     const installedRoot=options.root.replace(/\\/g,"/").replace(/\/\.bvp-relay$/,"");
     if(!/\/plugins\/[A-Za-z0-9._-]+$/.test(installedRoot))throw new Error("validation-installed-plugin-root-invalid");
     const artifactSha256=await sha256(await options.adapter.readBinary(installedRoot+"/main.js")),manifestSha256=await sha256(await options.adapter.readBinary(installedRoot+"/manifest.json"));
@@ -59,23 +58,25 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
   }
   async function tickCore():Promise<void>{
     let failed=false;
-    try{const result=await pollDeviceOnce();if(result.status==="unavailable"){failed=true;await journal.record(result.diagnostic);}}
-    catch(error){failed=true;await journal.record(unexpected("device-agent","device-poll",error));}
+    const source=()=>({runId:activeRunId??null,deviceId:options.deviceId});
+    try{const result=await pollDeviceOnce();if(result.status==="unavailable"){failed=true;await journal.record(result.diagnostic,source());}}
+    catch(error){failed=true;await journal.record(unexpected("device-agent","device-poll",error),source());}
     if(relay)try{const result=await relay.pumpOnce();if(result.status==="unavailable"&&result.diagnostic){failed=true;await journal.record(result.diagnostic);}}
-    catch(error){failed=true;await journal.record(unexpected("windows-relay","relay-pump",error));}
+    catch(error){failed=true;await journal.record(unexpected("windows-relay","relay-pump",error),{runId:null,deviceId:options.deviceId});}
     if(!failed){
       const recovered=bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",
         phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",
         effect:"none-confirmed",recommendedAction:"none"});
-      if(activeRunId){
+      await journal.recover(recovered,source());
+      if(Date.now()>=nextDiagnosticRetryAt){
+        nextDiagnosticRetryAt=Date.now()+30_000;
         try{
-          await journal.flush(entry=>mailbox.publishDiagnostic(activeRunId!,options.deviceId,entry));
-          await journal.recover(recovered);
-          await journal.flush(entry=>mailbox.publishDiagnostic(activeRunId!,options.deviceId,entry));
+          await journal.flush(entry=>mailbox.publishDiagnostic(entry.origin!.runId!,entry.origin!.deviceId!,entry),()=>mailbox.reserveDiagnosticId());
         }catch(error){
-          await journal.record(unexpected("drive-mailbox","diagnostic-publication",error));
+          // A transport error is local-only to avoid recursively reporting its own failed delivery.
+          await journal.record(unexpected("drive-mailbox","diagnostic-publication",error),{runId:null,deviceId:options.deviceId});
         }
-      }else await journal.recover(recovered);
+      }
     }
   }
   function pollAndReportOnce():Promise<void>{if(ticking)return ticking;ticking=tickCore().finally(()=>{ticking=undefined;});return ticking;}
