@@ -1118,6 +1118,12 @@ decisions:
     relates_to: [DEC-352, DEC-353]
     decision: "On 2026-10-25 the Owner explicitly selected Option B for BVP validation-only remote diagnostic retention. Limit ACTIVE remote diagnostic history to 5000 records per device and a 90-day active-history window. For eligible acknowledged/resolved records, create durable archival evidence and verify its integrity before deleting the original ACTIVE record; never delete unresolved or unacknowledged diagnostic evidence. Fail closed, retain evidence and report an explicit unavailable condition when archival, integrity verification, acknowledgment or safe eligibility cannot be established. Archived evidence remains retrievable, privacy-safe and traceable to its originating run/device/event. Owner approval does not authorize deletion of unresolved records, physical-device/live personal Drive/vault operations, additional verification authority, architecture budget changes, production sync changes, merge or release. If limits cannot be enforced without losing protected evidence, preserve evidence and block new archival/retirement rather than silently discarding it."
 
+  - id: DEC-355
+    status: locked
+    category: bvp_dec354_owner_architecture_budget_amendment
+    relates_to: [DEC-349, DEC-352, DEC-353, DEC-354]
+    decision: "On 2026-10-25 the Owner explicitly approved increasing BOTH frozen BVP TypeScript ceilings by 300 logical lines each for DEC-354 verified archival and diagnostic remote-retention implementation: framework-core from 4550 to 4850, and live-device agent/relay from 950 to 1250. This is additional headroom, not authorization to consume it gratuitously, relax the guard, weaken tests, alter shipping src, use GitHub Actions, change the PHX-CI runtime/pin, delete unresolved/unacknowledged evidence, deploy, invoke physical devices or live personal Google Drive/vault, merge or release. The same authoritative metrics guard and exact at-limit and one-line-over rejection tests must use the amended 4850/1250 ceilings. Corrections remain unqualified until a fresh exact-source Windows PHX-CI PASS and independent final Reviewer acceptance."
+
 superseded_decisions:
   - id: SUP-001
     status: superseded
