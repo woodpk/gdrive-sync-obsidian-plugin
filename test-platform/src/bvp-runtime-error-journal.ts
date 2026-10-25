@@ -1,5 +1,6 @@
 /** BVP-only, nonshipping, browser-safe durable receiver error journal. */
 import type { BvpDiagnostic } from "./diagnostic-types";
+import { bvpDiagnostic, opaqueDiagnosticId } from "./diagnostic-contract";
 
 interface Store { exists(path:string):Promise<boolean>; mkdir(path:string):Promise<void>; read(path:string):Promise<string>; write(path:string,text:string):Promise<void>; }
 export interface DiagnosticOrigin { readonly runId:string|null; readonly deviceId:string|null; }
@@ -57,7 +58,8 @@ export class BvpRuntimeErrorJournal {
     const route=bound(origin);if((route.runId&&!safeRoute(route.runId))||(route.deviceId&&!safeRoute(route.deviceId)))throw new BvpJournalError("bvp-journal-corrupt");
     const state=await this.load(),now=new Date().toISOString();
     const last=state.entries.at(-1);
-    const same=last&&!isRecovery(last)&&sameOrigin(last.origin,route)&&JSON.stringify(last.diagnostic)===JSON.stringify(diagnostic);
+    if(route.runId)diagnostic=bvpDiagnostic({...diagnostic,identity:{...diagnostic.identity,runId:await opaqueDiagnosticId(route.runId,"run")}});
+    const same=last&&route.runId!==null&&!isRecovery(last)&&sameOrigin(last.origin,route)&&JSON.stringify(last.diagnostic)===JSON.stringify(diagnostic);
     if(same){last.occurrences++;last.lastAt=now;}
     else{
       if(state.entries.length===MAX_EVENTS){
@@ -73,6 +75,7 @@ export class BvpRuntimeErrorJournal {
   /** Emit one recovery boundary on the first healthy tick after an error. */
   recover(diagnostic:BvpDiagnostic,origin?:DiagnosticOrigin):Promise<void>{return this.serial(async()=>{
     const state=await this.load(),route=bound(origin);
+    if(route.runId)diagnostic=bvpDiagnostic({...diagnostic,identity:{...diagnostic.identity,runId:await opaqueDiagnosticId(route.runId,"run")}});
     const latest=[...state.entries].reverse().find(e=>sameOrigin(e.origin,route));
     if(!latest||isRecovery(latest))return;
     const now=new Date().toISOString();
