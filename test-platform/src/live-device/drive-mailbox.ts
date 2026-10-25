@@ -73,7 +73,7 @@ export interface DriveCommandMailbox {
   reserveDiagnosticId():Promise<string>;
   archiveVerifiedDiagnostic(deviceId:string,eventId:string,archiveId:string):Promise<{status:"verified";eventId:string;sha256:string}>;
   publishDiagnostic(runId:string|null,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
-  diagnosticsForDevice(deviceId:string,pageToken?:string):Promise<{entries:RuntimeErrorRecord[];nextPageToken?:string}>;
+  diagnosticsForDevice(deviceId:string,pageToken?:string):Promise<{entries:RuntimeErrorRecord[];agedEventIds?:string[];nextPageToken?:string}>;
   diagnostics(runId:string,deviceId:string):Promise<RuntimeErrorRecord[]>;
   commands(runId: string, deviceId: string): Promise<DeviceCommand[]>;
   resultFor(value: DeviceCommand): Promise<DeviceCommandResult | undefined>;
@@ -271,11 +271,11 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         throw new MailboxUnavailableError("mailbox-diagnostic-cursor-invalid");
       const parent=await rootId();
       const q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='diagnostic' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' }";
-      const url=API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=25&fields=nextPageToken,files(id,size,appProperties)"+(pageToken?"&pageToken="+encodeURIComponent(pageToken):"");
+      const url=API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=25&fields=nextPageToken,files(id,size,createdTime,appProperties)"+(pageToken?"&pageToken="+encodeURIComponent(pageToken):"");
       const response=await call(url,undefined,Boolean(pageToken)),page=await response.json() as FileList;
       if((page.files??[]).length>25||(page.nextPageToken!==undefined&&(!page.nextPageToken||page.nextPageToken.length>1024||page.nextPageToken===pageToken)))
         throw new MailboxUnavailableError("mailbox-diagnostic-cursor-invalid");
-      const entries:RuntimeErrorRecord[]=[],seen=new Set<string>();
+      const entries:RuntimeErrorRecord[]=[],agedEventIds:string[]=[],seen=new Set<string>();
       for(const file of page.files??[]){
         const props=file.appProperties,rawRun=props?.brainBvpRunId,boundRun=props?.brainBvpOriginBound!=="0";
         if(props?.brainBvpRecord!=="1"||props?.brainBvpKind!=="diagnostic"||props?.brainBvpDeviceId!==deviceId||
@@ -292,9 +292,12 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
           safe.diagnostic.identity.runId!=="unavailable")
           throw new MailboxUnavailableError("mailbox-diagnostic-origin-conflict");
         seen.add(safe.eventId);
+        const sourceAge=Date.parse(file.createdTime??safe.firstAt);
+        if(!Number.isFinite(sourceAge))throw new MailboxUnavailableError("mailbox-diagnostic-retention-unconfirmed");
+        if(sourceAge<Date.now()-ageMs)agedEventIds.push(safe.eventId);
         entries.push({...safe,origin:{runId:boundRun?rawRun!:null,deviceId}});
       }
-      return{entries,...(page.nextPageToken?{nextPageToken:page.nextPageToken}:{})};
+      return{entries,...(agedEventIds.length?{agedEventIds}:{}),...(page.nextPageToken?{nextPageToken:page.nextPageToken}:{})};
     },
     async commands(runId,deviceId){const values=(await records("command",runId,deviceId)).map(v=>command(v.value));if(values.some(v=>!v))throw new MailboxUnavailableError("mailbox-command-invalid");return values.filter((v):v is DeviceCommand=>Boolean(v&&v.runId===runId&&v.deviceId===deviceId)).sort((a,b)=>a.sequence-b.sequence);},
     async resultFor(value){const target=header(value)!;const parsed=(await records("result",target.runId,target.deviceId)).map(v=>result(v.value));if(parsed.some(v=>!v))throw new MailboxUnavailableError("mailbox-result-invalid");const values=parsed.filter((v):v is DeviceCommandResult=>Boolean(v&&same(v,target)));if(!values.length)return undefined;const first=JSON.stringify(values[0]);if(values.some(v=>JSON.stringify(v)!==first))throw new Error("mailbox-conflicting-result");return values[0];},
@@ -338,7 +341,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
   const publishCommand=publisher;
   type PumpResult={status:"ok"|"unavailable";published:number;completed:number;reason?:string;diagnostic?:BvpDiagnostic};
   let pumping:Promise<PumpResult>|undefined;
-  async function ensure(){for(const p of [root,out,sent,inside,root+"/diagnostic-cursors"])if(!await adapter.exists(p))await adapter.mkdir(p);}
+  async function ensure(){for(const p of [root,out,sent,inside,root+"/diagnostic-cursors",root+"/diagnostic-archive-receipts"])if(!await adapter.exists(p))await adapter.mkdir(p);}
   async function authorityGeneration(cmd:DeviceCommand):Promise<number>{const path=await controllerAuthorityPath(root,cmd.deviceId);if(!await adapter.exists(path))throw new MailboxUnavailableError("relay-controller-run-unleased");let value:ControllerAuthority|undefined;try{value=controllerAuthority(JSON.parse(await adapter.read(path)),cmd.deviceId);}catch{}if(!value||value.runId!==cmd.runId||value.generation<=0)throw new MailboxUnavailableError("relay-controller-run-unleased");return value.generation;}
   async function pumpCore():Promise<PumpResult>{
     let published=0,completed=0,phase="relay-preflight",last="relay-entry",
@@ -412,11 +415,24 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
           }
           await adapter.write(path,JSON.stringify(entry));
         }
-        // Opportunistically copy one aged event per tick; never retire unresolved originals.
-        const aged=page.entries.find(e=>Number.isFinite(Date.parse(e.firstAt))&&Date.parse(e.firstAt)<Date.now()-90*86400_000);
-        if(aged){
+        // Durable per-device receipts allow one verified archive per cycle across restarts.
+        const archiveReceiptPath=cursorPath.replace("/diagnostic-cursors/","/diagnostic-archive-receipts/");
+        let archivedIds:string[]=[];
+        if(await adapter.exists(archiveReceiptPath)){
+          let saved:Record<string,unknown>|undefined;try{saved=obj(JSON.parse(await adapter.read(archiveReceiptPath)));}catch{}
+          if(!saved||saved.schemaVersion!==1||saved.deviceId!==lease.deviceId||!Array.isArray(saved.ids)||
+            saved.ids.length>5000||saved.ids.some((id:unknown)=>typeof id!=="string"||!/^[0-9a-f-]{36}$/.test(id))||
+            new Set(saved.ids).size!==saved.ids.length)
+            throw new MailboxUnavailableError("relay-archive-receipts-invalid");
+          archivedIds=saved.ids as string[];
+        }
+        const agedId=page.agedEventIds?.find(id=>!archivedIds.includes(id));
+        if(agedId){
           phase="diagnostic-archive";first="archive-integrity-confirmation";failureClass="relay-diagnostic-archive-failed";
-          await mailbox.archiveVerifiedDiagnostic(lease.deviceId,aged.eventId,await mailbox.reserveDiagnosticId());
+          await mailbox.archiveVerifiedDiagnostic(lease.deviceId,agedId,await mailbox.reserveDiagnosticId());
+          archivedIds.push(agedId);
+          if(archivedIds.length>5000)archivedIds.shift();
+          await adapter.write(archiveReceiptPath,JSON.stringify({schemaVersion:1,deviceId:lease.deviceId,ids:archivedIds}));
         }
         // Advance only after all 25-or-fewer inbox records are durable; restart replays safely.
         await adapter.write(cursorPath,JSON.stringify({schemaVersion:1,deviceId:lease.deviceId,pageToken:page.nextPageToken??null}));
