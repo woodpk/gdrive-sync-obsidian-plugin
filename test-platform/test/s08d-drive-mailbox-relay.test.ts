@@ -267,7 +267,8 @@ test("DEC-352 interrupted diagnostic media upload stays hidden from the relay",a
   const mailbox=createDriveCommandMailbox(request);
   const value={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
     lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure()};
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...value,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()}),/mailbox-drive-provider-unavailable/);
+  const reservedId=await mailbox.reserveDiagnosticId();
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...value,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:reservedId}),/mailbox-drive-provider-unavailable/);
   equal((await mailbox.diagnostics("run-a","device-a")).length,0);
   equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="diagnostic"&&f.meta.appProperties?.brainBvpRecord==="0"),true);
 });
