@@ -9,7 +9,7 @@ export interface RuntimeErrorRecord {
   readonly occurrences:number; readonly diagnostic:BvpDiagnostic; readonly origin?:DiagnosticOrigin; readonly remoteFileId?:string;
 }
 interface Entry { schemaVersion:1; eventId:string; firstAt:string; lastAt:string; occurrences:number; diagnostic:BvpDiagnostic; deliveredCount:number; origin?:DiagnosticOrigin; remoteFileId?:string; }
-interface Snapshot { schemaVersion:1; entries:Entry[]; outstanding:boolean; overflow:number; }
+interface Snapshot { schemaVersion:1; entries:Entry[]; outstanding:boolean; overflow:number; nextDeliveryAt?:number; }
 const MAX_EVENTS=24;
 const safeEvent=(id:string)=>/^[0-9a-f-]{36}$/.test(id);
 const safeRoute=(s:unknown)=>typeof s==="string"&&/^[a-zA-Z0-9._:-]{1,128}$/.test(s);
@@ -20,6 +20,7 @@ function hasUnrecovered(entries:Entry[]):boolean{const newest=new Map<string,boo
 function valid(value:any):value is Snapshot {
   return value?.schemaVersion===1&&Array.isArray(value.entries)&&value.entries.length<=MAX_EVENTS&&
     typeof value.outstanding==="boolean"&&Number.isSafeInteger(value.overflow)&&value.overflow>=0&&
+    (value.nextDeliveryAt===undefined||(Number.isSafeInteger(value.nextDeliveryAt)&&value.nextDeliveryAt>=0))&&
     value.entries.every((e:any)=>safeEvent(e?.eventId)&&e?.schemaVersion===1&&
       typeof e.firstAt==="string"&&typeof e.lastAt==="string"&&
       Number.isSafeInteger(e.occurrences)&&e.occurrences>0&&Number.isSafeInteger(e.deliveredCount)&&
@@ -102,6 +103,13 @@ export class BvpRuntimeErrorJournal {
       entry.deliveredCount=entry.occurrences;await this.save(state);sent++;
     }
     return sent;
+  });}
+  /** Persist cooldown before any remote mutation; restart never resets bounded retry timing. */
+  acquireDeliveryWindow():Promise<boolean>{return this.serial(async()=>{
+    const state=await this.load(),now=Date.now();
+    if(!state.entries.some(e=>e.origin?.runId&&e.origin.deviceId&&e.deliveredCount<e.occurrences))return false;
+    if((state.nextDeliveryAt??0)>now)return false;
+    state.nextDeliveryAt=now+30_000;await this.save(state);return true;
   });}
   snapshot():Promise<Readonly<Snapshot>>{return this.serial(()=>this.load());}
 }
