@@ -1442,7 +1442,7 @@
     {
       "name": "DiagnosticOrigin",
       "kind": "interface",
-      "signature": "export interface DiagnosticOrigin {",
+      "signature": "export interface DiagnosticOrigin { readonly runId:string|null; readonly deviceId:string|null; }",
       "source": "test-platform/src/bvp-runtime-error-journal.ts",
       "publicOperatorExposure": "NOT_ASSUMED",
       "effect": "COMPILE_TIME_ONLY",
