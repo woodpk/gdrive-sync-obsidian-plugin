@@ -82,10 +82,12 @@ export interface DriveCommandMailbox {
 
 export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): DriveCommandMailbox {
   let root: Promise<string> | undefined;
-  async function call(url:string,init?:RequestInit):Promise<Response>{
+  async function call(url:string,init?:RequestInit,cursorRequest=false):Promise<Response>{
     try{
       const response=await request(url,init);
       if(response.ok)return response;
+      if(cursorRequest&&(response.status===400||response.status===410))
+        throw new MailboxUnavailableError("mailbox-diagnostic-cursor-expired");
       const code=response.status===401?"mailbox-drive-unauthorized":
         response.status===403?"mailbox-drive-forbidden":
         response.status===429?"mailbox-drive-rate-limited":
@@ -177,7 +179,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const parent=await rootId();
       const q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='diagnostic' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' }";
       const url=API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=25&fields=nextPageToken,files(id,size,appProperties)"+(pageToken?"&pageToken="+encodeURIComponent(pageToken):"");
-      const response=await call(url),page=await response.json() as FileList;
+      const response=await call(url,undefined,Boolean(pageToken)),page=await response.json() as FileList;
       if((page.files??[]).length>25||(page.nextPageToken!==undefined&&(!page.nextPageToken||page.nextPageToken.length>1024||page.nextPageToken===pageToken)))
         throw new MailboxUnavailableError("mailbox-diagnostic-cursor-invalid");
       const entries:RuntimeErrorRecord[]=[],seen=new Set<string>();
@@ -193,6 +195,9 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         let safe:RuntimeErrorRecord|undefined;try{safe=cleanDiagnostic(JSON.parse(raw));}catch{throw new MailboxUnavailableError("mailbox-record-malformed");}
         if(!safe||safe.eventId!==props.brainBvpEventId||seen.has(safe.eventId))
           throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");
+        if(boundRun?safe.diagnostic.identity.runId!==await opaqueDiagnosticId(rawRun!,"run"):
+          safe.diagnostic.identity.runId!=="unavailable")
+          throw new MailboxUnavailableError("mailbox-diagnostic-origin-conflict");
         seen.add(safe.eventId);
         entries.push({...safe,origin:{runId:boundRun?rawRun!:null,deviceId}});
       }
@@ -291,7 +296,14 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
             throw new MailboxUnavailableError("relay-diagnostic-cursor-invalid");
           token=(saved.pageToken??undefined) as string|undefined;
         }
-        const page=await mailbox.diagnosticsForDevice(lease.deviceId,token);
+        // Drive may reject a previously issued token; restart one bounded page from the
+        // beginning without advancing the durable cursor until inbox reconciliation succeeds.
+        let page:Awaited<ReturnType<DriveCommandMailbox["diagnosticsForDevice"]>>;
+        try{page=await mailbox.diagnosticsForDevice(lease.deviceId,token);}
+        catch(error){
+          if(!token||!(error instanceof MailboxUnavailableError)||error.message!=="mailbox-diagnostic-cursor-expired")throw error;
+          page=await mailbox.diagnosticsForDevice(lease.deviceId);
+        }
         for(const entry of page.entries){
           const path=`${inside}/bvp-diagnostic-${entry.eventId}.error.json`;
           if(await adapter.exists(path)){
