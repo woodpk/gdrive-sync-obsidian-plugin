@@ -31,9 +31,9 @@ function assertRelayUnavailable(result:{status:string;published:number;completed
 }
 
 class FakeDrive {
-  next=1; files=new Map<string,{meta:any;content:string}>();
+  next=1; files=new Map<string,{meta:any;content:string}>(); diagnosticPageSizes:number[]=[];
   request:AuthenticatedDriveRequest=async(input,init={})=>{const url=new URL(input),method=(init.method??"GET").toUpperCase(),path=url.pathname;
-    if(path==="/drive/v3/files"&&method==="GET"){const q=decodeURIComponent(url.searchParams.get("q")??"");const root=q.includes("brainBvpMailbox")&&!q.includes("brainBvpRecord")&&!q.includes("brainBvpKind"),prop=(key:string)=>q.match(new RegExp(key+"' and value='([^']+)"))?.[1],kind=prop("brainBvpKind"),run=prop("brainBvpRunId"),device=prop("brainBvpDeviceId");const event=prop("brainBvpEventId");const matched=[...this.files].filter(([,v])=>root?v.meta.appProperties?.brainBvpMailbox==="1":(!q.includes("brainBvpRecord")||v.meta.appProperties?.brainBvpRecord==="1")&&(!kind||v.meta.appProperties?.brainBvpKind===kind)&&(!run||v.meta.appProperties?.brainBvpRunId===run)&&(!device||v.meta.appProperties?.brainBvpDeviceId===device)&&(!event||v.meta.appProperties?.brainBvpEventId===event));const files=matched.slice(0,200).map(([id,v])=>({id,name:v.meta.name,size:String(new TextEncoder().encode(v.content).byteLength),appProperties:v.meta.appProperties}));return Response.json({files,...(matched.length>200?{nextPageToken:"more"}:{})});}
+    if(path==="/drive/v3/files"&&method==="GET"){const q=decodeURIComponent(url.searchParams.get("q")??"");const root=q.includes("brainBvpMailbox")&&!q.includes("brainBvpRecord")&&!q.includes("brainBvpKind"),prop=(key:string)=>q.match(new RegExp(key+"' and value='([^']+)"))?.[1],kind=prop("brainBvpKind"),run=prop("brainBvpRunId"),device=prop("brainBvpDeviceId");const event=prop("brainBvpEventId");const matched=[...this.files].filter(([,v])=>root?v.meta.appProperties?.brainBvpMailbox==="1":(!q.includes("brainBvpRecord")||v.meta.appProperties?.brainBvpRecord==="1")&&(!kind||v.meta.appProperties?.brainBvpKind===kind)&&(!run||v.meta.appProperties?.brainBvpRunId===run)&&(!device||v.meta.appProperties?.brainBvpDeviceId===device)&&(!event||v.meta.appProperties?.brainBvpEventId===event));const pageSize=Math.min(200,Math.max(1,Number(url.searchParams.get("pageSize")??"100")));const rawToken=url.searchParams.get("pageToken");const start=rawToken?Number(/^page:(\\d+)$/.exec(rawToken)?.[1]??NaN):0;if(!Number.isSafeInteger(start)||start<0)return new Response("",{status:400});if(kind==="diagnostic")this.diagnosticPageSizes.push(pageSize);const files=matched.slice(start,start+pageSize).map(([id,v])=>({id,name:v.meta.name,size:String(new TextEncoder().encode(v.content).byteLength),appProperties:v.meta.appProperties}));return Response.json({files,...(matched.length>start+pageSize?{nextPageToken:"page:"+(start+pageSize)}:{})});}
     if(path==="/drive/v3/files/generateIds"&&method==="GET")return Response.json({ids:["reserved-"+this.next++]});
     if(path==="/drive/v3/files"&&method==="POST"){const meta=JSON.parse(String(init.body??"{}")),id=meta.id??"f"+this.next++;if(this.files.has(id))return new Response("",{status:409});this.files.set(id,{meta,content:""});return Response.json({id});}
     const upload=path.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);if(upload&&method==="PATCH"){const file=this.files.get(upload[1]);if(!file)return new Response("",{status:404});file.content=String(init.body??"");return new Response("",{status:200});}
@@ -407,4 +407,87 @@ test("DEC352-F03 diagnostic retry cooldown survives journal reconstruction and d
   equal(snap.entries.length,1);equal(snap.entries[0].deliveredCount,0);
   equal(typeof snap.nextDeliveryAt,"number");
   equal(snap.nextDeliveryAt!>Date.now(),true);
+});
+
+test("DEC352-R2-F01 delayed run A diagnostic reaches Windows under run B lease without A command authority",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-a","device-a",1);
+  const journal=new BvpRuntimeErrorJournal(files,root);
+  await journal.record(bvpPollFailure("run-a-offline"),{runId:"run-a",deviceId:"device-a"});
+  await authorize(files,root,"run-b","device-a",2);
+  await journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  const original=(await journal.snapshot()).entries[0],inbox=root+"/inbox/bvp-diagnostic-"+original.eventId+".error.json";
+  equal(await files.exists(inbox),true,"old run diagnostic must reach existing device inbox");
+  const persisted=JSON.parse(await files.read(inbox));
+  deepEqual(persisted.origin,{runId:"run-a",deviceId:"device-a"});
+  equal(persisted.diagnostic.classification,"run-a-offline");
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  const restarted=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await restarted.pumpOnce(),{status:"ok",published:0,completed:0});
+  equal([...files.values.keys()].filter(k=>k.endsWith(".error.json")).length,1);
+  await files.write(root+"/outbox/old-command.json",JSON.stringify(command(1,"run-a","device-a")));
+  assertRelayUnavailable(await restarted.pumpOnce(),"relay-controller-run-unleased");
+  equal(await files.exists(root+"/outbox/old-command.json"),true,"historical read must not authorize commands");
+});
+
+test("DEC352-R2-F02 231 remote diagnostics ingest through bounded restart-checkpointed pages",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-b","device-a",2);
+  const ids:string[]=[];
+  for(let i=0;i<231;i++){
+    const eventId=randomUUID(),record={schemaVersion:1 as const,eventId,firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure("diagnostic-batch")};
+    ids.push(eventId);
+    drive.files.set("history-"+i,{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",brainBvpDeviceId:"device-a",brainBvpRunId:i<115?"run-a":"run-b",brainBvpEventId:eventId}},content:JSON.stringify(record)});
+  }
+  const first=createWindowsMailboxRelay(mailbox,files,root);
+  for(let i=0;i<2;i++)deepEqual(await first.pumpOnce(),{status:"ok",published:0,completed:0});
+  const prior=[...files.values.keys()].filter(p=>p.endsWith(".error.json")).length;
+  equal(prior>0&&prior<231,true,"each pump must be bounded; no one-tick full-history traversal");
+  const cursorFiles=[...files.values.keys()].filter(p=>p.startsWith(root+"/diagnostic-cursors/"));
+  equal(cursorFiles.length,1,"cursor must be on durable relay adapter before restart");
+  const resumed=createWindowsMailboxRelay(mailbox,files,root);
+  for(let i=0;i<20&&ids.some(id=>!files.values.has(root+"/inbox/bvp-diagnostic-"+id+".error.json"));i++)
+    deepEqual(await resumed.pumpOnce(),{status:"ok",published:0,completed:0});
+  equal(ids.every(id=>files.values.has(root+"/inbox/bvp-diagnostic-"+id+".error.json")),true,"each valid historical event eventually reaches inbox");
+  equal(drive.diagnosticPageSizes.every(size=>size<=25),true,"each diagnostic collection page must be bounded to 25 entries");
+  equal(drive.files.size>=231,true,"unresolved remote history must not be deleted to pass pagination");
+  equal([...files.values.keys()].filter(k=>k.endsWith(".error.json")).length,231);
+});
+
+test("DEC352-R2-F03 unbound offline errors coalesce and are observable by authorized device without invented run",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-b","device-a",3);
+  const journal=new BvpRuntimeErrorJournal(files,root);
+  for(let i=0;i<9;i++)await journal.record(bvpPollFailure("mailbox-drive-unauthorized"),{runId:null,deviceId:"device-a"});
+  const pending=await journal.snapshot();
+  equal(pending.entries.length,1,"unbound same-device repeated failure must not saturate local journal");
+  equal(pending.entries[0].occurrences,9);
+  equal(await journal.acquireDeliveryWindow(),true,"unbound known-device telemetry becomes eligible on transport recovery");
+  await journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
+  const delivered=await journal.snapshot();
+  equal(delivered.entries[0].deliveredCount,9);
+  const remote=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic");
+  equal(remote.length,1);equal(remote[0].meta.appProperties.brainBvpOriginBound,"0");
+  equal(remote[0].meta.appProperties.brainBvpRunId,undefined);
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  const inbox=JSON.parse(await files.read(root+"/inbox/bvp-diagnostic-"+pending.entries[0].eventId+".error.json"));
+  deepEqual(inbox.origin,{runId:null,deviceId:"device-a"});
+  equal(inbox.diagnostic.identity.runId,"unavailable");
+  equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="result"),false);
+});
+
+test("DEC352-R2 cross-device diagnostic retrieval and falsified remote origins fail closed",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
+  await authorize(files,root,"run-b","device-a",3);
+  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure(),origin:{runId:"run-a",deviceId:"device-other"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await mailbox.publishDiagnostic("run-a","device-other",event);
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  equal((await files.list(root+"/inbox")).files.length,0,"other devices' errors cannot leak into device-a");
+  const other=[...drive.files.values()].find(f=>f.meta.appProperties?.brainBvpEventId===event.eventId)!;
+  other.meta.appProperties.brainBvpOriginBound="0";
+  await rejects(()=>mailbox.diagnosticsForDevice("device-other"),/mailbox-diagnostic-record-invalid|mailbox-diagnostic-origin-conflict/);
 });
