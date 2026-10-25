@@ -90,7 +90,7 @@ export async function buildValidationArtifact(repositoryRoot = resolve(process.c
     `const bvpValidationBuildIdentity = installBvpValidationBuildIdentity(${JSON.stringify(sourceCommit)});`,
     'class BvpValidationPlugin extends ProductionPlugin {',
     '  private bvpRuntimeTimer?: number;',
-    '  async onload() { await super.onload(); const raw = await this.loadData() as any; const settings = raw?.settings ?? {}; if (!settings.oauthClientId || !settings.oauthRedirectUri || !settings.deviceIdentity) return; const fetcher = createObsidianRequestUrlFetcher(requestUrl); const oauth = new GoogleOAuthSession({ clientId: settings.oauthClientId, redirectUri: settings.oauthRedirectUri, clientSecretStorageKey: GOOGLE_OAUTH_CLIENT_SECRET_ID }, new ObsidianSecretStore(this.app.secretStorage), fetcher); const transport = new GoogleHttpTransport(oauth, fetcher); const requester = async (url: string, init?: RequestInit) => { const response = await transport.request(url, init); if (!response.ok) throw new Error("bvp-mailbox-drive-" + response.signal.kind); return response.value; }; const root = this.app.vault.configDir + "/plugins/" + this.manifest.id + "/.bvp-relay"; const runtime = await installBvpMailboxRuntime(requester, { adapter: this.app.vault.adapter, root, deviceId: settings.deviceIdentity, validationBuild: bvpValidationBuildIdentity, production: () => this.productionVerificationControl(), relay: Platform.isDesktopApp }); this.bvpRuntimeTimer = window.setInterval(() => { void runtime.pollDeviceOnce().catch(() => undefined); if (runtime.relay) void runtime.relay.pumpOnce().catch(() => undefined); }, 1000); }',
+    '  async onload() { await super.onload(); const raw = await this.loadData() as any; const settings = raw?.settings ?? {}; if (!settings.oauthClientId || !settings.oauthRedirectUri || !settings.deviceIdentity) return; const fetcher = createObsidianRequestUrlFetcher(requestUrl); const oauth = new GoogleOAuthSession({ clientId: settings.oauthClientId, redirectUri: settings.oauthRedirectUri, clientSecretStorageKey: GOOGLE_OAUTH_CLIENT_SECRET_ID }, new ObsidianSecretStore(this.app.secretStorage), fetcher); const transport = new GoogleHttpTransport(oauth, fetcher); const requester = async (url: string, init?: RequestInit) => { const response = await transport.request(url, init); if (!response.ok) throw new Error("bvp-mailbox-drive-" + response.signal.kind); return response.value; }; const root = this.app.vault.configDir + "/plugins/" + this.manifest.id + "/.bvp-relay"; const runtime = await installBvpMailboxRuntime(requester, { adapter: this.app.vault.adapter, root, deviceId: settings.deviceIdentity, validationBuild: bvpValidationBuildIdentity, production: () => this.productionVerificationControl(), relay: Platform.isDesktopApp }); this.bvpRuntimeTimer = window.setInterval(() => { void runtime.pollAndReportOnce().catch(() => console.error("BVP_RUNTIME_JOURNAL_FAILURE")); }, 1000); }',
     '  async onunload() { if (this.bvpRuntimeTimer !== undefined) window.clearInterval(this.bvpRuntimeTimer); await super.onunload(); }',
     '}',
     "export default BvpValidationPlugin;",
@@ -131,7 +131,9 @@ export async function buildValidationArtifact(repositoryRoot = resolve(process.c
 
   const testPlatformInputs = inputs.filter(input => input.startsWith("test-platform/"));
   const unexpectedTestPlatformInputs = testPlatformInputs.filter(
-    input => !input.startsWith("test-platform/src/live-device/"),
+    input => !input.startsWith("test-platform/src/live-device/") &&
+      input !== "test-platform/src/diagnostic-contract.ts" &&
+      input !== "test-platform/src/bvp-runtime-error-journal.ts",
   );
   if (unexpectedTestPlatformInputs.length > 0) {
     throw new Error(

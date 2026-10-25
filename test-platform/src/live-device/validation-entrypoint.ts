@@ -1,6 +1,8 @@
 import { createBoundedDeviceCommandAgent, type DeviceFixturePort, type DeviceSequenceState, type DeviceSequenceStateStore, type ValidationBuildIdentity } from "./device-command-agent";
 import { createDriveCommandMailbox, createWindowsMailboxRelay, pollDeviceMailboxOnce, type AuthenticatedDriveRequest } from "./drive-mailbox";
-import { bvpDiagnostic } from "./diagnostic-contract";
+import { bvpDiagnostic, diagnosticCode, type BvpDiagnostic } from "./diagnostic-contract";
+import { BvpRuntimeErrorJournal } from "../bvp-runtime-error-journal";
+import { MailboxUnavailableError } from "./drive-mailbox";
 
 export const BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL = "BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL";
 export const BVP_VALIDATION_BUILD_GLOBAL = "__BRAIN_BVP_VALIDATION_BUILD__";
@@ -36,6 +38,8 @@ export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValida
 export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){
   const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
   let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
+  const journal=new BvpRuntimeErrorJournal(options.adapter,options.root);
+  let ticking:Promise<void>|undefined;
   async function pollCore(){const runId=await mailbox.activeRun(options.deviceId);if(!runId)return{status:"ok" as const,processed:0};if(!globalThis.localStorage)return{status:"unavailable" as const,processed:0,reason:"device-sequence-storage-unavailable",diagnostic:bvpDiagnostic({
       classification:"device-sequence-storage-unavailable",component:"device-agent",phase:"sequence-storage-preflight",
       lastConfirmedBoundary:"active-run-read",firstUnconfirmedBoundary:"durable-sequence-storage",effect:"none-confirmed",
@@ -47,6 +51,27 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
     const measuredBuild:ValidationBuildIdentity={...options.validationBuild,artifactSha256,manifestSha256};
     const agent=createBoundedDeviceCommandAgent({runId,deviceId:options.deviceId,fixtureRoot:"BVP-VALIDATION/"+runId,fixtures:new VaultFixturePort(options.adapter),sequenceState:new LocalStorageSequenceStore(stateKey(options.root,runId,options.deviceId),globalThis.localStorage),production:options.production?.(),validationBuild:measuredBuild});return pollDeviceMailboxOnce(mailbox,agent,runId,options.deviceId);}
   function pollDeviceOnce(){if(polling)return polling;polling=pollCore().finally(()=>{polling=undefined;});return polling;}
-  const value=Object.freeze({mailbox,relay,deviceId:options.deviceId,currentRunId:()=>activeRunId,pollDeviceOnce});
+  function unexpected(component:"device-agent"|"windows-relay",phase:string,error:unknown):BvpDiagnostic{
+    const classification=error instanceof MailboxUnavailableError?diagnosticCode(error.message):"bvp-unexpected-runtime-failure";
+    return bvpDiagnostic({classification,component,phase,
+      lastConfirmedBoundary:"timer-entered",firstUnconfirmedBoundary:"runtime-operation-complete",
+      effect:"unknown",recommendedAction:"inspect-device-journal"});
+  }
+  async function tickCore():Promise<void>{
+    let failed=false;
+    try{const result=await pollDeviceOnce();if(result.status==="unavailable"){failed=true;await journal.record(result.diagnostic);}}
+    catch(error){failed=true;await journal.record(unexpected("device-agent","device-poll",error));}
+    if(relay)try{const result=await relay.pumpOnce();if(result.status==="unavailable"&&result.diagnostic){failed=true;await journal.record(result.diagnostic);}}
+    catch(error){failed=true;await journal.record(unexpected("windows-relay","relay-pump",error));}
+    if(!failed){
+      await journal.recover(bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",
+        phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",
+        effect:"none-confirmed",recommendedAction:"none"}));
+      if(activeRunId)try{await journal.flush(entry=>mailbox.publishDiagnostic(activeRunId!,options.deviceId,entry));}
+      catch(error){console.error("BVP_DIAGNOSTIC_DELIVERY_PENDING",error instanceof MailboxUnavailableError?diagnosticCode(error.message):"bvp-diagnostic-publication-failed");}
+    }
+  }
+  function pollAndReportOnce():Promise<void>{if(ticking)return ticking;ticking=tickCore().finally(()=>{ticking=undefined;});return ticking;}
+  const value=Object.freeze({mailbox,relay,journal,deviceId:options.deviceId,currentRunId:()=>activeRunId,pollDeviceOnce,pollAndReportOnce});
   Object.defineProperty(globalThis,BVP_MAILBOX_RUNTIME_GLOBAL,{value,configurable:true,enumerable:false,writable:false});return value;
 }

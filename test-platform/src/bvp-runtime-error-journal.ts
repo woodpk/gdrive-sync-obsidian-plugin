@@ -6,7 +6,7 @@ export interface RuntimeErrorRecord {
   readonly schemaVersion:1; readonly eventId:string; readonly firstAt:string; readonly lastAt:string;
   readonly occurrences:number; readonly diagnostic:BvpDiagnostic;
 }
-interface Entry extends RuntimeErrorRecord { deliveredCount:number; }
+interface Entry { schemaVersion:1; eventId:string; firstAt:string; lastAt:string; occurrences:number; diagnostic:BvpDiagnostic; deliveredCount:number; }
 interface Snapshot { schemaVersion:1; entries:Entry[]; outstanding:boolean; overflow:number; }
 const MAX_EVENTS=24;
 const safeEvent=(id:string)=>/^[0-9a-f-]{36}$/.test(id);

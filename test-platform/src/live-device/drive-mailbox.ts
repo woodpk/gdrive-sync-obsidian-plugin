@@ -1,4 +1,5 @@
 import type { BoundedDeviceCommandAgent, DeviceCommand, DeviceCommandResult } from "./device-command-agent";
+import type { RuntimeErrorRecord } from "../bvp-runtime-error-journal";
 import { bvpDiagnostic, diagnosticCode, opaqueDiagnosticId, type BvpDiagnostic, type BvpDiagnosticInput } from "./diagnostic-contract";
 
 const API = "https://www.googleapis.com/drive/v3";
@@ -48,6 +49,16 @@ function result(value: unknown): DeviceCommandResult | undefined {
   const diagnostic=rawDiagnostic?.schemaVersion===1?bvpDiagnostic(rawDiagnostic as BvpDiagnosticInput):undefined;
   return {validationBuild:{schemaVersion:1,sourceCommit:build.sourceCommit.toLowerCase(),...(typeof build.artifactSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.artifactSha256)&&typeof build.manifestSha256==="string"&&/^[a-f0-9]{64}$/i.test(build.manifestSha256)?{artifactSha256:build.artifactSha256.toLowerCase(),manifestSha256:build.manifestSha256.toLowerCase()}:{})},...h,kind:v.kind as DeviceCommandResult["kind"],status:v.status as DeviceCommandResult["status"],classification:safeClassification,...(v.replayed===true?{replayed:true as const}:{}),...(v.plan?{plan:structuredClone(v.plan)}:{}),...(v.actionResult?{actionResult:structuredClone(v.actionResult)}:{}),...(v.receipt?{receipt:structuredClone(v.receipt)}:{}),...(v.productStatus?{productStatus:structuredClone(v.productStatus)}:{}),...(v.fixture?{fixture:structuredClone(v.fixture)}:{}),...(diagnostic?{diagnostic}:{})};
 }
+function cleanDiagnostic(value:unknown):RuntimeErrorRecord|undefined{
+  const v=obj(value),d=obj(v?.diagnostic);
+  if(!v||v.schemaVersion!==1||typeof v.eventId!=="string"||!/^[0-9a-f-]{36}$/.test(v.eventId)||
+    typeof v.firstAt!=="string"||typeof v.lastAt!=="string"||!/^\\d{4}-\\d{2}-\\d{2}T/.test(v.firstAt)||
+    !/^\\d{4}-\\d{2}-\\d{2}T/.test(v.lastAt)||!Number.isSafeInteger(v.occurrences)||v.occurrences<1||!d||d.schemaVersion!==1)return undefined;
+  const sanitized=bvpDiagnostic(d as BvpDiagnosticInput);
+  // Untrusted diagnostic fields must match the exact reduced safe contract; never publish raw extras.
+  if(JSON.stringify(d)!==JSON.stringify(sanitized))return undefined;
+  return{schemaVersion:1,eventId:v.eventId,firstAt:v.firstAt,lastAt:v.lastAt,occurrences:v.occurrences,diagnostic:sanitized};
+}
 function same(a: Header,b: Header): boolean { return a.runId===b.runId&&a.deviceId===b.deviceId&&a.sequence===b.sequence&&a.commandId===b.commandId; }
 function sensitive(value:unknown):boolean{if(!value||typeof value!=="object")return false;if(Array.isArray(value))return value.some(sensitive);return Object.entries(value as Record<string,unknown>).some(([k,v])=>/^(access[_-]?token|refresh[_-]?token|authorization[_-]?code|client[_-]?secret|code[_-]?verifier|password|passcode|token)$/i.test(k)||sensitive(v));}
 function jsonBytes(value: unknown): { text:string; bytes:number } { const text=JSON.stringify(value); return {text,bytes:new TextEncoder().encode(text).byteLength}; }
@@ -59,6 +70,8 @@ async function controllerAuthorityPath(root:string,deviceId:string):Promise<stri
 
 export interface DriveCommandMailbox {
   publishResult(value: DeviceCommandResult): Promise<void>;
+  publishDiagnostic(runId:string,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
+  diagnostics(runId:string,deviceId:string):Promise<RuntimeErrorRecord[]>;
   commands(runId: string, deviceId: string): Promise<DeviceCommand[]>;
   resultFor(value: DeviceCommand): Promise<DeviceCommandResult | undefined>;
   activeRun(deviceId: string): Promise<string | undefined>;
@@ -89,10 +102,19 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
   async function deleteFile(id:string):Promise<void>{await call(`${API}/files/${encodeURIComponent(id)}`,{method:"DELETE"});}
   async function ensureRunBinding(runId:string,deviceId:string,generation:number):Promise<void>{let page=await bindingListing(deviceId),files=page.files??[],parsed=files.map(file=>({file,run:file.appProperties?.brainBvpRunId,generation:bindingGeneration(file)}));if(parsed.some(value=>!value.run||value.generation===undefined))throw new MailboxUnavailableError("mailbox-run-binding-invalid");if(parsed.some(value=>value.generation!>generation||(value.generation===generation&&value.run!==runId)))throw new MailboxUnavailableError("mailbox-device-run-conflict");if(parsed.some(value=>value.generation===generation&&value.run===runId))return;const parent=await rootId(),created=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-run-binding-${crypto.randomUUID()}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"1",brainBvpKind:"run-binding",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpGeneration:String(generation)}})}),value=await created.json() as{id?:string};if(!value.id)throw new MailboxUnavailableError("mailbox-run-binding-create-invalid");page=await bindingListing(deviceId);files=page.files??[];parsed=files.map(file=>({file,run:file.appProperties?.brainBvpRunId,generation:bindingGeneration(file)}));const own=parsed.find(value2=>value2.file.id===value.id&&value2.run===runId&&value2.generation===generation);if(!own||parsed.some(value2=>value2.generation!==undefined&&(value2.generation>generation||(value2.generation===generation&&value2.run!==runId)))){await deleteFile(value.id);throw new MailboxUnavailableError(own?"mailbox-device-run-conflict":"mailbox-run-binding-unconfirmed");}for(const stale of parsed.filter(value2=>value2.generation!==undefined&&value2.generation<generation))await deleteFile(stale.file.id);}
   async function publish(kind:"command"|"result",value:unknown,generation?:number):Promise<void>{const safe=kind==="command"?command(value):result(value);if(!safe)throw new Error("mailbox-record-invalid");if(sensitive(safe))throw new Error("mailbox-sensitive-field");const encoded=jsonBytes(safe);if(encoded.bytes>MAX_RECORD_BYTES)throw new Error("mailbox-record-too-large");if(kind==="command"){if(!Number.isSafeInteger(generation)||generation!<=0)throw new MailboxUnavailableError("mailbox-controller-generation-invalid");await ensureRunBinding(safe.runId,safe.deviceId,generation!);}const parent=await rootId(),props:{[key:string]:string}={brainBvpRecord:"1",brainBvpKind:kind,brainBvpRunId:safe.runId,brainBvpDeviceId:safe.deviceId};if(kind==="command")props.brainBvpGeneration=String(generation);const meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-${kind}-${crypto.randomUUID()}.json`,parents:[parent],mimeType:"application/json",appProperties:props})}),m=await meta.json() as{id?:string};if(!m.id)throw new Error("mailbox-record-create-invalid");await call(`${UPLOAD}/files/${encodeURIComponent(m.id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});}
-  async function listing(kind:"command"|"result"|"run-binding",runId:string,deviceId:string):Promise<FileList>{const parent=await rootId();const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='${kind}' } and appProperties has { key='brainBvpRunId' and value='${escapeQuery(runId)}' } and appProperties has { key='brainBvpDeviceId' and value='${escapeQuery(deviceId)}' }`);const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=200&fields=nextPageToken,files(id,size,appProperties)`);return await response.json() as FileList;}
-  async function records(kind:"command"|"result",runId:string,deviceId:string):Promise<{file:MailboxFile;value:unknown}[]>{const page=await listing(kind,runId,deviceId);if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-current-run-overflow");const output:{file:MailboxFile;value:unknown}[]=[];for(const file of page.files??[]){if(file.size&&Number(file.size)>MAX_RECORD_BYTES)continue;const media=await call(`${API}/files/${encodeURIComponent(file.id)}?alt=media`);const text=await media.text();if(new TextEncoder().encode(text).byteLength>MAX_RECORD_BYTES)continue;try{output.push({file,value:JSON.parse(text)});}catch{}}return output;}
+  async function listing(kind:"command"|"result"|"run-binding"|"diagnostic",runId:string,deviceId:string):Promise<FileList>{const parent=await rootId();const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpRecord' and value='1' } and appProperties has { key='brainBvpKind' and value='${kind}' } and appProperties has { key='brainBvpRunId' and value='${escapeQuery(runId)}' } and appProperties has { key='brainBvpDeviceId' and value='${escapeQuery(deviceId)}' }`);const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=200&fields=nextPageToken,files(id,size,appProperties)`);return await response.json() as FileList;}
+  async function records(kind:"command"|"result"|"diagnostic",runId:string,deviceId:string):Promise<{file:MailboxFile;value:unknown}[]>{const page=await listing(kind,runId,deviceId);if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-current-run-overflow");const output:{file:MailboxFile;value:unknown}[]=[];for(const file of page.files??[]){if(file.size&&Number(file.size)>MAX_RECORD_BYTES)continue;const media=await call(`${API}/files/${encodeURIComponent(file.id)}?alt=media`);const text=await media.text();if(new TextEncoder().encode(text).byteLength>MAX_RECORD_BYTES)continue;try{output.push({file,value:JSON.parse(text)});}catch{}}return output;}
   const mailbox:DriveCommandMailbox={
     publishResult:value=>publish("result",value),
+    async publishDiagnostic(runId,deviceId,value){
+      if(!/^[a-zA-Z0-9._:-]{1,128}$/.test(runId)||!/^[a-zA-Z0-9._:-]{1,128}$/.test(deviceId))throw new Error("mailbox-diagnostic-identity-invalid");
+      const safe=cleanDiagnostic(value);if(!safe)throw new Error("mailbox-diagnostic-invalid");
+      const encoded=jsonBytes(safe);if(encoded.bytes>MAX_RECORD_BYTES)throw new Error("mailbox-record-too-large");
+      const parent=await rootId(),meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})}),created=await meta.json() as{id?:string};
+      if(!created.id)throw new MailboxUnavailableError("mailbox-diagnostic-create-invalid");
+      await call(`${UPLOAD}/files/${encodeURIComponent(created.id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});
+    },
+    async diagnostics(runId,deviceId){return (await records("diagnostic",runId,deviceId)).map(record=>cleanDiagnostic(record.value)).filter((record):record is RuntimeErrorRecord=>Boolean(record));},
     async commands(runId,deviceId){const values=(await records("command",runId,deviceId)).map(v=>command(v.value)).filter((v):v is DeviceCommand=>Boolean(v&&v.runId===runId&&v.deviceId===deviceId));return values.sort((a,b)=>a.sequence-b.sequence);},
     async resultFor(value){const target=header(value)!;const values=(await records("result",target.runId,target.deviceId)).map(v=>result(v.value)).filter((v):v is DeviceCommandResult=>Boolean(v&&same(v,target)));if(!values.length)return undefined;const first=JSON.stringify(values[0]);if(values.some(v=>JSON.stringify(v)!==first))throw new Error("mailbox-conflicting-result");return values[0];},
     activeRun,
@@ -168,6 +190,22 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
         await adapter.write(`${inside}/${baseName(path)}.result.json`,JSON.stringify(res));
         first="sent-record-removal";failureClass="relay-file-remove-failed";
         await adapter.remove(path);completed++;
+      }
+      // Pull diagnostics using controller-owned, exact device/run leases; never infer a device from a filename.
+      phase="diagnostic-ingest";first="remote-diagnostic-observation";failureClass="relay-diagnostic-ingest-failed";
+      const leases=root+"/controller-authority";
+      if(await adapter.exists(leases))for(const file of (await adapter.list(leases)).files){
+        let v:Record<string,unknown>|undefined;try{v=obj(JSON.parse(await adapter.read(file)));}catch{continue;}
+        if(!v||typeof v.deviceId!=="string")continue;
+        const lease=controllerAuthority(v,v.deviceId);
+        if(!lease||!lease.runId||lease.generation<=0)continue;
+        for(const entry of await mailbox.diagnostics(lease.runId,lease.deviceId)){
+          const path=`${inside}/bvp-diagnostic-${entry.eventId}.error.json`;
+          if(await adapter.exists(path)){
+            try{const old=obj(JSON.parse(await adapter.read(path)));if(Number(old?.occurrences)>=entry.occurrences)continue;}catch{}
+          }
+          await adapter.write(path,JSON.stringify(entry));
+        }
       }
       return{status:"ok",published,completed};
     }catch(e){

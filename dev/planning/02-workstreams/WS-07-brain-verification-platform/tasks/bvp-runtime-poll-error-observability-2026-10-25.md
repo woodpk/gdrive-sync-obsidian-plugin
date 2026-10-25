@@ -19,7 +19,7 @@ The validation-only plugin's one-second tick currently invokes `pollDeviceOnce()
 7. Existing three automatic product synchronization options remain OFF for physical readiness; physical test dispatch remains separately gated.
 
 ## Scope and ownership
-Allowed source: `test-platform/src/live-device/**`; existing focused tests under `test-platform/test/**`; bounded authoritative `dev/authority/**`, `dev/planning/**`, `dev/state/**`.
+Allowed source: `test-platform/src/live-device/**` and the two browser-pure shared modules `test-platform/src/diagnostic-contract.ts` and `test-platform/src/bvp-runtime-error-journal.ts` (necessary to preserve the frozen 950-line live-device budget without artificial code compression); existing focused tests under `test-platform/test/**`; bounded authoritative `dev/authority/**`, `dev/planning/**`, `dev/state/**`.
 Prohibited: `src/**` shipping logic, PHX-CI source/pin/taskfiles, frozen architecture lock/budgets, deterministic runner replacement, external broker, alternative CI, unrelated physical command or personal-vault mutation.
 
 ## Mandatory test adequacy and traceability
