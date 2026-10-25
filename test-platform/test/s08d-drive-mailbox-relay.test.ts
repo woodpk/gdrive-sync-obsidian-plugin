@@ -250,7 +250,7 @@ test("DEC-352 invalid addressed diagnostic blocks ingest and preserves relay sta
   const root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-a","device-a");
   drive.files.set("malformed-diagnostic",{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",
-    brainBvpRunId:"run-a",brainBvpDeviceId:"device-a"}},content:"{malformed"});
+    brainBvpRunId:"run-a",brainBvpDeviceId:"device-a",brainBvpEventId:randomUUID()}},content:"{malformed"});
   const response=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();
   equal(response.status,"unavailable");
   equal(response.diagnostic?.component,"windows-relay");
@@ -314,9 +314,14 @@ test("DEC352-F01 originating run survives A to B, no-run and restart; no cross-r
   equal(emitted.some(e=>e.runId==="run-b"),true);
   await restarted.record(bvpPollFailure(),{runId:null,deviceId:"device-a"});
   const count=emitted.length;
-  await restarted.flush(async()=>{throw new Error("unbound event must never be silently rebound");});
-  equal((await restarted.snapshot()).entries.some(e=>e.origin?.runId===null&&e.deliveredCount===0),true);
-  equal(emitted.length,count);
+  await restarted.flush(async entry=>{
+    equal(entry.origin?.runId,null,"unbound original run remains unknown");
+    equal(entry.origin?.deviceId,"device-a");
+    equal(entry.diagnostic.identity.runId,"unavailable");
+    emitted.push({runId:entry.origin?.runId??null,deviceId:entry.origin?.deviceId??null,eventId:entry.eventId});
+  });
+  deepEqual(emitted.slice(count).map(e=>e.runId),[null],"unbound delivery must never claim an active run");
+  equal((await restarted.snapshot()).entries.some(e=>e.origin?.runId===null&&e.deliveredCount===e.occurrences),true);
 });
 
 test("DEC352-F02 uncertain create/media/visibility responses replay with one reserved Drive object",async()=>{
