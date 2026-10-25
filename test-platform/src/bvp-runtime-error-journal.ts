@@ -2,14 +2,20 @@
 import type { BvpDiagnostic } from "./diagnostic-types";
 
 interface Store { exists(path:string):Promise<boolean>; mkdir(path:string):Promise<void>; read(path:string):Promise<string>; write(path:string,text:string):Promise<void>; }
+export interface DiagnosticOrigin { readonly runId:string|null; readonly deviceId:string|null; }
 export interface RuntimeErrorRecord {
   readonly schemaVersion:1; readonly eventId:string; readonly firstAt:string; readonly lastAt:string;
-  readonly occurrences:number; readonly diagnostic:BvpDiagnostic;
+  readonly occurrences:number; readonly diagnostic:BvpDiagnostic; readonly origin?:DiagnosticOrigin; readonly remoteFileId?:string;
 }
-interface Entry { schemaVersion:1; eventId:string; firstAt:string; lastAt:string; occurrences:number; diagnostic:BvpDiagnostic; deliveredCount:number; }
+interface Entry { schemaVersion:1; eventId:string; firstAt:string; lastAt:string; occurrences:number; diagnostic:BvpDiagnostic; deliveredCount:number; origin?:DiagnosticOrigin; remoteFileId?:string; }
 interface Snapshot { schemaVersion:1; entries:Entry[]; outstanding:boolean; overflow:number; }
 const MAX_EVENTS=24;
 const safeEvent=(id:string)=>/^[0-9a-f-]{36}$/.test(id);
+const safeRoute=(s:unknown)=>typeof s==="string"&&/^[a-zA-Z0-9._:-]{1,128}$/.test(s);
+const bound=(origin?:DiagnosticOrigin):DiagnosticOrigin=>({runId:origin?.runId??null,deviceId:origin?.deviceId??null});
+const sameOrigin=(a?:DiagnosticOrigin,b?:DiagnosticOrigin)=>JSON.stringify(bound(a))===JSON.stringify(bound(b));
+const isRecovery=(e:Entry)=>e.diagnostic.classification==="bvp-runtime-poll-recovered";
+function hasUnrecovered(entries:Entry[]):boolean{const newest=new Map<string,boolean>();for(const e of entries){const key=JSON.stringify(bound(e.origin));newest.set(key,!isRecovery(e));}return [...newest.values()].some(Boolean);}
 function valid(value:any):value is Snapshot {
   return value?.schemaVersion===1&&Array.isArray(value.entries)&&value.entries.length<=MAX_EVENTS&&
     typeof value.outstanding==="boolean"&&Number.isSafeInteger(value.overflow)&&value.overflow>=0&&
@@ -17,6 +23,8 @@ function valid(value:any):value is Snapshot {
       typeof e.firstAt==="string"&&typeof e.lastAt==="string"&&
       Number.isSafeInteger(e.occurrences)&&e.occurrences>0&&Number.isSafeInteger(e.deliveredCount)&&
       e.deliveredCount>=0&&e.deliveredCount<=e.occurrences&&
+      (e.origin===undefined||(e.origin!==null&&(e.origin.runId===null||safeRoute(e.origin.runId))&&(e.origin.deviceId===null||safeRoute(e.origin.deviceId))))&&
+      (e.remoteFileId===undefined||(typeof e.remoteFileId==="string"&&/^[a-zA-Z0-9_-]{2,128}$/.test(e.remoteFileId)))&&
       e.diagnostic?.schemaVersion===1&&typeof e.diagnostic.classification==="string");
 }
 export class BvpJournalError extends Error {
@@ -45,10 +53,11 @@ export class BvpRuntimeErrorJournal {
     }catch{throw new BvpJournalError("bvp-journal-persistence-failed");}
   }
   /** Collapse identical repeated failures; never persist exception bodies or raw identities. */
-  record(diagnostic:BvpDiagnostic):Promise<void>{return this.serial(async()=>{
+  record(diagnostic:BvpDiagnostic,origin?:DiagnosticOrigin):Promise<void>{return this.serial(async()=>{
+    const route=bound(origin);if((route.runId&&!safeRoute(route.runId))||(route.deviceId&&!safeRoute(route.deviceId)))throw new BvpJournalError("bvp-journal-corrupt");
     const state=await this.load(),now=new Date().toISOString();
     const last=state.entries.at(-1);
-    const same=last&&state.outstanding&&JSON.stringify(last.diagnostic)===JSON.stringify(diagnostic);
+    const same=last&&!isRecovery(last)&&sameOrigin(last.origin,route)&&JSON.stringify(last.diagnostic)===JSON.stringify(diagnostic);
     if(same){last.occurrences++;last.lastAt=now;}
     else{
       if(state.entries.length===MAX_EVENTS){
@@ -57,14 +66,15 @@ export class BvpRuntimeErrorJournal {
         state.entries.splice(removable,1);
       }
       state.entries.push({schemaVersion:1,eventId:crypto.randomUUID(),firstAt:now,lastAt:now,
-        occurrences:1,deliveredCount:0,diagnostic});
+        occurrences:1,deliveredCount:0,diagnostic,origin:route});
     }
     state.outstanding=true;await this.save(state);
   });}
   /** Emit one recovery boundary on the first healthy tick after an error. */
-  recover(diagnostic:BvpDiagnostic):Promise<void>{return this.serial(async()=>{
-    const state=await this.load();
-    if(!state.outstanding)return;
+  recover(diagnostic:BvpDiagnostic,origin?:DiagnosticOrigin):Promise<void>{return this.serial(async()=>{
+    const state=await this.load(),route=bound(origin);
+    const latest=[...state.entries].reverse().find(e=>sameOrigin(e.origin,route));
+    if(!latest||isRecovery(latest))return;
     const now=new Date().toISOString();
     if(state.entries.length===MAX_EVENTS){
       const removable=state.entries.findIndex(e=>e.deliveredCount===e.occurrences);
@@ -72,16 +82,17 @@ export class BvpRuntimeErrorJournal {
       state.entries.splice(removable,1);
     }
     state.entries.push({schemaVersion:1,eventId:crypto.randomUUID(),firstAt:now,lastAt:now,
-      occurrences:1,deliveredCount:0,diagnostic});
-    state.outstanding=false;await this.save(state);
+      occurrences:1,deliveredCount:0,diagnostic,origin:route});
+    state.outstanding=hasUnrecovered(state.entries);await this.save(state);
   });}
   /** On uncertain publication failure leave the event pending for safe idempotent replay. */
-  flush(publish:(entry:RuntimeErrorRecord)=>Promise<void>):Promise<number>{return this.serial(async()=>{
+  flush(publish:(entry:RuntimeErrorRecord)=>Promise<void>,reserve?:()=>Promise<string>):Promise<number>{return this.serial(async()=>{
     const state=await this.load();let sent=0;
     for(const entry of state.entries){
-      if(entry.deliveredCount===entry.occurrences)continue;
+      if(entry.deliveredCount===entry.occurrences||!entry.origin?.runId||!entry.origin.deviceId)continue;
+      if(reserve&&!entry.remoteFileId){entry.remoteFileId=await reserve();await this.save(state);}
       await publish({schemaVersion:1,eventId:entry.eventId,firstAt:entry.firstAt,
-        lastAt:entry.lastAt,occurrences:entry.occurrences,diagnostic:entry.diagnostic});
+        lastAt:entry.lastAt,occurrences:entry.occurrences,diagnostic:entry.diagnostic,origin:entry.origin,remoteFileId:entry.remoteFileId});
       entry.deliveredCount=entry.occurrences;await this.save(state);sent++;
     }
     return sent;
