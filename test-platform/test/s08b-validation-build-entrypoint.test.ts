@@ -142,6 +142,7 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   let publicationAttempts=0, reservations=0;
   runtime.mailbox.activeRun=async()=>runId;
   runtime.mailbox.commands=async()=>[];
+  if(runtime.relay)runtime.relay.pumpOnce=async()=>({status:"ok",published:0,completed:0});
   runtime.mailbox.reserveDiagnosticId=async()=>{reservations++;return "bounded-reservation-1";};
   runtime.mailbox.publishDiagnostic=async()=>{publicationAttempts++;throw new Error("remote response unavailable");};
   const pollError=bvpDiagnostic({classification:"mailbox-drive-provider-unavailable",component:"drive-mailbox",phase:"command-fetch",
