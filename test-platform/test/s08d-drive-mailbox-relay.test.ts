@@ -212,8 +212,7 @@ test("DEC-352 device diagnostics arrive in exact leased Windows relay inbox idem
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files();
   const root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-a","device-a",2);
-  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),
-    lastAt:new Date().toISOString(),occurrences:3,diagnostic:bvpPollFailure()};
+  const event={...await r3Record("run-a"),occurrences:3};
   await mailbox.publishDiagnostic("run-a","device-a",{...event,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()});
   equal((await mailbox.diagnostics("run-a","device-a")).length,1);
   equal((await mailbox.diagnostics("other-run","device-a")).length,0);
@@ -364,8 +363,7 @@ test("DEC352-F02 conflicting event origin or payload fails closed without second
 test("DEC352-F03 relay refuses same-event conflicting inbox evidence and duplicate remote records",async()=>{
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-a","device-a",1);
-  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),
-    occurrences:1,diagnostic:bvpPollFailure(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  const event={...await r3Record("run-a"),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
   await mailbox.publishDiagnostic("run-a","device-a",event);
   const relay=createWindowsMailboxRelay(mailbox,files,root);
   await relay.pumpOnce();
@@ -443,9 +441,9 @@ test("DEC352-R2-F02 231 remote diagnostics ingest through bounded restart-checkp
   await authorize(files,root,"run-b","device-a",2);
   const ids:string[]=[];
   for(let i=0;i<231;i++){
-    const eventId=randomUUID(),record={schemaVersion:1 as const,eventId,firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure("diagnostic-batch")};
-    ids.push(eventId);
-    drive.files.set("history-"+i,{meta:{appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",brainBvpDeviceId:"device-a",brainBvpRunId:i<115?"run-a":"run-b",brainBvpEventId:eventId}},content:JSON.stringify(record)});
+    const run=i<115?"run-a":"run-b",record=await r3Record(run,"diagnostic-batch");
+    ids.push(record.eventId);
+    r3Seed(drive,record,run,"device-a","history-"+i);
   }
   const first=createWindowsMailboxRelay(mailbox,files,root);
   for(let i=0;i<2;i++)deepEqual(await first.pumpOnce(),{status:"ok",published:0,completed:0});
@@ -488,7 +486,7 @@ test("DEC352-R2-F03 unbound offline errors coalesce and are observable by author
 test("DEC352-R2 cross-device diagnostic retrieval and falsified remote origins fail closed",async()=>{
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-b","device-a",3);
-  const event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure(),origin:{runId:"run-a",deviceId:"device-other"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  const event={...await r3Record("run-a"),origin:{runId:"run-a",deviceId:"device-other"},remoteFileId:await mailbox.reserveDiagnosticId()};
   await mailbox.publishDiagnostic("run-a","device-other",event);
   const relay=createWindowsMailboxRelay(mailbox,files,root);
   deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
