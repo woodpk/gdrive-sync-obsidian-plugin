@@ -172,3 +172,17 @@ For an **already-authorized validation-device inspection**, the authoritative lo
 
 No physical iOS, live personal Drive/vault inspection, release or debug command is authorized by this paragraph. Any such operation requires separate Owner approval and the governing physical-readiness gates.
 
+
+## DEC-354/355 remote retention operator boundary — software-only, unqualified
+
+The Owner authorized **5,000 ACTIVE diagnostic records per device**, a **90-day active-history window**, and verified, privacy-safe archival before deletion of eligible resolved records. The Owner raised the frozen **core to 4,850**, **live-device/relay to 1,250**. These allowances do not grant blanket deletion authorization.
+
+The validation mailbox's new unique diagnostic publication enumerates active records in bounded 200-result Drive pages, including unpublished reserved objects. It fails with typed codes:
+- `mailbox-diagnostic-active-capacity`: 5,000 protected active records already exist, so another unique event cannot be safely admitted.
+- `mailbox-diagnostic-active-expired`: the oldest active history includes evidence beyond 90 days; remote reporting of new unique events must not falsely claim acceptance while aged unresolved records remain.
+- `mailbox-diagnostic-retention-unconfirmed`: provider omitted or contradicted required identity/date/listing evidence, or a bounded page is invalid.
+These codes mean **unavailable/blocked remote delivery**, not loss of the original local error journal. Do not instruct the operator to delete old records to clear capacity.
+
+An explicit `archiveVerifiedDiagnostic(deviceId,eventId,archiveId)` operation is an authenticated BVP mailbox *copy* into separate `diagnostic-archive` records. It verifies exact sanitized source bytes, the SHA-256 digest, original metadata and origin and confirms independent archived media and metadata, returning `status:"verified"` only after observing both. The active source remains untouched even after verified archival. Retrying with the same reserved archive ID reconciles an ambiguous create. A conflicting ID, source drift or archive metadata fails closed. Archive success does **not** mean the diagnostic itself was resolved.
+
+**Not yet implemented:** There is no independent trusted event-specific resolution acknowledgment/control-plane procedure, no destructive retirement operation, and no autonomous background archival schedule. Thus protected unresolved active evidence may exceed the 90-day target and block new remote events; do not claim fully automated lifecycle compliance, global concurrency-atomic admission or freed Drive capacity. A future workflow may retire an explicitly resolved record only with verified specific acknowledgment, archived SHA/media provenance, and separately qualified code. No live personal Drive/vault, mobile/device execution or remote cleanup is authorized at this stage. New implementation is NOT PHX-CI-qualified until a new exact-source Windows run passes.
