@@ -110,9 +110,11 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       if(!/^[a-zA-Z0-9._:-]{1,128}$/.test(runId)||!/^[a-zA-Z0-9._:-]{1,128}$/.test(deviceId))throw new Error("mailbox-diagnostic-identity-invalid");
       const safe=cleanDiagnostic(value);if(!safe)throw new Error("mailbox-diagnostic-invalid");
       const encoded=jsonBytes(safe);if(encoded.bytes>MAX_RECORD_BYTES)throw new Error("mailbox-record-too-large");
-      const parent=await rootId(),meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"1",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})}),created=await meta.json() as{id?:string};
+      const parent=await rootId(),meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",brainBvpRunId:runId,brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})}),created=await meta.json() as{id?:string};
       if(!created.id)throw new MailboxUnavailableError("mailbox-diagnostic-create-invalid");
       await call(`${UPLOAD}/files/${encodeURIComponent(created.id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});
+      // Publish a discoverable mailbox record only after its bytes are durable.
+      await call(`${API}/files/${encodeURIComponent(created.id)}?fields=id`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({appProperties:{brainBvpRecord:"1"}})});
     },
     async diagnostics(runId,deviceId){const values=(await records("diagnostic",runId,deviceId)).map(record=>cleanDiagnostic(record.value));if(values.some(value=>!value))throw new MailboxUnavailableError("mailbox-diagnostic-record-invalid");return values.filter((value):value is RuntimeErrorRecord=>Boolean(value));},
     async commands(runId,deviceId){const values=(await records("command",runId,deviceId)).map(v=>command(v.value));if(values.some(v=>!v))throw new MailboxUnavailableError("mailbox-command-invalid");return values.filter((v):v is DeviceCommand=>Boolean(v&&v.runId===runId&&v.deviceId===deviceId)).sort((a,b)=>a.sequence-b.sequence);},
