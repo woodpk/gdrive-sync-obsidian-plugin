@@ -86,10 +86,10 @@ The following controls are part of the target architecture, not optional process
 - PowerShell script count/LOC for the BVP;
 - before/after delta for the current work package when a base SHA is supplied.
 
-**BVP-GOV-004 — Current hard budgets (owner-amended by DEC-349, 2026-10-23).** Only an explicit Owner-authorized architecture change may alter them:
+**BVP-GOV-004 — Current hard budgets (owner-amended by DEC-349 and DEC-353, 2026-10-25).** Only an explicit Owner-authorized architecture change may alter them:
 
 - production BVP-only seam: **maximum 350 logical source lines across maximum 4 production files**;
-- BVP framework core (runner, DSL interpreter, generic assertions/evidence, adapters/orchestration excluding tests, scenario definitions, and device agent): **maximum 4,500 logical TypeScript source lines**;
+- BVP framework core (runner, DSL interpreter, generic assertions/evidence, adapters/orchestration excluding tests, scenario definitions, and device agent): **maximum 4,550 logical TypeScript source lines**;
 - live-device agent/relay subset: **maximum 950 logical TypeScript source lines**;
 - individual ordinary declarative scenario: **target ≤120 logical lines; hard maximum 200 logical lines**;
 - scenario-specific PowerShell scripts: **0**;
@@ -99,6 +99,8 @@ The following controls are part of the target architecture, not optional process
 Tests themselves are not constrained by these LOC budgets; correctness evidence must not be discouraged by a test-code ceiling.
 
 **DEC-349 authorization (governance-bound):** The Owner explicitly selected Option 2 on 2026-10-23 for BVP diagnostic/error communication. The actual PHX-CI R1 footprint was 4,079 core and 778 live-device logical lines; the previous 4,000/750 ceilings blocked the upgrade. The amended 4,500/950 limits grant +500 core and +200 live-device lines, leaving 421/172 lines of remaining capacity at the measured R1 source for substantive, safe diagnostic work. Only those two ceilings change. The existing manifest-based metrics, fail-above-budget guard, no-scenario-specific scripts rule, zero competing verification authority, source isolation, and all other budgets remain enforced. The frozen manifest change must be qualified as `authorized-governance` through the unchanged Windows PHX-CI engineering gate, not with the `ordinary` change class. Unused headroom is not an implementation objective; if further growth is needed, obtain another Owner decision rather than hiding code or bypassing metrics.
+
+**DEC-353 Owner authorization (2026-10-25):** Following DEC-352 R2 independent findings, the Owner approved the bounded, read-only historical-run and unbound-device telemetry extension within the existing authenticated BVP mailbox and then separately approved a **+50** framework-core increase **4,500 → 4,550**. The live-device agent/relay hard ceiling remains **950**. No other budgets, authority contracts, PHX-CI pins, guard algorithms, physical dispatch authority or shipping code changed. The current machine-readable `testing-platform-boundary.yaml` must enforce 4,550 and 950. An eventual PHX-CI PASS does not itself authorize release or physical execution.
 
 If a legitimate requirement cannot be met within a hard budget, implementation MUST stop and surface an architecture-change request. A coding agent may not raise the budget or weaken the guard on its own.
 
