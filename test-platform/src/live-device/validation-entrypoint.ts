@@ -51,7 +51,7 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
     const measuredBuild:ValidationBuildIdentity={...options.validationBuild,artifactSha256,manifestSha256};
     const agent=createBoundedDeviceCommandAgent({runId,deviceId:options.deviceId,fixtureRoot:"BVP-VALIDATION/"+runId,fixtures:new VaultFixturePort(options.adapter),sequenceState:new LocalStorageSequenceStore(stateKey(options.root,runId,options.deviceId),globalThis.localStorage),production:options.production?.(),validationBuild:measuredBuild});return pollDeviceMailboxOnce(mailbox,agent,runId,options.deviceId);}
   function pollDeviceOnce(){if(polling)return polling;polling=pollCore().finally(()=>{polling=undefined;});return polling;}
-  function unexpected(component:"device-agent"|"windows-relay",phase:string,error:unknown):BvpDiagnostic{
+  function unexpected(component:"device-agent"|"windows-relay"|"drive-mailbox",phase:string,error:unknown):BvpDiagnostic{
     const classification=error instanceof MailboxUnavailableError?diagnosticCode(error.message):"bvp-unexpected-runtime-failure";
     return bvpDiagnostic({classification,component,phase,
       lastConfirmedBoundary:"timer-entered",firstUnconfirmedBoundary:"runtime-operation-complete",
@@ -64,11 +64,18 @@ export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest
     if(relay)try{const result=await relay.pumpOnce();if(result.status==="unavailable"&&result.diagnostic){failed=true;await journal.record(result.diagnostic);}}
     catch(error){failed=true;await journal.record(unexpected("windows-relay","relay-pump",error));}
     if(!failed){
-      await journal.recover(bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",
+      const recovered=bvpDiagnostic({classification:"bvp-runtime-poll-recovered",component:"device-agent",
         phase:"poll-recovery",lastConfirmedBoundary:"mailbox-poll-completed",firstUnconfirmedBoundary:"none",
-        effect:"none-confirmed",recommendedAction:"none"}));
-      if(activeRunId)try{await journal.flush(entry=>mailbox.publishDiagnostic(activeRunId!,options.deviceId,entry));}
-      catch(error){console.error("BVP_DIAGNOSTIC_DELIVERY_PENDING",error instanceof MailboxUnavailableError?diagnosticCode(error.message):"bvp-diagnostic-publication-failed");}
+        effect:"none-confirmed",recommendedAction:"none"});
+      if(activeRunId){
+        try{
+          await journal.flush(entry=>mailbox.publishDiagnostic(activeRunId!,options.deviceId,entry));
+          await journal.recover(recovered);
+          await journal.flush(entry=>mailbox.publishDiagnostic(activeRunId!,options.deviceId,entry));
+        }catch(error){
+          await journal.record(unexpected("drive-mailbox","diagnostic-publication",error));
+        }
+      }else await journal.recover(recovered);
     }
   }
   function pollAndReportOnce():Promise<void>{if(ticking)return ticking;ticking=tickCore().finally(()=>{ticking=undefined;});return ticking;}
