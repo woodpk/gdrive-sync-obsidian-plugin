@@ -1,6 +1,6 @@
 # BVP — Durable receiver and relay error observability (2026-10-25)
 
-**Status:** BUILDER-QUALIFIED BY EXACT-SOURCE PHX-CI; AWAITING FINAL INDEPENDENT REVIEW; NO PHYSICAL DISPATCH/RELEASE.
+**Status:** R1 INDEPENDENT CORRECTION REQUIRED; BUILDER CORRECTIONS COMMITTED BUT NOT REQUALIFIED; NO PHYSICAL DISPATCH/RELEASE.
 **Repository:** woodpk/gdrive-sync-obsidian-plugin
 **Feature:** WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY
 **Base SHA:** ecb4d26e85444d24d07cffb57b966ed2d5f7f6df
@@ -79,3 +79,29 @@ If iOS terminates Obsidian or denies all persistent storage, no JavaScript callb
 - Builder is qualified to hand off for a SINGLE FINAL independent Reviewer engagement. No independent review has yet been performed for DEC-352, and no feature acceptance is claimed. For blind Pass 1 read ONLY the neutral original feature contract sections (Failure and required outcome, Normative contract, Scope, Mandatory test adequacy, Known limitations) and exact immutable production source. Do not inspect the Builder implementation checkpoint or R1/R2/R3 history, test files, code history, review findings, PHX-CI results or Builder reasoning until the independent blind-source assessment has been frozen and published.
 - Final review then evaluates the authored tests and mandatory ten families, exact immutable source/tree, original PHX-CI evidence and remaining defects; Reviewer may write only `dev/reviews/` reports and narrowly scoped handoff metadata in `dev/state/current-state.yaml`. No Reviewer software verification execution, source/test/script edits or installation. No GitHub Actions.
 - No merge, installation, prerelease, iPhone command dispatch, OAuth reauthentication, sync enablement, product-data mutation or production release is authorized by PHX-CI PASS. Reserved Owner authorization is still required after independent acceptance.
+
+## R1 independent rejection and Builder correction — unverified checkpoint (2026-10-25)
+
+- Immutable first qualification source `800b8b3dd2287c6c66d05b1ff2bff7fd1f91df64` remains an authentic prior 11-stage PHX-CI PASS, but **not accepted**. Reviewer source assessment: `dev/reviews/bvp-runtime-error-observability-20261025-r1-source.md` at `d44ac2a63cb5dfefb7eb781ff89564456a7f992c`. Final CORRECTION REQUIRED report: `dev/reviews/bvp-runtime-error-observability-20261025-r1-final.md` at `564db71dc3a5aa7566716a8165b0cda241d69396`. Reviewer→Builder handoff count `2`, published at `e330267e7624dd49c99e5f1c206073fe60fe90b0`; feature-specific state, not the unrelated top-level current Build Unit, governs the handoff.
+- DEC352-F01: Journal entries now bind an immutable local-only original run/device route when the active run has actually been observed, including an opaque run hash in the diagnostic contract. Unbound failures cannot be silently rebound to a later lease or coalesced across unknown origins. Recovery evaluates the event's original scope, and delayed flush routes each entry by its persisted origin rather than the mutable currently active run.
+- DEC352-F02: Before any diagnostic file mutation the journal obtains a Google Drive pre-generated file ID, commits it locally, and always reuses that ID. Remote publication lists all visible and staging records for the event ID, rejects incompatible origin/payload/duplicate identities, resumes a partially completed file and reads back media/visibility. Ambiguous responses leave delivery unconfirmed and retain pending work; a new remote ID is never issued after an uncertain create. Remote command/result semantics are not changed.
+- DEC352-F03: One-second polling remains best-effort; remote diagnostic retries are scheduled no more than once per 30 seconds per active installed runtime, remain serialized with journal flush, and never automatically acknowledge an unknown publication. Journal overload remains bounded and explicit; relay duplicate/conflicting persisted inbox evidence is rejected. New and preserved test expectations cover the ten families below. No test oracle was loosened to get a green result.
+- DEC352-F04: R1 Reviewer disclosed incidental Builder narrative exposure before freezing the source-first report; it is **not** characterized as perfectly blind. The next independent final Reviewer must maintain a clean blind first pass and acknowledge any source-access limitations.
+- DEC352-F05: The original R3 JSON, Markdown and terminal log are now mirrored at `dev/test-results/23fd83ff-613e-4543-a66e-514e37132d59/` by reusing the exact original Git blobs, with `provenance.md`. No original record was modified, and the mirror does **not** qualify corrected code.
+
+### Ten-family traceability / adversarial acceptance work (pending PHX-CI discovery and execution)
+
+| Family | Applicable correction evidence |
+| --- | --- |
+| 1. Nominal/success | Existing successful poll and diagnostic/recovery relay cases; new fixed-ID successful reconciliation |
+| 2. Negative/malformed | Forged origin/event collisions, malformed persisted journal and invalid remote payloads |
+| 3. State transitions | New run A→B→no-run journal and scoped recovery checks |
+| 4. Idempotency/retry/cancel/recovery | Lost successful create, upload, final visibility response; stable file-ID reuse after reconstructed journal |
+| 5. Concurrency/order/staleness | Overlapping journal calls, repeated 1s ticks, relay ingestion and stale-run separation |
+| 6. Persistence/restart/integrity | Journal restart preserving original run, unsent count, pre-generated remote ID and overflow |
+| 7. Identity/authorization/privacy | Origin run/device binding, hashed run correlation, event identity conflict blocks, redacted failure fields |
+| 8. Contracts/integration/compatibility | Existing command/result/lease tests; diagnostic record kind remains separate from shipping data |
+| 9. Architecture/ownership/invariants | Original frozen guard/budget and P1 exhaustive export inventory preserved for PHX-CI re-evaluation |
+| 10. E2E/fail-closed/destructive | Failed or ambiguous remote publication remains pending; no false result receipt, no physical dispatch or product sync |
+ 
+**Current qualification:** NOT RUN for the corrective source. The next authorized operation is a new, exact-SHA, unchanged pinned Windows PHX-CI **software-only** run via the existing repository-controlled PHX-CI launcher. Do not fabricate test totals or acceptance. Physical execution, shipping promotion, installation and release remain prohibited.
