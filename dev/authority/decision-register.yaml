@@ -1112,6 +1112,12 @@ decisions:
     relates_to: [DEC-349, DEC-352]
     decision: "On 2026-10-25 the Owner authorized a read-only historical-run and unbound-device diagnostic extension to the existing authenticated BVP mailbox without historical command authority. The Owner separately approved increasing only the BVP framework-core logical TypeScript maximum from 4500 to 4550. Live-device agent/relay maximum remains 950. All other budgets and verification, safety and product boundaries remain unchanged. This decision does not authorize bypassing the architecture guard, software qualification, Reviewer acceptance, physical-device tests, live Drive/vault operations, merge or release."
 
+  - id: DEC-354
+    status: locked
+    category: bvp_dec352_remote_diagnostic_verified_archival_retention
+    relates_to: [DEC-352, DEC-353]
+    decision: "On 2026-10-25 the Owner explicitly selected Option B for BVP validation-only remote diagnostic retention. Limit ACTIVE remote diagnostic history to 5000 records per device and a 90-day active-history window. For eligible acknowledged/resolved records, create durable archival evidence and verify its integrity before deleting the original ACTIVE record; never delete unresolved or unacknowledged diagnostic evidence. Fail closed, retain evidence and report an explicit unavailable condition when archival, integrity verification, acknowledgment or safe eligibility cannot be established. Archived evidence remains retrievable, privacy-safe and traceable to its originating run/device/event. Owner approval does not authorize deletion of unresolved records, physical-device/live personal Drive/vault operations, additional verification authority, architecture budget changes, production sync changes, merge or release. If limits cannot be enforced without losing protected evidence, preserve evidence and block new archival/retirement rather than silently discarding it."
+
 superseded_decisions:
   - id: SUP-001
     status: superseded
