@@ -48,14 +48,14 @@ async function sample():Promise<RuntimeErrorRecord>{
 }
 test("DEC354 capacity: new event 5001 blocked; all 5000 unresolved originals retained",async()=>{
   const drive=new Fake(),v=await sample();for(let i=0;i<5000;i++)drive.seed({...v,eventId:randomUUID()});
-  const mailbox=createDriveCommandMailbox(drive.request),remoteFileId=await mailbox.reserveDiagnosticId();
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...await sample(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-capacity/);
+  const mailbox=createDriveCommandMailbox(drive.request),remoteFileId=await mailbox.reserveDiagnosticId(),pending=await sample();
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-capacity/);
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,5000);
 });
 test("DEC354 age: 91-day unresolved source blocks new unique remote event without deletion",async()=>{
   const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request);
-  const remoteFileId=await mailbox.reserveDiagnosticId();
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...await sample(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-expired/);
+  const remoteFileId=await mailbox.reserveDiagnosticId(),pending=await sample();
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-expired/);
   equal(drive.files.get(id)?.content,JSON.stringify(v));equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
 });
 test("DEC354 archive: verified SHA-256 content, source retained and idempotent",async()=>{
@@ -72,14 +72,15 @@ test("DEC354 archive: verified SHA-256 content, source retained and idempotent",
 test("DEC354 archive: ambiguous remote upload fails closed without touching original",async()=>{
   const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request);
   drive.uploadFails=true;
-  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,await mailbox.reserveDiagnosticId()),/mailbox-drive-provider-unavailable/);
+  const archiveId=await mailbox.reserveDiagnosticId();
+  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,archiveId),/mailbox-drive-provider-unavailable/);
   equal(drive.files.get(id)?.content,JSON.stringify(v));
 });
 test("DEC354 archive: falsified run metadata is rejected before copied evidence is trusted",async()=>{
   const drive=new Fake(),v=await sample(),id=drive.seed(v,91);
   drive.files.get(id)!.meta.appProperties.brainBvpRunId="run-b";
-  const mailbox=createDriveCommandMailbox(drive.request);
-  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,await mailbox.reserveDiagnosticId()),/mailbox-diagnostic-origin-conflict/);
+  const mailbox=createDriveCommandMailbox(drive.request),archiveId=await mailbox.reserveDiagnosticId();
+  await rejects(()=>mailbox.archiveVerifiedDiagnostic("device-a",v.eventId,archiveId),/mailbox-diagnostic-origin-conflict/);
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,0);
 });
 
