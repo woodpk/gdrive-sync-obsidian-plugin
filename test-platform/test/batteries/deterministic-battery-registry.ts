@@ -51,6 +51,7 @@ const S07_FAULT_RECOVERY_SAFETY = [
 ] as const;
 
 const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
+  "dec354-diagnostic-retention.test.js",
   "s08a-production-run-receipt-seam.test.js",
   "s08b-validation-build-entrypoint.test.js",
   "s08c-device-command-agent.test.js",
