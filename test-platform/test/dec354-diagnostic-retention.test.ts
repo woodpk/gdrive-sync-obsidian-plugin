@@ -147,3 +147,37 @@ test("DEC354 archives all aged records by durable one-per-cycle checkpoint acros
   equal((await createWindowsMailboxRelay(mailbox,files,root).pumpOnce()).status,"ok");
   equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,4);
 });
+
+test("DEC354-R4-F02 two independent publishers cannot exceed 5000 under stale 4999 preflight snapshots",async()=>{
+  const drive=new Fake(),v=await sample();
+  for(let i=0;i<4999;i++)drive.seed({...v,eventId:randomUUID()});
+  const originalIds=[...drive.files].filter(([,file])=>file.meta.appProperties?.brainBvpKind==="diagnostic").map(([id])=>id);
+  const baseline=new Map(originalIds.map(id=>[id,drive.files.get(id)!]));
+  // Both distinct authorized clients may read the SAME consistent pre-creation history.
+  // No safe quota design may rely on the listing alone as an atomic reservation.
+  const concurrent:AuthenticatedDriveRequest=async(url,init={})=>{
+    const u=new URL(url),q=decodeURIComponent(u.searchParams.get("q")??"");
+    if(u.pathname==="/drive/v3/files"&&(init.method??"GET")==="GET"&&
+      q.includes("key='brainBvpKind' and value='diagnostic'")&&
+      q.includes("key='brainBvpDeviceId' and value='device-a'")&&
+      !q.includes("brainBvpEventId")){
+      const start=Number(u.searchParams.get("pageToken")??"0"),size=Number(u.searchParams.get("pageSize")??"200");
+      return Response.json({files:[...baseline].slice(start,start+size).map(([id,item])=>({
+        id,createdTime:item.createdTime,
+        size:String(new TextEncoder().encode(item.content).byteLength),
+        appProperties:item.meta.appProperties
+      })),...(start+size<baseline.size?{nextPageToken:String(start+size)}:{})});
+    }
+    return drive.request(url,init);
+  };
+  const first=createDriveCommandMailbox(concurrent),second=createDriveCommandMailbox(concurrent);
+  const a=await sample(),b=await sample(),fileA=await first.reserveDiagnosticId(),fileB=await second.reserveDiagnosticId();
+  const results=await Promise.allSettled([
+    first.publishDiagnostic("run-a","device-a",{...a,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:fileA}),
+    second.publishDiagnostic("run-a","device-a",{...b,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:fileB})
+  ]);
+  const active=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic");
+  equal(active.length<=5000,true,"concurrent admissions must never exceed 5000 ACTIVE objects");
+  equal(results.some(r=>r.status==="rejected"),true,"one publisher must fail closed under contested last slot");
+  for(const id of originalIds)equal(drive.files.has(id),true,"protected originals must never be deleted");
+});
