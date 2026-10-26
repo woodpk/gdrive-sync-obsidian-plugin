@@ -1156,10 +1156,10 @@ bvp_poll_error_observability_2026_10_25:
   planning: "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-runtime-poll-error-observability-2026-10-25.md"
   branch: "build/bvp-poll-error-observability-20261025"
   original_base_sha: "ecb4d26e85444d24d07cffb57b966ed2d5f7f6df"
-  status: "DEC355_R6_PHXCI_QUALIFIED_R4_FINAL_INDEPENDENT_REVIEW_PENDING"
+  status: "DEC355_R4_REVIEW_CORRECTION_REQUIRED_TEST_FIRST_OWNER_ELIGIBILITY_AND_CONCURRENCY_GATE"
   physical_dispatch: "NONE"
   pre_release: "NOT_AUTHORIZED"
-  independent_review: "R3_CORRECTION_REQUIRED_R4_FINAL_REVIEW_PENDING"
+  independent_review: "R4_CORRECTION_REQUIRED_NOT_ACCEPTED"
   builder_source_and_tests_commit: "92f848bb5519488242be4fbb398ea1754cad5788"
   builder_refactor: "DEC355_R6_CORRECTIVE_SOURCE_AND_TESTS_PHXCI_QUALIFIED"
   original_evidence_run_id: "08400703-ef66-4ae9-8332-644648f07378"
@@ -1190,7 +1190,7 @@ bvp_poll_error_observability_2026_10_25:
   handoff-count: 8
   handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
   handoff-sender-role: REVIEWER
-  handoff-owner-role: REVIEWER
+  handoff-owner-role: BUILDER
   handoff-recipient-role: BUILDER
   handoff-source-sha: "bf51a238de73b07577c8fc8385f19978873c451b"
   handoff-status: "R4_CORRECTION_REQUIRED_REVIEWER_TO_BUILDER"
@@ -1214,7 +1214,7 @@ bvp_poll_error_observability_2026_10_25:
   corrective_r4_failure: "TS1308_s08d-drive-mailbox-relay.test.ts_line_270_in_rejects_lambda"
   corrective_compiler_repair_commit: "70b06f4d847566b7bd4222a5ba2ba78e6b0e4b79"
   corrective_compiler_repair_status: "R5_VERIFIED_RERUN_PASS"
-  corrective_next_action: "R4_FRESH_INDEPENDENT_REVIEW_BLIND_SOURCE_ASSESSMENT_THEN_EVIDENCE_DEC354_RETENTION_ACCEPTANCE"
+  corrective_next_action: "OWNER_APPROVAL_REQUIRED_EVENT_RESOLUTION_AUTHORITY_AND_ATOMIC_QUOTA_ADMISSION_BEFORE_DESTRUCTIVE_IMPLEMENTATION"
   corrective_r5_source_sha: "5465f3a44a10943d71dd6aa39f73cad47efd076b"
   corrective_r5_git_tree: "9452eb587b4e5bd09fb28b0e13545bea7e688a29"
   corrective_r5_original_run_id: "096ba9a5-aba5-41e8-84b9-1c7990d906e6"
@@ -1339,3 +1339,16 @@ bvp_poll_error_observability_2026_10_25:
   dec355_latest_r6_independent_review: "R4_NEW_FRESH_SESSION_REQUIRED_BLIND_SOURCE_FIRST"
   dec355_latest_r6_physical_devices_personal_drive: "NOT_EXECUTED_NOT_AUTHORIZED"
   dec355_latest_r6_release_merge_installation: "NOT_AUTHORIZED"
+  dec355_r4_review_verdict: "CORRECTION_REQUIRED_NOT_ACCEPTED"
+  dec355_r4_final_review_commit: "f044d7c91823c770a8eb5416880144a55bc1e606"
+  dec355_r4_final_review_path: "dev/reviews/bvp-runtime-error-observability-20261025-r4-final.md"
+  dec355_r4_source_review_commit: "39e3418f13fe144b7cdd0c7b060bb05734142fda"
+  dec355_r4_original_qualified_source: "bf51a238de73b07577c8fc8385f19978873c451b"
+  dec355_r4_open_findings: "F01_HIGH_RETIREMENT_F02_MODHIGH_CONCURRENT_CAP_F03_MODERATE_ATTESTATION_F04_MINOR_INDEPENDENCE"
+  dec355_r4_test_first_concurrency_commit: "b594d767bff3cb8cca405495e0ba4ea614076f21"
+  dec355_r4_test_first_status: "ADVERSARIAL_CONCURRENT_4999_SNAPSHOT_PREPARED_NOT_VERIFIED"
+  dec355_r4_planning_commit: "4815d702ae37f7e627e001295a8a905a4b1d0a1d"
+  dec355_r4_owner_gate: "TRUSTED_EVENT_SPECIFIC_RESOLUTION_ACKNOWLEDGMENT_AND_AUTHORITY_FOR_SERIALIZED_CAPACITY_ADMISSION"
+  dec355_r4_new_source_status: "NO_RETIREMENT_OR_QUOTA_SOURCE_WRITES_BEFORE_OWNER_AUTHORIZATION"
+  dec355_r4_current_handoff: "8_BUILDER_OWNED_UNCHANGED"
+  dec355_r4_original_evidence_status: "R6_ORIGINAL_PASS_PRESERVED_NOT_QUALIFICATION_OF_NEW_TEST"
