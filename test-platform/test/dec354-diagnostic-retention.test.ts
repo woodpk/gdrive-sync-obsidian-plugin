@@ -181,3 +181,87 @@ test("DEC354-R4-F02 two independent publishers cannot exceed 5000 under stale 49
   equal(results.some(r=>r.status==="rejected"),true,"one publisher must fail closed under contested last slot");
   for(const id of originalIds)equal(drive.files.has(id),true,"protected originals must never be deleted");
 });
+
+
+/*
+ * DEC-356 requirements-first adversarial red tests.
+ * Keep these oracles fixed until PHX-CI independently qualifies their
+ * source-and-tests candidate. A local inbox or remote archive is NOT an
+ * authorized operator acknowledgment.
+ */
+test("DEC356 device publisher cannot consume ACTIVE slot without serialized Windows admission",async()=>{
+  const drive=new Fake(),mailbox=createDriveCommandMailbox(drive.request),v=await sample();
+  const id=await mailbox.reserveDiagnosticId();
+  await rejects(
+    ()=>mailbox.publishDiagnostic("run-a","device-a",{...v,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:id}),
+    /mailbox-diagnostic-awaiting-controller|mailbox-diagnostic-admission-unavailable/
+  );
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,0,
+    "a mobile publisher may stage pending evidence but cannot independently allocate an ACTIVE slot");
+  equal([...drive.files.values()].every(f=>f.meta.appProperties?.brainBvpKind!=="diagnostic"||f.meta.appProperties?.brainBvpRecord!=="1"),true);
+});
+
+test("DEC356 absent event-specific resolution proof cannot retire an aged ACTIVE diagnostic",async()=>{
+  const drive=new Fake(),event=await sample(),source=drive.seed(event,91);
+  const mailbox=createDriveCommandMailbox(drive.request),files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay";
+  files.dirs.add(root+"/controller-authority");
+  const key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({
+    schemaVersion:1,generation:2,runId:"run-a",deviceId:"device-a"}));
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  await relay.pumpOnce(); // may archive, but relay observation is not event acknowledgment
+  equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic",
+    "automatic relay inbox delivery and verified archive MUST retain unresolved ACTIVE evidence");
+  equal(drive.files.get(source)?.content,JSON.stringify(event));
+});
+
+test("DEC356 controller-signed event attestation enables verified non-destructive retirement and age admission",async()=>{
+  const drive=new Fake(),event=await sample(),source=drive.seed(event,91),files=new RelayFiles();
+  const root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  files.dirs.add(root+"/controller-authority");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({
+    schemaVersion:1,generation:2,runId:"run-a",deviceId:"device-a"}));
+  const mailbox=createDriveCommandMailbox(drive.request),relay=createWindowsMailboxRelay(mailbox,files,root);
+  const original=JSON.stringify(event),sha256=createHash("sha256").update(original).digest("hex");
+  await relay.pumpOnce();
+  const attest=(relay as any).acknowledgeDiagnostic;
+  equal(typeof attest,"function","only an operator-controlled relay may create event-specific attestation");
+  await attest({
+    schemaVersion:1,disposition:"resolved",deviceId:"device-a",runId:"run-a",
+    eventId:event.eventId,sha256,controllerGeneration:2
+  });
+  equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic-retired");
+  equal(drive.files.get(source)?.content,original,"retirement reclassifies without deleting or changing original bytes");
+  const archives=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive");
+  equal(archives.length,1);equal(archives[0].content,original);
+  const next=await sample(),nextId=await mailbox.reserveDiagnosticId();
+  const admitted=(relay as any).admitDiagnostic;
+  equal(typeof admitted,"function","only the same single Windows controller can admit an ACTIVE event");
+  await admitted("run-a","device-a",{...next,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:nextId});
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+});
+
+test("DEC356 wrong content hash/run/lease cannot authorize ACTIVE retirement",async()=>{
+  const drive=new Fake(),event=await sample(),source=drive.seed(event,91),files=new RelayFiles();
+  const root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  files.dirs.add(root+"/controller-authority");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({
+    schemaVersion:1,generation:3,runId:"run-a",deviceId:"device-a"}));
+  const mailbox=createDriveCommandMailbox(drive.request),relay=createWindowsMailboxRelay(mailbox,files,root);
+  await relay.pumpOnce();
+  const attempt=(relay as any).acknowledgeDiagnostic;
+  equal(typeof attempt,"function");
+  const hash=createHash("sha256").update(JSON.stringify(event)).digest("hex");
+  for(const bad of [
+    {sha256:"0".repeat(64)},
+    {runId:"run-b"},
+    {deviceId:"device-b"},
+    {eventId:randomUUID()},
+    {controllerGeneration:2}
+  ]){
+    await rejects(()=>attempt({schemaVersion:1,disposition:"resolved",deviceId:"device-a",
+      runId:"run-a",eventId:event.eventId,sha256:hash,controllerGeneration:3,...bad}));
+    equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic");
+    equal(drive.files.get(source)?.content,JSON.stringify(event));
+  }
+});
