@@ -13,6 +13,12 @@ export class MailboxUnavailableError extends Error { constructor(message = "mail
 
 interface MailboxFile { id: string; size?: string; createdTime?:string; appProperties?: Record<string,string>; }
 interface FileList { files?: MailboxFile[]; nextPageToken?: string; }
+interface DiagnosticAttestation { readonly schemaVersion:1; readonly disposition:"acknowledged"|"resolved";
+  readonly deviceId:string; readonly runId:string|null; readonly eventId:string;
+  readonly sha256:string; readonly controllerGeneration:number; }
+interface DiagnosticControllerOps { pending(deviceId:string):Promise<readonly {eventId:string}[]>;
+  admit(deviceId:string,eventId:string):Promise<void>; retire(value:DiagnosticAttestation):Promise<void>; }
+const controllerOps=new WeakMap<DriveCommandMailbox,DiagnosticControllerOps>();
 interface Header { runId: string; deviceId: string; sequence: number; commandId: string; }
 interface RelayAdapter {
   exists(path: string): Promise<boolean>;
@@ -156,21 +162,22 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const encoded=jsonBytes(safe);if(encoded.bytes>MAX_RECORD_BYTES)throw new Error("mailbox-record-too-large");
       const parent=await rootId();
       // Includes unpublished (brainBvpRecord=0) objects after lost POST/UPLOAD/PATCH responses.
-      const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='diagnostic' } and appProperties has { key='brainBvpEventId' and value='${safe.eventId}' }`);
+      // Cross-kind event reconciliation prevents a pending-to-ACTIVE race from minting duplicates.
+      const q=encodeURIComponent(`'${escapeQuery(parent)}' in parents and trashed = false and appProperties has { key='brainBvpEventId' and value='${safe.eventId}' }`);
       const response=await call(`${API}/files?q=${q}&spaces=drive&pageSize=200&fields=nextPageToken,files(id,size,appProperties)`);
       const page=await response.json() as FileList;
       if(page.nextPageToken)throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
       const records=page.files??[];
-      if(records.length>1||records.some(f=>f.id!==id||f.appProperties?.brainBvpRunId!==(runId??undefined)||f.appProperties?.brainBvpDeviceId!==deviceId||f.appProperties?.brainBvpKind!=="diagnostic"||(runId===null?f.appProperties?.brainBvpOriginBound!=="0":f.appProperties?.brainBvpOriginBound==="0")))throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
+      if(records.length>1||records.some(f=>f.id!==id||f.appProperties?.brainBvpRunId!==(runId??undefined)||f.appProperties?.brainBvpDeviceId!==deviceId||!["diagnostic-pending","diagnostic","diagnostic-retired"].includes(f.appProperties?.brainBvpKind??"")||(runId===null?f.appProperties?.brainBvpOriginBound!=="0":f.appProperties?.brainBvpOriginBound==="0")))throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
       let existing=records[0];
       if(!existing){
-        await admitActive(deviceId);
+        // Direct device writers never allocate an ACTIVE slot; the Windows controller must admit.
         // Drive file ID is reserved and durably journaled BEFORE this create. A lost
         // create response can only cause a retry of this SAME ID, never a second object.
-        const meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",...(runId===null?{}:{brainBvpRunId:runId}),...(runId===null?{brainBvpOriginBound:"0"}:{}),brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})});
+        const meta=await call(`${API}/files?fields=id`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,name:`bvp-diagnostic-${safe.eventId}.json`,parents:[parent],mimeType:"application/json",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic-pending",...(runId===null?{}:{brainBvpRunId:runId}),...(runId===null?{brainBvpOriginBound:"0"}:{}),brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}})});
         const created=await meta.json() as {id?:string};
         if(created.id!==id)throw new MailboxUnavailableError("mailbox-diagnostic-create-invalid");
-        existing={id,size:"0",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic",...(runId===null?{}:{brainBvpRunId:runId}),...(runId===null?{brainBvpOriginBound:"0"}:{}),brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}};
+        existing={id,size:"0",appProperties:{brainBvpRecord:"0",brainBvpKind:"diagnostic-pending",...(runId===null?{}:{brainBvpRunId:runId}),...(runId===null?{brainBvpOriginBound:"0"}:{}),brainBvpDeviceId:deviceId,brainBvpEventId:safe.eventId}};
       }
       if(existing.appProperties?.brainBvpRecord!=="0"&&existing.appProperties?.brainBvpRecord!=="1")throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
       if(existing.size===undefined||!/^[0-9]+$/.test(existing.size)||Number(existing.size)>MAX_RECORD_BYTES)throw new MailboxUnavailableError("mailbox-diagnostic-size-unconfirmed");
@@ -193,6 +200,10 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       const confirmation=await call(`${API}/files/${encodeURIComponent(id)}?fields=id,appProperties`);
       const verified=await confirmation.json() as MailboxFile;
       if(verified.id!==id||verified.appProperties?.brainBvpRecord!=="1"||verified.appProperties?.brainBvpEventId!==safe.eventId||verified.appProperties?.brainBvpRunId!==(runId??undefined)||verified.appProperties?.brainBvpDeviceId!==deviceId||(runId===null?verified.appProperties?.brainBvpOriginBound!=="0":verified.appProperties?.brainBvpOriginBound==="0"))
+        throw new MailboxUnavailableError("mailbox-diagnostic-visibility-unconfirmed");
+      if(verified.appProperties?.brainBvpKind==="diagnostic-pending")
+        throw new MailboxUnavailableError("mailbox-diagnostic-awaiting-controller");
+      if(!["diagnostic","diagnostic-retired"].includes(verified.appProperties?.brainBvpKind??""))
         throw new MailboxUnavailableError("mailbox-diagnostic-visibility-unconfirmed");
     },
 
