@@ -327,7 +327,8 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
     const parent=await rootId(),q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='"+escapeQuery(kind)+"' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' } and appProperties has { key='brainBvpEventId' and value='"+escapeQuery(eventId)+"' }";
     const r=await call(API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=2&fields=nextPageToken,files(id,size,appProperties)");
     const page=await r.json() as FileList;
-    if(page.nextPageToken||(page.files??[]).length!==1)throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-ambiguous");
+    if(page.nextPageToken||(page.files??[]).length>1)throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-ambiguous");
+    if((page.files??[]).length===0)throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-not-found");
     return page.files![0];
   }
   async function sourceContents(file:MailboxFile):Promise<{raw:string;value:RuntimeErrorRecord;sha:string}>{
@@ -350,7 +351,10 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-invalid");
       let source:MailboxFile;
       try{source=await lookupDiagnostic("diagnostic",proof.deviceId,proof.eventId);}
-      catch{source=await lookupDiagnostic("diagnostic-retired",proof.deviceId,proof.eventId);}
+      catch(error){
+        if(!(error instanceof MailboxUnavailableError)||error.message!=="mailbox-diagnostic-controller-source-not-found")throw error;
+        source=await lookupDiagnostic("diagnostic-retired",proof.deviceId,proof.eventId);
+      }
       const props=source.appProperties;
       if(props?.brainBvpRunId!==(proof.runId??undefined)||
         (proof.runId===null?props?.brainBvpOriginBound!=="0":props?.brainBvpOriginBound==="0"))
@@ -390,6 +394,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       let file:MailboxFile;
       try{file=await lookupDiagnostic("diagnostic-pending",deviceId,safe.eventId);}
       catch(error){
+        if(!(error instanceof MailboxUnavailableError)||error.message!=="mailbox-diagnostic-controller-source-not-found")throw error;
         // A lost activation response can only reconcile the same immutable ID.
         const active=await lookupDiagnostic("diagnostic",deviceId,safe.eventId);
         if(active.id!==id||(await sourceContents(active)).raw!==JSON.stringify(safe))throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-conflict");
@@ -408,8 +413,15 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
     async retire(proof){
       await ops.verify(proof);
       let retired:MailboxFile|undefined;
-      try{retired=await lookupDiagnostic("diagnostic-retired",proof.deviceId,proof.eventId);}catch{}
+      try{retired=await lookupDiagnostic("diagnostic-retired",proof.deviceId,proof.eventId);}
+      catch(error){if(!(error instanceof MailboxUnavailableError)||error.message!=="mailbox-diagnostic-controller-source-not-found")throw error;}
       if(retired){
+        try{
+          await lookupDiagnostic("diagnostic",proof.deviceId,proof.eventId);
+          throw new MailboxUnavailableError("mailbox-diagnostic-retirement-duplicate-active");
+        }catch(error){
+          if(!(error instanceof MailboxUnavailableError)||error.message!=="mailbox-diagnostic-controller-source-not-found")throw error;
+        }
         const copy=await lookupDiagnostic("diagnostic-archive",proof.deviceId,proof.eventId);
         if(copy.appProperties?.brainBvpSourceId!==retired.id||copy.appProperties?.brainBvpArchiveSha256!==proof.sha256||
           (await sourceContents(copy)).sha!==proof.sha256)
