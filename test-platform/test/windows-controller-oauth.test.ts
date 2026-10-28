@@ -1,5 +1,7 @@
 import { strictEqual, rejects, match, notStrictEqual } from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -141,5 +143,21 @@ test("Option A first sign-in without offline refresh grant fails without persist
     strictEqual(result.status,400);
     await rejects(()=>attempt,/controller-oauth-callback-rejected/);
     await rejects(()=>readFile(tokenFile,"utf8"),/ENOENT/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test("Option A compiled Windows controller --once entrypoint fails closed before contacting Drive without credentials",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"brain-bvp-windows-cli-"));
+  try{
+    const relayRoot=join(root,".bvp-relay"),tokenFile=join(root,"no-tokens.dat");
+    const entry=resolve(__dirname,"../src/run-windows-diagnostic-controller.js");
+    const result=spawnSync(process.execPath,[entry,"--once","--client-id","desktop",
+      "--token-file",tokenFile,"--relay-root",relayRoot,"--device-id","device-a"],{
+      encoding:"utf8",timeout:10000
+    });
+    strictEqual(result.status,1);
+    strictEqual(result.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
+    strictEqual(result.stdout.includes("device-a"),false);
+    strictEqual(result.stderr.includes(tokenFile),false);
   }finally{await rm(root,{recursive:true,force:true});}
 });
