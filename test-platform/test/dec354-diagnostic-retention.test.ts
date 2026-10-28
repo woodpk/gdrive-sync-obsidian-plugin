@@ -49,13 +49,22 @@ async function sample():Promise<RuntimeErrorRecord>{
 test("DEC354 capacity: new event 5001 blocked; all 5000 unresolved originals retained",async()=>{
   const drive=new Fake(),v=await sample();for(let i=0;i<5000;i++)drive.seed({...v,eventId:randomUUID()});
   const mailbox=createDriveCommandMailbox(drive.request),remoteFileId=await mailbox.reserveDiagnosticId(),pending=await sample();
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-capacity/);
+  const event={...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",event),/mailbox-diagnostic-awaiting-controller/);
+  const files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:1,runId:"run-a",deviceId:"device-a"}));
+  await rejects(()=>createWindowsMailboxRelay(mailbox,files,root).admitDiagnostic("run-a","device-a",event),/mailbox-diagnostic-active-capacity/);
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,5000);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
 });
 test("DEC354 age: 91-day unresolved source blocks new unique remote event without deletion",async()=>{
   const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request);
   const remoteFileId=await mailbox.reserveDiagnosticId(),pending=await sample();
-  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId}),/mailbox-diagnostic-active-expired/);
+  const event={...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",event),/mailbox-diagnostic-awaiting-controller/);
+  const files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:1,runId:"run-a",deviceId:"device-a"}));
+  await rejects(()=>createWindowsMailboxRelay(mailbox,files,root).admitDiagnostic("run-a","device-a",event),/mailbox-diagnostic-active-expired/);
   equal(drive.files.get(id)?.content,JSON.stringify(v));equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
 });
 test("DEC354 archive: verified SHA-256 content, source retained and idempotent",async()=>{
@@ -87,7 +96,11 @@ test("DEC354 archive: falsified run metadata is rejected before copied evidence 
 test("DEC354 89-day active history permits new publication without changing older record",async()=>{
   const drive=new Fake(),old=await sample(),id=drive.seed(old,89),mailbox=createDriveCommandMailbox(drive.request);
   const item=await sample(),remoteFileId=await mailbox.reserveDiagnosticId();
-  await mailbox.publishDiagnostic("run-a","device-a",{...item,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId});
+  const event={...item,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",event),/mailbox-diagnostic-awaiting-controller/);
+  const files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:1,runId:"run-a",deviceId:"device-a"}));
+  await createWindowsMailboxRelay(mailbox,files,root).admitDiagnostic("run-a","device-a",event);
   equal(drive.files.get(id)?.content,JSON.stringify(old));
   equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,2);
 });
@@ -116,6 +129,13 @@ class RelayFiles{
   async write(p:string,v:string){this.values.set(p,v);}
   async rename(a:string,b:string){this.values.set(b,await this.read(a));this.values.delete(a);}
   async remove(p:string){this.values.delete(p);}
+  private static diagnosticLocks=new Set<string>();
+  /** Deterministic stand-in for the required external OS-exclusive Windows lock. */
+  async withExclusiveDiagnosticDevice<T>(deviceId:string,action:()=>Promise<T>):Promise<T>{
+    if(RelayFiles.diagnosticLocks.has(deviceId))throw new Error("relay-controller-exclusive-busy");
+    RelayFiles.diagnosticLocks.add(deviceId);
+    try{return await action();}finally{RelayFiles.diagnosticLocks.delete(deviceId);}
+  }
 }
 test("DEC354 Windows relay autonomously archives one aged diagnostic without deleting unresolved source",async()=>{
   const drive=new Fake(),v=await sample(),id=drive.seed(v,91),mailbox=createDriveCommandMailbox(drive.request),files=new RelayFiles();
@@ -215,7 +235,7 @@ test("DEC356 absent event-specific resolution proof cannot retire an aged ACTIVE
   equal(drive.files.get(source)?.content,JSON.stringify(event));
 });
 
-test("DEC356 controller-signed event attestation enables verified non-destructive retirement and age admission",async()=>{
+test("DEC356 controller-authorized event attestation enables verified non-destructive retirement and age admission",async()=>{
   const drive=new Fake(),event=await sample(),source=drive.seed(event,91),files=new RelayFiles();
   const root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
   files.dirs.add(root+"/controller-authority");
