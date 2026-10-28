@@ -250,6 +250,8 @@ test("DEC356 controller-authorized event attestation enables verified non-destru
     schemaVersion:1,disposition:"resolved",deviceId:"device-a",runId:"run-a",
     eventId:event.eventId,sha256,controllerGeneration:2
   });
+  await attest({schemaVersion:1,disposition:"resolved",deviceId:"device-a",runId:"run-a",
+    eventId:event.eventId,sha256,controllerGeneration:2}); // retry after ambiguous response is idempotent
   equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic-retired");
   equal(drive.files.get(source)?.content,original,"retirement reclassifies without deleting or changing original bytes");
   const archives=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive");
@@ -284,4 +286,42 @@ test("DEC356 wrong content hash/run/lease cannot authorize ACTIVE retirement",as
     equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic");
     equal(drive.files.get(source)?.content,JSON.stringify(event));
   }
+});
+
+test("DEC356 forged attestation is rejected before durable receipt and cannot poison later legitimate resolution",async()=>{
+  const drive=new Fake(),event=await sample(),source=drive.seed(event,91),files=new RelayFiles();
+  const root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:4,runId:"run-a",deviceId:"device-a"}));
+  const relay=createWindowsMailboxRelay(createDriveCommandMailbox(drive.request),files,root);
+  const sha256=createHash("sha256").update(JSON.stringify(event)).digest("hex");
+  const proof={schemaVersion:1 as const,disposition:"resolved" as const,deviceId:"device-a",runId:"run-a",
+    eventId:event.eventId,sha256,controllerGeneration:4};
+  await rejects(()=>relay.acknowledgeDiagnostic({...proof,sha256:"0".repeat(64)}));
+  equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic");
+  equal([...files.values.keys()].filter(k=>k.includes("/diagnostic-acknowledgments/")).length,0,
+    "bad proof must not write an irreversible conflicting operator receipt");
+  await relay.acknowledgeDiagnostic(proof);
+  equal(drive.files.get(source)?.meta.appProperties.brainBvpKind,"diagnostic-retired");
+  await relay.acknowledgeDiagnostic(proof);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-archive").length,1);
+});
+
+test("DEC356 two authorized controller instances contest last ACTIVE slot under one exclusive device gate",async()=>{
+  const drive=new Fake(),v=await sample();for(let i=0;i<4999;i++)drive.seed({...v,eventId:randomUUID()});
+  const originals=[...drive.files].filter(([,f])=>f.meta.appProperties?.brainBvpKind==="diagnostic").map(([id])=>id);
+  const files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay",key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({schemaVersion:1,generation:5,runId:"run-a",deviceId:"device-a"}));
+  const first=createWindowsMailboxRelay(createDriveCommandMailbox(drive.request),files,root);
+  const second=createWindowsMailboxRelay(createDriveCommandMailbox(drive.request),files,root);
+  const a=await sample(),b=await sample(),firstMailbox=createDriveCommandMailbox(drive.request);
+  const x={...a,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await firstMailbox.reserveDiagnosticId()};
+  const y={...b,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await firstMailbox.reserveDiagnosticId()};
+  const outcomes=await Promise.allSettled([
+    first.admitDiagnostic("run-a","device-a",x),second.admitDiagnostic("run-a","device-a",y)]);
+  equal(outcomes.filter(o=>o.status==="fulfilled").length,1);
+  equal(outcomes.filter(o=>o.status==="rejected").length,1);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,5000);
+  for(const id of originals)equal(drive.files.has(id),true);
+  await rejects(()=>second.admitDiagnostic("run-a","device-a",y),/mailbox-diagnostic-active-capacity/);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,5000);
 });
