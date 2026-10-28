@@ -19,7 +19,8 @@
     "test-platform/src/scenario/scenario-contract.ts",
     "test-platform/src/scenario/scenario-diagnostics.ts",
     "test-platform/src/scenario/scenario-evidence.ts",
-    "test-platform/src/scenario/scenario-runner.ts"
+    "test-platform/src/scenario/scenario-runner.ts",
+    "test-platform/src/windows-diagnostic-controller.ts"
   ],
   "entries": [
     {
@@ -1516,6 +1517,45 @@
       "operatorCommand": null,
       "accessRequirement": "authorized-Windows-BVP-controller-only-no-mobile-or-physical-dispatch-without-Owner",
       "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "source": "test-platform/src/windows-diagnostic-controller.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "operatorCommand": null,
+      "accessRequirement": "WINDOWS_NODE_ONLY_ALREADY_AUTHENTICATED_BVP_REQUEST_NO_BROWSER_OR_DEVICE_CLI",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts",
+      "name": "WindowsDiagnosticControllerOptions",
+      "kind": "interface",
+      "signature": "export interface WindowsDiagnosticControllerOptions {",
+      "effect": "TYPE_ONLY_CONFIGURATION",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect"
+    },
+    {
+      "source": "test-platform/src/windows-diagnostic-controller.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "operatorCommand": null,
+      "accessRequirement": "WINDOWS_NODE_ONLY_ALREADY_AUTHENTICATED_BVP_REQUEST_NO_BROWSER_OR_DEVICE_CLI",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts",
+      "name": "WindowsDiagnosticControllerResult",
+      "kind": "interface",
+      "signature": "export interface WindowsDiagnosticControllerResult {",
+      "effect": "TYPE_ONLY_RESULT",
+      "disposition": "TYPE_ONLY",
+      "sideEffectClass": "compile-time-contract-no-runtime-effect"
+    },
+    {
+      "source": "test-platform/src/windows-diagnostic-controller.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "operatorCommand": null,
+      "accessRequirement": "WINDOWS_NODE_ONLY_ALREADY_AUTHENTICATED_BVP_REQUEST_NO_BROWSER_OR_DEVICE_CLI",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts",
+      "name": "runWindowsDiagnosticControllerOnce",
+      "kind": "function",
+      "signature": "export async function runWindowsDiagnosticControllerOnce(",
+      "effect": "VALIDATION_ONLY_NODE_WINDOW_OS_AUTHENTICATED_CONTROLLER",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "authorized-Windows-node-Mailbox-admission-and-file-writes-not-shipping"
     }
   ],
   "notAnOperatorApi": true
