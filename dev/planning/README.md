@@ -9,3 +9,9 @@ Prohibited artifact classes: historical PHX-CI execution output, completed revie
 Authority status: planning is subordinate to accepted authority and may not silently contradict current decisions.
 
 Naming: use the exact canonical `01-target-system/`, `02-workstreams/`, and `03-verification/` structure. Workstream directories use `WS-##-<kebab-case-name>`.
+
+
+## Current authorized new build unit
+
+`WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` (Owner DEC-357, 2026-10-28): [standalone task contract and requirements](02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). Indexed under WS-07, with BVP target specification, traceability, architecture, full build decomposition and verification coverage. This is **draft implementation, PHX-CI NOT RUN**, and is not a production WS-03 OAuth feature. The current-state file records the exact Builder ownership and next qualification gates.
+
