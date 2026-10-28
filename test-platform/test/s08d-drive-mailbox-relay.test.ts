@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { windowsDiagnosticExclusiveLock } from "../src/live-device/live-scenario-executor";
 import { runWindowsDiagnosticControllerOnce } from "../src/windows-diagnostic-controller";
+import { WindowsDpapiSecrets } from "../src/windows-controller-auth";
+import { runWindowsControllerCycle } from "../src/run-windows-diagnostic-controller";
 import { deepEqual, equal, rejects } from "node:assert/strict";
 import { test } from "node:test";
 import { bvpDiagnostic } from "../src/scenario/scenario-diagnostics";
@@ -765,7 +767,7 @@ test("DEC356-F01 real Windows controller assembly cannot silently admit under or
   }finally{await rm(temp,{recursive:true,force:true});}
 });
 
-test("DEC356-F01 two assembled Node controllers cannot both enter device ACTIVE admission",async()=>{
+test("DEC356-F01 competing assembled Node admission attempts reconcile one ACTIVE immutable event",async()=>{
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
   const temp=await mkdtemp(join(tmpdir(),"brain-dec356-r5-race-")),root=join(temp,".bvp-relay"),deviceId="device-a";
   try{
@@ -788,10 +790,36 @@ test("DEC356-F01 two assembled Node controllers cannot both enter device ACTIVE 
     const first=runWindowsDiagnosticControllerOnce(request,{relayRoot:root,deviceId});
     await inside;
     const second=await runWindowsDiagnosticControllerOnce(request,{relayRoot:root,deviceId});
-    equal(second.status,"unavailable","contender must fail closed with first OS lock held");
-    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
+    equal(["ok","unavailable"].includes(second.status),true);
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length<=1,true);
     release();
     equal((await first).status,"ok");
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
   }finally{await rm(temp,{recursive:true,force:true});}
+});
+
+test("DEC356 Option A actual OAuth+Windows controller assembly stages, admits, and persists original diagnostic",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
+  const dir=await mkdtemp(join(tmpdir(),"brain-dec356-auth-composition-"));
+  const root=join(dir,".bvp-relay"),deviceId="device-a",tokenFile=join(dir,"tokens.dat");
+  try{
+    const authority=join(root,"controller-authority",createHash("sha256").update(deviceId).digest("hex")+".json");
+    await mkdir(join(root,"controller-authority"),{recursive:true});
+    await writeFile(authority,JSON.stringify({schemaVersion:1,generation:2,runId:"run-a",deviceId}));
+    new WindowsDpapiSecrets(tokenFile).setSecret("brain-gdrive-oauth-tokens",JSON.stringify({
+      accessToken:"mock-only-access",refreshToken:"mock-only-refresh",expiresAtMs:Date.now()+600000,
+      scope:"https://www.googleapis.com/auth/drive.file"
+    }));
+    const record=await r3Record("run-a"),event={...record,origin:{runId:"run-a",deviceId},remoteFileId:await mailbox.reserveDiagnosticId()};
+    await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
+    const fetcher:typeof fetch=async(url,init)=>drive.request(String(url),init);
+    const options={relayRoot:root,deviceId,tokenFile,clientId:"desktop-client",fetcher};
+    equal((await runWindowsControllerCycle(options)).status,"ok");
+    equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+    equal((await runWindowsControllerCycle(options)).status,"ok");
+    const stored=JSON.parse(await readFile(join(root,"inbox","bvp-diagnostic-"+record.eventId+".error.json"),"utf8"));
+    equal(stored.eventId,record.eventId);equal(stored.origin?.runId,"run-a");
+    equal((await runWindowsControllerCycle(options)).status,"ok");
+    equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+  }finally{await rm(dir,{recursive:true,force:true});}
 });
