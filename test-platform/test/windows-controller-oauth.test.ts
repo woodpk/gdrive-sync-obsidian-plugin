@@ -64,6 +64,9 @@ test("Option A missing or corrupt local token store fails closed before any Goog
     }});
     await rejects(()=>request("https://www.googleapis.com/drive/v3/files"),/authentication-required|oauth/);
     strictEqual(contacted,false);
+    await writeFile(join(root,"missing.dat"),"corrupted-dpapi-ciphertext");
+    await rejects(()=>request("https://www.googleapis.com/drive/v3/files"),/controller-token-unprotect-failed/);
+    strictEqual(contacted,false,"invalid encrypted credentials must not contact Google");
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
