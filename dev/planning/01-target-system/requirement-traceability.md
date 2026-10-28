@@ -154,5 +154,5 @@ Detailed requirement text remains authoritative in the two target-system specifi
 | WCO-006–007 | WS-07, reporter→controller→inbox | pending→ACTIVE→journal confirmation→durable inbox; event proof, capacity, archived retirement |
 | WCO-011 | WS-07, verification and reviewer | Current exact-SHA owner-operated pinned Windows PHX-CI original evidence then fresh independent acceptance |
 
-**Qualification status:** no PHX-CI execution or reviewer approval for DEC-357; the DEC-356 R5 prior PASS cannot qualify it. Live OAuth/Google Drive access requires a separate explicit Owner decision; no merge/physical execution.
+**Qualification status:** first DEC-357 PHX-CI run `422cc526-615e-4848-8566-9f4152b5126e` was **BLOCKED** at focused TypeScript compilation, with no Reviewer approval; the DEC-356 R5 prior PASS cannot qualify it. Live OAuth/Google Drive access requires a separate explicit Owner decision; no merge/physical execution.
 
