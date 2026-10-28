@@ -36,7 +36,7 @@ export function installBvpValidationBuildIdentity(sourceCommit:string):BvpValida
   Object.defineProperty(globalThis,BVP_VALIDATION_BUILD_GLOBAL,{value:identity,configurable:true,enumerable:false,writable:false});return identity;
 }
 export async function installBvpMailboxRuntime(request:AuthenticatedDriveRequest,options:ValidationRuntimeOptions){
-  const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root):undefined;
+  const mailbox=createDriveCommandMailbox(request),relay=options.relay?createWindowsMailboxRelay(mailbox,options.adapter,options.root,{mode:"reporter"}):undefined;
   let activeRunId:string|undefined,polling:Promise<Awaited<ReturnType<typeof pollDeviceMailboxOnce>>>|undefined;
   const journal=new BvpRuntimeErrorJournal(options.adapter,options.root);
   let ticking:Promise<void>|undefined;
