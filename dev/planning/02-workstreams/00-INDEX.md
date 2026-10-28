@@ -12,7 +12,7 @@ This index replaces the former project-level phase decomposition as the canonica
 |  WS-04 | Obsidian Local, Platform, and Configuration Boundary | WS-01 | Own local vault, Windows/iOS platform, filesystem/configuration/asset boundary.  |
 |  WS-05 | Integrated Synchronization Product and User Workflows | WS-02, WS-03, WS-04 | Compose the product and user-facing workflows over completed boundaries.  |
 |  WS-06 | Cross-Platform Hardening and Stage 3 Readiness | WS-05 | Own integrated hardening, real-platform evidence preparation, scale/fault/security closure.  |
-|  WS-07 | BRAIN Verification Platform | WS-06 integrated Phase-6 line / completed product paths | Own the external automated/live verification platform used to prove Phase-6 and Stage-3 readiness without re-entering production architecture.  |
+|  WS-07 | BRAIN Verification Platform | WS-06 integrated Phase-6 line / completed product paths | Own the external automated/live verification platform and the distinct **DEC-357 Windows OAuth authoritative diagnostic controller Build Unit**, without entering shipping production architecture. |
 
 ## Dependency graph
 
@@ -27,3 +27,8 @@ WS-01
 WS-02, WS-03, and WS-04 are the accepted parallel-safe construction wave after WS-01. WS-05 is the required integration boundary. WS-06 is the integrated hardening/readiness boundary. WS-07 preserves the separately accepted BVP architecture and decomposition used to produce objective verification evidence.
 
 No workstream is introduced merely for organizational convenience; this mapping preserves the dependency and ownership boundaries established by the accepted Stage-1 decompositions.
+
+
+## Current WS-07 successor Build Unit — DEC-357
+
+**BVP_WINDOWS_CONTROLLER_OAUTH** is an Owner-approved, separate **WS-07** unit, not a new global workstream and not a change to WS-03 production OAuth. Canonical [task and BVP-WCO-001–011 requirements](WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). It follows the DEC-356 R5 corrective F01, uses Option A (independent Windows OAuth PKCE/DPAPI, no Obsidian IPC), and is **committed but NOT PHX-CI qualified / NOT Reviewer accepted**. No real OAuth/Drive, physical execution or promotion has been authorized.
