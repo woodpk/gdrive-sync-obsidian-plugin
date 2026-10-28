@@ -13,5 +13,5 @@ Naming: the canonical current-state file is `current-state.yaml`.
 
 ## Current BVP successor continuity
 
-See `bvp_windows_controller_oauth_2026_10_28` in [current-state.yaml](current-state.yaml) for the **new DEC-357** build unit. It is distinct from predecessor `bvp_poll_error_observability_2026_10_25` and inherits the same current Builder recipient/hand-off count **10** without creating a cross-role handoff. As of the planning refresh, source/tests are committed but **not PHX-CI executed** or accepted. Original evidence and prior Reviewer records remain historical in their own directories.
+See `bvp_windows_controller_oauth_2026_10_28` in [current-state.yaml](current-state.yaml) for the **new DEC-357** build unit. It is distinct from predecessor `bvp_poll_error_observability_2026_10_25` and inherits the same current Builder recipient/hand-off count **10** without creating a cross-role handoff. As of the planning refresh, source/tests are committed but the first PHX-CI run `422cc526-615e-4848-8566-9f4152b5126e` **BLOCKED** at focused TypeScript compilation; no software qualification or Reviewer acceptance. Original evidence and prior Reviewer records remain historical in their own directories.
 
