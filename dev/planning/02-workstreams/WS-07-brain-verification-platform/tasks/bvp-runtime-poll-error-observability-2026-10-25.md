@@ -257,3 +257,22 @@ Owner explicitly approved four R4 corrections, now locked in `dev/authority/deci
 - Node/Windows controller assembly exposes `windowsDiagnosticExclusiveLock` and `createWindowsMailboxRelayWithOSLock`, using atomic OS exclusive file creation (`wx`) and fail-closed orphan behavior. Browser/device adapters without the exclusive facility cannot admit or retire. This lock protects processes using the same authoritative Windows relay root; **it is not a distributed lock across two independently configured Windows hosts**. Before any operational activation, owner/independent review must verify sole-authoritative Windows controller deployment and no conflicting host with the same Drive write authority. No physical use is authorized by this build.
 - Regression changes preserve old quota/expiry, privacy, immutable content, original run, reporting failure, replay and inbox-conflict expectations through the new staging→controller admission boundary. New adversarial cases include forged-proof nonpoisoning, acknowledgment replay, 4,999→5,000 competing controller admission, and cross-instance Windows lock/crash-orphan behavior.
 - **Unresolved at this checkpoint:** mandatory PHX-CI compilation, focused and full tests, architecture metrics and code/test review have not run against this source. The platform's independent final acceptance is not available. Local Windows runtime/real Google Drive and mobile-device behavior remain untested and prohibited.
+
+## DEC-356 Builder Step 4A source-readiness (software-only; pre-PHX-CI)
+
+**Impact closure inspected:** `test-platform/src/live-device/drive-mailbox.ts`, `test-platform/src/bvp-runtime-error-journal.ts`, `test-platform/src/live-device/live-scenario-executor.ts`, the installed validation entrypoint's controller-lock dependency, S08D mailbox/relay tests, DEC-354/356 retention tests, the P1 exhaustive exported-contract inventory, governing architecture budget/guard, pinned PHX-CI script and unmodified product/shipping sources. Current direct device publisher cannot create ACTIVE; a Windows Node relay factory offers an OS-exclusive admission capability, while ordinary adapters fail closed without one.
+
+**Adversarial reasoning and test-family traceability:**
+
+1. Nominal: staged event admitted under controller; valid acknowledged/resolved attestation followed by archive-verified, byte-preserving retirement.
+2. Negative/boundary: 5000 ACTIVE cap, 91-day unresolved ACTIVE, invalid event or origin, unavailable/corrupt source and mismatched hash.
+3. Legal transitions: pending→ACTIVE only through controller; ACTIVE→retired only after event-specific acknowledgment and independently verified archive.
+4. Retry/recovery: reserved ID retained after lost response; journal retry, idempotent archive and acknowledged retirement, orphan OS lock fail-closed.
+5. Races: concurrent 4999-slot device publishers, competing controller operations under one OS lock, immutable ACTIVE media and stale listings.
+6. Persistence: local event journal frozen after remote ID reservation, acknowledgment ledger readback, archive source hash, inbox/cursor receipts and crash lock.
+7. Trust: original device/run binding and opaque run hash, exact event ID, acknowledgment generation, no device-exposed retirement path.
+8. Integration: existing BVP mailbox and installed receiver, historical-run and unbound readback, no changes to shipping sync.
+9. Architecture: frozen core/live budgets 4850/1250 and PHX-CI runtime pin unchanged; two new Windows exports classified in P1 source inventory.
+10. End-to-end safety: offline journal remains pending; unresolved source bytes preserved; no live-device, personal Drive/vault, merge/install/release actions.
+
+**Limitations and verification gate:** all above are source/test designs only. No executed PHX-CI evidence or new independent Review verdict exists. Real dual-host distributed locking is not claimed; the locked architecture requires a *single* authorized Windows controller authority/root and fails closed when its exclusive lock is missing or uncertain. This is an operational precondition for future activation, not authorization to conduct it. Next software-only action: run unchanged pinned Windows PHX-CI against immutable branch HEAD, publish original run evidence, then correct any substantive failures before independent review. Do not use GitHub Actions, direct Node test runs or custom verification runners.
