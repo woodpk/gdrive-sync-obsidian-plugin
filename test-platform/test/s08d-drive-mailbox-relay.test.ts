@@ -5,6 +5,7 @@ import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { windowsDiagnosticExclusiveLock } from "../src/live-device/live-scenario-executor";
+import { runWindowsDiagnosticControllerOnce } from "../src/windows-diagnostic-controller";
 import { deepEqual, equal, rejects } from "node:assert/strict";
 import { test } from "node:test";
 import { bvpDiagnostic } from "../src/scenario/scenario-diagnostics";
@@ -697,4 +698,51 @@ test("DEC356 completed staged content cannot be edited by a later publisher retr
   const staged=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-pending");
   equal(staged.length,1);
   equal(staged[0].content,JSON.stringify(record));
+});
+
+test("DEC356-F01 assembled Node Windows controller promotes staged reporter evidence before durable desktop inbox",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),vault=new Files();
+  const temp=await mkdtemp(join(tmpdir(),"brain-dec356-r5-")),root=join(temp,".bvp-relay"),deviceId="device-a";
+  try{
+    const authorityFile=join(root,"controller-authority",createHash("sha256").update(deviceId).digest("hex")+".json");
+    await mkdir(join(root,"controller-authority"),{recursive:true});
+    await writeFile(authorityFile,JSON.stringify({schemaVersion:1,generation:2,runId:"run-a",deviceId}));
+    await authorize(vault,root,"run-a",deviceId,2);
+    const entry=await r3Record("run-a"),event={...entry,origin:{runId:"run-a",deviceId},remoteFileId:await mailbox.reserveDiagnosticId()};
+    await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
+    const desktop=createWindowsMailboxRelay(mailbox,vault,root);
+    const absent=await desktop.pumpOnce();
+    equal(absent.status,"unavailable","browser/vault adapter cannot acquire Windows controller authority");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
+    const external=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
+    equal(external.status,"ok","the actual Node assembly must use its OS-exclusive lock");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,0);
+    const after=await desktop.pumpOnce();
+    equal(after.status,"ok");
+    const inbox=JSON.parse(await vault.read(root+"/inbox/bvp-diagnostic-"+entry.eventId+".error.json"));
+    equal(inbox.eventId,entry.eventId);equal(inbox.origin.runId,"run-a");
+    await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+  }finally{await rm(temp,{recursive:true,force:true});}
+});
+
+test("DEC356-F01 real Windows controller assembly cannot silently admit under orphan lock or missing lease",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
+  const temp=await mkdtemp(join(tmpdir(),"brain-dec356-r5-lock-")),root=join(temp,".bvp-relay"),deviceId="device-a";
+  try{
+    const entry=await r3Record("run-a"),event={...entry,origin:{runId:"run-a",deviceId},remoteFileId:await mailbox.reserveDiagnosticId()};
+    await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
+    const missing=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
+    equal(missing.status,"unavailable");
+    const authorityDir=join(root,"controller-authority"),hash=createHash("sha256").update(deviceId).digest("hex");
+    await mkdir(authorityDir,{recursive:true});
+    await writeFile(join(authorityDir,hash+".json"),JSON.stringify({schemaVersion:1,generation:1,runId:"run-a",deviceId}));
+    await writeFile(join(authorityDir,hash+".json.diagnostic.lock"),"orphaned");
+    const busy=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
+    equal(busy.status,"unavailable");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
+  }finally{await rm(temp,{recursive:true,force:true});}
 });
