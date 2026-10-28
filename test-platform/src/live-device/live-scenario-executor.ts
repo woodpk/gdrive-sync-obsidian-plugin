@@ -28,7 +28,7 @@ export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingChec
 
 /** Authoritative Node/Windows relay assembly: no browser or mobile lock claim. */
 export function createWindowsMailboxRelayWithOSLock(mailbox:DriveCommandMailbox,
-  adapter:Parameters<typeof createWindowsMailboxRelay>[1],root:string,deviceId?:string){
+  adapter:Parameters<typeof createWindowsMailboxRelay>[1],root:string,deviceId:string){
   return createWindowsMailboxRelay(mailbox,{
     exists:path=>adapter.exists(path),mkdir:path=>adapter.mkdir(path),list:path=>adapter.list(path),
     read:path=>adapter.read(path),write:(path,value)=>adapter.write(path,value),
