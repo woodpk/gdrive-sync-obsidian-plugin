@@ -325,3 +325,17 @@ test("DEC356 two authorized controller instances contest last ACTIVE slot under 
   await rejects(()=>second.admitDiagnostic("run-a","device-a",y),/mailbox-diagnostic-active-capacity/);
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,5000);
 });
+
+test("DEC356 staged event older than 90 days cannot enter ACTIVE even when capacity is free",async()=>{
+  const drive=new Fake(),files=new RelayFiles(),root=".obsidian/plugins/brain/.bvp-relay";
+  const key=createHash("sha256").update("device-a").digest("hex");
+  await files.write(root+"/controller-authority/"+key+".json",JSON.stringify({
+    schemaVersion:1,generation:1,runId:"run-a",deviceId:"device-a"
+  }));
+  const mailbox=createDriveCommandMailbox(drive.request),relay=createWindowsMailboxRelay(mailbox,files,root);
+  const fresh=await sample(),stale={...fresh,firstAt:new Date(Date.now()-91*86400000).toISOString()};
+  const event={...stale,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await rejects(()=>relay.admitDiagnostic("run-a","device-a",event),/mailbox-diagnostic-active-expired/);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
+});
