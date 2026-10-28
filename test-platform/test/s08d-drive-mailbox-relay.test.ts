@@ -1,7 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { BvpRuntimeErrorJournal, BvpJournalError } from "../src/bvp-runtime-error-journal";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
+import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { windowsDiagnosticExclusiveLock } from "../src/live-device/live-scenario-executor";
 import { deepEqual, equal, rejects } from "node:assert/strict";
 import { test } from "node:test";
 import { bvpDiagnostic } from "../src/scenario/scenario-diagnostics";
@@ -629,4 +632,26 @@ test("DEC352-R3-F03 persistent cursor rejection fails closed without clearing ch
   equal(await files.read(cursorPath),cursor,"failed restart must keep prior durable cursor");
   equal([...files.values.keys()].filter(p=>p.endsWith(".error.json")).length,25);
   equal(drive.files.size>=30,true,"no remote evidence deletion");
+});
+
+test("DEC356 Windows OS lock serializes independent controllers; crash orphan fails closed",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"brain-bvp-dec356-"));
+  try{
+    const first=windowsDiagnosticExclusiveLock(root),second=windowsDiagnosticExclusiveLock(root);
+    let entered!:()=>void,release!:()=>void;
+    const active=new Promise<void>(resolve=>{entered=resolve;});
+    const finish=new Promise<void>(resolve=>{release=resolve;});
+    const held=first("device-a",async()=>{entered();await finish;return "done";});
+    await active;
+    await rejects(()=>second("device-a",async()=>{throw new Error("should-not-run");}),/relay-controller-exclusive-busy/);
+    equal(await second("device-b",async()=>42),42,"unrelated device can proceed while device-a is held");
+    release();
+    equal(await held,"done");
+    equal(await second("device-a",async()=>17),17,"lock is released after confirmed completion");
+    const lockPath=join(root,"controller-authority",createHash("sha256").update("device-a").digest("hex")+".json.diagnostic.lock");
+    await mkdir(join(root,"controller-authority"),{recursive:true});
+    await writeFile(lockPath,"orphaned-crash-lock");
+    await rejects(()=>first("device-a",async()=>99),/relay-controller-exclusive-busy/);
+    equal(readFileSync(lockPath,"utf8"),"orphaned-crash-lock","stale lock must require operator reconciliation");
+  }finally{await rm(root,{recursive:true,force:true});}
 });
