@@ -196,6 +196,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         if(!prior||prior.eventId!==safe.eventId||prior.firstAt!==safe.firstAt||JSON.stringify(prior.diagnostic)!==JSON.stringify(safe.diagnostic)||prior.occurrences>safe.occurrences||prior.lastAt>safe.lastAt)
           throw new MailboxUnavailableError("mailbox-diagnostic-event-conflict");
       }
+      if(text&&text!==encoded.text)throw new MailboxUnavailableError("mailbox-diagnostic-immutable");
       if(text!==encoded.text){
         if(existing.appProperties?.brainBvpKind!=="diagnostic-pending")throw new MailboxUnavailableError("mailbox-diagnostic-immutable");
         await call(`${UPLOAD}/files/${encodeURIComponent(id)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json"},body:encoded.text});
