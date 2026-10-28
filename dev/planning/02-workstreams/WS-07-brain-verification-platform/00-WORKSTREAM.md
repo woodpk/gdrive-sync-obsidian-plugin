@@ -60,3 +60,11 @@ The BVP is **not part of the user product**. Ordinary production builds and the 
 ## Dependency position
 
 WS-07 is a verification-platform subsystem over the integrated product and Phase-6 construction line. It must remain physically and architecturally outside ordinary shipping production behavior except for explicitly allowlisted narrow production seams.
+
+
+## Active successor Build Unit — DEC-357 Windows controller OAuth (Owner 2026-10-28)
+
+The next WS-07 feature is **BVP_WINDOWS_CONTROLLER_OAUTH**, a separately bounded build unit following the failed DEC-356 R5 controller-integration review. The Owner chose **Option A: independent Windows-only OAuth Desktop PKCE and current-user DPAPI for the single authoritative Node BVP diagnostic controller**, not a privileged Obsidian-to-Node IPC bridge. This does not create a new product or WS-03 production OAuth workstream. The controller must reuse the existing BVP `drive.file` mailbox and fail closed if that existing mailbox is not visible; its existence is not permission to create another.
+
+Authoritative task: [DEC-357 standalone build unit](tasks/bvp-windows-controller-oauth-2026-10-28.md). Its **BVP-WCO-001–011** requirements and WCO-01–06 dependency sequence are current; the earlier DEC-351/DEC-352 and S09 paragraphs remain historical or predecessor scope. As of this update, draft code and tests are committed but **NOT PHX-CI verified** and **NOT Reviewer accepted**. Owner approval does not authorize live OAuth/Drive, iOS/physical dispatch, deployment, merge, installation or release. Frozen BVP architecture and pinned PHX-CI remain unchanged.
+
