@@ -9,3 +9,9 @@ Prohibited artifact classes: transient project status, build-session journals, P
 Authority status: artifacts in this directory may be authoritative according to their own role and precedence. This README is navigation only and creates no decisions.
 
 Naming: use the canonical filenames and subdirectories defined by the governing development standard.
+
+
+## New Owner decision
+
+**DEC-357 (2026-10-28):** Option A creates the separate [WS-07 Windows controller OAuth Build Unit](../planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). Normative requirements BVP-WCO-001–011 are subordinate to the locked decision and BVP target specification. It authorizes development/qualification planning only; existing DEC-356 R5 Reviewer rejection and no-live/no-release restrictions remain.
+
