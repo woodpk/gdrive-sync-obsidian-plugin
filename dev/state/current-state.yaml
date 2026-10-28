@@ -1404,6 +1404,12 @@ bvp_poll_error_observability_2026_10_25:
   dec357_handoff_count: 10
   dec357_physical_dispatch: "NONE"
   dec357_merge_install_release: "NOT_AUTHORIZED"
+  dec357_latest_source_test_commit: "fec5e7b924b91f8943f9a96932311b8317ae755f"
+  dec357_last_planning_commit: "e965b93cd00046d246b49fce4a366f5cbd3bc339"
+  dec357_closed_safety_boundaries: "WINDOWS_OAUTH_DPAPI_EXISTING_MAILBOX_ONLY_PKCE_SINGLE_USE_OS_SINGLETON_NO_NODE_IN_DEVICE_BUNDLE"
+  dec357_next_action: "OWNER_EXECUTES_UNCHANGED_PINNED_PHXCI_EXACT_FROZEN_BRANCH_SHA_SOFTWARE_ONLY"
+  dec357_latest_original_phxci_evidence: "NONE_NEW_SOURCE_UNQUALIFIED"
+
 
   dec356_owner_restrictions: "NO_LIVE_DRIVE_VAULT_DEVICE_NO_MERGE_INSTALL_RELEASE_NO_ACTIONS_NO_PHXCI_PIN_OR_BUDGET_CHANGE"
   dec355_r4_original_evidence_status: "R6_ORIGINAL_PASS_PRESERVED_NOT_QUALIFICATION_OF_NEW_TEST"
