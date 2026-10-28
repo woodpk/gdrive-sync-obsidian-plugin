@@ -89,6 +89,7 @@ interface DiagnosticAttestation {
   readonly sha256:string;readonly controllerGeneration:number;
 }
 interface DiagnosticControllerOps {
+  pending(deviceId:string):Promise<{runId:string|null;value:RuntimeErrorRecord}|undefined>;
   admit(runId:string|null,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
   retire(proof:DiagnosticAttestation):Promise<void>;
 }
@@ -339,6 +340,21 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
     return{raw,value,sha};
   }
   const ops:DiagnosticControllerOps={
+    async pending(deviceId){
+      const parent=await rootId(),q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='diagnostic-pending' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' }";
+      const response=await call(API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=25&fields=nextPageToken,files(id,size,appProperties)");
+      const page=await response.json() as FileList;
+      if(!Array.isArray(page.files)||page.files.length>25)throw new MailboxUnavailableError("mailbox-diagnostic-pending-invalid");
+      const file=page.files[0];if(!file)return undefined;
+      if(file.appProperties?.brainBvpKind!=="diagnostic-pending"||file.appProperties?.brainBvpDeviceId!==deviceId)
+        throw new MailboxUnavailableError("mailbox-diagnostic-pending-invalid");
+      const contents=await sourceContents(file),rawRun=file.appProperties?.brainBvpRunId;
+      const runId=file.appProperties?.brainBvpOriginBound==="0"?null:rawRun;
+      if(runId===undefined||runId!==null&&!/^[a-zA-Z0-9._:-]{1,128}$/.test(runId)||
+        contents.value.diagnostic.identity.runId!==(runId===null?"unavailable":await opaqueDiagnosticId(runId,"run")))
+        throw new MailboxUnavailableError("mailbox-diagnostic-pending-origin");
+      return{runId,value:{...contents.value,origin:{runId,deviceId},remoteFileId:file.id}};
+    },
     async admit(runId,deviceId,value){
       const safe=cleanDiagnostic(value),id=value.remoteFileId;
       if(!safe||!id||!value.origin||value.origin.runId!==runId||value.origin.deviceId!==deviceId)
@@ -554,6 +570,13 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
           archivedIds.push(agedId);
           if(archivedIds.length>5000)archivedIds.shift();
           await adapter.write(archiveReceiptPath,JSON.stringify({schemaVersion:1,deviceId:lease.deviceId,ids:archivedIds}));
+        }
+        // Admit at most one staged device event per pump through the OS-exclusive
+        // controller. Never silently promote from an ordinary device publisher.
+        const pending=await controller?.pending(lease.deviceId);
+        if(pending){
+          phase="diagnostic-admission";first="controller-exclusive-capacity-admission";failureClass="relay-diagnostic-admission-failed";
+          await withController(lease.deviceId,async()=>controller!.admit(pending.runId,lease.deviceId,pending.value));
         }
         // Advance only after all 25-or-fewer inbox records are durable; restart replays safely.
         await adapter.write(cursorPath,JSON.stringify({schemaVersion:1,deviceId:lease.deviceId,pageToken:page.nextPageToken??null}));
