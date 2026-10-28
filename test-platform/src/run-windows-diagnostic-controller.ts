@@ -59,9 +59,17 @@ async function main(args:readonly string[]):Promise<void>{
   const interval=Number(value(args,"--interval-ms"));
   if(!Number.isSafeInteger(interval)||interval<1000||interval>60000)throw new Error("controller-interval-invalid");
   await withWindowsControllerProcessLock(relayRoot,async()=>{
+    // An unleased controller may legitimately start before the live runner.
+    // Fail closed for every unsuccessful cycle and keep the singleton locked
+    // through bounded outage recovery. Never invent an ACTIVE admission.
+    let previous="";
     for(;;){
-      const outcome=await cycleCore(options);
-      if(outcome.status!=="ok")throw new Error("controller-cycle-unavailable");
+      let status="unavailable";
+      try{status=(await cycleCore(options)).status;}catch{}
+      if(status!==previous){
+        process.stdout.write("BVP_WINDOWS_CONTROLLER="+status+"\\n");
+        previous=status;
+      }
       await new Promise(resolve=>setTimeout(resolve,interval));
     }
   });
