@@ -90,6 +90,7 @@ interface DiagnosticAttestation {
 }
 interface DiagnosticControllerOps {
   pending(deviceId:string):Promise<{runId:string|null;value:RuntimeErrorRecord}|undefined>;
+  verify(proof:DiagnosticAttestation):Promise<void>;
   admit(runId:string|null,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
   retire(proof:DiagnosticAttestation):Promise<void>;
 }
@@ -340,6 +341,29 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
     return{raw,value,sha};
   }
   const ops:DiagnosticControllerOps={
+    async verify(proof){
+      if(!proof||proof.schemaVersion!==1||!["acknowledged","resolved"].includes(proof.disposition)||
+        !/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.deviceId)||
+        (proof.runId!==null&&!/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.runId))||
+        !/^[0-9a-f-]{36}$/.test(proof.eventId)||!/^[0-9a-f]{64}$/.test(proof.sha256)||
+        !Number.isSafeInteger(proof.controllerGeneration)||proof.controllerGeneration<=0)
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-invalid");
+      let source:MailboxFile;
+      try{source=await lookupDiagnostic("diagnostic",proof.deviceId,proof.eventId);}
+      catch{source=await lookupDiagnostic("diagnostic-retired",proof.deviceId,proof.eventId);}
+      const props=source.appProperties;
+      if(props?.brainBvpRunId!==(proof.runId??undefined)||
+        (proof.runId===null?props?.brainBvpOriginBound!=="0":props?.brainBvpOriginBound==="0"))
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-origin");
+      const snapshot=await sourceContents(source);
+      if(snapshot.sha!==proof.sha256||
+        snapshot.value.diagnostic.identity.runId!==(proof.runId===null?"unavailable":await opaqueDiagnosticId(proof.runId,"run")))
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-content");
+      if(props?.brainBvpKind==="diagnostic-retired"&&(props.brainBvpAcknowledgedSha256!==proof.sha256||
+        props.brainBvpAckDisposition!==proof.disposition||
+        props.brainBvpControllerGeneration!==String(proof.controllerGeneration)))
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-retired-conflict");
+    },
     async pending(deviceId){
       const parent=await rootId(),q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='diagnostic-pending' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' }";
       const response=await call(API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=25&fields=nextPageToken,files(id,size,appProperties)");
@@ -382,6 +406,16 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
         (await sourceContents(current)).raw!==JSON.stringify(safe))throw new MailboxUnavailableError("mailbox-diagnostic-admission-unconfirmed");
     },
     async retire(proof){
+      await ops.verify(proof);
+      let retired:MailboxFile|undefined;
+      try{retired=await lookupDiagnostic("diagnostic-retired",proof.deviceId,proof.eventId);}catch{}
+      if(retired){
+        const copy=await lookupDiagnostic("diagnostic-archive",proof.deviceId,proof.eventId);
+        if(copy.appProperties?.brainBvpSourceId!==retired.id||copy.appProperties?.brainBvpArchiveSha256!==proof.sha256||
+          (await sourceContents(copy)).sha!==proof.sha256)
+          throw new MailboxUnavailableError("mailbox-diagnostic-retirement-replay-invalid");
+        return;
+      }
       if(!proof||proof.schemaVersion!==1||!["acknowledged","resolved"].includes(proof.disposition)||
         !/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.deviceId)||
         (proof.runId!==null&&!/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.runId))||
@@ -465,6 +499,8 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
   async function acknowledgeDiagnostic(proof:DiagnosticAttestation):Promise<void>{
     return withController(proof.deviceId,async lease=>{
       if(lease.generation!==proof.controllerGeneration)throw new MailboxUnavailableError("relay-diagnostic-acknowledgment-stale-controller");
+      // Reject forged, mismatched or stale content BEFORE a durable receipt is created.
+      await controller!.verify(proof);
       const dir=root+"/diagnostic-acknowledgments";
       if(!await adapter.exists(dir))await adapter.mkdir(dir);
       const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(proof.deviceId+"|"+proof.eventId));
