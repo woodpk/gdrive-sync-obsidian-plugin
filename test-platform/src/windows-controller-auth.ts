@@ -94,8 +94,8 @@ export function createWindowsControllerRequest(options:WindowsOAuthOptions):Auth
     let response:Response;
     try{response=await fetcher(url,{...init,headers});}
     catch{throw new Error("controller-drive-unavailable");}
-    if(response.status===401)throw new Error("controller-authentication-required");
-    if(!response.ok)throw new Error("controller-drive-unavailable");
+    // Preserve provider status for the existing mailbox classifier. In
+    // particular a 400/410 expired page cursor needs its established replay path.
     return response;
   };
 }
