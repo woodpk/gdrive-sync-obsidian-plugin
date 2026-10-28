@@ -7,6 +7,7 @@ import type { ScenarioAssertionStep, ScenarioCheckpointStep, ScenarioDefinition,
 import { assertScenarioObservation } from "../scenario/scenario-evidence";
 import type { ScenarioCapabilityResult, ScenarioExecutorContext, ScenarioStepExecution, ScenarioStepExecutor } from "../scenario/scenario-runner";
 import type { DeviceCommand, DeviceCommandResult } from "./device-command-agent";
+import { createWindowsMailboxRelay, type DriveCommandMailbox } from "./drive-mailbox";
 import { BvpDiagnosticError, bvpDiagnostic } from "../scenario/scenario-diagnostics";
 
 export interface HumanCheckpointInstruction {
@@ -24,6 +25,17 @@ export interface LiveScenarioExecutorOptions {
   readonly resultTimeoutMs?: number; readonly productionResultTimeoutMs?: number; readonly pollIntervalMs?: number;
 }
 export interface LiveScenarioExecutor extends ScenarioStepExecutor { pendingCheckpoint(): HumanCheckpointInstruction | undefined; observedInstalledBuilds?(): Readonly<Record<string,{artifactSha256:string;manifestSha256:string}>>; }
+
+/** Authoritative Node/Windows relay assembly: no browser or mobile lock claim. */
+export function createWindowsMailboxRelayWithOSLock(mailbox:DriveCommandMailbox,
+  adapter:Parameters<typeof createWindowsMailboxRelay>[1],root:string){
+  return createWindowsMailboxRelay(mailbox,{
+    exists:path=>adapter.exists(path),mkdir:path=>adapter.mkdir(path),list:path=>adapter.list(path),
+    read:path=>adapter.read(path),write:(path,value)=>adapter.write(path,value),
+    rename:(a,b)=>adapter.rename(a,b),remove:path=>adapter.remove(path),
+    withExclusiveDiagnosticDevice:windowsDiagnosticExclusiveLock(root)
+  },root);
+}
 
 type RelayResult = DeviceCommandResult | null | undefined | "malformed-result";
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
