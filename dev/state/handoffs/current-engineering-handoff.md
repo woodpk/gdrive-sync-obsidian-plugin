@@ -1,15 +1,17 @@
-# S09 G1 — Reviewer-Led Invariant Correction / PHX-CI Test-Writer Handoff (2026-10-16)
+# Current BVP Feature Handoff — DEC-357 Windows Controller OAuth (2026-10-28)
 
-
-## Current feature-scoped BVP handoff — DEC-357 (2026-10-28)
+## Feature-scoped continuity, Builder count 10
 
 **Repository:** `woodpk/gdrive-sync-obsidian-plugin` · **Branch:** `build/bvp-poll-error-observability-20261025` · **Feature:** `WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` · **Recipient:** BUILDER · **handoff-count:** **10, inherited from DEC-356 R5 Reviewer→Builder**, no new handoff occurred. This entry is a continuity pointer for the active new BVP unit; older S09 G1 material elsewhere in this file is historical and must not determine this feature's current owner or next work.
 
 **Owner decision:** DEC-357 Option A — independent Windows Node OAuth PKCE with current-user DPAPI, separate from Obsidian reporters; no IPC bridge, shipping source, broader scope or second host. **Canonical new unit:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md` (BVP-WCO-001–011 / WCO-01–06). **Corrective predecessor:** DEC-356 R5 F01 `CORRECTION REQUIRED`; historical R5 PHX-CI PASS only covers original SHA `26f5ed8c95adb4cef7c8b805d880fc613fc9afd1`.
 
-**Development status:** Windows OAuth/controller source and tests committed, **not PHX-CI qualified**, not independently accepted, and no live OAuth/Google Drive/device execution. The immediately preceding code+state checkpoint `af178ebc17f90d0be8db78c45f12b9bf22375594` is *not* frozen as a final source; this documentation-only refresh advances the branch. Next action is to finish cross-file `dev/` planning/state alignment **before** freezing the new exact candidate and requesting Owner-operated unchanged pinned Windows software-only PHX-CI. Never reuse the earlier operator command's old `-ExpectedSourceSha` after these commits. Preserve all historical evidence, role separation, physical/no-release gates, and the unresolved separate-client `drive.file` mailbox-visibility prerequisite.
+**Development status:** Windows OAuth/controller source and tests committed; first Windows PHX-CI run `422cc526-615e-4848-8566-9f4152b5126e` on source `af178ebc...` was **BLOCKED** (focused TypeScript TS2304, undefined `readFile`); no software qualification or Reviewer acceptance and no live OAuth/Drive/device activity. The immediately preceding code+state checkpoint `af178ebc17f90d0be8db78c45f12b9bf22375594` is *not* frozen as a final source; this documentation-only refresh advances the branch. Next action is to finish cross-file `dev/` planning/state alignment **before** freezing the new exact candidate and requesting Owner-operated unchanged pinned Windows software-only PHX-CI. Never reuse the earlier operator command's old `-ExpectedSourceSha` after these commits. Preserve all historical evidence, role separation, physical/no-release gates, and the unresolved separate-client `drive.file` mailbox-visibility prerequisite.
+
 
 ---
+
+# S09 G1 — Reviewer-Led Invariant Correction / PHX-CI Test-Writer Handoff (2026-10-16)
 
 
 **Status:** `IN_PROGRESS`, **new production changes not yet PHX-CI tested**. Independent reviewer REJECT of previous exact source `436afeee8897fc34764bbdddcdad0eea0be3365d` accepted: F-01 MAJOR delayed Create/Pair revives deauthorized pairing; F-02 MAJOR relocation replays stale user exclusions. Reviewer systemic diagnosis supersedes prior agent self-assessment: full-workflow concurrency inspection must precede tests/review.
