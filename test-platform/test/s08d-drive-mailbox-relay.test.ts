@@ -686,3 +686,15 @@ test("DEC356 ACTIVE bytes cannot be rewritten by a later device retry",async()=>
   equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
   equal([...drive.files.values()].find(f=>f.meta.appProperties?.brainBvpKind==="diagnostic")?.content,original);
 });
+
+test("DEC356 completed staged content cannot be edited by a later publisher retry",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),record=await r3Record("run-a");
+  const event={...record,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",event),/mailbox-diagnostic-awaiting-controller/);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{
+    ...event,occurrences:2,lastAt:new Date(Date.now()+1000).toISOString()
+  }),/mailbox-diagnostic-immutable/);
+  const staged=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-pending");
+  equal(staged.length,1);
+  equal(staged[0].content,JSON.stringify(record));
+});
