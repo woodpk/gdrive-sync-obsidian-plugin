@@ -65,7 +65,8 @@ function validated(next:Record<string,unknown>,old?:Tokens):Tokens {
   if(typeof next.access_token!=="string"||!next.access_token||
     typeof next.expires_in!=="number"||!Number.isFinite(next.expires_in)||next.expires_in<=0||
     (next.scope!==undefined&&next.scope!==SCOPE)||
-    (next.refresh_token!==undefined&&(typeof next.refresh_token!=="string"||!next.refresh_token)))
+    (next.refresh_token!==undefined&&(typeof next.refresh_token!=="string"||!next.refresh_token))||
+    (!old&&!next.refresh_token))
     throw new Error("controller-oauth-token-invalid");
   return{accessToken:next.access_token,
     ...(next.refresh_token||old?.refreshToken?{refreshToken:String(next.refresh_token??old?.refreshToken)}:{}),
