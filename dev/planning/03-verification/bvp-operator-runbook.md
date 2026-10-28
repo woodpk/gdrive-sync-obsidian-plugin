@@ -1,5 +1,15 @@
 # BVP Operator Runbook — Mandatory Fresh-Session Read
 
+
+## Current feature re-entry: new DEC-357 Windows OAuth Build Unit (2026-10-28)
+
+**Read this first for the active branch.** The Owner's Option A decision establishes **WS-07/BVP_WINDOWS_CONTROLLER_OAUTH**, a distinct new Build Unit, with authoritative [requirements BVP-WCO-001–011, interfaces, WCO-01–06 build decomposition and acceptance plan](../02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). This supersedes the older sections below that present DEC-352/356 R5 PHX-CI acceptance, a standalone controller helper, or earlier “next” commands as the current operative status. They remain historical evidence for their own SHA only.
+
+**Current status:** DEC-357 source and tests committed **NOT PHX-CI EXECUTED**, Reviewer **NOT ACCEPTED**; the R5 corrective Reviewer verdict is **CORRECTION REQUIRED**. The newly authorized Windows-only OAuth PKCE session with DPAPI-protected refresh token is separate from the Obsidian reporter. The Node controller must use a pre-existing `drive.file` BVP mailbox and the existing exclusive Windows controller/lease authority; inability to see that mailbox must fail closed without new mailbox creation or scope broadening. Real separate-client mailbox access remains **UNVERIFIED** and cannot be established from mocked PHX-CI tests.
+
+**Next ordering:** finish dev-only specification/decision/traceability/architecture/workstream/verification/state updates **before** proposing any PHX-CI execution. Then freeze the exact resulting candidate and use only the existing unchanged pinned Owner-operated Windows software-only PHX-CI. There is **no permission to run** `--authorize`, `--once`, `--serve` against actual Google OAuth/Drive, physical devices, vaults, or to install/merge/release software. The old draft operator CLI examples in this manual are descriptive, **not executable authorization**.
+
+
 **Audience:** every BRAIN Builder/agent producing an owner-facing BVP command, interpreting BVP results, resuming BVP work, or handing this project to a new chat session.  
 **Last source audit:** 2026-10-24 at BRAIN commit `d78385e485ec966505c8d5122e99a3121840c16a`; full source analysis `dev/research/bvp-operator-api-audit-2026-10-24.md`.  
 **Authority:** later Owner instruction (2026-10-24) favors driving existing Node/TypeScript BVP directly from PowerShell; the earlier comprehensive PowerShell-interface build is **not** necessary merely to run available BVP batteries. Governing protocol and PHX-CI qualification requirements still apply to **software changes**.  
