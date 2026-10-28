@@ -1,6 +1,6 @@
 # WS-07 / DEC-357 — Independent Windows OAuth and Authoritative BVP Diagnostic Controller
 
-**Status:** NEW OWNER-APPROVED BUILD UNIT; IMPLEMENTATION DRAFT COMMITTED; SOFTWARE VERIFICATION **NOT EXECUTED**; REVIEWER **NOT ACCEPTED**; OPERATION **NOT AUTHORIZED**.  
+**Status:** NEW OWNER-APPROVED BUILD UNIT; IMPLEMENTATION DRAFT COMMITTED; **FIRST PHX-CI BLOCKED (FOCUSED TYPESCRIPT COMPILE)**; SOFTWARE **NOT QUALIFIED**; REVIEWER **NOT ACCEPTED**; OPERATION **NOT AUTHORIZED**.  
 **Owner decision:** 2026-10-28, Option A (separate Windows OAuth), not Option B (Obsidian↔Node authenticated IPC).  
 **Workstream:** WS-07 BRAIN Verification Platform; this is a **distinct follow-on build unit** dependent on DEC-352/354/355/356, not a new product workstream and not a revision to production WS-03 OAuth.  
 **Feature/branch:** `WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` on `build/bvp-poll-error-observability-20261025` until separately re-bound by the Owner.  
@@ -66,7 +66,7 @@ BVP device validation plugin (Windows/iOS; browser-safe)
 | WCO-02 | Windows DPAPI and separate PKCE; depends on WCO-01's immutable mailbox boundary | Scope, callback state/replay, refresh, restart, no-secret-plaintext, malformed/missing store | Draft source/tests committed; unverified |
 | WCO-03 | Existing mailbox-only access, root/capacity/archival safety | Absent/ambiguous root, cursor expiry, unexpected status, no duplicate mailbox | Draft source/tests committed; unverified |
 | WCO-04 | Real Node single-controller CLI composition, process singleton, lease fencing and fault recovery | Compiled process; two controllers; orphan lock; startup without lease; no command dispatch | Draft source/tests committed; unverified |
-| WCO-05 | Full source-impact/architecture review, frozen exact software-only PHX-CI and evidence | Full focused/product tests and guard; no unauthorized change | **NOT STARTED / PHX-CI NOT EXECUTED** |
+| WCO-05 | Full source-impact/architecture review, frozen exact software-only PHX-CI and evidence | Full focused/product tests and guard; no unauthorized change | **INITIAL RUN BLOCKED**; compiler repair and new exact-source run needed |
 | WCO-06 | New independent blind/source-first Reviewer acceptance and Owner-controlled next-stage decisions | Separate frozen review; approval distinctly states mock vs live proof | **NOT STARTED** |
 
 For resumed work, minimize changes and keep each coding-agent assignment bounded to one turn, with explicit interface ownership between any parallel workers. No test modification merely to make a failing assertion pass without reconciling its normative expectation.
@@ -88,7 +88,7 @@ Test locations: `test-platform/test/windows-controller-oauth.test.ts`, `s08d-dri
 1. **Highest external compatibility risk:** Google `drive.file` access is app-specific. A second OAuth client could fail to see records initially created by the Obsidian client, even within a Google Cloud project. Existing root-only guard intentionally fails closed; no proof of real shared visibility. Owner must separately authorize a narrowly bounded real compatibility check after software qualification/review; if it fails, return to Owner for architecture choice, not switch OAuth scope automatically.
 2. **Token storage/permission policy:** DPAPI current-user protects at rest; Windows filesystem ACL and operator account context must be independently verified before live activation. Do not persist credentials in `dev/`, vault, JSON evidence, argv, or console logs.
 3. **Single-host owner control:** local `wx` locks do not coordinate independent hosts. Deployment topology is **one Windows host/controller root**; automated multi-host admission is prohibited.
-4. **Current code status:** although several draft modules/tests are committed, none was executed by PHX-CI in this cycle. The old R5 `26f5ed8c...` PASS of 597 focused tests cannot validate DEC-357. The corrected R5 Reviewer verdict is **CORRECTION REQUIRED**.
+4. **Current code status:** although several draft modules/tests are committed, none was executed by PHX-CI in this cycle. The old R5 `26f5ed8c...` PASS of 597 focused tests cannot validate DEC-357. The first DEC-357 PHX-CI run on `af178...` was **BLOCKED**, not a qualification. The corrected R5 Reviewer verdict is **CORRECTION REQUIRED**.
 5. **Stopping rule:** until this entire dev inventory/decomposition/traceability/state refresh is complete, **no PHX-CI run**, new reviewer handoff or live operation. After documentation, freeze current Git SHA, run unchanged pinned Windows PHX-CI only via explicit Owner operation, publish original evidence and request independent review only after substantive PASS.
 6. **Owner approval boundary:** approval of Option A authorizes software development and design documentation; does not authorize opening a live Google login flow, operating on personal Drive/vault, physical iPhone testing, promotion or release.
 
@@ -99,3 +99,26 @@ Ownership: WS-07 `00-WORKSTREAM.md`, `01-SCOPE.md`, `02-ARCHITECTURE.md`, `03-BU
 Cross-workstream: production WS-03 Google OAuth is **not** modified; this validation-only separate OAuth client belongs in WS-07.  
 Evidence: current `dev/state/current-state.yaml` feature section, `dev/planning/03-verification/verification-plan.md`, `dev/planning/03-verification/bvp-operator-runbook.md`.  
 Historical R5 Reviewer report and original PHX-CI output remain immutable under `dev/reviews/` and `dev/test-results/`.
+
+
+## 8. First immutable Windows PHX-CI observation — BLOCKED, not qualification (2026-10-28)
+
+A **separate Owner-operated PHX-CI run** was published while this `dev/` documentation refresh was in progress; this documentation agent neither invoked it nor changed source/tests. Preserve the original evidence without alteration.
+
+| Field | Source-bound observation |
+| --- | --- |
+| Verified source SHA | `af178ebc17f90d0be8db78c45f12b9bf22375594` |
+| Verified Git tree | `8002bb96439af1d422b56b1ad26a8a8d524d15e8` |
+| PHX-CI runtime pin | `69c4aa077d4a1a46d1e85e59f39d36285be99e83` |
+| Run ID | `422cc526-615e-4848-8566-9f4152b5126e` |
+| Evidence publication commit | `5a04d4710234f0a69a01c62e92179a381b23144f` |
+| Original result | `dev/test-results/20261028T224816Z-operator-build-bvp-poll-error-observability-20261025-af178ebc17f9.json`, Git blob `d04f4a92aee689dd5bb3f21ee2a64391ffd47273` |
+| Change-set / repository / overall | **FAIL / PASS / BLOCKED** |
+| Focused test stage | **FAIL, exit 2** — compiler TS2304, `test-platform/test/s08d-drive-mailbox-relay.test.ts(820,35): Cannot find name 'readFile'` |
+| Product test stage | **PASS** |
+| Remaining stages | build/repository-check/check/artifacts **NOT REACHED** |
+
+**WCO-R1-F01 corrective issue:** the source-level BVP test references `readFile` without an available binding. The focused tests were not executed because compilation failed; the real controller-integration tests therefore remain unverified. This is a scoped **Builder software correction** for a future coding phase, **not** an instruction to change source during the Owner-mandated dev-only documentation phase.
+
+**Next sequence:** finish the complete `dev/` planning, traceability and continuity refresh; then the Builder may repair the compile blocker under the ordinary test-first/change-authority rules; freeze the *new* corrected exact source and run the unchanged pinned Owner-operated software-only Windows PHX-CI. The prior run's BLOCKED result must remain immutable and must not be repurposed to qualify any later candidate. Reviewer acceptance, real separate-client Google `drive.file` compatibility and Owner live/release authority all remain outstanding.
+
