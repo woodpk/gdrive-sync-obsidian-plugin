@@ -139,3 +139,20 @@ The table assigns every normative target-system requirement family to the phase 
 ## Traceability rule
 
 Detailed requirement text remains authoritative in the two target-system specifications. This file records ownership/coverage; it does not paraphrase away or weaken individual requirements.
+
+
+## DEC-357 requirement-to-evidence addendum (new WS-07 build unit)
+
+**Authoritative source:** [BVP Windows Controller OAuth](../02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). This introduces the separately numbered **BVP-WCO-001–011** requirements as a supplement to BVP-ARCH/LIVE/EVID/GOV requirements, **not** a change to the separately counted 190 shipping product requirements.
+
+| Requirements | Owner/workstream | Required evidence |
+| --- | --- | --- |
+| WCO-001, WCO-009 | WS-07, validation artifact boundary | Generated desktop/mobile bundle no Node controller authority, production isolation, frozen architecture guard |
+| WCO-002–003 | WS-07, Windows OAuth client | PKCE state and replay/timeout, exact `drive.file` scope, Windows current-user DPAPI/refresh and privacy negative cases |
+| WCO-004, WCO-010 | WS-07, existing BVP mailbox | No second mailbox, inaccessible root fails closed; **real separate-client file access remains unverified** |
+| WCO-005, WCO-008 | WS-07, Windows controller | Root+device exclusive lock, exact run/device lease, actual Node CLI/process, restart and contention |
+| WCO-006–007 | WS-07, reporter→controller→inbox | pending→ACTIVE→journal confirmation→durable inbox; event proof, capacity, archived retirement |
+| WCO-011 | WS-07, verification and reviewer | Current exact-SHA owner-operated pinned Windows PHX-CI original evidence then fresh independent acceptance |
+
+**Qualification status:** no PHX-CI execution or reviewer approval for DEC-357; the DEC-356 R5 prior PASS cannot qualify it. Live OAuth/Google Drive access requires a separate explicit Owner decision; no merge/physical execution.
+
