@@ -53,7 +53,7 @@ export async function runWindowsDiagnosticControllerOnce(
   };
   // The relay wrapper supplies the real Node OS-exclusive lock. Browser adapters
   // must never receive or emulate this capability.
-  const mailbox=createDriveCommandMailbox(request);
+  const mailbox=createDriveCommandMailbox(request,{allowRootCreation:false});
   const relay=createWindowsMailboxRelayWithOSLock(mailbox,adapter,options.relayRoot,options.deviceId);
   const observed=await relay.pumpOnce();
   return {status:observed.status,...(observed.reason?{reason:observed.reason}:{})};
