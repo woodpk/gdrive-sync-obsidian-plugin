@@ -29,3 +29,9 @@ Repository-specific implementation mechanics remain engineering discretion only 
 ## DEC-339 detailed design — pending independent architecture review
 
 See `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. WS-03 owns managed-root/account/domain-verified two-domain baseline capture with pre-scan Changes token and post-scan catch-up; remote ID/parent/name/revision/provenance reads; paginated Changes classification with identity continuity; duplicate-sibling-aware targeted occupancy and convergence observations; and explicit partial/inaccessible/out-of-domain outcomes. It does not own the IndexedDB authority/CAS implementation or declare BASE/deletions. A reserved Drive ID is **not** a path-occupancy proof. Shared typed boundary is supplied first by WS-02 D339-01.
+
+
+## Boundary clarification: DEC-357 Windows BVP OAuth is WS-07-only (2026-10-28)
+
+Owner DEC-357 authorizes a **separate Windows Node OAuth Desktop PKCE session** exclusively for WS-07 BVP's nonshipping diagnostic controller, tracked in [WS-07 BVP_WINDOWS_CONTROLLER_OAUTH](../WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). It does **not** change this WS-03 production OAuth/Drive scope, refresh-token authority, authentication UX, authorized product grant, or shipping production dependencies. No BVP test-platform source may be added to shipping `src/**` or create an unapproved production seam. The controller's separate `drive.file` grant may not see the plugin-created mailbox; that is an **unverified compatibility prerequisite** and cannot be solved by silently broadening scope. All real OAuth/Drive activity remains Owner-reserved.
+
