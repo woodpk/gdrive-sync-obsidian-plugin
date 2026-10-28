@@ -330,7 +330,7 @@ The separate controller constructs `createDriveCommandMailbox(request,{allowRoot
 
 The loopback PKCE callback is single-use even during the in-flight token exchange; a first grant without a refresh token fails closed instead of storing a non-durable session. Continuous controller mode retains the root ownership lock across startup without a lease, provider outage and retries, and supports normal SIGINT/SIGTERM shutdown cleanup; a genuine crash still leaves a fail-closed orphan. The explicit `--once` CLI reports a safe reason classification without device identity, path or credentials. Offline tests cover missing/corrupt protected tokens, OAuth token renewal, callback replay, real compiled Node CLI fail-closed preflight, fake-Drive cursor status, no accidental new mailbox, existing controller lock, staging→ACTIVE and Windows disk inbox.
 
-**Verification status:** all DEC-357 source and tests are committed only. No PHX-CI run has been executed for this changed candidate; the current branch HEAD must be frozen and used as the immutable `-ExpectedSourceSha` for the unchanged Windows PHX-CI launcher. Preserve handoff-count 10 and Owner release/physical prohibitions.
+**Verification status:** the first DEC-357 PHX-CI run `422cc526-615e-4848-8566-9f4152b5126e` on `af178ebc...` was **BLOCKED** by focused BVP TypeScript test compilation (unbound `readFile`); the current branch HEAD must be frozen and used as the immutable `-ExpectedSourceSha` for the unchanged Windows PHX-CI launcher. Preserve handoff-count 10 and Owner release/physical prohibitions.
 
 
 ## Successor transfer — DEC-357 is a distinct new Build Unit, not merely the DEC-356 repair (2026-10-28)
