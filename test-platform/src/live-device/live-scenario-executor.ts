@@ -30,6 +30,23 @@ const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const fail=(status:"failed"|"blocked"|"unsupported",classification:string,reason?:string):ScenarioCapabilityResult=>({status,classification,...(reason===undefined?{}:{reason})});
 const exists=async(path:string):Promise<boolean>=>stat(path).then(()=>true,()=>false);
 const authorityPath=(root:string,deviceId:string)=>join(root,"controller-authority",createHash("sha256").update(deviceId).digest("hex")+".json");
+
+/** Validation-only Windows controller lock. The local authority directory is the
+ * single trusted controller root. 'wx' fails closed on overlapping processes and
+ * an abandoned crash lock requires explicit operator reconciliation, not a
+ * speculative automatic stale-lock takeover. Never expose this to mobile agents.
+ */
+export function windowsDiagnosticExclusiveLock(root:string){
+  return async function withExclusiveDiagnosticDevice<T>(deviceId:string,action:()=>Promise<T>):Promise<T>{
+    if(!/^[a-zA-Z0-9._:-]{1,128}$/.test(deviceId))throw new Error("relay-controller-identity-invalid");
+    const path=authorityPath(root,deviceId)+".diagnostic.lock";
+    await mkdir(dirname(path),{recursive:true});
+    let handle:Awaited<ReturnType<typeof open>>;
+    try{handle=await open(path,"wx",0o600);}catch{throw new Error("relay-controller-exclusive-busy");}
+    try{return await action();}finally{await handle.close();await rm(path,{force:true});}
+  };
+}
+
 interface ControllerAuthority { readonly schemaVersion:1; readonly generation:number; readonly runId:string|null; readonly deviceId:string; }
 function authority(value:unknown,deviceId:string):ControllerAuthority|undefined{const v=value as Partial<ControllerAuthority>|null;return v&&v.schemaVersion===1&&v.deviceId===deviceId&&Number.isSafeInteger(v.generation)&&Number(v.generation)>=0&&(v.runId===null||typeof v.runId==="string")?v as ControllerAuthority:undefined;}
 async function acquireAuthorityLocks(paths:readonly string[]){const locks:{path:string;handle:Awaited<ReturnType<typeof open>>}[]=[];try{for(const path of paths){let handle;try{handle=await open(path+".lock","wx");}catch{throw new Error("live-controller-authority-busy");}locks.push({path,handle});}return locks;}catch(error){for(const lock of locks.reverse()){await lock.handle.close();await rm(lock.path+".lock",{force:true});}throw error;}}
