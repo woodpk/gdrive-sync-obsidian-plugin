@@ -823,3 +823,15 @@ test("DEC356 Option A actual OAuth+Windows controller assembly stages, admits, a
     equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test("DEC357 separate Windows OAuth cannot create a second mailbox when existing app-owned root is invisible",async()=>{
+  const drive=new FakeDrive();
+  const independent=createDriveCommandMailbox(drive.request,{allowRootCreation:false});
+  await rejects(()=>independent.diagnosticsForDevice("device-a"),/mailbox-root-not-accessible/);
+  equal(drive.files.size,0,"a wrong account or inaccessible drive.file grant must not create a new mailbox");
+  const reporter=createDriveCommandMailbox(drive.request);
+  await reporter.diagnosticsForDevice("device-a");
+  equal(drive.files.size,1,"existing reporter may establish its own mailbox root");
+  equal((await independent.diagnosticsForDevice("device-a")).entries.length,0,
+    "the independent controller can reuse an already-visible mailbox without creating it");
+});
