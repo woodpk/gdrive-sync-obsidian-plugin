@@ -50,6 +50,12 @@ class Files {
   async list(p:string){const prefix=p+"/";return{files:[...this.values.keys()].filter(v=>v.startsWith(prefix)&&!v.slice(prefix.length).includes("/")),folders:[]};}
   async read(p:string){const v=this.values.get(p);if(v===undefined)throw new Error("missing");return v;} async write(p:string,v:string){this.values.set(p,v);}
   async rename(a:string,b:string){const v=await this.read(a);this.values.set(b,v);this.values.delete(a);} async remove(p:string){this.values.delete(p);}
+  private static exclusive=new Set<string>();
+  async withExclusiveDiagnosticDevice<T>(deviceId:string,act:()=>Promise<T>):Promise<T>{
+    if(Files.exclusive.has(deviceId))throw Error("relay-controller-exclusive-busy");
+    Files.exclusive.add(deviceId);
+    try{return await act();}finally{Files.exclusive.delete(deviceId);}
+  }
 }
 const validationBuild={schemaVersion:1 as const,sourceCommit:"a".repeat(40)};
 const command=(sequence=1,runId="run-a",deviceId="device-a"):DeviceCommand=>({runId,deviceId,sequence,commandId:"cmd-"+sequence,kind:"observe-product"});
@@ -213,17 +219,22 @@ test("DEC-352 device diagnostics arrive in exact leased Windows relay inbox idem
   const root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-a","device-a",2);
   const event={...await r3Record("run-a"),occurrences:3};
-  await mailbox.publishDiagnostic("run-a","device-a",{...event,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()});
+  const first={...event,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",first),/mailbox-diagnostic-awaiting-controller/);
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  await relay.admitDiagnostic("run-a","device-a",first);
   equal((await mailbox.diagnostics("run-a","device-a")).length,1);
   equal((await mailbox.diagnostics("other-run","device-a")).length,0);
-  const relay=createWindowsMailboxRelay(mailbox,files,root),dest=root+"/inbox/bvp-diagnostic-"+event.eventId+".error.json";
+  const dest=root+"/inbox/bvp-diagnostic-"+event.eventId+".error.json";
   deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
   equal(JSON.parse(await files.read(dest)).occurrences,3);
   deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
-  await mailbox.publishDiagnostic("run-a","device-a",{...event,occurrences:4,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:[...drive.files.entries()].find(([,v])=>v.meta.appProperties?.brainBvpEventId===event.eventId)![0]});
+  // DEC-356 freezes the acknowledged event; later occurrences acquire a new event ID.
+  const more={...await r3Record("run-a"),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  await relay.admitDiagnostic("run-a","device-a",more);
   await relay.pumpOnce();
-  equal(JSON.parse(await files.read(dest)).occurrences,4);
-  equal([...files.values.keys()].filter(k=>k.endsWith(".error.json")).length,1);
+  equal(JSON.parse(await files.read(dest)).occurrences,3);
+  equal([...files.values.keys()].filter(k=>k.endsWith(".error.json")).length,2);
 });
 
 test("DEC-352 mailbox rejects unsafe diagnostic codes and forged identifiers",async()=>{
@@ -270,7 +281,7 @@ test("DEC-352 interrupted diagnostic media upload stays hidden from the relay",a
   const reservedId=await mailbox.reserveDiagnosticId();
   await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...value,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:reservedId}),/mailbox-drive-provider-unavailable/);
   equal((await mailbox.diagnostics("run-a","device-a")).length,0);
-  equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="diagnostic"&&f.meta.appProperties?.brainBvpRecord==="0"),true);
+  equal([...drive.files.values()].some(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-pending"&&f.meta.appProperties?.brainBvpRecord==="0"),true);
 });
 
 test("DEC-352 malformed relay lease is a reported failure, never silently skipped",async()=>{
@@ -342,6 +353,10 @@ test("DEC352-F02 uncertain create/media/visibility responses replay with one res
     await rejects(flush,/mailbox-drive-transport-unavailable/);
     equal((await journal.snapshot()).entries[0].deliveredCount,0);
     const restarted=new BvpRuntimeErrorJournal(files,root);
+    await rejects(()=>restarted.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId()),/mailbox-diagnostic-awaiting-controller/);
+    await authorize(files,root,"run-a","device-a");
+    const pending=(await restarted.snapshot()).entries[0];
+    await createWindowsMailboxRelay(mailbox,files,root).admitDiagnostic("run-a","device-a",{...pending,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:pending.remoteFileId});
     await restarted.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
     const remote=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic");
     equal(remote.length,1,stage);
@@ -354,19 +369,20 @@ test("DEC352-F02 uncertain create/media/visibility responses replay with one res
 
 test("DEC352-F02 conflicting event origin or payload fails closed without second creation",async()=>{
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),event={schemaVersion:1 as const,eventId:randomUUID(),firstAt:new Date().toISOString(),lastAt:new Date().toISOString(),occurrences:1,diagnostic:bvpPollFailure(),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
-  await mailbox.publishDiagnostic("run-a","device-a",event);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",event),/mailbox-diagnostic-awaiting-controller/);
   await rejects(()=>mailbox.publishDiagnostic("run-b","device-a",{...event,origin:{...event.origin,runId:"run-b"}}),/mailbox-diagnostic-event-conflict/);
   await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{...event,diagnostic:bvpPollFailure("different-classification")}),/mailbox-diagnostic-event-conflict/);
-  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
 });
 
 test("DEC352-F03 relay refuses same-event conflicting inbox evidence and duplicate remote records",async()=>{
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-a","device-a",1);
   const event={...await r3Record("run-a"),origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
-  await mailbox.publishDiagnostic("run-a","device-a",event);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",event),/mailbox-diagnostic-awaiting-controller/);
   const relay=createWindowsMailboxRelay(mailbox,files,root);
-  await relay.pumpOnce();
+  await relay.pumpOnce(); // serialized admission
+  await relay.pumpOnce(); // inbox observation
   const path=root+"/inbox/bvp-diagnostic-"+event.eventId+".error.json",old=JSON.parse(await files.read(path));
   const tampered={...old,diagnostic:bvpPollFailure("forged-origin")};
   await files.write(path,JSON.stringify(tampered));
@@ -419,9 +435,11 @@ test("DEC352-R2-F01 delayed run A diagnostic reaches Windows under run B lease w
   const journal=new BvpRuntimeErrorJournal(files,root);
   await journal.record(bvpPollFailure("run-a-offline"),{runId:"run-a",deviceId:"device-a"});
   await authorize(files,root,"run-b","device-a",2);
-  await journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
+  await rejects(()=>journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId()),/mailbox-diagnostic-awaiting-controller/);
   const relay=createWindowsMailboxRelay(mailbox,files,root);
-  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0}); // controller admission
+  await journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId!,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0}); // historical-run read
   const original=(await journal.snapshot()).entries[0],inbox=root+"/inbox/bvp-diagnostic-"+original.eventId+".error.json";
   equal(await files.exists(inbox),true,"old run diagnostic must reach existing device inbox");
   const persisted=JSON.parse(await files.read(inbox));
@@ -469,14 +487,16 @@ test("DEC352-R2-F03 unbound offline errors coalesce and are observable by author
   equal(pending.entries.length,1,"unbound same-device repeated failure must not saturate local journal");
   equal(pending.entries[0].occurrences,9);
   equal(await journal.acquireDeliveryWindow(),true,"unbound known-device telemetry becomes eligible on transport recovery");
+  await rejects(()=>journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId()),/mailbox-diagnostic-awaiting-controller/);
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0}); // controller admission
   await journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId,e.origin!.deviceId!,e),()=>mailbox.reserveDiagnosticId());
   const delivered=await journal.snapshot();
   equal(delivered.entries[0].deliveredCount,9);
   const remote=[...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic");
   equal(remote.length,1);equal(remote[0].meta.appProperties.brainBvpOriginBound,"0");
   equal(remote[0].meta.appProperties.brainBvpRunId,undefined);
-  const relay=createWindowsMailboxRelay(mailbox,files,root);
-  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
+  deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0}); // relay inbox read after admission
   const inbox=JSON.parse(await files.read(root+"/inbox/bvp-diagnostic-"+pending.entries[0].eventId+".error.json"));
   deepEqual(inbox.origin,{runId:null,deviceId:"device-a"});
   equal(inbox.diagnostic.identity.runId,"unavailable");
@@ -487,7 +507,7 @@ test("DEC352-R2 cross-device diagnostic retrieval and falsified remote origins f
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files(),root=".obsidian/plugins/brain/.bvp-relay";
   await authorize(files,root,"run-b","device-a",3);
   const event={...await r3Record("run-a"),origin:{runId:"run-a",deviceId:"device-other"},remoteFileId:await mailbox.reserveDiagnosticId()};
-  await mailbox.publishDiagnostic("run-a","device-other",event);
+  r3Seed(drive,event,"run-a","device-other");
   const relay=createWindowsMailboxRelay(mailbox,files,root);
   deepEqual(await relay.pumpOnce(),{status:"ok",published:0,completed:0});
   equal((await files.list(root+"/inbox")).files.length,0,"other devices' errors cannot leak into device-a");
