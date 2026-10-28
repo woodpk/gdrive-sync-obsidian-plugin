@@ -53,17 +53,21 @@ async function main(args:readonly string[]):Promise<void>{
   if(mode==="--once"){
     const outcome=await runWindowsControllerCycle(options);
     process.stdout.write("BVP_WINDOWS_CONTROLLER="+outcome.status+"\n");
+    if(outcome.reason)process.stdout.write("BVP_WINDOWS_CONTROLLER_REASON="+outcome.reason+"\n");
     if(outcome.status!=="ok")process.exitCode=1;
     return;
   }
   const interval=Number(value(args,"--interval-ms"));
   if(!Number.isSafeInteger(interval)||interval<1000||interval>60000)throw new Error("controller-interval-invalid");
-  await withWindowsControllerProcessLock(relayRoot,async()=>{
+  let stopping=false;
+  const stop=()=>{stopping=true;};
+  process.once("SIGINT",stop);process.once("SIGTERM",stop);
+  try{await withWindowsControllerProcessLock(relayRoot,async()=>{
     // An unleased controller may legitimately start before the live runner.
     // Fail closed for every unsuccessful cycle and keep the singleton locked
     // through bounded outage recovery. Never invent an ACTIVE admission.
     let previous="";
-    for(;;){
+    while(!stopping){
       let status="unavailable";
       try{status=(await cycleCore(options)).status;}catch{}
       if(status!==previous){
@@ -72,7 +76,7 @@ async function main(args:readonly string[]):Promise<void>{
       }
       await new Promise(resolve=>setTimeout(resolve,interval));
     }
-  });
+  });}finally{process.off("SIGINT",stop);process.off("SIGTERM",stop);}
 }
 if(require.main===module)void main(process.argv.slice(2)).catch(()=>{
   // Never disclose credential, Drive response, controller file path or device identity.
