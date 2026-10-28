@@ -164,3 +164,30 @@ test("Option A compiled Windows controller --once entrypoint fails closed before
     strictEqual(result.stderr.includes(tokenFile),false);
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("DEC357 PKCE loopback accepts at most one code-exchange request for each authorization intent",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-replay-"));
+  try{
+    let authUrl="",calls=0,release!:()=>void;
+    const barrier=new Promise<void>(resolve=>release=resolve);
+    const pending=authorizeWindowsController({clientId:"desktop",tokenFile:join(root,"tokens.dat"),port:0,
+      onAuthorizationUrl:url=>{authUrl=url;},
+      fetcher:async()=>{calls++;await barrier;return Response.json({
+        access_token:"one-access",refresh_token:"one-refresh",expires_in:3600,
+        scope:"https://www.googleapis.com/auth/drive.file"
+      });}});
+    for(let i=0;i<200&&!authUrl;i++)await new Promise(resolve=>setTimeout(resolve,1));
+    const authorization=new URL(authUrl),target=new URL(authorization.searchParams.get("redirect_uri")!);
+    target.searchParams.set("state",authorization.searchParams.get("state")!);
+    target.searchParams.set("code","first-code");
+    const first=fetch(target);
+    for(let i=0;i<200&&calls===0;i++)await new Promise(resolve=>setTimeout(resolve,1));
+    target.searchParams.set("code","second-code");
+    const replay=await fetch(target);
+    strictEqual(replay.status,404,"a second callback must never exchange a code while first is in-flight");
+    release();
+    strictEqual((await first).status,200);
+    await pending;
+    strictEqual(calls,1);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
