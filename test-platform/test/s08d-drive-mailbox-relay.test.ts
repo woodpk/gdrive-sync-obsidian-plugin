@@ -712,12 +712,17 @@ test("DEC356-F01 assembled Node Windows controller promotes staged reporter evid
     const commandFile=join(root,"outbox","do-not-dispatch.json");
     await writeFile(commandFile,JSON.stringify(command(1,"run-a",deviceId)));
     await authorize(vault,root,"run-a",deviceId,2);
-    const entry=await r3Record("run-a"),event={...entry,origin:{runId:"run-a",deviceId},remoteFileId:await mailbox.reserveDiagnosticId()};
-    await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
+    const journal=new BvpRuntimeErrorJournal(vault,root);
+    await journal.record((await r3Record("run-a")).diagnostic,{runId:"run-a",deviceId});
+    await rejects(()=>journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId,e.origin!.deviceId!,e),
+      ()=>mailbox.reserveDiagnosticId()),/mailbox-diagnostic-awaiting-controller/);
+    const entry=(await journal.snapshot()).entries[0];
+    equal(entry.deliveredCount,0,"staging must never be called delivery");
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
-    const desktop=createWindowsMailboxRelay(mailbox,vault,root);
+    const desktop=createWindowsMailboxRelay(mailbox,vault,root,{mode:"reporter"});
     const absent=await desktop.pumpOnce();
-    equal(absent.status,"unavailable","browser/vault adapter cannot acquire Windows controller authority");
+    equal(absent.status,"ok","desktop reporter must ingest without claiming controller admission");
+    equal((await journal.snapshot()).entries[0].deliveredCount,0);
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
     const external=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
     equal(external.status,"ok","the actual Node assembly must use its OS-exclusive lock");
@@ -726,6 +731,9 @@ test("DEC356-F01 assembled Node Windows controller promotes staged reporter evid
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="command").length,0);
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,0);
+    await journal.flush(e=>mailbox.publishDiagnostic(e.origin!.runId,e.origin!.deviceId!,e),
+      ()=>mailbox.reserveDiagnosticId());
+    equal((await journal.snapshot()).entries[0].deliveredCount,1,"delivery acknowledgment follows ACTIVE confirmation");
     const after=await desktop.pumpOnce();
     equal(after.status,"ok");
     const inbox=JSON.parse(await vault.read(root+"/inbox/bvp-diagnostic-"+entry.eventId+".error.json"));
