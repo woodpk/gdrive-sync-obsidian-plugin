@@ -22,6 +22,8 @@ interface RelayAdapter {
   write(path: string, value: string): Promise<void>;
   rename(from: string, to: string): Promise<void>;
   remove(path: string): Promise<void>;
+  /** OS-exclusive, cross-process Windows BVP controller lock. Absent on mobile/browser. */
+  withExclusiveDiagnosticDevice?<T>(deviceId:string,action:()=>Promise<T>):Promise<T>;
 }
 
 function obj(value: unknown): Record<string, any> | undefined { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : undefined; }
@@ -428,9 +430,36 @@ async function diagnosticIdentity(runId?:string,commandId?:string):Promise<BvpDi
 
 const commandPublishers=new WeakMap<DriveCommandMailbox,(value:DeviceCommand,generation:number)=>Promise<void>>();
 export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:RelayAdapter,root:string){
-  const out=`${root}/outbox`,sent=`${root}/sent`,inside=`${root}/inbox`,publisher=commandPublishers.get(mailbox);
+  const out=`${root}/outbox`,sent=`${root}/sent`,inside=`${root}/inbox`,publisher=commandPublishers.get(mailbox),controller=controllerOps.get(mailbox);
   if(!publisher)throw new Error("relay-mailbox-publisher-unavailable");
   const publishCommand=publisher;
+  async function withController<T>(deviceId:string,action:(lease:ControllerAuthority)=>Promise<T>):Promise<T>{
+    if(!controller||!adapter.withExclusiveDiagnosticDevice)throw new MailboxUnavailableError("relay-controller-exclusive-unavailable");
+    return adapter.withExclusiveDiagnosticDevice(deviceId,async()=>{
+      const path=await controllerAuthorityPath(root,deviceId);
+      if(!await adapter.exists(path))throw new MailboxUnavailableError("relay-controller-run-unleased");
+      let lease:ControllerAuthority|undefined;try{lease=controllerAuthority(JSON.parse(await adapter.read(path)),deviceId);}catch{}
+      if(!lease||lease.generation<=0)throw new MailboxUnavailableError("relay-controller-run-unleased");
+      return action(lease);
+    });
+  }
+  async function admitDiagnostic(runId:string|null,deviceId:string,value:RuntimeErrorRecord):Promise<void>{
+    return withController(deviceId,async()=>controller!.admit(runId,deviceId,value));
+  }
+  async function acknowledgeDiagnostic(proof:DiagnosticAttestation):Promise<void>{
+    return withController(proof.deviceId,async lease=>{
+      if(lease.generation!==proof.controllerGeneration)throw new MailboxUnavailableError("relay-diagnostic-acknowledgment-stale-controller");
+      const dir=root+"/diagnostic-acknowledgments";
+      if(!await adapter.exists(dir))await adapter.mkdir(dir);
+      const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(proof.deviceId+"|"+proof.eventId));
+      const name=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");
+      const path=dir+"/"+name+".json",text=JSON.stringify(proof);
+      if(await adapter.exists(path)){if(await adapter.read(path)!==text)throw new MailboxUnavailableError("relay-diagnostic-acknowledgment-conflict");}
+      else await adapter.write(path,text);
+      if(await adapter.read(path)!==text)throw new MailboxUnavailableError("relay-diagnostic-acknowledgment-not-durable");
+      await controller!.retire(proof);
+    });
+  }
   type PumpResult={status:"ok"|"unavailable";published:number;completed:number;reason?:string;diagnostic?:BvpDiagnostic};
   let pumping:Promise<PumpResult>|undefined;
   async function ensure(){for(const p of [root,out,sent,inside,root+"/diagnostic-cursors",root+"/diagnostic-archive-receipts"])if(!await adapter.exists(p))await adapter.mkdir(p);}
@@ -542,5 +571,5 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
     }
   }
   function pumpOnce():Promise<PumpResult>{if(pumping)return pumping;pumping=pumpCore().finally(()=>{pumping=undefined;});return pumping;}
-  return{pumpOnce};
+  return{pumpOnce,admitDiagnostic,acknowledgeDiagnostic};
 }
