@@ -1407,7 +1407,7 @@ bvp_poll_error_observability_2026_10_25:
   dec357_latest_source_test_commit: "fec5e7b924b91f8943f9a96932311b8317ae755f"
   dec357_last_planning_commit: "e965b93cd00046d246b49fce4a366f5cbd3bc339"
   dec357_closed_safety_boundaries: "WINDOWS_OAUTH_DPAPI_EXISTING_MAILBOX_ONLY_PKCE_SINGLE_USE_OS_SINGLETON_NO_NODE_IN_DEVICE_BUNDLE"
-  dec357_next_action: "COMPLETE_DEV_REFRESH_THEN_BUILDER_FIX_WCO_R1_F01_MISSING_READFILE_AND_NEW_EXACT_SOURCE_PHXCI"
+  dec357_next_action: "WCO_R1_F01_CORRECTED_SOURCE_PENDING_NEW_PINNED_WINDOWS_PHXCI"
   dec357_latest_original_phxci_evidence: "R1_RUN_422cc526_615e_4848_8566_9f4152b5126e_BLOCKED"
   dec357_first_phxci_verified_source: "af178ebc17f90d0be8db78c45f12b9bf22375594"
   dec357_first_phxci_git_tree: "8002bb96439af1d422b56b1ad26a8a8d524d15e8"
@@ -1482,4 +1482,8 @@ bvp_windows_controller_oauth_2026_10_28:
   first_phxci_verdict: "BLOCKED_CHANGESET_FAIL_REPOSITORY_PASS"
   first_phxci_source_issue: "WCO-R1-F01_TS2304_MISSING_READFILE_IMPORT_FOCUSED_TEST_NOT_RUN"
   software_acceptance: "NOT_ACCEPTED_NO_CURRENT_QUALIFIED_SHA"
+  wco_r1_f01_correction_commit: "9568e5936761c796c886cf74f4946b90a363a226"
+  wco_r1_f01_correction: "ONE_TEST_IMPORT_ADD_READFILE_NO_PRODUCTION_CHANGE"
+  next_source_qualification: "NEW_EXACT_HEAD_PINNED_WINDOWS_PHXCI_REQUIRED"
+
 
