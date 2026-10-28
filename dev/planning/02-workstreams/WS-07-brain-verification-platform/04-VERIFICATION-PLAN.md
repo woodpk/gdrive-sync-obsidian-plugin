@@ -186,3 +186,20 @@ Add focused adversarial mutation/fault-injection tests of frame parsing, proof c
 **Scope status:** PLANNED / NONEXECUTABLE; physical S09A–S09V stays separately gated.
 
 **Initial TDD RED state:** The first committed BR01 tests intentionally reference an absent adapter and must not be mistaken for a qualified software candidate. If an expected-RED baseline is executed, only use PHX-CI and preserve its actual BLOCKED original evidence. No standalone `tsc`, `node --test`, Task, or script is acceptance. This is an internal Builder iteration; no cross-role handoff or new Build Unit is created.
+
+
+## DEC-357 verification matrix — new Windows OAuth controller Build Unit
+
+Owner-selected Option A is a distinct WS-07 successor to the rejected DEC-356 R5 controller assembly. Normative requirements BVP-WCO-001–011, architecture and test contracts: [standalone task](tasks/bvp-windows-controller-oauth-2026-10-28.md).
+
+| Evidence family | Required proof |
+| --- | --- |
+| Authentication | Separate Windows desktop OAuth S256 PKCE, one-time callback state, exact existing `drive.file` scope, offline renewal, protected local tokens, no Obsidian credential transfer |
+| Controller authority | Single Windows-root process owner, per-device exclusive lock, existing run/device/generation lease; missing, stale and contending controller remain unavailable |
+| Delivery correctness | Reporter stages pending; only authorized controller promotes ACTIVE; journal confirms only after ACTIVE; Windows inbox record remains durable across restart |
+| Failure/security | Invisible existing mailbox cannot cause a second mailbox; ambiguous Drive responses, expired cursors, DPAPI failures, forgery and replay do not produce false success |
+| Isolation/architecture | No production `src/**` changes, mobile/browser Node dependencies, physical commands or frozen guard/budget/pin changes |
+| Qualification | Actual complete 11-stage pinned Windows software-only PHX-CI results, preserved original evidence, then independent blind-first final acceptance |
+
+**Current status:** all DEC-357 tests and source are unverified; no new PHX-CI run, Reviewer acceptance or permission to invoke live Google OAuth/Drive exists. The prior R5 PHX-CI PASS qualifies only its earlier exact source and its Reviewer disposition was CORRECTION REQUIRED. Separate OAuth-client visibility of the existing app-owned `drive.file` mailbox remains an independently authorized operational compatibility prerequisite; mocks do not close it. No GitHub Actions, release or physical dispatch.
+
