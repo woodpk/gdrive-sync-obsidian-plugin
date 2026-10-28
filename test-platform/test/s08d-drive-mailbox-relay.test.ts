@@ -3,7 +3,7 @@ import { BvpRuntimeErrorJournal, BvpJournalError } from "../src/bvp-runtime-erro
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile, mkdir } from "node:fs/promises";
 import { windowsDiagnosticExclusiveLock } from "../src/live-device/live-scenario-executor";
 import { runWindowsDiagnosticControllerOnce } from "../src/windows-diagnostic-controller";
 import { WindowsDpapiSecrets } from "../src/windows-controller-auth";
