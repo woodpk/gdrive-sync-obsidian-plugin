@@ -655,3 +655,34 @@ test("DEC356 Windows OS lock serializes independent controllers; crash orphan fa
     equal(readFileSync(lockPath,"utf8"),"orphaned-crash-lock","stale lock must require operator reconciliation");
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("DEC356 journal allocation freezes event snapshots across a failed staged publish",async()=>{
+  const files=new Files(),root=".obsidian/plugins/brain/.bvp-relay",journal=new BvpRuntimeErrorJournal(files,root);
+  await journal.record(bvpPollFailure("persistent-offline"),{runId:"run-a",deviceId:"device-a"});
+  const before=(await journal.snapshot()).entries[0];
+  await rejects(()=>journal.flush(async()=>{throw Error("stage-awaiting-controller");},async()=> "reserved-frozen-1"),/stage-awaiting-controller/);
+  await journal.record(bvpPollFailure("persistent-offline"),{runId:"run-a",deviceId:"device-a"});
+  const after=(await journal.snapshot()).entries;
+  equal(after.length,2);
+  equal(after[0].eventId,before.eventId);
+  equal(after[0].remoteFileId,"reserved-frozen-1");
+  equal(after[0].occurrences,1);
+  equal(after[1].occurrences,1);
+  equal(after[1].remoteFileId,undefined);
+  equal(after[0].eventId===after[1].eventId,false);
+});
+
+test("DEC356 ACTIVE bytes cannot be rewritten by a later device retry",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files();
+  const root=".obsidian/plugins/brain/.bvp-relay";await authorize(files,root,"run-a","device-a",1);
+  const record=await r3Record("run-a");
+  const event={...record,origin:{runId:"run-a",deviceId:"device-a"},remoteFileId:await mailbox.reserveDiagnosticId()};
+  const relay=createWindowsMailboxRelay(mailbox,files,root);
+  await relay.admitDiagnostic("run-a","device-a",event);
+  const original=JSON.stringify(record);
+  await rejects(()=>mailbox.publishDiagnostic("run-a","device-a",{
+    ...event,occurrences:2,lastAt:new Date(Date.now()+1000).toISOString()
+  }),/mailbox-diagnostic-immutable/);
+  equal([...drive.files.values()].filter(f=>f.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
+  equal([...drive.files.values()].find(f=>f.meta.appProperties?.brainBvpKind==="diagnostic")?.content,original);
+});
