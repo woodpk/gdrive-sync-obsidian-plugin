@@ -4,7 +4,8 @@ import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { GOOGLE_TOKEN_ENDPOINT, GoogleOAuthSession } from "../../src/drive/auth";
+const GOOGLE_TOKEN_ENDPOINT="https://oauth2.googleapis.com/token";
+const TOKEN_KEY="brain-gdrive-oauth-tokens";
 import { authorizeWindowsController, createWindowsControllerRequest, WindowsDpapiSecrets } from "../src/windows-controller-auth";
 import { runWindowsControllerCycle, withWindowsControllerProcessLock } from "../src/run-windows-diagnostic-controller";
 
@@ -13,14 +14,14 @@ test("Option A Windows DPAPI token storage binds secrets to local user and never
   try{
     const file=join(root,"tokens.dat"),store=new WindowsDpapiSecrets(file);
     strictEqual(store.getSecret("absent"),null);
-    store.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID,"sensitive-token-12345");
+    store.setSecret(TOKEN_KEY,"sensitive-token-12345");
     const encrypted=await readFile(file,"utf8");
     strictEqual(encrypted.includes("sensitive-token-12345"),false);
-    strictEqual(store.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID),"sensitive-token-12345");
+    strictEqual(store.getSecret(TOKEN_KEY),"sensitive-token-12345");
     const second=new WindowsDpapiSecrets(file);
-    strictEqual(second.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID),"sensitive-token-12345");
-    store.deleteSecret(GoogleOAuthSession.TOKEN_SECRET_ID);
-    strictEqual(second.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID),null);
+    strictEqual(second.getSecret(TOKEN_KEY),"sensitive-token-12345");
+    store.deleteSecret(TOKEN_KEY);
+    strictEqual(second.getSecret(TOKEN_KEY),null);
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
@@ -28,7 +29,7 @@ test("Option A previously authenticated Windows request refreshes Google tokens 
   const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-refresh-"));
   try{
     const tokenFile=join(root,"tokens.dat"),secrets=new WindowsDpapiSecrets(tokenFile);
-    secrets.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID,JSON.stringify({
+    secrets.setSecret(TOKEN_KEY,JSON.stringify({
       accessToken:"expired",refreshToken:"refresh-secret",expiresAtMs:0,tokenType:"Bearer",
       scope:"https://www.googleapis.com/auth/drive.file"
     }));
