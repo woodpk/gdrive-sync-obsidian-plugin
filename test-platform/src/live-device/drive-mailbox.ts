@@ -403,6 +403,9 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
       if(file.id!==id||file.appProperties?.brainBvpRunId!==(runId??undefined)||
         (await sourceContents(file)).raw!==JSON.stringify(safe))
         throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-conflict");
+      // An old pending record cannot be promoted to ACTIVE with an already-expired age.
+      if(!Number.isFinite(Date.parse(safe.firstAt))||Date.parse(safe.firstAt)<Date.now()-ageMs)
+        throw new MailboxUnavailableError("mailbox-diagnostic-active-expired");
       await admitActive(deviceId);
       await call(API+"/files/"+encodeURIComponent(id)+"?fields=id",{method:"PATCH",headers:{"content-type":"application/json"},
         body:JSON.stringify({appProperties:{brainBvpKind:"diagnostic"}})});
@@ -428,12 +431,7 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
           throw new MailboxUnavailableError("mailbox-diagnostic-retirement-replay-invalid");
         return;
       }
-      if(!proof||proof.schemaVersion!==1||!["acknowledged","resolved"].includes(proof.disposition)||
-        !/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.deviceId)||
-        (proof.runId!==null&&!/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.runId))||
-        !/^[0-9a-f-]{36}$/.test(proof.eventId)||!/^[0-9a-f]{64}$/.test(proof.sha256)||
-        !Number.isSafeInteger(proof.controllerGeneration)||proof.controllerGeneration<=0)
-        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-invalid");
+      // Input provenance was validated before the durable receipt and again by ops.verify.
       const source=await lookupDiagnostic("diagnostic",proof.deviceId,proof.eventId);
       const props=source.appProperties;
       if(props?.brainBvpRunId!==(proof.runId??undefined)||
