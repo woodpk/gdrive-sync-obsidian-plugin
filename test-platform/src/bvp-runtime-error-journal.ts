@@ -64,7 +64,7 @@ export class BvpRuntimeErrorJournal {
     const state=await this.load(),now=new Date().toISOString();
     const last=state.entries.at(-1);
     if(route.runId)diagnostic=bvpDiagnostic({...diagnostic,identity:{...diagnostic.identity,runId:await opaqueDiagnosticId(route.runId,"run")}});
-    const same=last&&route.deviceId!==null&&!isRecovery(last)&&sameOrigin(last.origin,route)&&JSON.stringify(last.diagnostic)===JSON.stringify(diagnostic);
+    const same=last&&!last.remoteFileId&&last.deliveredCount===0&&route.deviceId!==null&&!isRecovery(last)&&sameOrigin(last.origin,route)&&JSON.stringify(last.diagnostic)===JSON.stringify(diagnostic);
     if(same){last.occurrences++;last.lastAt=now;}
     else{
       if(state.entries.length===MAX_EVENTS){
