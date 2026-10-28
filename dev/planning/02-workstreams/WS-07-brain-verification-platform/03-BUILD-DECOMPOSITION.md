@@ -15,7 +15,7 @@ This is a **distinct new bounded WS-07 unit**, not the earlier DEC-351 CLI final
 | WCO-05 | Source impact/budget/architecture review; freeze SHA, unchanged owner-operated software-only Windows PHX-CI | Original evidence and actual 11-stage, focused/product results; **FIRST PHX-CI BLOCKED**, focused TypeScript test compilation; new exact-source qualification needed |
 | WCO-06 | Fresh independent blind-first Reviewer acceptance, then separate Owner decision | **NOT STARTED**; no premature deployment or physical use |
 
-The WCO-01–04 draft implementation/test files already exist, but their presence is **not proof of PASS**. Preserve the frozen WCO-001–011 requirements and architecture boundaries. No owner PHX-CI run until all relevant `dev/` planning/specifications/state reflect this new cycle. PHX-CI is the sole execution authority for qualification. Handoff-count **10**, recipient **BUILDER**, remains unchanged until a real cross-role transition.
+The WCO-01–04 draft implementation/test files already exist, but their presence is **not proof of PASS**. Preserve the frozen WCO-001–011 requirements and architecture boundaries. An initial PHX-CI run was published while this documentation phase was underway and was **BLOCKED** by focused test compilation. Correct the identified source issue only after this dev-only refresh, then requalify a newly frozen exact source. PHX-CI is the sole execution authority for qualification. Handoff-count **10**, recipient **BUILDER**, remains unchanged until a real cross-role transition.
 
 
 ## Current Owner-directed Build Unit — CLI result finalization (2026-10-24)
