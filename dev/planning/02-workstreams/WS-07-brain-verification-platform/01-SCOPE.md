@@ -239,3 +239,13 @@ The BRAIN Builder may design and build a **BRAIN-only**, thin consumer of the **
 **Locked exclusion:** the Owner prohibits all changes to `woodpk/phx-ci`, its runtime, adapter, schemas, taskfiles, evidence publisher, and BRAIN's exact `phx-ci.json` pin. PHX-CI remains sole validation authority and sole canonical publisher. The bridge may reuse PHX-CI's stage stdout already present in historical evidence for bounded BVP checkpoint/result transport if actual PHX-CI tests establish it works. No new independent verifier, second evidence system, or standalone BVP Git publisher is authorized. All physical device/account/vault/Drive activity remains separately BLOCKED.
 
 See DEC-345, the fixed-runtime read-only research under `dev/research/` and the detailed `tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md`.
+
+
+## DEC-357 successor scope — independent Windows BVP controller authentication
+
+**Owner-authorized new WS-07 Build Unit, separate from DEC-356 F01:** [BVP Windows Controller OAuth task](tasks/bvp-windows-controller-oauth-2026-10-28.md), requirements **BVP-WCO-001–011**. In scope are an independent Node/Windows desktop OAuth PKCE code flow restricted to existing `drive.file` grant; Windows current-user DPAPI token persistence; OAuth refresh and negative/replay cases; the actual compiled Windows controller entrypoint, process-lifetime singleton lock, read-only discovery of the existing BVP mailbox, exclusive pending→ACTIVE admission, event-specific delivery confirmation and durable Windows inbox. The installed Windows/iOS validation plugin remains a reporter only, with no Node filesystem dependency.
+
+**Out of scope:** shipping production `src/**` OAuth or synchronization code, a new broad Drive scope, copied Obsidian tokens, a privileged local IPC bridge, a second authoritative host, a new cross-host/distributed lease mechanism, creation of a second mailbox, any extra verification engine, budget/pin amendments, and physical/live operations without separate authorization. The existing live runner owns device/run/generation leases; the new diagnostic controller consumes rather than grants authority. Software-only mocks may verify contracts but **cannot establish** that a second OAuth Desktop client can see the existing app-owned `drive.file` files. That remains an explicit separately authorized compatibility gate.
+
+**Exit conditions:** unchanged pinned Windows PHX-CI on exact current candidate → original immutable evidence → new independent full final Reviewer acceptance → separate Owner decision for any real OAuth/Drive operation, installation or release. Draft implementation is **unqualified**; predecessor R5 review is **CORRECTION REQUIRED**, not accepted.
+
