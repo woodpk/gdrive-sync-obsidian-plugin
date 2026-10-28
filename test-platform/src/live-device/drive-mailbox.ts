@@ -490,7 +490,7 @@ async function diagnosticIdentity(runId?:string,commandId?:string):Promise<BvpDi
 }
 
 const commandPublishers=new WeakMap<DriveCommandMailbox,(value:DeviceCommand,generation:number)=>Promise<void>>();
-export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:RelayAdapter,root:string){
+export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:RelayAdapter,root:string,scope?:{mode:"reporter"|"controller";deviceId?:string}){
   const out=`${root}/outbox`,sent=`${root}/sent`,inside=`${root}/inbox`,publisher=commandPublishers.get(mailbox),controller=controllerOps.get(mailbox);
   if(!publisher)throw new Error("relay-mailbox-publisher-unavailable");
   const publishCommand=publisher;
@@ -541,7 +541,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
     };
     try{
       await ensure();last="relay-directories-ready";
-      for(const path of (await adapter.list(out)).files){
+      if(scope?.mode!=="controller")for(const path of (await adapter.list(out)).files){
         phase="command-parse";const cmd=await readCommand(path,"outbox");
         phase="command-authorization";first="command-lease-validation";failureClass="relay-command-lease-failed";
         const generation=await authorityGeneration(cmd);
@@ -550,7 +550,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
         last="drive-publish-acknowledged";first="sent-record-persistence";failureClass="relay-file-rename-failed";
         await adapter.rename(path,`${sent}/${baseName(path)}`);published++;
       }
-      for(const path of (await adapter.list(sent)).files){
+      if(scope?.mode!=="controller")for(const path of (await adapter.list(sent)).files){
         phase="result-fetch";const cmd=await readCommand(path,"sent");
         first="drive-receipt-observation";failureClass="relay-result-lookup-failed";
         const res=await mailbox.resultFor(cmd);if(!res)continue;
@@ -567,6 +567,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
         if(!v||typeof v.deviceId!=="string")throw new MailboxUnavailableError("relay-controller-authority-invalid");
         const lease=controllerAuthority(v,v.deviceId);
         if(!lease||lease.generation<=0)throw new MailboxUnavailableError("relay-controller-authority-invalid");
+        if(scope?.mode==="controller"&&lease.deviceId!==scope.deviceId)continue;
         const cursorPath=(await controllerAuthorityPath(root,lease.deviceId)).replace("/controller-authority/","/diagnostic-cursors/");
         let token:string|undefined;
         if(await adapter.exists(cursorPath)){
@@ -620,7 +621,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
         }
         // Admit at most one staged device event per pump through the OS-exclusive
         // controller. Never silently promote from an ordinary device publisher.
-        const pending=await controller?.pending(lease.deviceId);
+        const pending=scope?.mode==="reporter"?undefined:await controller?.pending(lease.deviceId);
         if(pending){
           phase="diagnostic-admission";first="controller-exclusive-capacity-admission";failureClass="relay-diagnostic-admission-failed";
           await withController(lease.deviceId,async()=>controller!.admit(pending.runId,lease.deviceId,pending.value));
