@@ -192,3 +192,18 @@ test("DEC357 PKCE loopback accepts at most one code-exchange request for each au
     strictEqual(calls,1);
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("DEC357 authenticated request preserves Drive cursor-expiry HTTP status for existing mailbox recovery",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-cursor-"));
+  try{
+    const tokenFile=join(root,"tokens.dat");
+    new WindowsDpapiSecrets(tokenFile).setSecret(TOKEN_KEY,JSON.stringify({
+      accessToken:"valid",refreshToken:"refresh",expiresAtMs:Date.now()+600000,
+      scope:"https://www.googleapis.com/auth/drive.file"
+    }));
+    const request=createWindowsControllerRequest({clientId:"desktop",tokenFile,
+      fetcher:async()=>new Response("",{status:410})});
+    const response=await request("https://www.googleapis.com/drive/v3/files?pageToken=expired");
+    strictEqual(response.status,410,"mailbox itself must interpret expired page tokens");
+  }finally{await rm(root,{recursive:true,force:true});}
+});
