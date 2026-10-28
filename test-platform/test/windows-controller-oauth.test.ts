@@ -13,7 +13,8 @@ test("Option A Windows DPAPI token storage binds secrets to local user and never
   const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-"));
   try{
     const file=join(root,"tokens.dat"),store=new WindowsDpapiSecrets(file);
-    strictEqual(store.getSecret("absent"),null);
+    strictEqual(store.getSecret(TOKEN_KEY),null);
+    await rejects(async()=>store.getSecret("other-secret-key"),/controller-token-id-invalid/);
     store.setSecret(TOKEN_KEY,"sensitive-token-12345");
     const encrypted=await readFile(file,"utf8");
     strictEqual(encrypted.includes("sensitive-token-12345"),false);
