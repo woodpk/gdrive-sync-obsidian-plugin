@@ -1490,6 +1490,32 @@
       "operatorCommand": null,
       "accessRequirement": "internal-library-no-public-operator-contract",
       "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "windowsDiagnosticExclusiveLock",
+      "kind": "function",
+      "signature": "export function windowsDiagnosticExclusiveLock(root:string){",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "VALIDATION_ONLY_CONTROLLER_INTERNAL_NO_PUBLIC_OPERATOR_CLI",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "windows-OS-exclusive-local-controller-lock",
+      "operatorCommand": null,
+      "accessRequirement": "authorized-Windows-BVP-controller-only-no-mobile-or-physical-dispatch-without-Owner",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
+    },
+    {
+      "name": "createWindowsMailboxRelayWithOSLock",
+      "kind": "function",
+      "signature": "export function createWindowsMailboxRelayWithOSLock(mailbox:DriveCommandMailbox,",
+      "source": "test-platform/src/live-device/live-scenario-executor.ts",
+      "publicOperatorExposure": "NOT_ASSUMED",
+      "effect": "VALIDATION_ONLY_CONTROLLER_INTERNAL_NO_PUBLIC_OPERATOR_CLI",
+      "disposition": "INTERNAL_IMPLEMENTATION",
+      "sideEffectClass": "authorized-Windows-Node-controller-relay-assembly",
+      "operatorCommand": null,
+      "accessRequirement": "authorized-Windows-BVP-controller-only-no-mobile-or-physical-dispatch-without-Owner",
+      "coverageTest": "bvp-powershell-api-inventory.test.ts"
     }
   ],
   "notAnOperatorApi": true
