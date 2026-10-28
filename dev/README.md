@@ -26,3 +26,9 @@ During the directory-standardization migration, legacy noncanonical `dev/**` tre
 ## Naming
 
 Canonical directory and filename casing is exact. In particular, use `test-results` exactly as written.
+
+
+## Current BVP development cycle (DEC-357, 2026-10-28)
+
+The Owner-selected separate Windows OAuth controller is **WS-07/BVP_WINDOWS_CONTROLLER_OAUTH** — [new authoritative Build Unit](planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md) and [decision DEC-357](authority/decision-register.yaml). Cross-reference BVP subsystem specification/traceability, the WS-07 decomposition, whole-project verification plan, and `state/current-state.yaml` for the authoritative current unverified status. This new validation-only scope does **not** modify shipping `src/**` or create another workstream. No PHX-CI, real OAuth/Drive, physical device, deployment, merge or release acceptance follows from documentation or the existing draft source.
+
