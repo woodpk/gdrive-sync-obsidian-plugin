@@ -122,3 +122,7 @@ A **separate Owner-operated PHX-CI run** was published while this `dev/` documen
 
 **Next sequence:** finish the complete `dev/` planning, traceability and continuity refresh; then the Builder may repair the compile blocker under the ordinary test-first/change-authority rules; freeze the *new* corrected exact source and run the unchanged pinned Owner-operated software-only Windows PHX-CI. The prior run's BLOCKED result must remain immutable and must not be repurposed to qualify any later candidate. Reviewer acceptance, real separate-client Google `drive.file` compatibility and Owner live/release authority all remain outstanding.
 
+
+## 9. R1 compiler correction (unqualified)
+
+Builder committed `9568e5936761c796c886cf74f4946b90a363a226`: add missing `readFile` import from `node:fs/promises` in the BVP integration test. No test expectation or production logic changed. The first original PHX-CI result remains BLOCKED for `af178ebc17f90d0be8db78c45f12b9bf22375594`. This corrective source has **not** passed PHX-CI and has not received independent review. Next gate: freeze the current corrected source SHA, run the unchanged pinned Windows PHX-CI software-only, assess original results and only then commission independent review. No physical/live operations or merge.
