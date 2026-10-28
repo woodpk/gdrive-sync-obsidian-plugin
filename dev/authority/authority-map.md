@@ -36,3 +36,7 @@ Shared engineering-process and repository-organization standards are not copied 
 - Verification planning: `dev/planning/03-verification/`
 - Current continuity state: `dev/state/current-state.yaml`
 - Historical PHX-CI evidence: `dev/test-results/<runId>/`
+
+## Current WS-07 / DEC-357 authority navigation
+
+The Owner's 2026-10-28 **Option A** choice is recorded as DEC-357 in `dev/authority/decision-register.yaml`. The complete successor **BVP_WINDOWS_CONTROLLER_OAUTH** design/requirements are in `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md`, which supplements `dev/planning/01-target-system/bvp-subsystem-specification.md` and its requirement traceability. This is validation-only, distinct from the production WS-03 Google/OAuth boundary. Its state is subordinate to the DEC-356 corrective independent review and actual GitHub source/evidence: **new source remains unverified**. Preserve immutable old `dev/reviews/` reports and `dev/test-results/`, and defer all real Drive, physical tests and promotion until the separate Owner gates.
