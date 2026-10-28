@@ -160,6 +160,7 @@ test("Option A compiled Windows controller --once entrypoint fails closed before
     });
     strictEqual(result.status,1);
     strictEqual(result.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
+    strictEqual(result.stdout.includes("BVP_WINDOWS_CONTROLLER_REASON=controller-authentication-required"),true);
     strictEqual(result.stdout.includes("device-a"),false);
     strictEqual(result.stderr.includes(tokenFile),false);
   }finally{await rm(root,{recursive:true,force:true});}
