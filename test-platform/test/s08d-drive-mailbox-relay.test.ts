@@ -753,11 +753,45 @@ test("DEC356-F01 real Windows controller assembly cannot silently admit under or
     equal(missing.status,"unavailable");
     const authorityDir=join(root,"controller-authority"),hash=createHash("sha256").update(deviceId).digest("hex");
     await mkdir(authorityDir,{recursive:true});
+    await writeFile(join(authorityDir,hash+".json"),JSON.stringify({schemaVersion:1,generation:0,runId:"run-a",deviceId}));
+    const stale=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
+    equal(stale.status,"unavailable","generation zero must not establish a controller");
     await writeFile(join(authorityDir,hash+".json"),JSON.stringify({schemaVersion:1,generation:1,runId:"run-a",deviceId}));
     await writeFile(join(authorityDir,hash+".json.diagnostic.lock"),"orphaned");
     const busy=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
     equal(busy.status,"unavailable");
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,1);
+  }finally{await rm(temp,{recursive:true,force:true});}
+});
+
+test("DEC356-F01 two assembled Node controllers cannot both enter device ACTIVE admission",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
+  const temp=await mkdtemp(join(tmpdir(),"brain-dec356-r5-race-")),root=join(temp,".bvp-relay"),deviceId="device-a";
+  try{
+    const directory=join(root,"controller-authority");
+    await mkdir(directory,{recursive:true});
+    await writeFile(join(directory,createHash("sha256").update(deviceId).digest("hex")+".json"),
+      JSON.stringify({schemaVersion:1,generation:3,runId:"run-a",deviceId}));
+    const event={...await r3Record("run-a"),origin:{runId:"run-a",deviceId},remoteFileId:await mailbox.reserveDiagnosticId()};
+    await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
+    let entered!:()=>void,release!:()=>void,blockOnce=true;
+    const inside=new Promise<void>(resolve=>{entered=resolve;});
+    const gate=new Promise<void>(resolve=>{release=resolve;});
+    const request:AuthenticatedDriveRequest=async(url,init={})=>{
+      const q=new URL(url).searchParams.get("q")??"";
+      if(blockOnce&&q.includes("brainBvpKind' and value='diagnostic'")&&!q.includes("brainBvpEventId")){
+        blockOnce=false;entered();await gate;
+      }
+      return drive.request(url,init);
+    };
+    const first=runWindowsDiagnosticControllerOnce(request,{relayRoot:root,deviceId});
+    await inside;
+    const second=await runWindowsDiagnosticControllerOnce(request,{relayRoot:root,deviceId});
+    equal(second.status,"unavailable","contender must fail closed with first OS lock held");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
+    release();
+    equal((await first).status,"ok");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
   }finally{await rm(temp,{recursive:true,force:true});}
 });
