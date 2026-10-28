@@ -123,3 +123,23 @@ test("Option A actual controller cycle requires existing authority and refuses m
     await rejects(()=>stat(lock),/ENOENT/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("Option A first sign-in without offline refresh grant fails without persisting temporary access token",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-no-refresh-"));
+  try{
+    const tokenFile=join(root,"tokens.dat");
+    let authUrl="";
+    const attempt=authorizeWindowsController({clientId:"desktop",tokenFile,port:0,
+      onAuthorizationUrl:url=>{authUrl=url;},
+      fetcher:async()=>Response.json({access_token:"transient-only",expires_in:3600,
+        scope:"https://www.googleapis.com/auth/drive.file"})});
+    for(let i=0;i<200&&!authUrl;i++)await new Promise(resolve=>setTimeout(resolve,1));
+    const start=new URL(authUrl),callback=new URL(start.searchParams.get("redirect_uri")!);
+    callback.searchParams.set("code","fake-code");
+    callback.searchParams.set("state",start.searchParams.get("state")!);
+    const result=await fetch(callback);
+    strictEqual(result.status,400);
+    await rejects(()=>attempt,/controller-oauth-callback-rejected/);
+    await rejects(()=>readFile(tokenFile,"utf8"),/ENOENT/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
