@@ -81,6 +81,17 @@ export interface DriveCommandMailbox {
   cleanup(runId: string, deviceId: string): Promise<number>;
 }
 
+interface DiagnosticAttestation {
+  readonly schemaVersion:1;readonly disposition:"acknowledged"|"resolved";
+  readonly deviceId:string;readonly runId:string|null;readonly eventId:string;
+  readonly sha256:string;readonly controllerGeneration:number;
+}
+interface DiagnosticControllerOps {
+  admit(runId:string|null,deviceId:string,value:RuntimeErrorRecord):Promise<void>;
+  retire(proof:DiagnosticAttestation):Promise<void>;
+}
+const controllerOps=new WeakMap<DriveCommandMailbox,DiagnosticControllerOps>();
+
 export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): DriveCommandMailbox {
   let root: Promise<string> | undefined;
   async function call(url:string,init?:RequestInit,cursorRequest=false):Promise<Response>{
@@ -307,7 +318,84 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest): D
     async resultFor(value){const target=header(value)!;const parsed=(await records("result",target.runId,target.deviceId)).map(v=>result(v.value));if(parsed.some(v=>!v))throw new MailboxUnavailableError("mailbox-result-invalid");const values=parsed.filter((v):v is DeviceCommandResult=>Boolean(v&&same(v,target)));if(!values.length)return undefined;const first=JSON.stringify(values[0]);if(values.some(v=>JSON.stringify(v)!==first))throw new Error("mailbox-conflicting-result");return values[0];},
     activeRun,
     async cleanup(runId,deviceId){let removed=0;for(const kind of ["command","result","run-binding"] as const){let done=false;for(let batch=0;batch<20&&!done;batch++){const page=await listing(kind,runId,deviceId),files=page.files??[];for(const file of files){await deleteFile(file.id);removed++;}done=!page.nextPageToken;if(!done&&batch===19)throw new MailboxUnavailableError("mailbox-cleanup-limit");}}return removed;},
-  };commandPublishers.set(mailbox,(value,generation)=>publish("command",value,generation));return mailbox;
+  };
+  async function lookupDiagnostic(kind:string,deviceId:string,eventId:string):Promise<MailboxFile>{
+    const parent=await rootId(),q="'"+escapeQuery(parent)+"' in parents and trashed = false and appProperties has { key='brainBvpKind' and value='"+escapeQuery(kind)+"' } and appProperties has { key='brainBvpDeviceId' and value='"+escapeQuery(deviceId)+"' } and appProperties has { key='brainBvpEventId' and value='"+escapeQuery(eventId)+"' }";
+    const r=await call(API+"/files?q="+encodeURIComponent(q)+"&spaces=drive&pageSize=2&fields=nextPageToken,files(id,size,appProperties)");
+    const page=await r.json() as FileList;
+    if(page.nextPageToken||(page.files??[]).length!==1)throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-ambiguous");
+    return page.files![0];
+  }
+  async function sourceContents(file:MailboxFile):Promise<{raw:string;value:RuntimeErrorRecord;sha:string}>{
+    if(file.appProperties?.brainBvpRecord!=="1"||file.size===undefined||!/^[0-9]+$/.test(file.size)||Number(file.size)>MAX_RECORD_BYTES)
+      throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-invalid");
+    const raw=await (await call(API+"/files/"+encodeURIComponent(file.id)+"?alt=media")).text();
+    if(new TextEncoder().encode(raw).byteLength!==Number(file.size))throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-invalid");
+    let value:RuntimeErrorRecord|undefined;try{value=cleanDiagnostic(JSON.parse(raw));}catch{}
+    if(!value||value.eventId!==file.appProperties?.brainBvpEventId)throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-invalid");
+    const sha=[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw)))].map(x=>x.toString(16).padStart(2,"0")).join("");
+    return{raw,value,sha};
+  }
+  const ops:DiagnosticControllerOps={
+    async admit(runId,deviceId,value){
+      const safe=cleanDiagnostic(value),id=value.remoteFileId;
+      if(!safe||!id||!value.origin||value.origin.runId!==runId||value.origin.deviceId!==deviceId)
+        throw new MailboxUnavailableError("mailbox-diagnostic-controller-input-invalid");
+      // The controller may stage an operator-provided diagnostic, but never uses
+      // a device-side ACTIVE allocation. The event ID remains idempotent.
+      try{await mailbox.publishDiagnostic(runId,deviceId,value);}
+      catch(error){if(!(error instanceof MailboxUnavailableError)||error.message!=="mailbox-diagnostic-awaiting-controller")throw error;}
+      let file:MailboxFile;
+      try{file=await lookupDiagnostic("diagnostic-pending",deviceId,safe.eventId);}
+      catch(error){
+        // A lost activation response can only reconcile the same immutable ID.
+        const active=await lookupDiagnostic("diagnostic",deviceId,safe.eventId);
+        if(active.id!==id||(await sourceContents(active)).raw!==JSON.stringify(safe))throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-conflict");
+        return;
+      }
+      if(file.id!==id||file.appProperties?.brainBvpRunId!==(runId??undefined)||
+        (await sourceContents(file)).raw!==JSON.stringify(safe))
+        throw new MailboxUnavailableError("mailbox-diagnostic-controller-source-conflict");
+      await admitActive(deviceId);
+      await call(API+"/files/"+encodeURIComponent(id)+"?fields=id",{method:"PATCH",headers:{"content-type":"application/json"},
+        body:JSON.stringify({appProperties:{brainBvpKind:"diagnostic"}})});
+      const current=await (await call(API+"/files/"+encodeURIComponent(id)+"?fields=id,size,appProperties")).json() as MailboxFile;
+      if(current.id!==id||current.appProperties?.brainBvpKind!=="diagnostic"||
+        (await sourceContents(current)).raw!==JSON.stringify(safe))throw new MailboxUnavailableError("mailbox-diagnostic-admission-unconfirmed");
+    },
+    async retire(proof){
+      if(!proof||proof.schemaVersion!==1||!["acknowledged","resolved"].includes(proof.disposition)||
+        !/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.deviceId)||
+        (proof.runId!==null&&!/^[a-zA-Z0-9._:-]{1,128}$/.test(proof.runId))||
+        !/^[0-9a-f-]{36}$/.test(proof.eventId)||!/^[0-9a-f]{64}$/.test(proof.sha256)||
+        !Number.isSafeInteger(proof.controllerGeneration)||proof.controllerGeneration<=0)
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-invalid");
+      const source=await lookupDiagnostic("diagnostic",proof.deviceId,proof.eventId);
+      const props=source.appProperties;
+      if(props?.brainBvpRunId!==(proof.runId??undefined)||
+        (proof.runId===null?props?.brainBvpOriginBound!=="0":props?.brainBvpOriginBound==="0"))
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-origin");
+      const snapshot=await sourceContents(source);
+      if(snapshot.sha!==proof.sha256||
+        snapshot.value.diagnostic.identity.runId!==(proof.runId===null?"unavailable":await opaqueDiagnosticId(proof.runId,"run")))
+        throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-content");
+      // Archive is verified independently before any change to ACTIVE status.
+      const archived=await mailbox.archiveVerifiedDiagnostic(proof.deviceId,proof.eventId,await mailbox.reserveDiagnosticId());
+      if(archived.sha256!==proof.sha256)throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-archive");
+      if((await sourceContents(source)).sha!==proof.sha256)throw new MailboxUnavailableError("mailbox-diagnostic-acknowledgment-drift");
+      await call(API+"/files/"+encodeURIComponent(source.id)+"?fields=id",{method:"PATCH",headers:{"content-type":"application/json"},
+        body:JSON.stringify({appProperties:{brainBvpKind:"diagnostic-retired",brainBvpAcknowledgedSha256:proof.sha256,
+          brainBvpAckDisposition:proof.disposition,brainBvpControllerGeneration:String(proof.controllerGeneration)}})});
+      const after=await (await call(API+"/files/"+encodeURIComponent(source.id)+"?fields=id,size,appProperties")).json() as MailboxFile;
+      if(after.appProperties?.brainBvpKind!=="diagnostic-retired"||
+        after.appProperties?.brainBvpAcknowledgedSha256!==proof.sha256||
+        after.appProperties?.brainBvpControllerGeneration!==String(proof.controllerGeneration)||
+        (await sourceContents(after)).raw!==snapshot.raw)
+        throw new MailboxUnavailableError("mailbox-diagnostic-retirement-unconfirmed");
+    }
+  };
+  controllerOps.set(mailbox,ops);
+commandPublishers.set(mailbox,(value,generation)=>publish("command",value,generation));return mailbox;
 }
 
 export async function pollDeviceMailboxOnce(mailbox:DriveCommandMailbox,agent:BoundedDeviceCommandAgent,runId:string,deviceId:string):Promise<{status:"ok";processed:number}|{status:"unavailable";processed:number;reason:string;diagnostic:BvpDiagnostic}>{
