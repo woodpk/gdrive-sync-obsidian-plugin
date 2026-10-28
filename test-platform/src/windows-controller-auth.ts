@@ -108,12 +108,13 @@ export async function authorizeWindowsController(options:WindowsOAuthOptions&{
     challenge=createHash("sha256").update(verifier).digest("base64url");
   let resolveResult!:(value:void)=>void,rejectResult!:(error:Error)=>void;
   const result=new Promise<void>((resolve,reject)=>{resolveResult=resolve;rejectResult=reject;});
-  let done=false,redirect="";
+  let done=false,handling=false,redirect="";
   const complete=(error?:Error)=>{if(done)return;done=true;if(error)rejectResult(error);else resolveResult();};
   const server=createServer((req,res)=>{
     if(req.method!=="GET"||!req.url||req.url.length>2048){res.writeHead(400);res.end("Rejected");return;}
     const u=new URL(req.url,"http://127.0.0.1");
-    if(u.pathname!=="/callback"||done){res.writeHead(404);res.end("Unavailable");return;}
+    if(u.pathname!=="/callback"||done||handling){res.writeHead(404);res.end("Unavailable");return;}
+    handling=true;
     void(async()=>{
       try{
         if(u.searchParams.get("state")!==state||!u.searchParams.get("code")||u.searchParams.has("error"))
