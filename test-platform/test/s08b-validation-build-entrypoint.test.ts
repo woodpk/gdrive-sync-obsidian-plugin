@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { deepEqual, equal, match, notEqual, ok } from "node:assert/strict";
+import { deepEqual, equal, match, notEqual, ok, rejects } from "node:assert/strict";
 import { test } from "node:test";
 import { Script } from "node:vm";
 
@@ -103,7 +103,13 @@ async function exerciseInstalledAgent(result: ValidationArtifactBuildResult, des
   const production={async previewManual(){return undefined;},async previewVerifyReconcile(){return undefined;},async executePlan(){return{status:"accepted"};},async pause(){productionCalls++;return{status:"accepted"};},async resume(){return{status:"accepted"};},async cancelActiveSync(){return{status:"accepted"};},currentStatus(){return{kind:"idle-ready"};},latestProductionRunReceipt(){return undefined;}};
   base.onload=async function(){};base.onunload=async function(){};base.loadData=async function(){return{settings:{oauthClientId:"client",oauthRedirectUri:"https://example.invalid/callback",deviceIdentity:deviceId,vaultIdentity:"",remoteRootId:"",firstSyncCompleted:false}}};base.productionVerificationControl=function(){return production};
   const fixture={runId,deviceId,sequence:1,commandId:"cmd-1",kind:"fixture-put",path:"artifact.md",content:{type:"text",text:"hello"}},control={runId,deviceId,sequence:2,commandId:"cmd-2",kind:"production-control",action:"pause"};
-  const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.deviceId,deviceId);ok(intervalCallback);intervalCallback!();intervalCallback!();await new Promise(resolve=>setTimeout(resolve,0));equal(listCalls,desktop?2:0);runtime.mailbox.activeRun=async()=>runId;runtime.mailbox.resultFor=async()=>undefined;
+  const plugin=new PluginClass(app,manifest);await plugin.onload();const runtime:any=context[BVP_MAILBOX_RUNTIME_GLOBAL];ok(runtime);equal(runtime.deviceId,deviceId);ok(intervalCallback);
+  if(desktop){
+    ok(runtime.relay,"desktop build retains read-only relay for existing BVP commands and inbox");
+    await rejects(()=>runtime.relay.admitDiagnostic(runId,deviceId,{}),
+      /relay-controller-exclusive-unavailable/,
+      "compiled desktop plugin must not become an independent ACTIVE controller");
+  }else equal(runtime.relay,undefined,"mobile bundle has no Windows controller");intervalCallback!();intervalCallback!();await new Promise(resolve=>setTimeout(resolve,0));equal(listCalls,desktop?2:0);runtime.mailbox.activeRun=async()=>runId;runtime.mailbox.resultFor=async()=>undefined;
   // DEC-352: inspect the scheduled poll first; its startup error may already be journaled.
   const preJournal=await runtime.journal.snapshot();
   const beforeOccurrences=preJournal.entries.reduce((sum:number,e:any)=>sum+e.occurrences,0);
@@ -186,6 +192,8 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(validationText.includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), true);
   equal(validationText.includes(BVP_MAILBOX_RUNTIME_GLOBAL), true);
   equal(validationText.includes("BRAIN BVP Mailbox"), true);
+  equal(validationText.includes("node:fs/promises"),false,"generated device artifact excludes Node filesystem dependencies");
+  equal(validationText.includes("windowsDiagnosticExclusiveLock"),false,"device artifact cannot acquire Windows controller authority");
   equal(readFileSync(first.manifestPath, "utf8"), readFileSync(resolve(repositoryRoot, "manifest.json"), "utf8"));
   deepEqual(first.testPlatformInputs, [
     "test-platform/src/bvp-runtime-error-journal.ts",
