@@ -1193,7 +1193,7 @@ bvp_poll_error_observability_2026_10_25:
   handoff-owner-role: REVIEWER
   handoff-recipient-role: BUILDER
   handoff-source-sha: "26f5ed8c95adb4cef7c8b805d880fc613fc9afd1"
-  handoff-status: "R5_PASS_WITH_MINOR_FINDINGS_SOFTWARE_ACCEPTED_BUILDER_ADMIN_CLOSEOUT"
+  handoff-status: "R5_CORRECTIVE_REASSESSMENT_CORRECTION_REQUIRED_BUILDER_COUNT_10"
   source_mutation_after_qualification: "DEC356_ORIGINAL_SOURCE_IMMUTABLE_EVIDENCE_ONLY_COMMIT_AFTER_PHXCI"
   r1_reviewed_source_sha: "800b8b3dd2287c6c66d05b1ff2bff7fd1f91df64"
   r1_source_review_path: "dev/reviews/bvp-runtime-error-observability-20261025-r1-source.md"
