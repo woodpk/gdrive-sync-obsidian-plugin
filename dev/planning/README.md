@@ -13,5 +13,5 @@ Naming: use the exact canonical `01-target-system/`, `02-workstreams/`, and `03-
 
 ## Current authorized new build unit
 
-`WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` (Owner DEC-357, 2026-10-28): [standalone task contract and requirements](02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). Indexed under WS-07, with BVP target specification, traceability, architecture, full build decomposition and verification coverage. This is **draft implementation, PHX-CI NOT RUN**, and is not a production WS-03 OAuth feature. The current-state file records the exact Builder ownership and next qualification gates.
+`WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` (Owner DEC-357, 2026-10-28): [standalone task contract and requirements](02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). Indexed under WS-07, with BVP target specification, traceability, architecture, full build decomposition and verification coverage. This is **draft implementation, first PHX-CI BLOCKED (run `422cc526-615e-4848-8566-9f4152b5126e`), NOT QUALIFIED**, and is not a production WS-03 OAuth feature. The current-state file records the exact Builder ownership and next qualification gates.
 
