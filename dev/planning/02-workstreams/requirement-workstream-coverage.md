@@ -116,3 +116,20 @@ The table assigns every normative target-system requirement family to the phase 
 ## Coverage conclusion
 
 The accepted source decomposition concluded that every product requirement family, all twenty product invariants, and every completion-evidence category were assigned without silent loss. The accepted BVP coverage likewise assigns every BVP requirement family. This migration changes organization and naming only; it does not weaken, drop, or reassign target behavior.
+
+
+## DEC-357 additional WS-07 requirement ownership
+
+The new, Owner-approved **WS-07/BVP_WINDOWS_CONTROLLER_OAUTH** Build Unit introduces **BVP-WCO-001–011**, defined in [its standalone task](WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md) and traced from [BVP target specification](../01-target-system/bvp-subsystem-specification.md). This is a **BVP-only** contract, not a change of the WS-03 production OAuth implementation/ownership or the product AUTH-001–012 matrix.
+
+| New requirement family | Primary WS | Integration/verification |
+| --- | --- | --- |
+| BVP-WCO-001/009 (reporter/architecture isolation) | WS-07 WCO-01/WCO-05 | Exact source PHX-CI, bundle/source guard |
+| BVP-WCO-002/003 (Windows OAuth and protected credentials) | WS-07 WCO-02 | PKCE/DPAPI software tests and privacy checks |
+| BVP-WCO-004/010 (existing mailbox/no substitute access) | WS-07 WCO-03 | Fake-provider fail-closed tests plus separately Owner-authorized live compatibility prerequisite |
+| BVP-WCO-005/008 (controller locking/CLI) | WS-07 WCO-04 | Competing controllers, restart/orphan, compiled CLI under PHX-CI |
+| BVP-WCO-006/007 (diagnostic admission/retention) | WS-07 WCO-01–04 | End-to-end staged→ACTIVE→inbox; archive/attestation regressions |
+| BVP-WCO-011 (acceptance gates) | WS-07 WCO-05–06 | Unchanged pinned Windows PHX-CI and independent final Reviewer |
+
+**All new proof is pending**: committed code/tests are not PHX-CI verified, and the older DEC-356 R5 source was independently marked CORRECTION REQUIRED. Shipping product workstreams remain unchanged.
+
