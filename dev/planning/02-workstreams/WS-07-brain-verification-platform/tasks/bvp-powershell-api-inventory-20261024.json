@@ -1444,6 +1444,25 @@
       "effect": "single-in-memory-scenario",
       "powershellCommand": "Invoke-BvpScenario",
       "accessibility": "source-implemented-PHXCI-not-qualified"
+    },
+    {
+      "entrypoint": "run-windows-diagnostic-controller.js",
+      "source": "test-platform/src/run-windows-diagnostic-controller.ts",
+      "arguments": [
+        "--authorize",
+        "--once",
+        "--serve",
+        "--client-id",
+        "--token-file",
+        "--port",
+        "--relay-root",
+        "--device-id",
+        "--interval-ms"
+      ],
+      "mode": "windows-validation-controller-software-only-deferred",
+      "effect": "Google-OAuth-and-diagnostic-Drive-mutations-only-on-separate-Owner-authorization",
+      "powershellCommand": "NONE_NODE_CLI_ONLY",
+      "accessibility": "compiled-Node-controller-entrypoint-NOT_PHXCI_QUALIFIED_NO_LIVE_EXECUTION"
     }
   ],
   "libraryContracts": [
