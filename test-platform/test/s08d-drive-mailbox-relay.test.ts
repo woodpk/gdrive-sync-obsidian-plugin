@@ -707,6 +707,10 @@ test("DEC356-F01 assembled Node Windows controller promotes staged reporter evid
     const authorityFile=join(root,"controller-authority",createHash("sha256").update(deviceId).digest("hex")+".json");
     await mkdir(join(root,"controller-authority"),{recursive:true});
     await writeFile(authorityFile,JSON.stringify({schemaVersion:1,generation:2,runId:"run-a",deviceId}));
+    // Node diagnostic controller must NOT dispatch unrelated command outbox messages.
+    await mkdir(join(root,"outbox"),{recursive:true});
+    const commandFile=join(root,"outbox","do-not-dispatch.json");
+    await writeFile(commandFile,JSON.stringify(command(1,"run-a",deviceId)));
     await authorize(vault,root,"run-a",deviceId,2);
     const entry=await r3Record("run-a"),event={...entry,origin:{runId:"run-a",deviceId},remoteFileId:await mailbox.reserveDiagnosticId()};
     await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
@@ -717,6 +721,9 @@ test("DEC356-F01 assembled Node Windows controller promotes staged reporter evid
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,0);
     const external=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
     equal(external.status,"ok","the actual Node assembly must use its OS-exclusive lock");
+    equal(readFileSync(commandFile,"utf8").includes("observe-product"),true,
+      "controller-only diagnostic pump must not move or publish device commands");
+    equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="command").length,0);
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
     equal([...drive.files.values()].filter(x=>x.meta.appProperties?.brainBvpKind==="diagnostic-pending").length,0);
     const after=await desktop.pumpOnce();
