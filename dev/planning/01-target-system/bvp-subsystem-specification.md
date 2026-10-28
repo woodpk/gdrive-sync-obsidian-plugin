@@ -501,3 +501,15 @@ The BVP is complete only when objective evidence proves all of the following.
 ## 14. Stage-1 Handoff Rule
 
 Detailed Stage-2A coding prompts MUST NOT be treated as permanently valid repository instructions. This specification and the compact build/session decomposition persist the required outcomes; immediately before each session, the supervisor must inspect the actual repository produced by the previous accepted session, bind the exact base SHA and concrete affected files, and issue the smallest executable prompt consistent with the then-current state.
+
+
+## DEC-357 — separate Windows BVP controller OAuth target behavior (Owner 2026-10-28)
+
+**Normative supplement to BVP-LIVE, BVP-ARCH, BVP-EVID and BVP-GOV requirements.** The Owner authorized **Option A** as new WS-07 Build Unit `BVP_WINDOWS_CONTROLLER_OAUTH`, not a shipping product or privileged Obsidian↔Node bridge. The new numbered acceptance requirements **BVP-WCO-001–011** and their test/architecture contracts are [defined in the canonical DEC-357 task](../02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md).
+
+The final BVP MUST provide an **independently authenticated Windows-only Node diagnostic controller** using Google Desktop OAuth S256 PKCE and the **existing `drive.file` scope**, protecting local refresh tokens with Windows current-user DPAPI. Validation-device plugins on Windows/iOS MUST remain reporter-only with no Node filesystem dependencies and MUST NOT provide the authority to promote pending diagnostics. The controller MUST rely on one operator-authorized Windows host, process/root exclusivity, device-specific OS lock, and the actual live executor's already-established run/device/generation authority. A staged diagnostic is **not delivered** until exclusive pending→ACTIVE admission succeeds and the reporter confirms it. Windows inbox evidence is durable but is NOT an event-specific acknowledgment/resolution; prior requirements for exact content proof, finite ACTIVE retention and verified archival before retirement remain.
+
+With separate OAuth, the Windows controller MUST locate the **pre-existing** BVP Google Drive mailbox and MUST fail closed if it cannot see it; no new disconnected mailbox and no broader OAuth scope may be substituted. A software test or mock of this behavior does not prove real Google `drive.file` cross-client visibility. That compatibility check is a **separate, owner-authorized live acceptance prerequisite**. Ordinary product OAuth, sync architecture, shipping builds, existing frozen BVP budgets (4850/1250) and pinned PHX-CI authority remain unchanged.
+
+**Evidence gate:** the new software has only draft committed source/tests; it is **NOT PHX-CI verified** or independently accepted. A prior DEC-356 R5 software PASS belongs only to its historical exact source and was subsequently given CORRECTION REQUIRED by independent integration reassessment. No actual Google sign-in, personal Drive/vault, physical device, promotion, merge or release is authorized by this specification amendment.
+
