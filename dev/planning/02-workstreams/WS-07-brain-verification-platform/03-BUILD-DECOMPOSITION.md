@@ -1,5 +1,23 @@
 # Build Decomposition — BRAIN Verification Platform
 
+## Current successor unit — DEC-357 / BVP_WINDOWS_CONTROLLER_OAUTH (Owner-approved 2026-10-28)
+
+This is a **distinct new bounded WS-07 unit**, not the earlier DEC-351 CLI finalization task and not just DEC-356 F01 bookkeeping. The earlier heading below labeled “Current Owner-directed Build Unit — CLI result finalization” is **historical/parallel scope** for a separate branch; it is **not** the next assignment on `build/bvp-poll-error-observability-20261025`.
+
+**Canonical contract:** [DEC-357 Windows controller OAuth](tasks/bvp-windows-controller-oauth-2026-10-28.md). **Owner decision:** Option A (separate Windows Node Desktop OAuth PKCE / Windows current-user DPAPI), rejecting Option B (privileged Obsidian→Node IPC). **Predecessor:** DEC-352/354/355/356 and R5 F01 **CORRECTION REQUIRED**.
+
+| Ordered unit | Work and dependency | Required gate |
+| --- | --- | --- |
+| WCO-01 | Freeze reporter vs authoritative Windows controller/lease boundary (DEC-356) | Test-first pending→ACTIVE, durable inbox, explicit no-command-dispatch |
+| WCO-02 | Separate Windows Desktop OAuth PKCE, DPAPI and refresh, depends WCO-01 | Test-first scope, credential at-rest, callback/replay, missing auth |
+| WCO-03 | Authenticated existing-mailbox-only access and failure classification, depends WCO-02 | Test-first missing root does not create a second mailbox; cursor expiry, auth/rate failures |
+| WCO-04 | Real compiled Windows Node CLI/process singleton/lease-aware startup, depends WCO-03 | Actual-process and assembled fake-Drive/controller oracles, restart/contender/orphan lock |
+| WCO-05 | Source impact/budget/architecture review; freeze SHA, unchanged owner-operated software-only Windows PHX-CI | Original evidence and actual 11-stage, focused/product results; **NOT RUN** |
+| WCO-06 | Fresh independent blind-first Reviewer acceptance, then separate Owner decision | **NOT STARTED**; no premature deployment or physical use |
+
+The WCO-01–04 draft implementation/test files already exist, but their presence is **not proof of PASS**. Preserve the frozen WCO-001–011 requirements and architecture boundaries. No owner PHX-CI run until all relevant `dev/` planning/specifications/state reflect this new cycle. PHX-CI is the sole execution authority for qualification. Handoff-count **10**, recipient **BUILDER**, remains unchanged until a real cross-role transition.
+
+
 ## Current Owner-directed Build Unit — CLI result finalization (2026-10-24)
 
 **Current Builder task:** [`BVP_CLI_RESULT_FINALIZATION`](tasks/bvp-cli-result-finalization-2026-10-24.md). The Owner authorized starting the next Build Unit after accepted DEC-351 closeout. The repository had no scheduled successor. This bounded **software-only** defect-hardening unit addresses the independent R5 M-03 finding: stdout summary must not announce a completed scenario before the result FileHandle successfully closes. Preserve DEC-351's public CLI and schema; add meaningful real compiled-CLI close-fault regression via a test-only local preloader; implement the smallest correction; qualify with the exact pinned PHX-CI and obtain separate final independent review. No new external simulator, real-device execution, authentication, live Drive/vault use, framework changes, budget amendment, product merge or release.
