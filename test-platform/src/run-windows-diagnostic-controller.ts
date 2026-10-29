@@ -103,7 +103,12 @@ async function main(args:readonly string[]):Promise<void>{
     }
   });}finally{process.off("SIGINT",stop);process.off("SIGTERM",stop);}
 }
-if(require.main===module)void main(process.argv.slice(2)).catch(()=>{
-  // Never disclose credential, Drive response, controller file path or device identity.
+if(require.main===module)void main(process.argv.slice(2)).catch(error=>{
+  // Machine-readable failure on --once, including unexpected secure-storage/host errors.
+  // Only a tightly bounded error code is exposed; never raw URLs, credentials or paths.
+  if(process.argv[2]==="--once"){
+    const reason=error instanceof Error&&/^controller-[a-z-]+$/.test(error.message)?error.message:"controller-unhandled";
+    process.stdout.write("BVP_WINDOWS_CONTROLLER=unavailable\nBVP_WINDOWS_CONTROLLER_REASON="+reason+"\n");
+  }
   process.stderr.write("BVP_WINDOWS_CONTROLLER_UNAVAILABLE\n");process.exitCode=1;
 });
