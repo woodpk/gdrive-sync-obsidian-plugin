@@ -97,15 +97,17 @@ test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake G
     await writeFile(inject,"globalThis.fetch=async()=>{require('node:fs').writeFileSync("+JSON.stringify(reached)+",'called');return new Promise(()=>{});};\n");
     const entry=resolve(__dirname,"../src/run-windows-diagnostic-controller.js");
     const started=Date.now();
-    const child=spawnSync(process.execPath,[entry,"--once","--client-id","desktop",
+    const child=spawnSync(process.execPath,["--require",inject,entry,"--once","--client-id","desktop",
       "--token-file",f.tokenFile,"--relay-root",f.root,"--device-id",f.deviceId,
       "--request-timeout-ms","150","--cycle-timeout-ms","10000"],{
-      encoding:"utf8",timeout:12000,env:{...process.env,NODE_OPTIONS:'--require "'+inject+'"'}
+      encoding:"utf8",timeout:12000,env:{...process.env,NODE_OPTIONS:""}
     });
     strictEqual(child.error,undefined,"compiled process must finish before operating-system test timeout");
     strictEqual(child.status,1);
     ok(Date.now()-started<11500);
-    await stat(reached); // Prove the compiled process actually invoked the nonsettling Google fake.
+    const reason=/^BVP_WINDOWS_CONTROLLER_REASON=([a-z-]+)$/m.exec(child.stdout)?.[1]??"not-reported";
+    strictEqual(await stat(reached).then(()=>true,()=>false),true,
+      "compiled CLI must invoke the nonsettling fake; classified reason="+reason);
     strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
     strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER_REASON=controller-unhandled"),false,
       "actual network timeout must not be disguised as an unrelated CLI exception");
