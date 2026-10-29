@@ -107,3 +107,19 @@ test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake G
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
   }finally{await f.cleanup();}
 });
+
+test("WCO-R1-F01 explicit shutdown cancels a hanging Drive request and releases the singleton owner",async()=>{
+  const f=await fixture(false);
+  try{
+    const shutdown=new AbortController();
+    let entered!:()=>void;const started=new Promise<void>(r=>entered=r);
+    const stalled:typeof fetch=async()=>{entered();return new Promise<Response>(()=>{});};
+    const pending=runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,relayRoot:f.root,
+      deviceId:f.deviceId,fetcher:stalled,requestTimeoutMs:60000,cycleTimeoutMs:120000,signal:shutdown.signal});
+    await started;shutdown.abort();
+    const result=await pending;
+    strictEqual(result.status,"unavailable");
+    match(result.reason??"",/controller-io-cancelled|mailbox-controller-io-cancelled/);
+    await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
+  }finally{await f.cleanup();}
+});
