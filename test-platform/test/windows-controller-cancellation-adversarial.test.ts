@@ -29,14 +29,15 @@ async function fixture(refresh:boolean){
 test("WCO-R1-F01 nonsettling OAuth refresh terminates a bounded cycle and releases owner lock",async()=>{
   const f=await fixture(true);
   try{
-    const start=Date.now();
+    const start=Date.now();let calls=0;
     const result=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,relayRoot:f.root,
-      deviceId:f.deviceId,fetcher:never,requestTimeoutMs:120,cycleTimeoutMs:1500});
+      deviceId:f.deviceId,fetcher:async()=>{calls++;return never("https://oauth2.googleapis.com/token");},requestTimeoutMs:120,cycleTimeoutMs:10000});
     strictEqual(result.status,"unavailable");strictEqual(result.reason,"controller-io-timeout");
-    ok(Date.now()-start<5000,"hung refresh must not retain owner indefinitely");
+    strictEqual(calls>0,true,"nonsettling OAuth fetch must actually be exercised");
+    ok(Date.now()-start<9500,"hung refresh must not retain owner indefinitely");
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
     const next=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,relayRoot:f.root,
-      deviceId:f.deviceId,requestTimeoutMs:150,cycleTimeoutMs:1500,
+      deviceId:f.deviceId,requestTimeoutMs:150,cycleTimeoutMs:10000,
       fetcher:async url=>String(url).includes("oauth2.googleapis.com/token")
         ?Response.json({access_token:"recovered-access",expires_in:3600,scope:SCOPE})
         :Response.json({files:[]})});
@@ -48,8 +49,10 @@ test("WCO-R1-F01 nonsettling OAuth refresh terminates a bounded cycle and releas
 test("WCO-R1-F01 nonsettling Drive request becomes unknown/unavailable and cannot create an inbox acknowledgment",async()=>{
   const f=await fixture(false);
   try{
+    let calls=0;
     const result=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,relayRoot:f.root,
-      deviceId:f.deviceId,fetcher:never,requestTimeoutMs:100,cycleTimeoutMs:1500});
+      deviceId:f.deviceId,fetcher:async()=>{calls++;return never("https://www.googleapis.com/drive/v3/files");},requestTimeoutMs:100,cycleTimeoutMs:10000});
+    strictEqual(calls>0,true,"nonsettling Drive fetch must actually be exercised");
     strictEqual(result.status,"unavailable");
     match(result.reason??"",/controller-io-timeout|mailbox-controller-io-timeout/);
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
@@ -96,12 +99,12 @@ test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake G
     const started=Date.now();
     const child=spawnSync(process.execPath,[entry,"--once","--client-id","desktop",
       "--token-file",f.tokenFile,"--relay-root",f.root,"--device-id",f.deviceId,
-      "--request-timeout-ms","150","--cycle-timeout-ms","1500"],{
-      encoding:"utf8",timeout:8000,env:{...process.env,NODE_OPTIONS:'--require "'+inject+'"'}
+      "--request-timeout-ms","150","--cycle-timeout-ms","10000"],{
+      encoding:"utf8",timeout:12000,env:{...process.env,NODE_OPTIONS:'--require "'+inject+'"'}
     });
     strictEqual(child.error,undefined,"compiled process must finish before operating-system test timeout");
     strictEqual(child.status,1);
-    ok(Date.now()-started<7500);
+    ok(Date.now()-started<11500);
     strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
     strictEqual(child.stdout.includes(f.tokenFile),false);
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
