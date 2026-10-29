@@ -132,3 +132,27 @@ Builder committed `9568e5936761c796c886cf74f4946b90a363a226`: add missing `readF
 Run 707952d6-95e7-4a7c-8b07-060bc99f056e verified source 63a509b20175f9c4a0da348ba06f8347faf258ec; evidence commit 74efbb8ec92756f4bc89a930cf0ec54e829fe53f. Focused BVP tests: 607 passed, 5 failed (numbers 144, 399, 460, 607, 609). Full product test stage passed. Overall BLOCKED. The original evidence is immutable.
 
 The Builder committed targeted fixes for test registry completeness, device-bundle import attribution, root-level Windows process lock placement, root-conformant lock test, and timely expected OAuth promise rejection handling. The corrected source is NOT yet PHX-CI verified. No production code, PHX-CI pin, frozen architecture limit, physical execution, installation, or merge was changed. Preserve handoff-count 10. Run the next exact-source software-only Windows PHX-CI before independent review.
+
+
+## Final software qualification checkpoint — DEC-357, independent review pending
+
+**Immutable source:** `3d55fa1bc8f46657b5462aa28a850a77124f76b4`; **tree:** `055c255e2fbb4e3881ddf534529ba18966daf41b`. **Original Owner-operated Windows PHX-CI:** `494b79f3-b948-4544-a562-02971cdbc7d4`; unchanged pinned runtime `69c4aa077d4a1a46d1e85e59f39d36285be99e83`. Evidence publication commit `d179034e97c1a25c1682b4bfbb885b7327e46578`, original `dev/test-results/20261029T012557Z-operator-build-bvp-poll-error-observability-20261025-3d55fa1bc8f4.json` (blob `1ddccc1f262b88dc8e95bf7d2ffc2fdbc9118858`). **PHX-CI overall PASS:** all 11 stages PASS; focused BVP **612/612**, full product **1292/1292**, change-set/repository/build/architecture checks PASS, exit **0**, no known platform exceptions. The original earlier R1/R2 BLOCKED results remain unchanged and do not qualify the final candidate.
+
+**Builder test-family coverage and integrity handoff note (for Reviewer Phase 2 only; not a substitute for independent analysis):**
+
+| Family | Exact tests or source-bound focus |
+| --- | --- |
+| 1. Nominal success | `s08d-drive-mailbox-relay.test.ts`: actual OAuth+Windows controller assembly, pending→ACTIVE and durable inbox |
+| 2. Boundary/negative | `windows-controller-oauth.test.ts`: missing/corrupt DPAPI, missing offline refresh, rejected configuration; `s08d`: invisible root |
+| 3. Legal/forbidden transition | `dec354-diagnostic-retention.test.ts`: reporter cannot consume ACTIVE; authorization needed for retirement |
+| 4. Retry/idempotency/recovery | `s08d`: journal replay, failed staged publish, immutable ACTIVE retries, rejected cursor resume |
+| 5. Concurrency/interleavings | `windows-controller-oauth.test.ts`: singleton/orphan; `s08d`: competing Node controllers; `dec354`: last ACTIVE-slot contention |
+| 6. Persistence/restart | `s08d`: restart checkpoint and durable inbox, diagnostic origin preservation |
+| 7. Identity/security/trust | `windows-controller-oauth.test.ts`: OAuth PKCE/state replay, DPAPI, URL/transport; `s08d`: forged origins and cross-device identities |
+| 8. Contracts/integration | `s08b-validation-build-entrypoint.test.ts`: generated validation bundle and shipping boundary; `s08d`: reporter/controller mailbox contract |
+| 9. Architecture/ownership | `architecture-guard.test.ts`, `architecture-metrics.test.ts`, `deterministic-battery-registry.test.ts`; no shipping `src/**` edits |
+| 10. End-to-end/fail-closed/destructive safety | `s08d`: assembled progression to inbox, missing lease/OS lock rejection; `dec354`: 5000-slot, 90-day, archive/attestation proof |
+
+**Test-change integrity:** The preceding PHX-CI failures required narrow corrections: register the missing OAuth test module, move singleton lock outside lease JSON enumeration, fix the lock-root fixture and immediate rejection handler, and replace a false-positive browser-bundle **string** test with checks of the actual nonshipping module dependencies. The original product desktop filesystem boundary was not changed; the device bundle still may not acquire Windows controller authority. No tests were removed or skipped to obtain PASS. The Builder does not claim the above mapping establishes adequacy independently.
+
+**Next gate:** One fresh independent Reviewer engagement, **blind normative/source-only Pass 1 frozen and published before opening this Builder checkpoint or any authored test/previous review/PHX-CI evidence**, then full Phase 2 source/test/evidence evaluation and actual verdict. Software PASS is **not** independent Reviewer acceptance. Cross-client real Google `drive.file` mailbox visibility is still **UNVERIFIED**; live OAuth, personal Drive/vault, physical dispatch, merge, installation and release remain Owner-reserved and unauthorized.
