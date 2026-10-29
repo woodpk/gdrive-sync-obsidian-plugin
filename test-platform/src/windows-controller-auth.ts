@@ -50,7 +50,7 @@ function securedTokenLocation(path:string):{file:string;directories:string[]} {
     directories.unshift(parent);parent=dirname(parent);
   }
   const repo=resolve(process.cwd()),within=relative(repo,file);
-  if(within&&!within.startsWith("..")&&!isAbsolute(within))
+  if((existsSync(join(repo,".git"))||existsSync(join(repo,".obsidian")))&&within&&!within.startsWith("..")&&!isAbsolute(within))
     throw new Error("controller-token-location-invalid");
   for(const item of [...directories,file]){
     if(existsSync(item)&&lstatSync(item).isSymbolicLink())throw new Error("controller-token-location-invalid");
