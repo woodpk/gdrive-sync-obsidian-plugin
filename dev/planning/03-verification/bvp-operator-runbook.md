@@ -1,5 +1,10 @@
 # BVP Operator Runbook — Mandatory Fresh-Session Read
 
+## Current qualification status — DEC-357 review pending
+
+The **current exact qualified implementation** is `3d55fa1bc8f46657b5462aa28a850a77124f76b4` (tree `055c255e2fbb4e3881ddf534529ba18966daf41b`). Original pinned Windows software-only PHX-CI run `494b79f3-b948-4544-a562-02971cdbc7d4` achieved **11/11 stages PASS**, focused BVP **612/612** and product **1292/1292** tests, original evidence at commit `d179034e97c1a25c1682b4bfbb885b7327e46578`. **Independent final review has not occurred; the prior R5 corrective rejection remains the governing acceptance disposition.** The next permitted step is a blind-first independent review of DEC-357; no automatic live Google OAuth/Drive, physical device, merge, installation or release. Sections below describing earlier BLOCKED runs are historical source-scoped records and do not overwrite this newest PASS.
+
+
 
 ## Current feature re-entry: new DEC-357 Windows OAuth Build Unit (2026-10-28)
 
