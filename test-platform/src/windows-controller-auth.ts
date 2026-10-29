@@ -150,15 +150,15 @@ function validated(next:Record<string,unknown>,old?:Tokens):Tokens {
 }
 export function createWindowsControllerRequest(options:WindowsOAuthOptions):AuthenticatedDriveRequest {
   const store=config(options),fetcher=options.fetcher??fetch;
-  let refresh:Promise<Tokens>|undefined;
+  let refresh:Promise<Tokens>|undefined,cached:Tokens|undefined;
   async function current():Promise<Tokens>{
-    const old=tokens(store);
+    const old=cached??tokens(store);
     if(!old)throw new Error("controller-authentication-required");
-    if(old.accessToken&&old.expiresAtMs>Date.now()+60000)return old;
+    if(old.accessToken&&old.expiresAtMs>Date.now()+60000){cached=old;return old;}
     if(!old.refreshToken)throw new Error("controller-authentication-required");
     if(!refresh)refresh=(async()=>{
       const result=await exchange(fetcher,new URLSearchParams({client_id:options.clientId,refresh_token:old.refreshToken!,grant_type:"refresh_token"}),options);
-      const next=validated(result,old);if(options.signal?.aborted)throw new Error("controller-io-cancelled");store.setSecret(KEY,JSON.stringify(next));return next;
+      const next=validated(result,old);if(options.signal?.aborted)throw new Error("controller-io-cancelled");store.setSecret(KEY,JSON.stringify(next));cached=next;return next;
     })().finally(()=>{refresh=undefined;});
     return refresh;
   }
