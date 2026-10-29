@@ -97,7 +97,7 @@ test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake G
     const child=spawnSync(process.execPath,[entry,"--once","--client-id","desktop",
       "--token-file",f.tokenFile,"--relay-root",f.root,"--device-id",f.deviceId,
       "--request-timeout-ms","150","--cycle-timeout-ms","1500"],{
-      encoding:"utf8",timeout:8000,env:{...process.env,NODE_OPTIONS:"--require "+inject}
+      encoding:"utf8",timeout:8000,env:{...process.env,NODE_OPTIONS:'--require "'+inject+'"'}
     });
     strictEqual(child.error,undefined,"compiled process must finish before operating-system test timeout");
     strictEqual(child.status,1);
