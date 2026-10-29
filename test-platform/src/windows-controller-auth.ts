@@ -64,6 +64,10 @@ function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
     $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
     $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
     $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+    # All credential ACL reads/writes must share one Windows cross-process fence.
+    $mutex=[Threading.Mutex]::new($false,'Local\BRAIN-BVP-Controller-TokenAcl')
+    $locked=$false
+    try{$locked=$mutex.WaitOne(25000);if(-not $locked){throw 'acl-mutex-timeout'}
     foreach($p in $request.paths){
       $acl=Get-Acl -LiteralPath $p
       if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
@@ -82,10 +86,10 @@ function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
       foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
         if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}
       }
-    }`;
+    }}finally{if($locked){$mutex.ReleaseMutex()};$mutex.Dispose()}`;
   const processResult=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive",
     "-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{
-      input:JSON.stringify({paths,apply}),encoding:"utf8",windowsHide:true,timeout:10000,maxBuffer:16384
+      input:JSON.stringify({paths,apply}),encoding:"utf8",windowsHide:true,timeout:35000,maxBuffer:16384
     });
   if(processResult.error||processResult.status!==0)throw new Error("controller-token-permissions-invalid");
 }
