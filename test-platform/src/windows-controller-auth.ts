@@ -64,27 +64,22 @@ function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
 $stage='request-parse'
 try {
   $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
-  $stage='identity'
-  $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
+  $stage='identity';$user=[Security.Principal.WindowsIdentity]::GetCurrent().User
   $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
   foreach($p in $request.paths){
-    $stage='acl-read'
-    $acl=Get-Acl -LiteralPath $p
-    $stage='owner-check'
-    if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
+    $stage='acl-read';$acl=Get-Acl -LiteralPath $p
+    $stage='owner-check';if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
     if($request.apply){
       $stage='acl-native'
       # Native icacls supports Windows DACL writes without Set-Acl's provider-specific failure.
       # Remove inherited grants, replace current-user/SYSTEM grants, then verify the on-disk DACL.
       $flags=if((Get-Item -LiteralPath $p).PSIsContainer){'(OI)(CI)'}else{''}
-      $grantUser='*'+$user.Value+':'+$flags+'F'
-      $grantSystem='*'+$system.Value+':'+$flags+'F'
+      $grantUser='*'+$user.Value+':'+$flags+'F';$grantSystem='*'+$system.Value+':'+$flags+'F'
       & icacls.exe $p /inheritance:r /grant:r $grantUser $grantSystem 2>$null | Out-Null
       if($LASTEXITCODE -ne 0){throw 'acl-native-failed'}
       $stage='acl-readback';$acl=Get-Acl -LiteralPath $p
     }
-    $stage='inheritance-check'
-    if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
+    $stage='inheritance-check';if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
     $stage='ace-check'
     foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
       if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}

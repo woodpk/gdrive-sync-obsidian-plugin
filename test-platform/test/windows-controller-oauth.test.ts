@@ -31,6 +31,27 @@ test("Option A Windows DPAPI token storage binds secrets to local user and never
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test("WCO-R2-F03 credential bootstrap creates protected user-and-SYSTEM-only NTFS ACL",async()=>{
+  const root=await credentialFixture("brain-bvp-acl-bootstrap-"),file=join(root,"tokens.dat");
+  try{
+    const store=new WindowsDpapiSecrets(file);store.setSecret(TOKEN_KEY,"encrypted-test-only");
+    const policy=String.raw`$ErrorActionPreference='Stop'
+      $p=[Console]::In.ReadToEnd().Trim();$acl=Get-Acl -LiteralPath $p
+      $user=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+      $system='S-1-5-18'
+      if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user){exit 2}
+      if(-not $acl.AreAccessRulesProtected){exit 3}
+      foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
+        if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user,$system)){exit 4}
+      }`;
+    const check=spawnSync("pwsh.exe",["-NoProfile","-NonInteractive","-EncodedCommand",
+      Buffer.from(policy,"utf16le").toString("base64")],{input:file,encoding:"utf8",windowsHide:true,timeout:10000});
+    strictEqual(check.error,undefined,"ACL validation process must execute");
+    strictEqual(check.status,0,"encrypted token must have protected, owner+SYSTEM-only NTFS grants");
+    strictEqual(store.getSecret(TOKEN_KEY),"encrypted-test-only");
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test("Option A previously authenticated Windows request refreshes Google tokens without any local IPC",async()=>{
   const root=await credentialFixture("brain-bvp-oauth-refresh-");
   try{
