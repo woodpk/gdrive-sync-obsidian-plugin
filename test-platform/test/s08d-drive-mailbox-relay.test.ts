@@ -801,7 +801,7 @@ test("DEC356-F01 competing assembled Node admission attempts reconcile one ACTIV
 test("DEC356 Option A actual OAuth+Windows controller assembly stages, admits, and persists original diagnostic",async()=>{
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
   const dir=await mkdtemp(join(tmpdir(),"brain-dec356-auth-composition-"));
-  const root=join(dir,".bvp-relay"),deviceId="device-a",tokenFile=join(dir,"tokens.dat");
+  const root=join(dir,".bvp-relay"),deviceId="device-a",tokenFile=join(process.env.LOCALAPPDATA!,"BRAIN-BVP","controller","s08d-"+randomUUID()+".dat");
   try{
     const authority=join(root,"controller-authority",createHash("sha256").update(deviceId).digest("hex")+".json");
     await mkdir(join(root,"controller-authority"),{recursive:true});
@@ -822,7 +822,7 @@ test("DEC356 Option A actual OAuth+Windows controller assembly stages, admits, a
     equal(stored.eventId,record.eventId);equal(stored.origin?.runId,"run-a");
     equal((await runWindowsControllerCycle(options)).status,"ok");
     equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
-  }finally{await rm(dir,{recursive:true,force:true});}
+  }finally{await rm(dir,{recursive:true,force:true});await rm(tokenFile,{force:true});}
 });
 
 test("DEC357 separate Windows OAuth cannot create a second mailbox when existing app-owned root is invisible",async()=>{
