@@ -11,7 +11,23 @@ const KEY="brain-gdrive-oauth-tokens";
 const SCOPE="https://www.googleapis.com/auth/drive.file";
 const TOKEN_URL="https://oauth2.googleapis.com/token";
 interface Tokens {accessToken:string;refreshToken?:string;expiresAtMs:number;scope:string;}
-export interface WindowsOAuthOptions {readonly clientId:string;readonly tokenFile:string;readonly port?:number;readonly fetcher?:typeof fetch;}
+export interface WindowsOAuthOptions {readonly clientId:string;readonly tokenFile:string;readonly port?:number;readonly fetcher?:typeof fetch;readonly requestTimeoutMs?:number;readonly signal?:AbortSignal;}
+const ioTimeout=(value?:number)=>{const n=value??10000;if(!Number.isSafeInteger(n)||n<50||n>60000)throw new Error("controller-io-timeout-invalid");return n;};
+const timedOut=(error:unknown)=>error instanceof Error&&/^controller-io-(?:timeout|cancelled)$/.test(error.message);
+async function bounded<T>(work:(signal:AbortSignal)=>Promise<T>,options:WindowsOAuthOptions):Promise<T>{
+  const controller=new AbortController();let reason="controller-io-timeout";
+  const stop=()=>{reason="controller-io-cancelled";controller.abort();};
+  options.signal?.addEventListener("abort",stop,{once:true});
+  if(options.signal?.aborted)stop();
+  const timer=setTimeout(()=>controller.abort(),ioTimeout(options.requestTimeoutMs));
+  const cancelled=new Promise<T>((_,reject)=>{
+    const fail=()=>reject(new Error(reason));
+    controller.signal.addEventListener("abort",fail,{once:true});
+    if(controller.signal.aborted)fail();
+  });
+  try{return await Promise.race([Promise.resolve().then(()=>work(controller.signal)),cancelled]);}
+  finally{clearTimeout(timer);options.signal?.removeEventListener("abort",stop);}
+}
 function dpapi(value:string,mode:"Protect"|"Unprotect"):string {
   const script=`$ErrorActionPreference='Stop';$b=[Convert]::FromBase64String([Console]::In.ReadToEnd().Trim());$o=[Security.Cryptography.ProtectedData]::${mode}($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[Console]::Out.Write([Convert]::ToBase64String($o))`;
   const child=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{
@@ -51,13 +67,15 @@ function tokens(store:WindowsDpapiSecrets):Tokens|undefined {
     throw new Error("controller-token-invalid");
   return value as Tokens;
 }
-async function exchange(fetcher:typeof fetch,body:URLSearchParams):Promise<Record<string,unknown>> {
-  let response:Response;
-  try{response=await fetcher(TOKEN_URL,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body});}
-  catch{throw new Error("controller-oauth-transport-unavailable");}
+async function exchange(fetcher:typeof fetch,body:URLSearchParams,options:WindowsOAuthOptions):Promise<Record<string,unknown>> {
+  let response:Response,value:unknown;
+  try{({response,value}=await bounded(async signal=>{
+    const response=await fetcher(TOKEN_URL,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body,signal});
+    const value=await response.json();if(signal.aborted)throw new Error("controller-io-timeout");
+    return {response,value};
+  },options));}
+  catch(error){if(timedOut(error))throw error;throw new Error("controller-oauth-transport-unavailable");}
   if(!response.ok)throw new Error("controller-oauth-token-rejected");
-  let value:unknown;
-  try{value=await response.json();}catch{throw new Error("controller-oauth-token-invalid");}
   if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("controller-oauth-token-invalid");
   return value as Record<string,unknown>;
 }
@@ -81,8 +99,8 @@ export function createWindowsControllerRequest(options:WindowsOAuthOptions):Auth
     if(old.accessToken&&old.expiresAtMs>Date.now()+60000)return old;
     if(!old.refreshToken)throw new Error("controller-authentication-required");
     if(!refresh)refresh=(async()=>{
-      const result=await exchange(fetcher,new URLSearchParams({client_id:options.clientId,refresh_token:old.refreshToken!,grant_type:"refresh_token"}));
-      const next=validated(result,old);store.setSecret(KEY,JSON.stringify(next));return next;
+      const result=await exchange(fetcher,new URLSearchParams({client_id:options.clientId,refresh_token:old.refreshToken!,grant_type:"refresh_token"}),options);
+      const next=validated(result,old);if(options.signal?.aborted)throw new Error("controller-io-cancelled");store.setSecret(KEY,JSON.stringify(next));return next;
     })().finally(()=>{refresh=undefined;});
     return refresh;
   }
@@ -92,8 +110,13 @@ export function createWindowsControllerRequest(options:WindowsOAuthOptions):Auth
       !/^\/(?:upload\/)?drive\/v3(?:\/|$)/.test(target.pathname))throw new Error("controller-drive-target-rejected");
     const token=await current(),headers=new Headers(init.headers);headers.set("authorization","Bearer "+token.accessToken);
     let response:Response;
-    try{response=await fetcher(url,{...init,headers});}
-    catch{throw new Error("controller-drive-unavailable");}
+    try{response=await bounded(async signal=>{
+      const received=await fetcher(url,{...init,headers,signal});
+      const data=await received.arrayBuffer();if(signal.aborted)throw new Error("controller-io-timeout");
+      return new Response([204,205,304].includes(received.status)?null:data,
+        {status:received.status,statusText:received.statusText,headers:received.headers});
+    },options);}
+    catch(error){if(timedOut(error))throw error;throw new Error("controller-drive-unavailable");}
     // Preserve provider status for the existing mailbox classifier. In
     // particular a 400/410 expired page cursor needs its established replay path.
     return response;
@@ -102,14 +125,14 @@ export function createWindowsControllerRequest(options:WindowsOAuthOptions):Auth
 export async function authorizeWindowsController(options:WindowsOAuthOptions&{
   readonly onAuthorizationUrl:(url:string)=>void;readonly timeoutMs?:number;
 }):Promise<void> {
-  const store=config(options),timeout=options.timeoutMs??120000,fetcher=options.fetcher??fetch;
+  const transaction=new AbortController();const store=config({...options,signal:transaction.signal}),timeout=options.timeoutMs??120000,fetcher=options.fetcher??fetch;
   if(!Number.isSafeInteger(timeout)||timeout<1000||timeout>600000)throw new Error("controller-oauth-timeout-invalid");
   const state=randomBytes(32).toString("base64url"),verifier=randomBytes(64).toString("base64url"),
     challenge=createHash("sha256").update(verifier).digest("base64url");
   let resolveResult!:(value:void)=>void,rejectResult!:(error:Error)=>void;
   const result=new Promise<void>((resolve,reject)=>{resolveResult=resolve;rejectResult=reject;});
   let done=false,handling=false,redirect="";
-  const complete=(error?:Error)=>{if(done)return;done=true;if(error)rejectResult(error);else resolveResult();};
+  const complete=(error?:Error)=>{if(done)return;done=true;if(error){transaction.abort();rejectResult(error);}else resolveResult();};
   const server=createServer((req,res)=>{
     if(req.method!=="GET"||!req.url||req.url.length>2048){res.writeHead(400);res.end("Rejected");return;}
     const u=new URL(req.url,"http://127.0.0.1");
@@ -121,7 +144,7 @@ export async function authorizeWindowsController(options:WindowsOAuthOptions&{
           throw new Error("callback-invalid");
         const body=new URLSearchParams({client_id:options.clientId,code:u.searchParams.get("code")!,
           code_verifier:verifier,redirect_uri:redirect,grant_type:"authorization_code"});
-        store.setSecret(KEY,JSON.stringify(validated(await exchange(fetcher,body))));
+        const credential=validated(await exchange(fetcher,body,{...options,signal:transaction.signal}));if(transaction.signal.aborted)throw new Error("controller-io-cancelled");store.setSecret(KEY,JSON.stringify(credential));
         res.writeHead(200,{"content-type":"text/plain","cache-control":"no-store"});res.end("BVP Windows controller authorized.");
         complete();
       }catch{res.writeHead(400,{"cache-control":"no-store"});res.end("Authorization rejected.");complete(new Error("controller-oauth-callback-rejected"));}
