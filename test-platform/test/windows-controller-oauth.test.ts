@@ -193,6 +193,23 @@ test("Option A compiled Windows controller --once entrypoint fails closed before
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test("WCO-R2-F01 compiled --once reports a bounded error code on invalid controller root without disclosing secrets",async()=>{
+  const root=await credentialFixture("brain-bvp-cli-invalid-root-");
+  try{
+    const tokenFile=join(root,"no-tokens.dat");
+    const entry=resolve(__dirname,"../src/run-windows-diagnostic-controller.js");
+    const result=spawnSync(process.execPath,[entry,"--once","--client-id","desktop",
+      "--token-file",tokenFile,"--relay-root",root,"--device-id","device-a"],{
+      encoding:"utf8",timeout:10000
+    });
+    strictEqual(result.error,undefined);
+    strictEqual(result.status,1);
+    strictEqual(result.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
+    strictEqual(result.stdout.includes("BVP_WINDOWS_CONTROLLER_REASON=controller-root-invalid"),true);
+    strictEqual(result.stdout.includes(tokenFile)||result.stderr.includes(tokenFile),false);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test("DEC357 PKCE loopback accepts at most one code-exchange request for each authorization intent",async()=>{
   const root=await credentialFixture("brain-bvp-oauth-replay-");
   try{

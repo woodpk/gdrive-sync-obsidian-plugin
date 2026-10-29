@@ -105,10 +105,10 @@ test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake G
     strictEqual(child.error,undefined,"compiled process must finish before operating-system test timeout");
     strictEqual(child.status,1);
     ok(Date.now()-started<11500);
+    await stat(reached); // Prove the compiled process actually invoked the nonsettling Google fake.
     strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
     strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER_REASON=controller-unhandled"),false,
       "actual network timeout must not be disguised as an unrelated CLI exception");
-    await stat(reached); // Prove the compiled process actually invoked the nonsettling Google fake.
     strictEqual(child.stdout.includes(f.tokenFile)||child.stderr.includes(f.tokenFile),false);
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
   }finally{await f.cleanup();}
