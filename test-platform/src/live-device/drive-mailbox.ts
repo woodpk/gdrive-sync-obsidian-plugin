@@ -563,6 +563,7 @@ export function createWindowsMailboxRelay(mailbox:DriveCommandMailbox,adapter:Re
       phase="diagnostic-ingest";first="remote-diagnostic-observation";failureClass="relay-diagnostic-ingest-failed";
       const leases=root+"/controller-authority";
       if(await adapter.exists(leases))for(const file of (await adapter.list(leases)).files){
+        if(!/^[0-9a-f]{64}\.json$/.test(baseName(file)))continue;
         let v:Record<string,unknown>|undefined;try{v=obj(JSON.parse(await adapter.read(file)));}catch{throw new MailboxUnavailableError("relay-controller-authority-invalid");}
         if(!v||typeof v.deviceId!=="string")throw new MailboxUnavailableError("relay-controller-authority-invalid");
         const lease=controllerAuthority(v,v.deviceId);
