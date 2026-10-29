@@ -8,11 +8,14 @@ import { join } from "node:path";
 import { test } from "node:test";
 const GOOGLE_TOKEN_ENDPOINT="https://oauth2.googleapis.com/token";
 const TOKEN_KEY="brain-gdrive-oauth-tokens";
+const credentialRoot=join(process.env.LOCALAPPDATA!,"BRAIN-BVP","controller");
+async function credentialFixture(prefix:string){await mkdir(credentialRoot,{recursive:true});return mkdtemp(join(credentialRoot,prefix));}
+
 import { authorizeWindowsController, createWindowsControllerRequest, WindowsDpapiSecrets } from "../src/windows-controller-auth";
 import { runWindowsControllerCycle, withWindowsControllerProcessLock } from "../src/run-windows-diagnostic-controller";
 
 test("Option A Windows DPAPI token storage binds secrets to local user and never writes plaintext token",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-"));
+  const root=await credentialFixture("brain-bvp-oauth-");
   try{
     const file=join(root,"tokens.dat"),store=new WindowsDpapiSecrets(file);
     strictEqual(store.getSecret(TOKEN_KEY),null);
@@ -29,7 +32,7 @@ test("Option A Windows DPAPI token storage binds secrets to local user and never
 });
 
 test("Option A previously authenticated Windows request refreshes Google tokens without any local IPC",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-refresh-"));
+  const root=await credentialFixture("brain-bvp-oauth-refresh-");
   try{
     const tokenFile=join(root,"tokens.dat"),secrets=new WindowsDpapiSecrets(tokenFile);
     secrets.setSecret(TOKEN_KEY,JSON.stringify({
@@ -56,7 +59,7 @@ test("Option A previously authenticated Windows request refreshes Google tokens 
 });
 
 test("Option A missing or corrupt local token store fails closed before any Google Drive mutation",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-missing-"));
+  const root=await credentialFixture("brain-bvp-oauth-missing-");
   try{
     let contacted=false;
     const request=createWindowsControllerRequest({clientId:"desktop",tokenFile:join(root,"missing.dat"),fetcher:async()=>{
@@ -71,7 +74,7 @@ test("Option A missing or corrupt local token store fails closed before any Goog
 });
 
 test("Option A Windows authorization uses bounded loopback PKCE callback and persists only protected OAuth tokens",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-login-"));
+  const root=await credentialFixture("brain-bvp-oauth-login-");
   try{
     const tokenFile=join(root,"tokens.dat");
     const fetcher:typeof fetch=async(input,init)=>{
@@ -98,7 +101,7 @@ test("Option A Windows authorization uses bounded loopback PKCE callback and per
 });
 
 test("Option A process-lifetime Windows root lock rejects competing controller and crash orphan",async()=>{
-  const temp=await mkdtemp(join(tmpdir(),"brain-bvp-auth-lock-"));
+  const temp=await credentialFixture("brain-bvp-auth-lock-");
   const root=join(temp,".bvp-relay");
   try{
     let entered!:()=>void,release!:()=>void;
@@ -115,7 +118,7 @@ test("Option A process-lifetime Windows root lock rejects competing controller a
 });
 
 test("Option A actual controller cycle requires existing authority and refuses missing OAuth session",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-controller-cycle-"));
+  const root=await credentialFixture("brain-bvp-controller-cycle-");
   try{
     const relayRoot=join(root,".bvp-relay"),tokenFile=join(root,"secrets.dat"),deviceId="device-a";
     const dir=join(relayRoot,"controller-authority");
@@ -131,7 +134,7 @@ test("Option A actual controller cycle requires existing authority and refuses m
 });
 
 test("Option A first sign-in without offline refresh grant fails without persisting temporary access token",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-no-refresh-"));
+  const root=await credentialFixture("brain-bvp-oauth-no-refresh-");
   try{
     const tokenFile=join(root,"tokens.dat");
     let authUrl="";
@@ -152,7 +155,7 @@ test("Option A first sign-in without offline refresh grant fails without persist
 });
 
 test("Option A compiled Windows controller --once entrypoint fails closed before contacting Drive without credentials",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-windows-cli-"));
+  const root=await credentialFixture("brain-bvp-windows-cli-");
   try{
     const relayRoot=join(root,".bvp-relay"),tokenFile=join(root,"no-tokens.dat");
     const entry=resolve(__dirname,"../src/run-windows-diagnostic-controller.js");
@@ -169,7 +172,7 @@ test("Option A compiled Windows controller --once entrypoint fails closed before
 });
 
 test("DEC357 PKCE loopback accepts at most one code-exchange request for each authorization intent",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-replay-"));
+  const root=await credentialFixture("brain-bvp-oauth-replay-");
   try{
     let authUrl="",calls=0,release!:()=>void;
     const barrier=new Promise<void>(resolve=>release=resolve);
@@ -196,7 +199,7 @@ test("DEC357 PKCE loopback accepts at most one code-exchange request for each au
 });
 
 test("DEC357 authenticated request preserves Drive cursor-expiry HTTP status for existing mailbox recovery",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-oauth-cursor-"));
+  const root=await credentialFixture("brain-bvp-oauth-cursor-");
   try{
     const tokenFile=join(root,"tokens.dat");
     new WindowsDpapiSecrets(tokenFile).setSecret(TOKEN_KEY,JSON.stringify({
@@ -208,4 +211,28 @@ test("DEC357 authenticated request preserves Drive cursor-expiry HTTP status for
     const response=await request("https://www.googleapis.com/drive/v3/files?pageToken=expired");
     strictEqual(response.status,410,"mailbox itself must interpret expired page tokens");
   }finally{await rm(root,{recursive:true,force:true});}
+});
+
+
+test("WCO-R1-F03 rejects token storage outside the trusted private Windows LocalAppData controller tree",async()=>{
+  const forbidden=[
+    join(resolve(process.cwd()),"dev","controller-token.dat"),
+    join(tmpdir(),"controller-token-unsafe.dat"),
+    join(credentialRoot,"..","vault","controller-token.dat"),
+  ];
+  for(const path of forbidden){
+    await rejects(async()=>new WindowsDpapiSecrets(path),/controller-token-location-invalid/);
+  }
+});
+
+test("WCO-R1-F03 token file ACL broadening is detected before the cached credential is read",async()=>{
+  const dir=await credentialFixture("brain-bvp-oauth-acl-"),file=join(dir,"tokens.dat");
+  try{
+    const store=new WindowsDpapiSecrets(file);
+    store.setSecret(TOKEN_KEY,"encrypted-fake-token");
+    strictEqual(store.getSecret(TOKEN_KEY),"encrypted-fake-token");
+    const changed=spawnSync("icacls.exe",[file,"/grant","*S-1-5-32-545:(R)"],{encoding:"utf8",windowsHide:true});
+    strictEqual(changed.status,0,"test fixture must successfully grant Users read on token file");
+    await rejects(async()=>store.getSecret(TOKEN_KEY),/controller-token-permissions-invalid/);
+  }finally{await rm(dir,{recursive:true,force:true});}
 });
