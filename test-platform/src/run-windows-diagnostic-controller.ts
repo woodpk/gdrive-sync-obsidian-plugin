@@ -30,7 +30,8 @@ async function boundedCycle(options:WindowsControllerCycleOptions){
   options.signal?.addEventListener("abort",cancel,{once:true});
   if(options.signal?.aborted)cancel();
   const timer=setTimeout(cancel,timeout);
-  try{return await cycleCore({...options,signal:stop.signal});}
+  try{const result=await cycleCore({...options,signal:stop.signal});
+    return stop.signal.aborted?{status:"unavailable" as const,reason:options.signal?.aborted?"controller-io-cancelled":"controller-io-timeout"}:result;}
   catch(error){
     if(stop.signal.aborted||error instanceof Error&&/^controller-io-(?:timeout|cancelled)$/.test(error.message))
       return {status:"unavailable" as const,reason:options.signal?.aborted?"controller-io-cancelled":"controller-io-timeout"};
