@@ -126,3 +126,9 @@ A **separate Owner-operated PHX-CI run** was published while this `dev/` documen
 ## 9. R1 compiler correction (unqualified)
 
 Builder committed `9568e5936761c796c886cf74f4946b90a363a226`: add missing `readFile` import from `node:fs/promises` in the BVP integration test. No test expectation or production logic changed. The first original PHX-CI result remains BLOCKED for `af178ebc17f90d0be8db78c45f12b9bf22375594`. This corrective source has **not** passed PHX-CI and has not received independent review. Next gate: freeze the current corrected source SHA, run the unchanged pinned Windows PHX-CI software-only, assess original results and only then commission independent review. No physical/live operations or merge.
+
+## Second PHX-CI BLOCKED, correction pending (2026-10-28)
+
+Run 707952d6-95e7-4a7c-8b07-060bc99f056e verified source 63a509b20175f9c4a0da348ba06f8347faf258ec; evidence commit 74efbb8ec92756f4bc89a930cf0ec54e829fe53f. Focused BVP tests: 607 passed, 5 failed (numbers 144, 399, 460, 607, 609). Full product test stage passed. Overall BLOCKED. The original evidence is immutable.
+
+The Builder committed targeted fixes for test registry completeness, device-bundle import attribution, root-level Windows process lock placement, root-conformant lock test, and timely expected OAuth promise rejection handling. The corrected source is NOT yet PHX-CI verified. No production code, PHX-CI pin, frozen architecture limit, physical execution, installation, or merge was changed. Preserve handoff-count 10. Run the next exact-source software-only Windows PHX-CI before independent review.
