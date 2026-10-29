@@ -90,7 +90,7 @@ async function main(args:readonly string[]):Promise<void>{
       let status="unavailable";
       try{status=(await boundedCycle({...options,signal:shutdown.signal})).status;}catch{}
       if(status!==previous){
-        process.stdout.write("BVP_WINDOWS_CONTROLLER="+status+"\\n");
+        process.stdout.write("BVP_WINDOWS_CONTROLLER="+status+"\n");
         previous=status;
       }
       if(stopping)break;
