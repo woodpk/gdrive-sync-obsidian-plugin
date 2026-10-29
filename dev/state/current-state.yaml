@@ -1543,5 +1543,20 @@ bvp_windows_controller_oauth_2026_10_28:
   r3_handoff_count: "12_UNCHANGED"
   r3_next_action: "OWNER_PINNED_WINDOWS_PHXCI_SOFTWARE_ONLY_FRESH_EXACT_SHA_FOR_DIAGNOSTIC_STAGE_OBSERVATION"
   r3_live_oauth_drive_physical_release: "NOT_AUTHORIZED"
+  r4_phxci_run_id: "1d13760f-e83a-4131-8f12-7a2c0487a903"
+  r4_phxci_verified_source_sha: "b62a095d256f78cf8ee95df6e6064d2cf6fbdc0a"
+  r4_phxci_original_evidence_commit: "ae11803d13e009e210444c94c1601c69bcc433fa"
+  r4_phxci_original_evidence_stem: "dev/test-results/20261029T133753Z-operator-build-bvp-poll-error-observability-20261025-b62a095d256f"
+  r4_phxci_outcome: "FOCUSED_607_PASS_14_FAIL_0_CANCELLED_PRODUCT_1292_PASS_OVERALL_BLOCKED_EXIT_201"
+  r4_root_cause_acl: "13_CREDENTIAL_FAILURES_REPRODUCE_BVP_ACL_FAILURE_STAGE_ACL_SET_SET_ACL_POWERSHELL_PROVIDER"
+  r4_additional_failure: "FRAMEWORK_CORE_LOGICAL_LOC_4859_EXCEEDS_FROZEN_4850"
+  r4_fix_native_acl_commit: "d435bbc74738cbf4641d2c35cd46deb266a8c7e6"
+  r4_acl_regression_test_commit: "357b40890752e3bd81ba4036111d497b6efdc4f2"
+  r4_current_status: "BUILDER_SOURCE_AND_REGRESSION_TEST_COMMITTED_FRESH_PHXCI_NOT_YET_RUN"
+  r4_handoff_count: "12_UNCHANGED_BUILDER_TO_BUILDER_REPAIR"
+  r4_next_action: "OWNER_PINNED_WINDOWS_SOFTWARE_ONLY_PHXCI_EXACT_SOURCE_VERIFY_11_STAGES_NO_PHYSICAL"
+  r4_preserved_guards: "NO_GITHUB_ACTIONS_NO_TEST_ORACLE_RELAXATION_NO_PIN_BUDGET_OR_SHIPPING_CODE_CHANGE"
+  r4_owner_approval_limits: "NO_REAL_OAUTH_DRIVE_PHYSICAL_DISPATCH_MERGE_INSTALL_DEPLOY_RELEASE"
+
 
 
