@@ -67,6 +67,7 @@ test("Option A missing or corrupt local token store fails closed before any Goog
     }});
     await rejects(()=>request("https://www.googleapis.com/drive/v3/files"),/authentication-required|oauth/);
     strictEqual(contacted,false);
+    new WindowsDpapiSecrets(join(root,"missing.dat")).setSecret(TOKEN_KEY,"original-fixture");
     await writeFile(join(root,"missing.dat"),"corrupted-dpapi-ciphertext");
     await rejects(()=>request("https://www.googleapis.com/drive/v3/files"),/controller-token-unprotect-failed/);
     strictEqual(contacted,false,"invalid encrypted credentials must not contact Google");
