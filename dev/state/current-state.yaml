@@ -1437,7 +1437,7 @@ bvp_poll_error_observability_2026_10_25:
 
 bvp_windows_controller_oauth_2026_10_28:
   feature: "WS-07/BVP_WINDOWS_CONTROLLER_OAUTH"
-  status: "NEW_BUILD_UNIT_R1_PHXCI_BLOCKED_FOCUSED_TS2304_SOFTWARE_NOT_QUALIFIED"
+  status: "DEC357_R2_CORRECTIVE_SOURCE_COMMITTED_R2_PHXCI_PENDING_NOT_QUALIFIED"
   decision: "DEC-357"
   owner_option: "A_SEPARATE_WINDOWS_OAUTH_PKCE_DPAPI_NOT_OBSIDIAN_IPC"
   workstream: "WS-07"
@@ -1485,5 +1485,19 @@ bvp_windows_controller_oauth_2026_10_28:
   wco_r1_f01_correction_commit: "9568e5936761c796c886cf74f4946b90a363a226"
   wco_r1_f01_correction: "ONE_TEST_IMPORT_ADD_READFILE_NO_PRODUCTION_CHANGE"
   next_source_qualification: "NEW_EXACT_HEAD_PINNED_WINDOWS_PHXCI_REQUIRED"
+  second_phxci_source_sha: "63a509b20175f9c4a0da348ba06f8347faf258ec"
+  second_phxci_git_tree: "fdc14b40526bc8683bce5916d8240533b0370f91"
+  second_phxci_run_id: "707952d6-95e7-4a7c-8b07-060bc99f056e"
+  second_phxci_evidence_commit: "74efbb8ec92756f4bc89a930cf0ec54e829fe53f"
+  second_phxci_evidence_json_blob: "779ea50f96a12b1b3ef24139ba34c6e444150a6b"
+  second_phxci_verdict: "BLOCKED_CHANGESET_FAIL_REPOSITORY_PASS"
+  second_phxci_focused_results: "607_PASS_5_FAIL_612_TOTAL"
+  second_phxci_failures: "144_TEST_REGISTRY_399_DESKTOP_BUNDLE_BOUNDARY_ORACLE_460_PROCESS_LOCK_IN_AUTHORITY_DIR_607_ROOT_FIXTURE_609_UNHANDLED_PROMISE"
+  second_phxci_product_tests: "PASS"
+  second_phxci_later_stages: "BUILD_REPOSITORY_CHECK_CHECK_ARTIFACTS_NOT_REACHED"
+  second_phxci_current_corrections: "R2_TEST_REGISTRY_BUNDLE_BOUNDARY_AUTHORITY_LOCK_PATH_LOCK_TEST_OAUTH_PROMISE_HANDLER"
+  second_phxci_corrective_source_checkpoint: "eea53e847150c37ce61bfd49e9961d4065cabf0a"
+  second_phxci_correction_status: "COMMITTED_NOT_YET_PHXCI_TESTED"
+
 
 
