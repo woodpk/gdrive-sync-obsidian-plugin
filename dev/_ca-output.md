@@ -9,12 +9,12 @@ STATUS: BLOCKED
 - Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8
-- Repository: C:/temp/7484efc874064164af0eeb7d89d6ac64/phx-455547e164a74f28/w
+- Run ID: f71373f6-4daa-4d11-85ac-53c2725e2871
+- Repository: C:/temp/8ad4231e4d0d459b9707f822d598cbcf/phx-76d9654b94f8478e/w
 - Branch:
-- Verified HEAD: 7b84e71a907917e97270596c525a349c17b70918
-- Verified tree: 24b468b6d903505fea19c49e3b525df53333d3ac
-- Expected HEAD: 7b84e71a907917e97270596c525a349c17b70918
+- Verified HEAD: 6eaafc12b66a71824c20bd9c8d56a22d56a63aa3
+- Verified tree: 3ae637eeaf19f72dbda3b06db571a545ac3ce9a1
+- Expected HEAD: 6eaafc12b66a71824c20bd9c8d56a22d56a63aa3
 - Base SHA: 42460912847e363aa4fa11e23e0429944383889d
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,18 +24,18 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-10-29T12:58:23.8551203Z
-- Ended: 2026-10-29T13:00:06.5639524Z
+- Started: 2026-10-29T13:16:45.4603780Z
+- Ended: 2026-10-29T13:18:56.6460200Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
-- node-preflight: PASS (exit 0; NONE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
-- node-project-files: PASS (exit 0; NONE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
-- install: PASS (exit 0; NONE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
-- typecheck: PASS (exit 0; NONE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
-- test-focused: FAIL (exit 1; TEST FAILURE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
-- test: PASS (exit 0; NONE; run 5c8fd024-85eb-47e4-81b8-0ce97c4f36c8)
+- preflight: PASS (exit 0; NONE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
+- node-preflight: PASS (exit 0; NONE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
+- node-project-files: PASS (exit 0; NONE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
+- install: PASS (exit 0; NONE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
+- typecheck: PASS (exit 0; NONE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
+- test-focused: FAIL (exit 1; TEST FAILURE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
+- test: PASS (exit 0; NONE; run f71373f6-4daa-4d11-85ac-53c2725e2871)
 - build: MISSING (FRAMEWORK FAILURE)
 - repository-check: MISSING (FRAMEWORK FAILURE)
 - check: MISSING (FRAMEWORK FAILURE)
