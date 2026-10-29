@@ -1531,4 +1531,17 @@ bvp_windows_controller_oauth_2026_10_28:
   r2_qualification_status: "BUILDER_CORRECTED_SOURCE_NOT_PHXCI_VERIFIED_NO_REVIEWER_HANDOFF"
   r2_next_gate: "FRESH_EXACT_SOURCE_UNCHANGED_PINNED_WINDOWS_SOFTWARE_ONLY_PHXCI_THEN_BUILDER_DIAGNOSE"
   r2_authorization_boundary: "NO_REAL_OAUTH_DRIVE_PHYSICAL_DISPATCH_MERGE_INSTALL_DEPLOY_RELEASE"
+  r3_phxci_run_id: "f71373f6-4daa-4d11-85ac-53c2725e2871"
+  r3_phxci_verified_source_sha: "6eaafc12b66a71824c20bd9c8d56a22d56a63aa3"
+  r3_phxci_original_evidence_commit: "c654a430e6ab1d65d80994876f97b280f1c71050"
+  r3_phxci_original_evidence_stem: "dev/test-results/20261029T131641Z-operator-build-bvp-poll-error-observability-20261025-6eaafc12b66a"
+  r3_phxci_verdict: "FOCUSED_608_PASS_13_FAIL_0_CANCELLED_REPOSITORY_1292_PASS_OVERALL_BLOCKED_EXIT_201"
+  r3_phxci_failure_cluster: "WINDOWS_DPAPI_NTFS_ACL_11_DIRECT_FAILURES_2_OAUTH_CALLBACK_DOWNSTREAM_FAILURES"
+  r3_diagnostic_correction_commit: "014f281276d59d4a4d1c2c944ff9e56dea5b7a76"
+  r3_diagnostic_scope: "REVERT_UNQUALIFIED_GLOBAL_MUTEX_RETAIN_FAIL_CLOSED_ACL_ENFORCEMENT_SAFE_STATIC_STAGE_CLASSIFICATION_ONLY"
+  r3_diagnostic_qualification: "NOT_RUN_BUILDER_ONLY_NO_HANDOFF"
+  r3_handoff_count: "12_UNCHANGED"
+  r3_next_action: "OWNER_PINNED_WINDOWS_PHXCI_SOFTWARE_ONLY_FRESH_EXACT_SHA_FOR_DIAGNOSTIC_STAGE_OBSERVATION"
+  r3_live_oauth_drive_physical_release: "NOT_AUTHORIZED"
+
 
