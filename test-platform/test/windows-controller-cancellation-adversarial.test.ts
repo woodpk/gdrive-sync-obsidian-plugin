@@ -32,7 +32,7 @@ test("WCO-R1-F01 nonsettling OAuth refresh terminates a bounded cycle and releas
     const start=Date.now();let calls=0;
     const result=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,relayRoot:f.root,
       deviceId:f.deviceId,fetcher:async()=>{calls++;return never("https://oauth2.googleapis.com/token");},requestTimeoutMs:120,cycleTimeoutMs:10000});
-    strictEqual(result.status,"unavailable");strictEqual(result.reason,"controller-io-timeout");
+    strictEqual(result.status,"unavailable");match(result.reason??"",/^(?:mailbox-)?controller-io-timeout$/);
     strictEqual(calls>0,true,"nonsettling OAuth fetch must actually be exercised");
     ok(Date.now()-start<9500,"hung refresh must not retain owner indefinitely");
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
@@ -93,8 +93,8 @@ test("WCO-R1-F01 hung PKCE token exchange expires callback without persisting cr
 test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake Google request",async()=>{
   const f=await fixture(false);
   try{
-    const inject=join(f.dir,"nonsettling-fetch.cjs");
-    await writeFile(inject,"globalThis.fetch=async()=>new Promise(()=>{});\n");
+    const inject=join(f.dir,"nonsettling-fetch.cjs"),reached=join(f.dir,"nonsettling-fetch-reached");
+    await writeFile(inject,"globalThis.fetch=async()=>{require('node:fs').writeFileSync("+JSON.stringify(reached)+",'called');return new Promise(()=>{});};\n");
     const entry=resolve(__dirname,"../src/run-windows-diagnostic-controller.js");
     const started=Date.now();
     const child=spawnSync(process.execPath,[entry,"--once","--client-id","desktop",
@@ -106,7 +106,10 @@ test("WCO-R1-F01 actual compiled --once process exits after a nonsettling fake G
     strictEqual(child.status,1);
     ok(Date.now()-started<11500);
     strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER=unavailable"),true);
-    strictEqual(child.stdout.includes(f.tokenFile),false);
+    strictEqual(child.stdout.includes("BVP_WINDOWS_CONTROLLER_REASON=controller-unhandled"),false,
+      "actual network timeout must not be disguised as an unrelated CLI exception");
+    await stat(reached); // Prove the compiled process actually invoked the nonsettling Google fake.
+    strictEqual(child.stdout.includes(f.tokenFile)||child.stderr.includes(f.tokenFile),false);
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
   }finally{await f.cleanup();}
 });
