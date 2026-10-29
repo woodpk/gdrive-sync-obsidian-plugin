@@ -73,22 +73,15 @@ try {
     $stage='owner-check'
     if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
     if($request.apply){
-      $stage='acl-protect'
-      $acl.SetAccessRuleProtection($true,$false)
-      $stage='acl-remove'
-      foreach($rule in @($acl.Access)){[void]$acl.RemoveAccessRuleSpecific($rule)}
-      $stage='rule-flags'
-      $flags=if((Get-Item -LiteralPath $p).PSIsContainer){[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'}else{[Security.AccessControl.InheritanceFlags]::None}
-      foreach($id in @($user,$system)){
-        $stage='rule-create'
-        $rule=[Security.AccessControl.FileSystemAccessRule]::new($id,[Security.AccessControl.FileSystemRights]::FullControl,$flags,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
-        $stage='rule-add'
-        $acl.AddAccessRule($rule)
-      }
-      $stage='acl-set'
-      Set-Acl -LiteralPath $p -AclObject $acl
-      $stage='acl-readback'
-      $acl=Get-Acl -LiteralPath $p
+      $stage='acl-native'
+      # Native icacls supports Windows DACL writes without Set-Acl's provider-specific failure.
+      # Remove inherited grants, replace current-user/SYSTEM grants, then verify the on-disk DACL.
+      $flags=if((Get-Item -LiteralPath $p).PSIsContainer){'(OI)(CI)'}else{''}
+      $grantUser='*'+$user.Value+':'+$flags+'F'
+      $grantSystem='*'+$system.Value+':'+$flags+'F'
+      & icacls.exe $p /inheritance:r /grant:r $grantUser $grantSystem 2>$null | Out-Null
+      if($LASTEXITCODE -ne 0){throw 'acl-native-failed'}
+      $stage='acl-readback';$acl=Get-Acl -LiteralPath $p
     }
     $stage='inheritance-check'
     if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
