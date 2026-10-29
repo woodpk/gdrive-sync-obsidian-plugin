@@ -2,7 +2,7 @@ import { strictEqual, rejects, match, ok } from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { test } from "node:test";
 import { authorizeWindowsController, createWindowsControllerRequest, WindowsDpapiSecrets } from "../src/windows-controller-auth";
@@ -37,7 +37,9 @@ test("WCO-R1-F01 nonsettling OAuth refresh terminates a bounded cycle and releas
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
     const next=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,relayRoot:f.root,
       deviceId:f.deviceId,requestTimeoutMs:150,cycleTimeoutMs:1500,
-      fetcher:async()=>Response.json({files:[]})});
+      fetcher:async url=>String(url).includes("oauth2.googleapis.com/token")
+        ?Response.json({access_token:"recovered-access",expires_in:3600,scope:SCOPE})
+        :Response.json({files:[]})});
     strictEqual(next.reason==="controller-owner-busy",false,"restart must reacquire owner lock");
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
   }finally{await f.cleanup();}
