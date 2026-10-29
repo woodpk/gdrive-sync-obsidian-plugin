@@ -1557,6 +1557,22 @@ bvp_windows_controller_oauth_2026_10_28:
   r4_next_action: "OWNER_PINNED_WINDOWS_SOFTWARE_ONLY_PHXCI_EXACT_SOURCE_VERIFY_11_STAGES_NO_PHYSICAL"
   r4_preserved_guards: "NO_GITHUB_ACTIONS_NO_TEST_ORACLE_RELAXATION_NO_PIN_BUDGET_OR_SHIPPING_CODE_CHANGE"
   r4_owner_approval_limits: "NO_REAL_OAUTH_DRIVE_PHYSICAL_DISPATCH_MERGE_INSTALL_DEPLOY_RELEASE"
+  r5_phxci_run_id: "605d0c9b-be50-4935-b0ec-92a13b76447e"
+  r5_phxci_source_sha: "f9d3dd1a3084586c50d867347bcee9a9d499f768"
+  r5_phxci_original_evidence_commit: "6986fd686fa1fe124935d0887b8c5cdc1f6cd2a1"
+  r5_phxci_original_evidence_stem: "dev/test-results/20261029T174406Z-operator-build-bvp-poll-error-observability-20261025-f9d3dd1a3084"
+  r5_phxci_verdict: "FOCUSED_620_PASS_2_FAIL_0_CANCELLED_PRODUCT_1292_PASS_OVERALL_BLOCKED_EXIT_201"
+  r5_focused_failures: "WCO_R1_F01_OAUTH_TIMEOUT_LAYER_REASON_AND_COMPILED_ONCE_UNAVAILABLE_OUTPUT"
+  r5_acl_regression: "PASS_NATIVE_NTFS_ACL_EXPLICIT_TEST"
+  r5_frozen_architecture: "PASS_FRAMEWORK_CORE_AND_LIVE_RELAY_BUDGETS_UNCHANGED"
+  r5_builder_test_contract_commit: "5daedda52602baf57676b6942a52cf88d3a58818"
+  r5_builder_cli_failure_status_commit: "0d6bd66d2dfe14f18ee9ed3efbb7e3e4429b3c64"
+  r5_builder_test_strengthening_commit: "69899ca371915f656f7a12db6a008720592bc295"
+  r5_builder_status: "CORRECTED_SOURCE_AND_TESTS_PUBLISHED_NOT_PHXCI_VERIFIED"
+  r5_handoff_count: "12_UNCHANGED_BUILDER_OWNED"
+  r5_next_gate: "FRESH_OWNER_PINNED_WINDOWS_PHXCI_SOFTWARE_ONLY_SOURCE_SHA_THEN_REVIEW_ONLY_AFTER_PASS"
+  r5_owner_approval_limits: "NO_REAL_OAUTH_DRIVE_PHYSICAL_DISPATCH_MERGE_INSTALL_DEPLOY_RELEASE"
+
 
 
 
