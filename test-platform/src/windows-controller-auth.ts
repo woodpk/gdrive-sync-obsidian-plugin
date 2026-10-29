@@ -1,8 +1,8 @@
 /** Windows-only, validation-only Google Drive OAuth PKCE. No imports from shipping
  * production sources and no tokens in argv, URLs, logs or unencrypted files. */
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import type { AuthenticatedDriveRequest } from "./live-device/drive-mailbox";
@@ -37,21 +37,79 @@ function dpapi(value:string,mode:"Protect"|"Unprotect"):string {
   if(child.status!==0||child.error||!child.stdout.trim()||!/^[A-Za-z0-9+/=]+$/.test(child.stdout.trim()))throw new Error("controller-dpapi-unavailable");
   return mode==="Protect"?child.stdout.trim():Buffer.from(child.stdout.trim(),"base64").toString("utf8");
 }
+function securedTokenLocation(path:string):{file:string;directories:string[]} {
+  const local=process.env.LOCALAPPDATA;
+  if(process.platform!=="win32"||!local||!isAbsolute(local)||!isAbsolute(path))
+    throw new Error("controller-token-location-invalid");
+  const root=resolve(local,"BRAIN-BVP","controller"),file=resolve(path),rel=relative(root,file);
+  if(!rel||rel.startsWith("..")||isAbsolute(rel)||!/\.dat$/i.test(file))
+    throw new Error("controller-token-location-invalid");
+  const directories:string[]=[];let parent=dirname(file);
+  while(parent.toLowerCase()!==resolve(local).toLowerCase()){
+    if(parent.length<root.length-15||parent===dirname(parent))throw new Error("controller-token-location-invalid");
+    directories.unshift(parent);parent=dirname(parent);
+  }
+  const repo=resolve(process.cwd()),within=relative(repo,file);
+  if(within&&!within.startsWith("..")&&!isAbsolute(within))
+    throw new Error("controller-token-location-invalid");
+  for(const item of [...directories,file]){
+    if(existsSync(item)&&lstatSync(item).isSymbolicLink())throw new Error("controller-token-location-invalid");
+    if(item!==file&&(existsSync(join(item,".git"))||existsSync(join(item,".obsidian"))))
+      throw new Error("controller-token-location-invalid");
+  }
+  return {file,directories};
+}
+function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
+  const script=String.raw`$ErrorActionPreference='Stop'
+    $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
+    $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
+    $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+    foreach($p in $request.paths){
+      $acl=Get-Acl -LiteralPath $p
+      if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
+      if($request.apply){
+        $acl.SetAccessRuleProtection($true,$false)
+        foreach($rule in @($acl.Access)){[void]$acl.RemoveAccessRuleSpecific($rule)}
+        $flags=if((Get-Item -LiteralPath $p).PSIsContainer){[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'}else{[Security.AccessControl.InheritanceFlags]::None}
+        foreach($id in @($user,$system)){
+          $rule=[Security.AccessControl.FileSystemAccessRule]::new($id,[Security.AccessControl.FileSystemRights]::FullControl,$flags,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
+          $acl.AddAccessRule($rule)
+        }
+        Set-Acl -LiteralPath $p -AclObject $acl
+        $acl=Get-Acl -LiteralPath $p
+      }
+      if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
+      foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
+        if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}
+      }
+    }`;
+  const processResult=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive",
+    "-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{
+      input:JSON.stringify({paths,apply}),encoding:"utf8",windowsHide:true,timeout:10000,maxBuffer:16384
+    });
+  if(processResult.error||processResult.status!==0)throw new Error("controller-token-permissions-invalid");
+}
 export class WindowsDpapiSecrets {
-  constructor(private readonly file:string){if(process.platform!=="win32"||!isAbsolute(file))throw new Error("controller-token-location-invalid");}
+  private readonly secured:{file:string;directories:string[]};
+  constructor(private readonly file:string){this.secured=securedTokenLocation(file);}
   private check(id:string){if(id!==KEY)throw new Error("controller-token-id-invalid");}
   getSecret(id:string):string|null {
     this.check(id);if(!existsSync(this.file))return null;
-    try{return dpapi(readFileSync(this.file,"utf8"),"Unprotect");}
-    catch{throw new Error("controller-token-unprotect-failed");}
+    try{securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);return dpapi(readFileSync(this.file,"utf8"),"Unprotect");}
+    catch(error){if(error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;
+      throw new Error("controller-token-unprotect-failed");}
   }
   setSecret(id:string,value:string):void {
-    this.check(id);mkdirSync(dirname(this.file),{recursive:true});
+    this.check(id);mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
+    enforceTokenAcl(this.secured.directories,true);
     const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
-    try{writeFileSync(temp,dpapi(value,"Protect"),{encoding:"utf8",mode:0o600,flag:"wx"});renameSync(temp,this.file);}
-    finally{rmSync(temp,{force:true});}
+    try{
+      writeFileSync(temp,dpapi(value,"Protect"),{encoding:"utf8",mode:0o600,flag:"wx"});
+      enforceTokenAcl([temp],true);renameSync(temp,this.file);
+      enforceTokenAcl([...this.secured.directories,this.file],false);
+    }finally{rmSync(temp,{force:true});}
   }
-  deleteSecret(id:string):void {this.check(id);rmSync(this.file,{force:true});}
+  deleteSecret(id:string):void {this.check(id);if(existsSync(this.file)){securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);}rmSync(this.file,{force:true});}
 }
 function config(options:WindowsOAuthOptions){
   if(!/^[A-Za-z0-9._:-]{4,200}$/.test(options.clientId)||!Number.isSafeInteger(options.port??0)||
