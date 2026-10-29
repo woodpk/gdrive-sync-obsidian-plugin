@@ -24,11 +24,9 @@ async function cycleCore(options:WindowsControllerCycleOptions){
   return runWindowsDiagnosticControllerOnce(request,options);
 }
 async function boundedCycle(options:WindowsControllerCycleOptions){
-  const timeout=options.cycleTimeoutMs??30000;
-  if(!Number.isSafeInteger(timeout)||timeout<100||timeout>120000)throw new Error("controller-cycle-timeout-invalid");
+  const timeout=options.cycleTimeoutMs??30000;if(!Number.isSafeInteger(timeout)||timeout<100||timeout>120000)throw new Error("controller-cycle-timeout-invalid");
   const stop=new AbortController(),cancel=()=>stop.abort();
-  options.signal?.addEventListener("abort",cancel,{once:true});
-  if(options.signal?.aborted)cancel();
+  options.signal?.addEventListener("abort",cancel,{once:true});if(options.signal?.aborted)cancel();
   const timer=setTimeout(cancel,timeout);
   try{const result=await cycleCore({...options,signal:stop.signal});
     return stop.signal.aborted?{status:"unavailable" as const,reason:options.signal?.aborted?"controller-io-cancelled":"controller-io-timeout"}:result;}
