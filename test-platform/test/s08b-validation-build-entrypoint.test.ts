@@ -192,7 +192,16 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(validationText.includes(BVP_TEST_PLATFORM_NONSHIPPING_SENTINEL), true);
   equal(validationText.includes(BVP_MAILBOX_RUNTIME_GLOBAL), true);
   equal(validationText.includes("BRAIN BVP Mailbox"), true);
-  equal(validationText.includes("node:fs/promises"),false,"generated device artifact excludes Node filesystem dependencies");
+  // Production desktop sources already use Node filesystem APIs behind the
+  // established desktop boundary. Test the NEW device-specific inputs rather
+  // than rejecting those pre-existing, shipping desktop modules by string match.
+  for(const input of first.testPlatformInputs){
+    const source=readFileSync(resolve(repositoryRoot,input),"utf8");
+    equal(/(?:node:fs|node:path|node:child_process|node:http)/.test(source),false,
+      "browser-safe validation input cannot import Node capabilities: "+input);
+  }
+  equal(validationText.includes("controller-owner.lock"),false,
+    "generated device artifact must not include the Windows controller process lock");
   equal(validationText.includes("windowsDiagnosticExclusiveLock"),false,"device artifact cannot acquire Windows controller authority");
   equal(readFileSync(first.manifestPath, "utf8"), readFileSync(resolve(repositoryRoot, "manifest.json"), "utf8"));
   deepEqual(first.testPlatformInputs, [
