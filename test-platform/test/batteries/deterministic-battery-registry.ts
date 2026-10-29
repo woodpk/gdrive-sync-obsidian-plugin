@@ -58,6 +58,7 @@ const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
   "s08c-prerequisite-production-control-seam.test.js",
   "s08d-drive-mailbox-relay.test.js",
   "windows-controller-oauth.test.js",
+  "windows-controller-cancellation-adversarial.test.js",
   "s08e-external-live-executor.test.js",
   "s08e-prerequisite-runner-executor-seam.test.js",
 ] as const;
