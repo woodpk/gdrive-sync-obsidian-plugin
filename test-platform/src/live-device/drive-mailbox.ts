@@ -65,7 +65,7 @@ function same(a: Header,b: Header): boolean { return a.runId===b.runId&&a.device
 function sensitive(value:unknown):boolean{if(!value||typeof value!=="object")return false;if(Array.isArray(value))return value.some(sensitive);return Object.entries(value as Record<string,unknown>).some(([k,v])=>/^(access[_-]?token|refresh[_-]?token|authorization[_-]?code|client[_-]?secret|code[_-]?verifier|password|passcode|token)$/i.test(k)||sensitive(v));}
 function jsonBytes(value: unknown): { text:string; bytes:number } { const text=JSON.stringify(value); return {text,bytes:new TextEncoder().encode(text).byteLength}; }
 function escapeQuery(value:string):string{return value.replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
-function baseName(path:string):string{return path.split("/").filter(Boolean).at(-1)??"record.json";}
+function baseName(path:string):string{return path.split(/[\\/]/).filter(Boolean).at(-1)??"record.json";}
 interface ControllerAuthority { readonly schemaVersion:1; readonly generation:number; readonly runId:string|null; readonly deviceId:string; }
 function controllerAuthority(value:unknown,deviceId:string):ControllerAuthority|undefined{const v=obj(value);return v?.schemaVersion===1&&v.deviceId===deviceId&&Number.isSafeInteger(v.generation)&&v.generation>=0&&(v.runId===null||typeof v.runId==="string")?v as unknown as ControllerAuthority:undefined;}
 async function controllerAuthorityPath(root:string,deviceId:string):Promise<string>{const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(deviceId)),key=[...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,"0")).join("");return `${root}/controller-authority/${key}.json`;}

@@ -1457,7 +1457,9 @@
         "--port",
         "--relay-root",
         "--device-id",
-        "--interval-ms"
+        "--interval-ms",
+        "--request-timeout-ms",
+        "--cycle-timeout-ms"
       ],
       "mode": "windows-validation-controller-software-only-deferred",
       "effect": "Google-OAuth-and-diagnostic-Drive-mutations-only-on-separate-Owner-authorization",

@@ -294,7 +294,7 @@ test("DEC-352 malformed relay lease is a reported failure, never silently skippe
   const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request),files=new Files();
   const root=".obsidian/plugins/brain/.bvp-relay";
   files.dirs.add(root+"/controller-authority");
-  files.values.set(root+"/controller-authority/corrupt.json","not-json");
+  files.values.set(root+"/controller-authority/"+createHash("sha256").update("device-a").digest("hex")+".json","not-json");
   const result=await createWindowsMailboxRelay(mailbox,files,root).pumpOnce();
   equal(result.status,"unavailable");
   equal(result.reason,"relay-controller-authority-invalid");
