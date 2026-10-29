@@ -836,3 +836,28 @@ test("DEC357 separate Windows OAuth cannot create a second mailbox when existing
   equal((await independent.diagnosticsForDevice("device-a")).entries.length,0,
     "the independent controller can reuse an already-visible mailbox without creating it");
 });
+
+
+test("WCO-R1-F02 mixed controller authority ignores only noncanonical lock artifacts and rejects a malformed real lease",async()=>{
+  const drive=new FakeDrive(),mailbox=createDriveCommandMailbox(drive.request);
+  await mailbox.activeRun("device-a");
+  const temp=await mkdtemp(join(tmpdir(),"brain-bvp-authority-filter-")),root=join(temp,".bvp-relay");
+  const auth=join(root,"controller-authority"),deviceId="device-a",other="device-b";
+  const lease=join(auth,createHash("sha256").update(deviceId).digest("hex")+".json");
+  const otherLease=join(auth,createHash("sha256").update(other).digest("hex")+".json");
+  try{
+    await mkdir(auth,{recursive:true});
+    await writeFile(lease,JSON.stringify({schemaVersion:1,generation:1,runId:"run-a",deviceId}));
+    await writeFile(otherLease,JSON.stringify({schemaVersion:1,generation:1,runId:"run-b",deviceId:other}));
+    await writeFile(lease+".lock","temporary authority mutation lock");
+    await writeFile(lease+".diagnostic.lock","orphan diagnostic device lock");
+    await writeFile(join(auth,"unrelated.tmp"),"not a lease");
+    equal((await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId})).status,"ok",
+      "noncanonical lock artifacts must not prevent valid device diagnostic cycles");
+    await writeFile(otherLease,"not-json");
+    const invalid=await runWindowsDiagnosticControllerOnce(drive.request,{relayRoot:root,deviceId});
+    equal(invalid.status,"unavailable");
+    equal(invalid.reason,"relay-controller-authority-invalid",
+      "malformed canonical lease must remain fail-closed, even under another device");
+  }finally{await rm(temp,{recursive:true,force:true});}
+});
