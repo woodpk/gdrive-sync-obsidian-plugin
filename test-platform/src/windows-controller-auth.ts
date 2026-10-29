@@ -61,37 +61,57 @@ function securedTokenLocation(path:string):{file:string;directories:string[]} {
 }
 function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
   const script=String.raw`$ErrorActionPreference='Stop'
-    $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
-    $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
-    $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-    # All credential ACL reads/writes must share one Windows cross-process fence.
-    $mutex=[Threading.Mutex]::new($false,'Local\BRAIN-BVP-Controller-TokenAcl')
-    $locked=$false
-    try{$locked=$mutex.WaitOne(25000);if(-not $locked){throw 'acl-mutex-timeout'}
-    foreach($p in $request.paths){
+$stage='request-parse'
+try {
+  $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
+  $stage='identity'
+  $user=[Security.Principal.WindowsIdentity]::GetCurrent().User
+  $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+  foreach($p in $request.paths){
+    $stage='acl-read'
+    $acl=Get-Acl -LiteralPath $p
+    $stage='owner-check'
+    if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
+    if($request.apply){
+      $stage='acl-protect'
+      $acl.SetAccessRuleProtection($true,$false)
+      $stage='acl-remove'
+      foreach($rule in @($acl.Access)){[void]$acl.RemoveAccessRuleSpecific($rule)}
+      $stage='rule-flags'
+      $flags=if((Get-Item -LiteralPath $p).PSIsContainer){[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'}else{[Security.AccessControl.InheritanceFlags]::None}
+      foreach($id in @($user,$system)){
+        $stage='rule-create'
+        $rule=[Security.AccessControl.FileSystemAccessRule]::new($id,[Security.AccessControl.FileSystemRights]::FullControl,$flags,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
+        $stage='rule-add'
+        $acl.AddAccessRule($rule)
+      }
+      $stage='acl-set'
+      Set-Acl -LiteralPath $p -AclObject $acl
+      $stage='acl-readback'
       $acl=Get-Acl -LiteralPath $p
-      if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
-      if($request.apply){
-        $acl.SetAccessRuleProtection($true,$false)
-        foreach($rule in @($acl.Access)){[void]$acl.RemoveAccessRuleSpecific($rule)}
-        $flags=if((Get-Item -LiteralPath $p).PSIsContainer){[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'}else{[Security.AccessControl.InheritanceFlags]::None}
-        foreach($id in @($user,$system)){
-          $rule=[Security.AccessControl.FileSystemAccessRule]::new($id,[Security.AccessControl.FileSystemRights]::FullControl,$flags,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow)
-          $acl.AddAccessRule($rule)
-        }
-        Set-Acl -LiteralPath $p -AclObject $acl
-        $acl=Get-Acl -LiteralPath $p
-      }
-      if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
-      foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
-        if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}
-      }
-    }}finally{if($locked){$mutex.ReleaseMutex()};$mutex.Dispose()}`;
+    }
+    $stage='inheritance-check'
+    if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
+    $stage='ace-check'
+    foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
+      if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}
+    }
+  }
+} catch {
+  # Print only a fixed operation class. Never print exception text, paths, ACL identities or tokens.
+  [Console]::Out.Write('BVP_ACL_STAGE='+$stage)
+  exit 70
+}`;
   const processResult=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive",
     "-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{
       input:JSON.stringify({paths,apply}),encoding:"utf8",windowsHide:true,timeout:35000,maxBuffer:16384
     });
-  if(processResult.error||processResult.status!==0)throw new Error("controller-token-permissions-invalid");
+  if(processResult.error||processResult.status!==0){
+    const stage=/^BVP_ACL_STAGE=([a-z-]+)$/.exec(processResult.stdout.trim())?.[1]??"script-failure";
+    // Bounded, credential-free diagnostic is intentionally present in PHX-CI terminal evidence.
+    process.stderr.write("BVP_ACL_FAILURE_STAGE="+stage+"\n");
+    throw new Error("controller-token-permissions-invalid");
+  }
 }
 export class WindowsDpapiSecrets {
   private readonly secured:{file:string;directories:string[]};
