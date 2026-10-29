@@ -111,6 +111,8 @@ export function createDriveCommandMailbox(request: AuthenticatedDriveRequest, op
       throw new MailboxUnavailableError(code);
     }catch(error){
       if(error instanceof MailboxUnavailableError)throw error;
+      if(error instanceof Error&&/^controller-io-(timeout|cancelled)$/.test(error.message))
+        throw new MailboxUnavailableError("mailbox-"+error.message);
       // Never interpolate the raw transport error, URL, response body or credentials.
       throw new MailboxUnavailableError("mailbox-drive-transport-unavailable");
     }
