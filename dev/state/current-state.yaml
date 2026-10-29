@@ -1437,7 +1437,7 @@ bvp_poll_error_observability_2026_10_25:
 
 bvp_windows_controller_oauth_2026_10_28:
   feature: "WS-07/BVP_WINDOWS_CONTROLLER_OAUTH"
-  status: "DEC357_R1_INDEPENDENT_REVIEW_CORRECTION_REQUIRED"
+  status: "DEC357_R1_BUILDER_CORRECTIONS_COMMITTED_PHXCI_REQUALIFICATION_PENDING"
   decision: "DEC-357"
   owner_option: "A_SEPARATE_WINDOWS_OAUTH_PKCE_DPAPI_NOT_OBSIDIAN_IPC"
   workstream: "WS-07"
@@ -1461,7 +1461,7 @@ bvp_windows_controller_oauth_2026_10_28:
   handoff-count-provenance: "DEC357_R1_REVIEWER_TO_BUILDER_TRANSITION_FROM_COUNT_11"
   parent_handoff_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
   current_recipient_role: "BUILDER"
-  permitted_next: "BUILDER_FIX_TIMEOUT_AUTHORITY_DIRECTORY_AND_TOKEN_POLICY_THEN_REQUALIFY"
+  permitted_next: "FREEZE_EXACT_NEW_SOURCE_OWNER_PINNED_WINDOWS_PHXCI_SOFTWARE_ONLY"
   runtime_pin: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
   frozen_budgets: "FRAMEWORK_CORE_4850_LIVE_AGENT_1250"
   forbidden: "NO_GITHUB_ACTIONS_NO_BUDGET_OR_PIN_CHANGE_NO_PRODUCTION_SYNC_CHANGES"
@@ -1510,3 +1510,13 @@ bvp_windows_controller_oauth_2026_10_28:
   handoff_sender_role: "REVIEWER"
   handoff_recipient_role: "BUILDER"
   independent_review_verdict: "CORRECTION_REQUIRED_NOT_ACCEPTED"
+
+  r1_builder_corrective_status: "F01_F02_F03_SOURCE_AND_TESTS_COMMITTED_UNVERIFIED"
+  r1_builder_f01_test_first_commit: "ba6f937e7f22ea8f508f209ff3769da56ecabc3c"
+  r1_builder_f01_scope: "BOUNDED_ABORTABLE_OAUTH_DRIVE_CALLS_CYCLE_ONCE_SERVE"
+  r1_builder_f02_scope: "CANONICAL_HASH_JSON_LEASE_ONLY_REAL_MALFORMED_LEASE_REJECTED"
+  r1_builder_f03_scope: "WINDOWS_CURRENT_USER_NTFS_ACL_LOCALAPPDATA_TOKEN_ROOT"
+  r1_builder_f04_original_phxci_mirror: "dev/test-results/494b79f3-b948-4544-a562-02971cdbc7d4/"
+  r1_builder_f04_evidence_mirror_identity: "BYTE_IDENTICAL_JSON_MD_LOG_ORIGINAL_BLOBS"
+  r1_builder_f05_fresh_reviewer: "PENDING_ONLY_AFTER_NEW_PHXCI_PASS"
+  r1_builder_new_source_qualification: "NOT_YET_RUN_DO_NOT_REUSE_ORIGINAL_R3_PASS"
