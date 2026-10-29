@@ -98,7 +98,8 @@ test("Option A Windows authorization uses bounded loopback PKCE callback and per
 });
 
 test("Option A process-lifetime Windows root lock rejects competing controller and crash orphan",async()=>{
-  const root=await mkdtemp(join(tmpdir(),"brain-bvp-auth-lock-"));
+  const temp=await mkdtemp(join(tmpdir(),"brain-bvp-auth-lock-"));
+  const root=join(temp,".bvp-relay");
   try{
     let entered!:()=>void,release!:()=>void;
     const entering=new Promise<void>(r=>entered=r),holding=new Promise<void>(r=>release=r);
@@ -106,11 +107,11 @@ test("Option A process-lifetime Windows root lock rejects competing controller a
     await entering;
     await rejects(()=>withWindowsControllerProcessLock(root,async()=>{}),/controller-owner-busy/);
     release();await first;
-    const orphan=join(root,"controller-authority","controller-owner.lock");
-    await mkdir(join(root,"controller-authority"),{recursive:true});
+    const orphan=join(root,"controller-owner.lock");
+    await mkdir(root,{recursive:true});
     await writeFile(orphan,"orphan");
     await rejects(()=>withWindowsControllerProcessLock(root,async()=>{}),/controller-owner-busy/);
-  }finally{await rm(root,{recursive:true,force:true});}
+  }finally{await rm(temp,{recursive:true,force:true});}
 });
 
 test("Option A actual controller cycle requires existing authority and refuses missing OAuth session",async()=>{
@@ -124,7 +125,7 @@ test("Option A actual controller cycle requires existing authority and refuses m
     const result=await runWindowsControllerCycle({clientId:"desktop",tokenFile,relayRoot,deviceId});
     strictEqual(result.status,"unavailable");
     strictEqual(result.reason,"controller-authentication-required");
-    const lock=join(dir,"controller-owner.lock");
+    const lock=join(relayRoot,"controller-owner.lock");
     await rejects(()=>stat(lock),/ENOENT/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
@@ -138,13 +139,14 @@ test("Option A first sign-in without offline refresh grant fails without persist
       onAuthorizationUrl:url=>{authUrl=url;},
       fetcher:async()=>Response.json({access_token:"transient-only",expires_in:3600,
         scope:"https://www.googleapis.com/auth/drive.file"})});
+    const expectedRejection=rejects(attempt,/controller-oauth-callback-rejected/);
     for(let i=0;i<200&&!authUrl;i++)await new Promise(resolve=>setTimeout(resolve,1));
     const start=new URL(authUrl),callback=new URL(start.searchParams.get("redirect_uri")!);
     callback.searchParams.set("code","fake-code");
     callback.searchParams.set("state",start.searchParams.get("state")!);
     const result=await fetch(callback);
     strictEqual(result.status,400);
-    await rejects(()=>attempt,/controller-oauth-callback-rejected/);
+    await expectedRejection;
     await rejects(()=>readFile(tokenFile,"utf8"),/ENOENT/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
