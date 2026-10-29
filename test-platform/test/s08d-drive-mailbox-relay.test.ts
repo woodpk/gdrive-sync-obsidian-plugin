@@ -814,7 +814,8 @@ test("DEC356 Option A actual OAuth+Windows controller assembly stages, admits, a
     await rejects(()=>mailbox.publishDiagnostic("run-a",deviceId,event),/mailbox-diagnostic-awaiting-controller/);
     const fetcher:typeof fetch=async(url,init)=>drive.request(String(url),init);
     const options={relayRoot:root,deviceId,tokenFile,clientId:"desktop-client",fetcher};
-    equal((await runWindowsControllerCycle(options)).status,"ok");
+    const firstCycle=await runWindowsControllerCycle(options);
+    equal(firstCycle.status,"ok",firstCycle.reason??"controller-cycle-unavailable");
     equal([...drive.files.values()].filter(v=>v.meta.appProperties?.brainBvpKind==="diagnostic").length,1);
     equal((await runWindowsControllerCycle(options)).status,"ok");
     const stored=JSON.parse(await readFile(join(root,"inbox","bvp-diagnostic-"+record.eventId+".error.json"),"utf8"));
