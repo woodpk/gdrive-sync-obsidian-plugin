@@ -1,13 +1,15 @@
-# Current BVP Feature Handoff — DEC-357 Windows Controller OAuth (2026-10-28)
+# Current BVP Feature Handoff — DEC-357 Windows Controller OAuth
 
-## Feature-scoped continuity, Builder count 10
+## Current transfer — BUILDER to REVIEWER, handoff-count 11
 
-**Repository:** `woodpk/gdrive-sync-obsidian-plugin` · **Branch:** `build/bvp-poll-error-observability-20261025` · **Feature:** `WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` · **Recipient:** BUILDER · **handoff-count:** **10, inherited from DEC-356 R5 Reviewer→Builder**, no new handoff occurred. This entry is a continuity pointer for the active new BVP unit; older S09 G1 material elsewhere in this file is historical and must not determine this feature's current owner or next work.
+**Repository:** `woodpk/gdrive-sync-obsidian-plugin`  
+**Branch:** `build/bvp-poll-error-observability-20261025`  
+**Feature:** `WS-07/BVP_WINDOWS_CONTROLLER_OAUTH`  
+**Canonical planning:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md`  
+**Immutable implementation/source:** `3d55fa1bc8f46657b5462aa28a850a77124f76b4`  
+**Next role:** `REVIEWER` — final independent blind-first review, not implementation, testing, deployment or release.
 
-**Owner decision:** DEC-357 Option A — independent Windows Node OAuth PKCE with current-user DPAPI, separate from Obsidian reporters; no IPC bridge, shipping source, broader scope or second host. **Canonical new unit:** `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md` (BVP-WCO-001–011 / WCO-01–06). **Corrective predecessor:** DEC-356 R5 F01 `CORRECTION REQUIRED`; historical R5 PHX-CI PASS only covers original SHA `26f5ed8c95adb4cef7c8b805d880fc613fc9afd1`.
-
-**Development status:** Windows OAuth/controller source and tests committed; first Windows PHX-CI run `422cc526-615e-4848-8566-9f4152b5126e` on source `af178ebc...` was **BLOCKED** (focused TypeScript TS2304, undefined `readFile`); no software qualification or Reviewer acceptance and no live OAuth/Drive/device activity. The immediately preceding code+state checkpoint `af178ebc17f90d0be8db78c45f12b9bf22375594` is *not* frozen as a final source; this documentation-only refresh advances the branch. Next action is to finish cross-file `dev/` planning/state alignment **before** freezing the new exact candidate and requesting Owner-operated unchanged pinned Windows software-only PHX-CI. Never reuse the earlier operator command's old `-ExpectedSourceSha` after these commits. Preserve all historical evidence, role separation, physical/no-release gates, and the unresolved separate-client `drive.file` mailbox-visibility prerequisite.
-
+The actual handoff authority and freshness count are recorded in `dev/state/current-state.yaml`; incoming Reviewer MUST independently verify the current remote, per-feature count 11, recipient role and ancestry. The initial blind assessment uses only neutral normative requirements, architecture and exact implementation source; do not read this historical handoff's earlier review findings, Builder narratives, tests, PHX-CI records or source history until the first assessment is frozen and published. Only then complete the evidence-informed final review and publish the actual independent verdict under `dev/reviews/`. No merge or physical/live permission follows from the handoff.
 
 ---
 
