@@ -11,9 +11,8 @@ export interface WindowsControllerCycleOptions extends WindowsOAuthOptions {
 }
 export async function withWindowsControllerProcessLock<T>(root:string,work:()=>Promise<T>):Promise<T>{
   if(process.platform!=="win32"||!isAbsolute(root)||!/[\\/]\.bvp-relay$/.test(root))throw new Error("controller-root-invalid");
-  const dir=join(root,"controller-authority");
-  await mkdir(dir,{recursive:true});
-  const path=join(dir,"controller-owner.lock");
+  await mkdir(root,{recursive:true});
+  const path=join(root,"controller-owner.lock");
   let handle:Awaited<ReturnType<typeof open>>;
   try{handle=await open(path,"wx",0o600);}catch{throw new Error("controller-owner-busy");}
   try{return await work();}finally{await handle.close();await rm(path,{force:true});}
