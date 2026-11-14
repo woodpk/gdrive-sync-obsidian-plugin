@@ -25,6 +25,9 @@ if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyCo
 }
 $code = 1
 $operatorException = ''
+$runRoot = ''
+$framework = '4cf0c865c7b189641e2acebc0a6ad757b6f01992'
+$branch = 'NOT_SELECTED'
 try {
 $branch = 'fix/s09-bvp-live-controller-20261022'
 # Explicit software-only feature verification cannot select any physical or recovery mode.
