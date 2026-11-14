@@ -179,14 +179,22 @@ try {
         $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'NO'
         $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'NO'
         $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'NO'
-        $pwshPath = (Get-Command pwsh.exe -CommandType Application -ErrorAction Stop).Source
+        # PSHOME selects the actual running PowerShell 7 installation.
+        # Get-Command may return multiple installations; .Source on that array
+        # joins their paths into a non-executable string.
+        $pwshPath = Join-Path -Path $PSHOME -ChildPath 'pwsh.exe'
+        if ($PSVersionTable.PSVersion.Major -lt 7 -or
+            -not (Test-Path -LiteralPath $pwshPath -PathType Leaf)) {
+            Add-Problem -Step $script:phase -Detail 'Current host is not PowerShell 7 with a usable installed pwsh.exe; PHX-CI not dispatched.'
+            break
+        }
         $invokeArgs = @('-NoLogo', '-NoProfile', '-NonInteractive', '-File', $operator,
             '-RepoRoot', $script:repo, '-Branch', $script:targetBranch,
             '-BaseRef', 'origin/master', '-PublicationMode', 'push',
             '-FocusedTestCommand', 'npm run test:bvp-root', '-TempRoot', $script:runRoot, '-Diagnostic')
-        $script:dispatched = $true
         & $pwshPath @invokeArgs *> $script:phxLog
         $script:phxCode = $LASTEXITCODE
+        $script:dispatched = $true
 
         $script:phase = 'PHXCI_RESULT'
         if (-not (Test-Path -LiteralPath $script:phxLog -PathType Leaf)) {
