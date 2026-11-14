@@ -1,273 +1,284 @@
-# WS-07 DEC-357 Windows SOFTWARE-ONLY PHX-CI operator (replaces retired physical launcher mode).
-# Only the installed, exact-pinned PHX-CI may execute software verification.
+# PHX-CI-only verifier invocation for the BRAIN Windows direct-relay correction.
+# PHX-CI owns software qualification and the separately owner-approved Windows BVP smoke.
+# Reconciles the precisely identified prior timeout only after authenticated late receipt; never rewrites the prior PHX verdict.
+# Never edits the installed plugin, pairing, product sync, or independent evidence.
 [CmdletBinding()]
 param(
-    [string]$RepoRoot = '',
-    [string]$ExpectedSourceSha = '',
-    [string]$SoftwareOnlyBranch = '',
-    [switch]$SoftwareOnlyGovernance
+  # Optional immutable pin for callers that require it. By default this
+  # operator binds the freshly checked-out remote commit on each invocation.
+  # Never pin a prior evidence commit in a reusable bootstrap.
+  [ValidatePattern('^[0-9a-f]{40}$')]
+  [string]$ExpectedSourceSha,
+  [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._/-]{0,120}$')]
+  [string]$SoftwareOnlyBranch,
+  [switch]$SoftwareOnlyGovernance,
+  [switch]$RunWindowsPhysicalSmoke,
+  [switch]$UseRecoveredSoftwareEvidence,
+  [switch]$RecoverPreviouslyDispatchedWindowsSmoke,
+  [switch]$RunS09AReadinessSoftware,
+  [switch]$RunS09ADualPhysicalReadiness
 )
-
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
-    $PSNativeCommandUseErrorActionPreference = $false
+  $PSNativeCommandUseErrorActionPreference = $false
 }
-$script:targetBranch = 'build/bvp-poll-error-observability-20261025'
-$script:requiredRuntime = '4cf0c865c7b189641e2acebc0a6ad757b6f01992'
-$script:phase = 'INITIALIZATION'
-$script:repo = ''
-$script:runRoot = ''
-$script:phxLog = 'NOT_CREATED'
-$script:summaryPath = 'NOT_CREATED'
-$script:source = 'NOT_VERIFIED'
-$script:base = 'NOT_VERIFIED'
-$script:dispatched = $false
-$script:phxCode = 'NOT_RUN'
-$script:changeSet = 'NOT_RUN'
-$script:repositoryStatus = 'NOT_RUN'
-$script:overall = 'NOT_RUN'
-$script:evidenceCommit = 'NOT_REPORTED'
-$script:publication = 'NOT_REPORTED'
-$script:status = 'BLOCKED'
-$script:exitCode = 1
-$script:problems = [Collections.Generic.List[string]]::new()
-$script:exceptions = [Collections.Generic.List[string]]::new()
-
-function Add-Problem {
-    param([string]$Step, [string]$Detail)
-    $script:problems.Add(('[{0}] {1}' -f $Step, $Detail))
-}
-function Read-GitFact {
-    param([string]$Step, [string[]]$Arguments)
-    $nativeOutput = @(& git.exe -C $script:repo @Arguments 2>&1)
-    $nativeExit = $LASTEXITCODE
-    if ($nativeExit -ne 0) {
-        Add-Problem -Step $Step -Detail ('git exit {0}: {1}' -f $nativeExit, (($nativeOutput | ForEach-Object { [string]$_ }) -join ' '))
-        return $null
-    }
-    return (($nativeOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine).Trim()
-}
-function Read-PhxField {
-    param([string]$Content, [string]$Label)
-    $pattern = '(?m)^' + [regex]::Escape($Label) + ':\s*(.*?)\s*$'
-    $found = [regex]::Match($Content, $pattern)
-    if ($found.Success) { return $found.Groups[1].Value.Trim() }
-    return 'NOT_REPORTED'
-}
-
+$code = 1
+$operatorException = ''
 try {
-    do {
-        $script:phase = 'WORKSPACE'
-        if (-not [string]::IsNullOrEmpty($SoftwareOnlyBranch) -and $SoftwareOnlyBranch -cne $script:targetBranch) {
-            Add-Problem -Step $script:phase -Detail 'Only the designated software-only feature branch is supported.'
-            break
-        }
-        if (-not $SoftwareOnlyGovernance) {
-            Add-Problem -Step $script:phase -Detail 'Explicit -SoftwareOnlyGovernance is required; physical and recovery paths are unavailable.'
-            break
-        }
-        if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
-            Add-Problem -Step $script:phase -Detail 'A disposable RepoRoot must be provided.'
-            break
-        }
-        $script:repo = [IO.Path]::GetFullPath($RepoRoot).TrimEnd('\', '/')
-        $script:runRoot = Split-Path -Parent $script:repo
-        if ($script:runRoot -cnotmatch '^C:\\temp\\[0-9a-f]{32}$' -or (Split-Path -Leaf $script:repo) -cne 'repo') {
-            Add-Problem -Step $script:phase -Detail 'Expected C:\temp\<new-32-hex-GUID>\repo; original checkout is never used.'
-            break
-        }
-        $script:phxLog = Join-Path $script:runRoot 'phxci-console-full.log'
-        $script:summaryPath = Join-Path $script:runRoot 'operator-summary.txt'
-        if (-not (Test-Path -LiteralPath $script:repo -PathType Container) -or
-            $ExpectedSourceSha -cnotmatch '^[a-f0-9]{40}$') {
-            Add-Problem -Step $script:phase -Detail 'Repository directory missing or expected source SHA invalid.'
-            break
-        }
-        if (-not (Get-Command git.exe -CommandType Application -ErrorAction SilentlyContinue) -or
-            -not (Get-Command pwsh.exe -CommandType Application -ErrorAction SilentlyContinue)) {
-            Add-Problem -Step $script:phase -Detail 'Git and PowerShell 7 are required.'
-            break
-        }
-
-        $script:phase = 'LOCAL_IDENTITY'
-        $top = Read-GitFact -Step $script:phase -Arguments @('rev-parse', '--show-toplevel')
-        if ($null -eq $top) { break }
-        if ([IO.Path]::GetFullPath($top).TrimEnd('\', '/') -ine $script:repo) {
-            Add-Problem -Step $script:phase -Detail 'RepoRoot must equal the Git top-level directory.'
-            break
-        }
-        $script:source = Read-GitFact -Step $script:phase -Arguments @('rev-parse', 'HEAD')
-        if ($null -eq $script:source) { break }
-        if ($script:source -cne $ExpectedSourceSha) {
-            Add-Problem -Step $script:phase -Detail ('Source changed from expected HEAD; actual: {0}' -f $script:source)
-            break
-        }
-        $localBranch = Read-GitFact -Step $script:phase -Arguments @('branch', '--show-current')
-        if ($null -eq $localBranch) { break }
-        if ($localBranch -cne $script:targetBranch) {
-            Add-Problem -Step $script:phase -Detail ('Unexpected branch: {0}' -f $localBranch)
-            break
-        }
-        $dirty = Read-GitFact -Step $script:phase -Arguments @('status', '--porcelain=v1', '--untracked-files=all')
-        if ($null -eq $dirty) { break }
-        if ($dirty.Length -gt 0) {
-            Add-Problem -Step $script:phase -Detail 'Disposable checkout is dirty or contains untracked files.'
-            break
-        }
-        $origin = Read-GitFact -Step $script:phase -Arguments @('remote', 'get-url', 'origin')
-        if ($null -eq $origin) { break }
-        if ($origin -cnotmatch '^https://github\.com/woodpk/gdrive-sync-obsidian-plugin(?:\.git)?$') {
-            Add-Problem -Step $script:phase -Detail 'Git origin differs from the approved BRAIN remote.'
-            break
-        }
-
-        $script:phase = 'REMOTE_IDENTITY'
-        $fetchArgs = @('fetch', 'origin', '--prune',
-            '+refs/heads/master:refs/remotes/origin/master',
-            ('+refs/heads/' + $script:targetBranch + ':refs/remotes/origin/' + $script:targetBranch))
-        $fetchOutput = @(& git.exe -C $script:repo @fetchArgs 2>&1)
-        $fetchCode = $LASTEXITCODE
-        if ($fetchCode -ne 0) {
-            Add-Problem -Step $script:phase -Detail ('Git fetch failed with exit {0}: {1}' -f $fetchCode, (($fetchOutput | ForEach-Object { [string]$_ }) -join ' '))
-            break
-        }
-        $remoteHead = Read-GitFact -Step $script:phase -Arguments @('rev-parse', ('refs/remotes/origin/' + $script:targetBranch))
-        if ($null -eq $remoteHead) { break }
-        if ($remoteHead -cne $ExpectedSourceSha) {
-            Add-Problem -Step $script:phase -Detail ('Remote branch moved to {0}; verification not dispatched.' -f $remoteHead)
-            break
-        }
-        $script:base = Read-GitFact -Step $script:phase -Arguments @('rev-parse', 'refs/remotes/origin/master')
-        if ($null -eq $script:base -or $script:base -cnotmatch '^[a-f0-9]{40}$') {
-            Add-Problem -Step $script:phase -Detail 'Cannot establish origin/master.'
-            break
-        }
-
-        $script:phase = 'RUNTIME_IDENTITY'
-        $config = Get-Content -LiteralPath (Join-Path $script:repo 'phx-ci.json') -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        if ($config.repositoryIdentity -cne 'woodpk/gdrive-sync-obsidian-plugin' -or
-            $config.framework.sha -cne $script:requiredRuntime -or
-            $config.framework.pinPolicy -cne 'exact') {
-            Add-Problem -Step $script:phase -Detail 'Project configuration does not pin the approved exact runtime.'
-            break
-        }
-        if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
-            Add-Problem -Step $script:phase -Detail 'LOCALAPPDATA is missing.'
-            break
-        }
-        $installed = Join-Path $env:LOCALAPPDATA ('PHX-CI\runtimes\' + $script:requiredRuntime)
-        $operator = Join-Path $installed 'scripts\Invoke-PhxCi.ps1'
-        $manifestPath = Join-Path $installed 'phx-ci-runtime.json'
-        if (-not (Test-Path -LiteralPath $operator -PathType Leaf) -or
-            -not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-            Add-Problem -Step $script:phase -Detail 'Exact installed PHX-CI operator or manifest is missing.'
-            break
-        }
-        $manifest = Get-Content -LiteralPath $manifestPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        if ($manifest.sourceCommit -cne $script:requiredRuntime) {
-            Add-Problem -Step $script:phase -Detail 'Installed PHX-CI manifest sourceCommit is incorrect.'
-            break
-        }
-
-        $script:phase = 'PHXCI_EXECUTION'
-        # Never permit a physical/recovery selector in this bounded public entrypoint.
-        # The child invocation cannot inherit an approval to perform physical effects.
-        $env:BRAIN_ARTIFACT_PURPOSE = 'development'
-        $env:BVP_CHANGE_CLASS = 'authorized-governance'
-        $env:BVP_OWNER_PHYSICAL_APPROVAL = 'NO'
-        $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'NO'
-        $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'NO'
-        $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'NO'
-        # PSHOME selects the actual running PowerShell 7 installation.
-        # Get-Command may return multiple installations; .Source on that array
-        # joins their paths into a non-executable string.
-        $pwshPath = Join-Path -Path $PSHOME -ChildPath 'pwsh.exe'
-        if ($PSVersionTable.PSVersion.Major -lt 7 -or
-            -not (Test-Path -LiteralPath $pwshPath -PathType Leaf)) {
-            Add-Problem -Step $script:phase -Detail 'Current host is not PowerShell 7 with a usable installed pwsh.exe; PHX-CI not dispatched.'
-            break
-        }
-        $invokeArgs = @('-NoLogo', '-NoProfile', '-NonInteractive', '-File', $operator,
-            '-RepoRoot', $script:repo, '-Branch', $script:targetBranch,
-            '-BaseRef', 'origin/master', '-PublicationMode', 'push',
-            '-FocusedTestCommand', 'npm run test:bvp-root', '-TempRoot', $script:runRoot, '-Diagnostic')
-        & $pwshPath @invokeArgs *> $script:phxLog
-        $script:phxCode = $LASTEXITCODE
-        $script:dispatched = $true
-
-        $script:phase = 'PHXCI_RESULT'
-        if (-not (Test-Path -LiteralPath $script:phxLog -PathType Leaf)) {
-            Add-Problem -Step $script:phase -Detail 'No PHX-CI transcript could be recovered.'
-            break
-        }
-        $outputText = Get-Content -LiteralPath $script:phxLog -Raw -ErrorAction Stop
-        $footerAt = $outputText.LastIndexOf('PHX-CI RUN RESULT', [StringComparison]::Ordinal)
-        if ($footerAt -lt 0) {
-            Add-Problem -Step $script:phase -Detail 'Authoritative PHX-CI footer absent; no verification PASS can be claimed.'
-            break
-        }
-        $footer = $outputText.Substring($footerAt)
-        $script:changeSet = Read-PhxField -Content $footer -Label 'Change-set verification'
-        $script:repositoryStatus = Read-PhxField -Content $footer -Label 'Repository verification'
-        $script:overall = Read-PhxField -Content $footer -Label 'Overall verification'
-        $script:evidenceCommit = Read-PhxField -Content $footer -Label 'Evidence commit'
-        $script:publication = Read-PhxField -Content $footer -Label 'Evidence published'
-        if ($script:phxCode -eq 0 -and $script:changeSet -ceq 'PASS' -and
-            $script:repositoryStatus -ceq 'PASS' -and $script:overall -in @('PASS', 'COMPLETE') -and
-            $script:publication -ceq 'YES' -and $script:evidenceCommit -cmatch '^[a-f0-9]{40}$') {
-            $script:status = 'PASS'
-            $script:exitCode = 0
-        }
-        else {
-            Add-Problem -Step $script:phase -Detail 'PHX-CI is not fully PASS with published original evidence; inspect its authoritative result.'
-            if ($script:phxCode -is [int] -and $script:phxCode -ne 0) { $script:exitCode = [int]$script:phxCode }
-        }
-    } while ($false)
+$branch = 'fix/s09-bvp-live-controller-20261022'
+# Explicit software-only feature verification cannot select any physical or recovery mode.
+if ($SoftwareOnlyGovernance -and -not $SoftwareOnlyBranch) {
+  throw 'Governance qualification requires an explicit software-only branch.'
 }
-catch {
-    $message = ([string]$_.Exception.Message -replace '[\r\n]+', ' ')
-    $script:exceptions.Add(('[{0}] {1}: {2}' -f $script:phase, $_.Exception.GetType().Name, $message))
-    $script:status = 'BLOCKED'
-    $script:exitCode = 1
+if ($SoftwareOnlyBranch -and (
+    $RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or
+    $RecoverPreviouslyDispatchedWindowsSmoke -or $RunS09AReadinessSoftware -or
+    $RunS09ADualPhysicalReadiness)) {
+  throw 'Software-only BVP verification cannot be combined with physical, recovery or S09A modes.'
 }
-finally {
-    try {
-        $report = [Collections.Generic.List[string]]::new()
-        $report.Add('========== BRAIN PHX-CI OPERATOR REPORT ==========')
-        $report.Add(('STATUS: {0}' -f $script:status))
-        $report.Add(('BRANCH: {0}' -f $script:targetBranch))
-        $report.Add(('EXPECTED SOURCE: {0}' -f $ExpectedSourceSha))
-        $report.Add(('OBSERVED SOURCE: {0}' -f $script:source))
-        $report.Add(('MASTER TIP: {0}' -f $script:base))
-        $report.Add(('RUNTIME SHA: {0}' -f $script:requiredRuntime))
-        $report.Add(('PHX-CI STARTED: {0}' -f $script:dispatched))
-        $report.Add(('PHX-CI EXIT: {0}' -f $script:phxCode))
-        $report.Add(('CHANGE-SET: {0}' -f $script:changeSet))
-        $report.Add(('REPOSITORY: {0}' -f $script:repositoryStatus))
-        $report.Add(('OVERALL: {0}' -f $script:overall))
-        $report.Add(('EVIDENCE COMMIT: {0}' -f $script:evidenceCommit))
-        $report.Add(('EVIDENCE PUBLISHED: {0}' -f $script:publication))
-        $report.Add(('RECORDED PROBLEMS: {0}' -f $script:problems.Count))
-        for ($i = 0; $i -lt $script:problems.Count; $i++) { $report.Add(('  {0}. {1}' -f ($i + 1), $script:problems[$i])) }
-        $report.Add(('CAUGHT EXCEPTIONS: {0}' -f $script:exceptions.Count))
-        for ($i = 0; $i -lt $script:exceptions.Count; $i++) { $report.Add(('  {0}. {1}' -f ($i + 1), $script:exceptions[$i])) }
-        if ($script:problems.Count -eq 0 -and $script:exceptions.Count -eq 0) { $report.Add('ERROR DETAILS: NONE') }
-        $report.Add(('COMPLETE PHX-CI LOG: {0}' -f $script:phxLog))
-        $report.Add(('PRESERVED WORKSPACE: {0}' -f $script:runRoot))
-        $report.Add('PHYSICAL DISPATCH: DISABLED')
-        $report.Add('NEXT STEP: If BLOCKED, inspect original PHX-CI evidence; only PASS permits Reviewer handoff.')
-        $report.Add('===================================================')
-        if ($script:summaryPath -ne 'NOT_CREATED') {
-            try { [IO.File]::WriteAllLines($script:summaryPath, [string[]]$report) }
-            catch { $report.Add(('SUMMARY FILE ERROR: {0}' -f $_.Exception.Message)) }
-        }
-        foreach ($line in $report) { [Console]::Out.WriteLine($line) }
+if ($SoftwareOnlyBranch -and ($SoftwareOnlyBranch -match '\.\.|//|@\{|/\.|\.lock$')) {
+  throw 'Invalid software-only feature branch.'
+}
+if ($SoftwareOnlyBranch) { $branch = $SoftwareOnlyBranch }
+$framework = '4cf0c865c7b189641e2acebc0a6ad757b6f01992'
+$repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEnd([char[]]@('\', '/'))
+$runRoot = Split-Path -Parent $repository
+$phxFrontDoor = Join-Path $env:LOCALAPPDATA ('PHX-CI\runtimes\' + $framework + '\scripts\Invoke-PhxCi.ps1')
+if ($runRoot -cnotmatch '^C:\\temp\\[a-f0-9]{32}$') {
+  throw "Unsafe operator run root; expected C:\temp\<GUID>."
+}
+if (-not (Test-Path -LiteralPath $phxFrontDoor -PathType Leaf)) {
+  throw "Pinned PHX-CI front door not installed: $phxFrontDoor"
+}
+$local = @(& git.exe -C $repository rev-parse HEAD)
+if ($LASTEXITCODE -ne 0 -or $local.Count -ne 1 -or $local[0].Trim() -cnotmatch '^[a-f0-9]{40}$') {
+  throw 'Local source commit unavailable.'
+}
+if (-not $PSBoundParameters.ContainsKey('ExpectedSourceSha')) {
+  $ExpectedSourceSha = $local[0].Trim()
+}
+if ($local[0].Trim() -cne $ExpectedSourceSha) {
+  throw 'Caller-pinned source differs from local commit; no verification dispatched.'
+}
+$currentBranch = @(& git.exe -C $repository branch --show-current)
+if ($LASTEXITCODE -ne 0 -or $currentBranch.Count -ne 1 -or $currentBranch[0].Trim() -cne $branch) {
+  throw 'Unexpected local branch or detached checkout.'
+}
+$dirty = @(& git.exe -C $repository status --porcelain=v1 --untracked-files=all)
+if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
+  throw 'Source checkout is not clean; no PHX-CI verification started.'
+}
+# Fetch BOTH required refs explicitly. Single-branch clones do not track
+# origin/master automatically; PHX-CI must never depend on clone defaults.
+& git.exe -C $repository fetch origin --prune '+refs/heads/master:refs/remotes/origin/master' ('+refs/heads/' + $branch + ':refs/remotes/origin/' + $branch)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot refresh required master and feature refs.' }
+$base = @(& git.exe -C $repository rev-parse --verify 'refs/remotes/origin/master^{commit}')
+if ($LASTEXITCODE -ne 0 -or $base.Count -ne 1 -or $base[0].Trim() -notmatch '^[a-f0-9]{40}$') {
+  throw 'PHX-CI origin/master baseline missing; no validation dispatched.'
+}
+$remote = @(& git.exe -C $repository rev-parse ('refs/remotes/origin/' + $branch))
+if ($LASTEXITCODE -ne 0 -or $remote.Count -ne 1 -or $remote[0].Trim() -cne $ExpectedSourceSha) {
+  throw 'Remote branch advanced or differs from the frozen source; no verification started.'
+}
+$priorPurpose = [Environment]::GetEnvironmentVariable('BRAIN_ARTIFACT_PURPOSE', 'Process')
+$priorClass = [Environment]::GetEnvironmentVariable('BVP_CHANGE_CLASS', 'Process')
+$priorConsent = [Environment]::GetEnvironmentVariable('BVP_OWNER_PHYSICAL_APPROVAL', 'Process')
+$priorExisting = [Environment]::GetEnvironmentVariable('BVP_EXISTING_MAILBOX_ROOT_CONFIRMED', 'Process')
+$priorScratch = [Environment]::GetEnvironmentVariable('BVP_WINDOWS_SMOKE_SCRATCH', 'Process')
+$priorIosId = [Environment]::GetEnvironmentVariable('BVP_IOS_DEVICE_ID', 'Process')
+$priorIosApproval = [Environment]::GetEnvironmentVariable('BVP_S09A_DUAL_OWNER_APPROVAL', 'Process')
+$priorIosReady = [Environment]::GetEnvironmentVariable('BVP_IOS_VALIDATION_READY_CONFIRMED', 'Process')
+$qualifiedCommand = if ($RunS09AReadinessSoftware) {
+  'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node --test .test-build/bvp/test-platform/test/s09a-dual-device-readiness.test.js'
+} else {
+  'npm run test:bvp-root'
+}
+$recoveryCommand = 'npm run test:bvp-root && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --recover-privacy-blocked-windows-smoke'
+$physicalCommand = 'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --reconcile-second-windows-timeout && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-windows-smoke'
+# Exactly one physical PHX invocation below; select only the separately authorized battery.
+$dualPhysicalCommand = if ($RunS09ADualPhysicalReadiness) {
+  'node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/test/batteries/phxci-physical-bridge.js --run-approved-s09a-dual-readiness'
+} else { $physicalCommand }
+try {
+  if ($RunS09AReadinessSoftware -and ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RecoverPreviouslyDispatchedWindowsSmoke -or $RunS09ADualPhysicalReadiness)) {
+    throw 'S09A software readiness tests are strictly nonphysical and cannot be combined with a physical run or evidence recovery.'
+  }
+  if ($RunS09ADualPhysicalReadiness -and ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RecoverPreviouslyDispatchedWindowsSmoke)) {
+    throw 'Dual-device physical operation cannot combine with Windows smoke or recovery.'
+  }
+  # Perform input-only validation before spending time in PHX-CI or requesting
+  # approval. Invalid input has no external effects and is safely rerunnable.
+  if ($RunS09ADualPhysicalReadiness) {
+    $iosId = (Read-Host 'iPhone BRAIN test-vault Device identity (32 lowercase hexadecimal digits; device: prefix optional)').Trim()
+    if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }
+    if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
+  }
+  $env:BRAIN_ARTIFACT_PURPOSE = 'development'
+  # DEC-349: only the owner's expressly approved frozen budget change is governance-class.
+  $env:BVP_CHANGE_CLASS = if ($SoftwareOnlyGovernance) { 'authorized-governance' } else { 'ordinary' }
+  if ($RecoverPreviouslyDispatchedWindowsSmoke) {
+    if ($RunWindowsPhysicalSmoke -or $UseRecoveredSoftwareEvidence -or $RunS09ADualPhysicalReadiness) {
+      throw 'Retrospective evidence recovery cannot be combined with a new physical dispatch.'
     }
-    catch {
-        try { [Console]::Out.WriteLine(('BRAIN OPERATOR REPORT FAILED: {0}; execution BLOCKED' -f $_.Exception.Message)) }
-        catch { }
-        $script:exitCode = 1
+    # PHX-CI-only read of the prior interrupted smoke: no device command is sent.
+    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $recoveryCommand -TempRoot $runRoot
+    $code = $LASTEXITCODE
+  } elseif ($UseRecoveredSoftwareEvidence) {
+    if (-not $RunWindowsPhysicalSmoke) { throw 'Recovery evidence may be reused only for physical continuation.' }
+    # Recovery verifies immutable PHX-CI observations; its original aggregate verdict stays BLOCKED.
+    $qualifiedSource = 'fface1c3233312eb2356c9cebca7c2957e55918f'
+    $evidenceCommit = 'd78c4698895bbc762cabebd74edf8c448af4c242'
+    & git.exe -C $repository merge-base --is-ancestor $evidenceCommit HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Published PHX-CI evidence not ancestral; physical run not dispatched.' }
+    $sinceQualification = @(& git.exe -C $repository diff --name-only $qualifiedSource HEAD)
+    if ($LASTEXITCODE -ne 0 -or
+        @($sinceQualification | Where-Object { $_ -notmatch '^(dev/_ca-output\.(md|json)|dev/test-results/|dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection\.ps1$)' }).Count -ne 0) {
+      throw 'Implementation or tests changed since original software checks; evidence reuse denied.'
     }
+    $evidenceLines = @(& git.exe -C $repository show ($evidenceCommit + ':dev/_ca-output.json'))
+    if ($LASTEXITCODE -ne 0 -or $evidenceLines.Count -eq 0) {
+      throw 'Original PHX-CI JSON is unreadable; physical run not dispatched.'
+    }
+    $evidence = ($evidenceLines -join [Environment]::NewLine) | ConvertFrom-Json -Depth 100
+    if ($evidence.runId -cne 'e231a5b5-7a14-42e2-b8ae-766f062fac0c' -or
+        $evidence.status -cne 'BLOCKED' -or
+        $evidence.repository.verifiedHead -cne $qualifiedSource -or
+        $evidence.verification.changeSet.status -cne 'PASS' -or
+        $evidence.verification.repository.status -cne 'PASS' -or
+        $evidence.verification.overall.classification -cne 'REPOSITORY-GATE FAILURE') {
+      throw 'Original PHX-CI identity or substantive verdict is not the expected one.'
+    }
+    foreach ($stageName in @('typecheck','test-focused','test','build','artifacts')) {
+      $found = @($evidence.stages | Where-Object { $_.name -ceq $stageName -and $_.result -ceq 'PASS' -and $_.exitCode -eq 0 })
+      if ($found.Count -ne 1) { throw ('Original software stage cannot be reused: ' + $stageName) }
+    }
+    $gate = @($evidence.stages | Where-Object { $_.name -ceq 'repository-check' -and $_.result -ceq 'FAIL' -and $_.exitCode -eq 1 })
+    if ($gate.Count -ne 1 -or
+        $gate[0].stdout -notmatch 'SHIPPING_ARTIFACT_MODE=approved-artifact-enforcement' -or
+        $gate[0].stdout -notmatch 'BVP_REPOSITORY_CHECK_RESULT=FAIL devRootExit=0 shippingArtifactExit=1 guardExit=0 metricsExit=0') {
+      throw 'Original gate failure is not the known launcher artifact-mode error.'
+    }
+    $focused = @($evidence.stages | Where-Object { $_.name -ceq 'test-focused' })[0]
+    $full = @($evidence.stages | Where-Object { $_.name -ceq 'test' })[0]
+    if ($focused.stdout -notmatch '(?m)^# pass 464\r?$' -or
+        $full.stdout -notmatch '(?m)^# pass 1292\r?$') {
+      throw 'Original software PASS tallies are unverified.'
+    }
+    Write-Output 'SOFTWARE_EVIDENCE_RECOVERED=464_FOCUSED_PASS_1292_REPOSITORY_PASS_BUILD_PASS_PREVIOUS_PHX_BLOCKED'
+    $code = 0
+  } else {
+    if ($SoftwareOnlyBranch) {
+      $hostExe = Join-Path -Path $PSHOME -ChildPath 'pwsh.exe'
+      if ($PSVersionTable.PSVersion.Major -lt 7 -or -not (Test-Path -LiteralPath $hostExe -PathType Leaf)) {
+        throw 'PowerShell 7 installation is unavailable.'
+      }
+      $logFile = Join-Path $runRoot 'phxci-console-full.log'
+      & $hostExe -NoLogo -NoProfile -NonInteractive -File $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $qualifiedCommand -TempRoot $runRoot -Diagnostic *> $logFile
+    } else {
+      & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $qualifiedCommand -TempRoot $runRoot
+    }
+    $code = $LASTEXITCODE
+  }
+  if (($RunWindowsPhysicalSmoke -or $RunS09ADualPhysicalReadiness) -and $code -eq 0) {
+    # The original software checks passed; recovered PHX aggregate remains BLOCKED.
+    # Fast-forward ONLY this disposable control clone, never an owner's checkout.
+    & git.exe -C $repository fetch origin --prune
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to refresh published software-qualification evidence.' }
+    & git.exe -C $repository merge --ff-only ('origin/' + $branch)
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to fast-forward isolated control clone; physical battery not dispatched.' }
+    # After PHX-CI publishes evidence, only evidence may differ from frozen source.
+    # Fail closed on concurrent implementation updates instead of unverified smoke.
+    $publishedChanges = @(& git.exe -C $repository diff --name-only $ExpectedSourceSha HEAD)
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect post-qualification source changes; physical battery not dispatched.' }
+    $unexpectedPublishedPaths = @($publishedChanges | Where-Object { $_ -notmatch '^(dev/_ca-output\.(md|json)|dev/test-results/)' })
+    if ($unexpectedPublishedPaths.Count -ne 0) { throw 'Non-evidence changes after qualification; physical battery not dispatched.' }
+    $postQualificationDirty = @(& git.exe -C $repository status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0 -or $postQualificationDirty.Count -ne 0) { throw 'Dirty qualification checkout; physical battery not dispatched.' }
+    $approvalPrompt = if ($RunS09ADualPhysicalReadiness) {
+      'Confirm exact BVP validation-only builds on BOTH disposable Windows and iPhone vaults, independent OAuth and intended managed test root, automatic sync disabled, existing BVP mailbox; authorize TWO status observations and BVP mailbox metadata writes (type YES)'
+    } else {
+      'Confirm Google Drive already contains BRAIN BVP Mailbox and Windows Obsidian BVP is open; authorize ONE smoke fixture/control run (type YES)'
+    }
+    $confirmation = Read-Host $approvalPrompt
+    if ($confirmation -cne 'YES') { throw 'Physical test not authorized; no device dispatch.' }
+    if ($RunS09ADualPhysicalReadiness) {
+      $env:BVP_IOS_DEVICE_ID = $iosId
+      $env:BVP_S09A_DUAL_OWNER_APPROVAL = 'YES'
+      $env:BVP_IOS_VALIDATION_READY_CONFIRMED = 'YES'
+    }
+    $env:BVP_OWNER_PHYSICAL_APPROVAL = 'YES'
+    $env:BVP_EXISTING_MAILBOX_ROOT_CONFIRMED = 'YES'
+    $env:BVP_WINDOWS_SMOKE_SCRATCH = Join-Path 'C:\temp' ([guid]::NewGuid().ToString('N'))
+    & $phxFrontDoor -RepoRoot $repository -Branch $branch -BaseRef 'origin/master' -PublicationMode push -FocusedTestCommand $dualPhysicalCommand -TempRoot $runRoot
+    $code = $LASTEXITCODE
+  }
+} finally {
+  if ($null -eq $priorPurpose) { Remove-Item Env:\BRAIN_ARTIFACT_PURPOSE -ErrorAction SilentlyContinue }
+  else { $env:BRAIN_ARTIFACT_PURPOSE = $priorPurpose }
+  if ($null -eq $priorClass) { Remove-Item Env:\BVP_CHANGE_CLASS -ErrorAction SilentlyContinue }
+  else { $env:BVP_CHANGE_CLASS = $priorClass }
+  foreach ($entry in @(
+    @{ Name = 'BVP_OWNER_PHYSICAL_APPROVAL'; Value = $priorConsent },
+    @{ Name = 'BVP_EXISTING_MAILBOX_ROOT_CONFIRMED'; Value = $priorExisting },
+    @{ Name = 'BVP_WINDOWS_SMOKE_SCRATCH'; Value = $priorScratch },
+    @{ Name = 'BVP_IOS_DEVICE_ID'; Value = $priorIosId },
+    @{ Name = 'BVP_S09A_DUAL_OWNER_APPROVAL'; Value = $priorIosApproval },
+    @{ Name = 'BVP_IOS_VALIDATION_READY_CONFIRMED'; Value = $priorIosReady }
+  )) {
+    if ($null -eq $entry.Value) { Remove-Item ('Env:' + $entry.Name) -ErrorAction SilentlyContinue }
+    else { [Environment]::SetEnvironmentVariable($entry.Name, [string]$entry.Value, 'Process') }
+  }
 }
-exit $script:exitCode
+} catch {
+  $operatorException = ('{0}: {1}' -f $_.Exception.GetType().Name, ($_.Exception.Message -replace '[\r\n]+',' '))
+  $code = 1
+}
+if ($SoftwareOnlyBranch) {
+  try {
+    $rootForReport = if (Get-Variable -Name runRoot -ErrorAction SilentlyContinue) { [string]$runRoot } else { '' }
+    $logForReport = if ($rootForReport) { Join-Path $rootForReport 'phxci-console-full.log' } else { 'NOT_CREATED' }
+    $summaryForReport = if ($rootForReport) { Join-Path $rootForReport 'operator-summary.txt' } else { 'NOT_CREATED' }
+    $bodyForReport = if ($logForReport -ne 'NOT_CREATED' -and (Test-Path -LiteralPath $logForReport -PathType Leaf)) { Get-Content -LiteralPath $logForReport -Raw } else { '' }
+    $footerAt = $bodyForReport.LastIndexOf('PHX-CI RUN RESULT',[StringComparison]::Ordinal)
+    $footer = if ($footerAt -ge 0) { $bodyForReport.Substring($footerAt) } else { '' }
+    $changeStatus = if ($footer -match '(?m)^Change-set verification:\s*(\S+)') { $Matches[1] } else { 'NOT_RUN' }
+    $repositoryStatus = if ($footer -match '(?m)^Repository verification:\s*(\S+)') { $Matches[1] } else { 'NOT_RUN' }
+    $overallStatus = if ($footer -match '(?m)^Overall verification:\s*(\S+)') { $Matches[1] } else { 'NOT_RUN' }
+    $publishedStatus = if ($footer -match '(?m)^Evidence published:\s*(\S+)') { $Matches[1] } else { 'NOT_REPORTED' }
+    $verified = $code -eq 0 -and $changeStatus -ceq 'PASS' -and $repositoryStatus -ceq 'PASS' -and $overallStatus -in @('PASS','COMPLETE') -and $publishedStatus -ceq 'YES'
+    if (-not $verified -and $code -eq 0) { $code = 1 }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add('========== BRAIN PHX-CI OPERATOR REPORT ==========')
+    $lines.Add(('STATUS: {0}' -f $(if ($verified) { 'PASS' } else { 'BLOCKED' })))
+    $lines.Add(('BRANCH: {0}' -f $branch))
+    $lines.Add(('EXPECTED SOURCE: {0}' -f $ExpectedSourceSha))
+    $lines.Add(('RUNTIME SHA: {0}' -f $framework))
+    $lines.Add(('PHX-CI EXIT: {0}' -f $code))
+    $lines.Add(('CHANGE-SET: {0}' -f $changeStatus))
+    $lines.Add(('REPOSITORY: {0}' -f $repositoryStatus))
+    $lines.Add(('OVERALL: {0}' -f $overallStatus))
+    $lines.Add(('CAUGHT EXCEPTIONS: {0}' -f $(if ($operatorException) { 1 } else { 0 })))
+    if ($operatorException) { $lines.Add(('  [OPERATOR] {0}' -f $operatorException)) }
+    $lines.Add(('COMPLETE PHX-CI LOG: {0}' -f $logForReport))
+    $lines.Add(('PRESERVED WORKSPACE: {0}' -f $rootForReport))
+    $lines.Add('PHYSICAL DISPATCH: DISABLED')
+    $lines.Add('===================================================')
+    if ($summaryForReport -ne 'NOT_CREATED') { [IO.File]::WriteAllLines($summaryForReport,[string[]]$lines) }
+    foreach ($line in $lines) { [Console]::Out.WriteLine($line) }
+  } catch {
+    $code = 1
+    try { [Console]::Out.WriteLine(('REPORT FAILURE CAPTURED: {0}' -f $_.Exception.Message)) } catch {}
+  }
+}
+Write-Output ('PHX-CI_EXIT_CODE=' + $code)
+Write-Output ('FROZEN_SOURCE_SHA=' + $ExpectedSourceSha)
+Write-Output ('RUN_ROOT=' + $runRoot)
+$global:LASTEXITCODE = $code
+if ($code -ne 0) {
+  if ($SoftwareOnlyBranch) {
+    Write-Warning 'PHX-CI software-only qualification did not pass; physical dispatch was disabled.'
+  } else {
+    Write-Warning 'PHX-CI did not pass; physical effects may be uncertain if a live run began. Do not retry without reconciling its original evidence.'
+  }
+}
