@@ -4,8 +4,11 @@
   "adapter": "node-typescript",
   "framework": {
     "version": "0.2.0-dev.2",
-    "sha": "69c4aa077d4a1a46d1e85e59f39d36285be99e83",
+    "sha": "4cf0c865c7b189641e2acebc0a6ad757b6f01992",
     "pinPolicy": "exact"
+  },
+  "commands": {
+    "repositoryCheck": "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/repository-check.js"
   },
   "expectedArtifacts": [
     "main.js"
@@ -17,8 +20,5 @@
   "repositoryPolicy": {
     "requiredPaths": [],
     "prohibitedChangedPaths": []
-  },
-  "commands": {
-    "repositoryCheck": "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/repository-check.js"
   }
 }
