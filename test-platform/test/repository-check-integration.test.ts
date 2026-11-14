@@ -2,6 +2,7 @@ import { match, notStrictEqual, strictEqual } from "node:assert";
 import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -251,10 +252,9 @@ test("PHX consumer configuration selects the frozen BVP repository-check command
   const projectConfig = JSON.parse(
     readFileSync(join(repositoryRoot, "phx-ci.json"), "utf8"),
   );
-  const taskIntegration = readFileSync(
-    join(repositoryRoot, "Taskfile.phx-ci.yml"),
-    "utf8",
-  );
+  // Approved PHX-CI consumer migration removed the generated Taskfile.
+  // The authoritative invocation/configuration contract now resides in phx-ci.json.
+  strictEqual(existsSync(join(repositoryRoot, "Taskfile.phx-ci.yml")), false);
   const packageModel = JSON.parse(
     readFileSync(join(repositoryRoot, "package.json"), "utf8"),
   );
@@ -262,10 +262,8 @@ test("PHX consumer configuration selects the frozen BVP repository-check command
     "node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json && node .test-build/bvp/test-platform/src/repository-check.js";
 
   strictEqual(projectConfig.commands?.repositoryCheck, expectedCommand);
-  match(
-    taskIntegration,
-    /PHX_REPOSITORY_CHECK_COMMAND: 'node node_modules\/typescript\/bin\/tsc -p test-platform\/tsconfig\.json && node \.test-build\/bvp\/test-platform\/src\/repository-check\.js'/,
-  );
+  strictEqual(projectConfig.framework.pinPolicy, "exact");
+  match(projectConfig.framework.sha, /^[0-9a-f]{40}$/);
   strictEqual(
     packageModel.scripts?.check,
     "npm run typecheck && npm test && npm run build",
