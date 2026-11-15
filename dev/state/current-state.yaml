@@ -1437,7 +1437,7 @@ bvp_poll_error_observability_2026_10_25:
 
 bvp_windows_controller_oauth_2026_10_28:
   feature: "WS-07/BVP_WINDOWS_CONTROLLER_OAUTH"
-  status: "WCO06_DEC358_OWNER_PIN_EXCEPTION_RECORDED_INDEPENDENT_REASSESSMENT_PENDING"
+  status: "WCO06_PASS_WITH_MINOR_FINDINGS_ACCEPTED_SOFTWARE_ONLY_REVIEWER_TO_BUILDER"
   decision: "DEC-357"
   owner_option: "A_SEPARATE_WINDOWS_OAUTH_PKCE_DPAPI_NOT_OBSIDIAN_IPC"
   workstream: "WS-07"
@@ -1455,13 +1455,13 @@ bvp_windows_controller_oauth_2026_10_28:
   test_status: "FOCUSED_628_PASS_OF_628_PRODUCT_1292_PASS_OF_1292_ALL_13_STAGES_PASS"
   exact_current_qualification_sha: "07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0"
   phxci_original_run: "494b79f3-b948-4544-a562-02971cdbc7d4"
-  independent_review: "WCO06_ORIGINAL_CORRECTION_REQUIRED_RETAINED_DEC358_REASSESSMENT_PENDING"
+  independent_review: "WCO06_CORRECTED_ACCEPTANCE_ADDENDUM_PUBLISHED_PASS_WITH_MINOR_FINDINGS"
   owner_role: "REVIEWER_SENDER_TO_BUILDER_COUNT_14"
   handoff-count: 14
   handoff-count-provenance: "WCO06_REVIEWER_TO_BUILDER_FROM_COUNT_13"
   parent_handoff_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
   current_recipient_role: "BUILDER"
-  permitted_next: "NEW_INDEPENDENT_REVIEW_OF_SCOPED_DEC358_AUTHORITY_AND_UNCHANGED_WCO05_SOURCE_ORIGINAL_EVIDENCE"
+  permitted_next: "BUILDER_ADMINISTRATIVE_ACCEPTANCE_CLOSEOUT_SOFTWARE_ONLY"
   runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   frozen_budgets: "FRAMEWORK_CORE_4850_LIVE_AGENT_1250"
   forbidden: "NO_GITHUB_ACTIONS_NO_BUDGET_CHANGE_NO_FURTHER_PIN_CHANGE_NO_PRODUCTION_SYNC_CHANGES"
@@ -1481,7 +1481,7 @@ bvp_windows_controller_oauth_2026_10_28:
   first_phxci_evidence_commit: "5a04d4710234f0a69a01c62e92179a381b23144f"
   first_phxci_verdict: "BLOCKED_CHANGESET_FAIL_REPOSITORY_PASS"
   first_phxci_source_issue: "WCO-R1-F01_TS2304_MISSING_READFILE_IMPORT_FOCUSED_TEST_NOT_RUN"
-  software_acceptance: "EXACT_SOURCE_PHXCI_PASS_DEC358_PIN_AUTHORIZED_INDEPENDENT_REASSESSMENT_PENDING"
+  software_acceptance: "PASS_WITH_MINOR_FINDINGS_ACCEPTED_EXACT_SOURCE_SOFTWARE_ONLY"
   wco_r1_f01_correction_commit: "9568e5936761c796c886cf74f4946b90a363a226"
   wco_r1_f01_correction: "ONE_TEST_IMPORT_ADD_READFILE_NO_PRODUCTION_CHANGE"
   next_source_qualification: "WCO05_FROZEN_NO_RERUN_UNLESS_SUBSTANTIVE_FINDING_OR_OWNER_AUTHORIZATION"
@@ -1509,7 +1509,7 @@ bvp_windows_controller_oauth_2026_10_28:
   third_phxci_result: "11_OF_11_STAGES_PASS_FOCUSED_612_OF_612_PRODUCT_1292_OF_1292"
   handoff_sender_role: "REVIEWER"
   handoff_recipient_role: "BUILDER"
-  independent_review_verdict: "HISTORICAL_CORRECTION_REQUIRED_DEC358_LATER_OWNER_EXCEPTION_NOT_YET_INDEPENDENTLY_ACCEPTED"
+  independent_review_verdict: "WCO06_PASS_WITH_MINOR_FINDINGS_F01_WITHDRAWN_DEC358_OWNER_APPROVED"
 
   r1_builder_corrective_status: "F01_F02_F03_SOURCE_AND_TESTS_COMMITTED_UNVERIFIED"
   r1_builder_f01_test_first_commit: "ba6f937e7f22ea8f508f209ff3769da56ecabc3c"
@@ -1624,7 +1624,27 @@ bvp_windows_controller_oauth_2026_10_28:
     original_result: "13_OF_13_PASS_FOCUSED_628_OF_628_PRODUCT_1292_OF_1292"
     original_reviewer_report: "dev/reviews/bvp-windows-controller-oauth-20261114-wco06-final.md"
     historical_reviewer_verdict: "CORRECTION_REQUIRED_NOT_RETROACTIVELY_REWRITTEN"
-    next_reviewer_gate: "INDEPENDENT_REASSESSMENT_OF_DEC358_APPLICABILITY_AND_EXACT_UNCHANGED_EVIDENCE"
+    next_reviewer_gate: "CLOSED_BY_CORRECTED_WCO06_REVIEWER_ACCEPTANCE_ADDENDUM"
     source_change: false
     rerun_for_governance_only: false
     live_oauth_drive_physical_merge_release_authorized: false
+  wco06_corrected_acceptance:
+    verdict: "PASS_WITH_MINOR_FINDINGS_ACCEPTED_WINDOWS_SOFTWARE_ONLY"
+    owner_exception: "DEC-358_EXACT_PHXCI_RUNTIME_PIN_APPROVED"
+    finding_f01: "WITHDRAWN_CLOSED_OWNER_AUTHORIZATION_CONFIRMED"
+    retained_minor_findings: ["WCO06-F02", "WCO06-F03", "WCO06-F04"]
+    acceptance_addendum: "dev/reviews/bvp-windows-controller-oauth-20261114-wco06-acceptance-addendum.md"
+    acceptance_addendum_commit: "b3a2934d1bb50b6eed6d6c3c5933d21d75c7d210"
+    reviewer_to_builder_handoff: "dev/state/handoffs/wco06-dec357-accepted-reviewer-to-builder.md"
+    reviewer_to_builder_handoff_commit: "1725bfafe16b5c6c1db7d1f3a7fe11ccc120a9d5"
+    handoff_count: 14
+    original_source_sha: "07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0"
+    original_tree_sha: "759cc887985823293cd75fa4239c10096a45fdcc"
+    original_phxci_run: "e579438f-8a22-434d-8284-ef966f6db535"
+    original_evidence_commit: "6b7c67e0639cba184e875d6184497bad781317fd"
+    original_pass: "13_OF_13_STAGES_628_OF_628_FOCUSED_1292_OF_1292_PRODUCT_EXIT_0"
+    retained_historical_rejection: "dev/reviews/bvp-windows-controller-oauth-20261114-wco06-final.md"
+    original_evidence_unchanged: true
+    independent_rerun_for_administrative_correction: false
+    permitted_builder_action: "ADMINISTRATIVE_ACCEPTANCE_CLOSEOUT_ONLY"
+    live_drive_physical_or_release_authorized: false
