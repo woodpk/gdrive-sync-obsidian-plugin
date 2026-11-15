@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import type { AuthenticatedDriveRequest } from "./live-device/drive-mailbox";
 
@@ -28,9 +28,9 @@ async function bounded<T>(work:(signal:AbortSignal)=>Promise<T>,options:WindowsO
   try{return await Promise.race([Promise.resolve().then(()=>work(controller.signal)),cancelled]);}
   finally{clearTimeout(timer);options.signal?.removeEventListener("abort",stop);}
 }
+const dpapiScript=(mode:"Protect"|"Unprotect")=>`$ErrorActionPreference='Stop';$b=[Convert]::FromBase64String([Console]::In.ReadToEnd().Trim());$o=[Security.Cryptography.ProtectedData]::${mode}($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[Console]::Out.Write([Convert]::ToBase64String($o))`;
 function dpapi(value:string,mode:"Protect"|"Unprotect"):string {
-  const script=`$ErrorActionPreference='Stop';$b=[Convert]::FromBase64String([Console]::In.ReadToEnd().Trim());$o=[Security.Cryptography.ProtectedData]::${mode}($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[Console]::Out.Write([Convert]::ToBase64String($o))`;
-  const child=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{
+  const child=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",Buffer.from(dpapiScript(mode),"utf16le").toString("base64")],{
     input:mode==="Protect"?Buffer.from(value,"utf8").toString("base64"):value,
     encoding:"utf8",windowsHide:true,maxBuffer:1048576,timeout:10000
   });
@@ -59,8 +59,7 @@ function securedTokenLocation(path:string):{file:string;directories:string[]} {
   }
   return {file,directories};
 }
-function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
-  const script=String.raw`$ErrorActionPreference='Stop'
+const ACL_SCRIPT=String.raw`$ErrorActionPreference='Stop'
 $stage='request-parse'
 try {
   $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
@@ -90,8 +89,9 @@ try {
   [Console]::Out.Write('BVP_ACL_STAGE='+$stage)
   exit 70
 }`;
+function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
   const processResult=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive",
-    "-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{
+    "-EncodedCommand",Buffer.from(ACL_SCRIPT,"utf16le").toString("base64")],{
       input:JSON.stringify({paths,apply}),encoding:"utf8",windowsHide:true,timeout:35000,maxBuffer:16384
     });
   if(processResult.error||processResult.status!==0){
@@ -100,6 +100,32 @@ try {
     process.stderr.write("BVP_ACL_FAILURE_STAGE="+stage+"\n");
     throw new Error("controller-token-permissions-invalid");
   }
+}
+async function secureShell(script:string,input:string,timeout:number,signal?:AbortSignal):Promise<string>{
+  if(signal?.aborted)throw new Error("controller-io-cancelled");
+  return new Promise<string>((resolve,reject)=>{
+    const child=spawn("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",
+      Buffer.from(script,"utf16le").toString("base64")],{windowsHide:true,stdio:["pipe","pipe","ignore"]});
+    let output="",reason="",stopped=false;
+    const cancel=(why:string)=>{if(stopped)return;stopped=true;reason=why;child.kill();};
+    const onAbort=()=>cancel("controller-io-cancelled");
+    const timer=setTimeout(()=>cancel("controller-io-timeout"),timeout);
+    signal?.addEventListener("abort",onAbort,{once:true});
+    child.stdout.on("data",(data:Buffer)=>{output+=data.toString("utf8");if(output.length>1048576)cancel("controller-security-process-unavailable");});
+    child.on("error",()=>{reason="controller-security-process-unavailable";});
+    child.on("close",code=>{clearTimeout(timer);signal?.removeEventListener("abort",onAbort);
+      if(reason||code!==0)reject(new Error(reason||"controller-security-process-unavailable"));else resolve(output.trim());});
+    child.stdin.on("error",()=>{});child.stdin.end(input);if(signal?.aborted)onAbort();
+  });
+}
+async function aclAsync(paths:readonly string[],apply:boolean,signal?:AbortSignal):Promise<void>{
+  try{await secureShell(ACL_SCRIPT,JSON.stringify({paths,apply}),35000,signal);}
+  catch(error){if(timedOut(error))throw error;throw new Error("controller-token-permissions-invalid");}
+}
+async function dpapiAsync(value:string,mode:"Protect"|"Unprotect",signal?:AbortSignal):Promise<string>{
+  const raw=await secureShell(dpapiScript(mode),mode==="Protect"?Buffer.from(value,"utf8").toString("base64"):value,10000,signal);
+  if(!raw||!/^[A-Za-z0-9+/=]+$/.test(raw))throw new Error("controller-dpapi-unavailable");
+  return mode==="Protect"?raw:Buffer.from(raw,"base64").toString("utf8");
 }
 export class WindowsDpapiSecrets {
   private readonly secured:{file:string;directories:string[]};
@@ -121,6 +147,26 @@ export class WindowsDpapiSecrets {
       enforceTokenAcl([...this.secured.directories,this.file],false);
     }finally{rmSync(temp,{force:true});}
   }
+  async getSecretAsync(id:string,signal?:AbortSignal):Promise<string|null>{
+    this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");
+    if(!existsSync(this.file))return null;
+    try{securedTokenLocation(this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
+      return await dpapiAsync(readFileSync(this.file,"utf8"),"Unprotect",signal);}
+    catch(error){if(timedOut(error)||error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;
+      throw new Error("controller-token-unprotect-failed");}
+  }
+  async setSecretAsync(id:string,value:string,signal?:AbortSignal):Promise<void>{
+    this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");
+    mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
+    await aclAsync(this.secured.directories,true,signal);
+    const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
+    try{const cipher=await dpapiAsync(value,"Protect",signal);
+      if(signal?.aborted)throw new Error("controller-io-cancelled");
+      writeFileSync(temp,cipher,{encoding:"utf8",mode:0o600,flag:"wx"});
+      await aclAsync([temp],true,signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
+      renameSync(temp,this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
+    }finally{rmSync(temp,{force:true});}
+  }
   deleteSecret(id:string):void {this.check(id);if(existsSync(this.file)){securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);}rmSync(this.file,{force:true});}
 }
 function config(options:WindowsOAuthOptions){
@@ -128,8 +174,8 @@ function config(options:WindowsOAuthOptions){
     (options.port??0)<0||(options.port??0)>65535)throw new Error("controller-oauth-config-invalid");
   return new WindowsDpapiSecrets(options.tokenFile);
 }
-function tokens(store:WindowsDpapiSecrets):Tokens|undefined {
-  const raw=store.getSecret(KEY);if(!raw)return undefined;
+function tokens(raw:string|null):Tokens|undefined {
+  if(!raw)return undefined;
   let value:Partial<Tokens>;
   try{value=JSON.parse(raw) as Partial<Tokens>;}catch{throw new Error("controller-token-invalid");}
   if(typeof value.accessToken!=="string"||!Number.isFinite(value.expiresAtMs)||
@@ -160,17 +206,18 @@ function validated(next:Record<string,unknown>,old?:Tokens):Tokens {
     ...(next.refresh_token||old?.refreshToken?{refreshToken:String(next.refresh_token??old?.refreshToken)}:{}),
     expiresAtMs:Date.now()+next.expires_in*1000,scope:SCOPE};
 }
-export function createWindowsControllerRequest(options:WindowsOAuthOptions):AuthenticatedDriveRequest {
+export function createWindowsControllerRequest(options:WindowsOAuthOptions,initialTokens?:string):AuthenticatedDriveRequest {
   const store=config(options),fetcher=options.fetcher??fetch;
   let refresh:Promise<Tokens>|undefined,cached:Tokens|undefined;
   async function current():Promise<Tokens>{
-    const old=cached??tokens(store);
+    if(options.signal?.aborted)throw new Error("controller-io-cancelled");
+    const old=cached??tokens(initialTokens??await store.getSecretAsync(KEY,options.signal));initialTokens=undefined;
     if(!old)throw new Error("controller-authentication-required");
     if(old.accessToken&&old.expiresAtMs>Date.now()+60000){cached=old;return old;}
     if(!old.refreshToken)throw new Error("controller-authentication-required");
     if(!refresh)refresh=(async()=>{
       const result=await exchange(fetcher,new URLSearchParams({client_id:options.clientId,refresh_token:old.refreshToken!,grant_type:"refresh_token"}),options);
-      const next=validated(result,old);if(options.signal?.aborted)throw new Error("controller-io-cancelled");store.setSecret(KEY,JSON.stringify(next));cached=next;return next;
+      const next=validated(result,old);if(options.signal?.aborted)throw new Error("controller-io-cancelled");await store.setSecretAsync(KEY,JSON.stringify(next),options.signal);if(options.signal?.aborted)throw new Error("controller-io-cancelled");cached=next;return next;
     })().finally(()=>{refresh=undefined;});
     return refresh;
   }
@@ -214,7 +261,7 @@ export async function authorizeWindowsController(options:WindowsOAuthOptions&{
           throw new Error("callback-invalid");
         const body=new URLSearchParams({client_id:options.clientId,code:u.searchParams.get("code")!,
           code_verifier:verifier,redirect_uri:redirect,grant_type:"authorization_code"});
-        const credential=validated(await exchange(fetcher,body,{...options,signal:transaction.signal}));if(transaction.signal.aborted)throw new Error("controller-io-cancelled");store.setSecret(KEY,JSON.stringify(credential));
+        const credential=validated(await exchange(fetcher,body,{...options,signal:transaction.signal}));if(transaction.signal.aborted)throw new Error("controller-io-cancelled");await store.setSecretAsync(KEY,JSON.stringify(credential),transaction.signal);
         res.writeHead(200,{"content-type":"text/plain","cache-control":"no-store"});res.end("BVP Windows controller authorized.");
         complete();
       }catch{res.writeHead(400,{"cache-control":"no-store"});res.end("Authorization rejected.");complete(new Error("controller-oauth-callback-rejected"));}
