@@ -315,6 +315,9 @@ function dec359ExactRoot(obj:unknown,id:string):boolean {
     !!v.appProperties&&typeof v.appProperties==="object"&&
     (v.appProperties as Record<string,unknown>).brainBvpMailbox==="1";
 }
+async function dec359Json(response:Response):Promise<unknown>{
+  try{return await response.json();}catch{throw new Error("dec359-provider-metadata-invalid");}
+}
 async function dec359Check(request:Dec359Request,expected:string):Promise<"VISIBLE">{
   if(!/^[A-Za-z0-9_-]{10,180}$/.test(expected))throw new Error("dec359-original-mailbox-id-required");
   const read=dec359ReadOnly(request);
@@ -322,17 +325,20 @@ async function dec359Check(request:Dec359Request,expected:string):Promise<"VISIB
   direct.searchParams.set("fields","id,mimeType,trashed,appProperties");
   const response=await read(direct.toString());
   if(!response.ok)throw new Error("dec359-original-inaccessible");
-  if(!dec359ExactRoot(await response.json(),expected))throw new Error("dec359-original-identity-mismatch");
+  if(!dec359ExactRoot(await dec359Json(response),expected))throw new Error("dec359-original-identity-mismatch");
   const listing=new URL("https://www.googleapis.com/drive/v3/files");
   listing.searchParams.set("q",DEC359_QUERY);listing.searchParams.set("spaces","drive");
   listing.searchParams.set("pageSize","10");
   listing.searchParams.set("fields","nextPageToken,files(id,mimeType,trashed,appProperties)");
   const found=await read(listing.toString());
   if(!found.ok)throw new Error("dec359-query-inaccessible");
-  const result=await found.json() as {files?:unknown;nextPageToken?:unknown};
-  if(result.nextPageToken||!Array.isArray(result.files)||result.files.length!==1)
+  const result=await dec359Json(found);
+  if(!result||typeof result!=="object"||Array.isArray(result))
+    throw new Error("dec359-provider-metadata-invalid");
+  const data=result as {files?:unknown;nextPageToken?:unknown};
+  if(data.nextPageToken||!Array.isArray(data.files)||data.files.length!==1)
     throw new Error("dec359-query-ambiguous-or-empty");
-  if(!dec359ExactRoot(result.files[0],expected))throw new Error("dec359-query-wrong-mailbox");
+  if(!dec359ExactRoot(data.files[0],expected))throw new Error("dec359-query-wrong-mailbox");
   return "VISIBLE";
 }
 function dec359Fake(direct:Response=Response.json(dec359Root()),
@@ -363,9 +369,10 @@ test("DEC-359 visible original but different, absent, duplicate, or paginated qu
 test("DEC-359 direct 403, 404, wrong marker or wrong ID stops before query",async()=>{
   for(const original of [new Response(null,{status:403}),new Response(null,{status:404}),
     Response.json({...dec359Root(),appProperties:{}}),
-    Response.json(dec359Root("anotherMailbox_0123456789"))]){
+    Response.json(dec359Root("anotherMailbox_0123456789")),
+    new Response("{sensitive-provider-prefix", {status:200})]){
     const f=dec359Fake(original);
-    await rejects(()=>dec359Check(f.request,DEC359_TEST_ID),/dec359-original-(?:inaccessible|identity-mismatch)/);
+    await rejects(()=>dec359Check(f.request,DEC359_TEST_ID),/dec359-(?:original-(?:inaccessible|identity-mismatch)|provider-metadata-invalid)/);
     strictEqual(f.calls.length,1);
   }
   const f=dec359Fake();await rejects(()=>dec359Check(f.request,""),/dec359-original-mailbox-id-required/);
