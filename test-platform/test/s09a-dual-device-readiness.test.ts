@@ -179,7 +179,10 @@ async function runDualInstallationReceipts(windowsManifest: string, iosManifest?
         windows: expectedS09A.windowsManifestSha256,
         ios: expectedS09A.iosManifestSha256,
       },
-      resultTimeoutMs: 120, pollIntervalMs: 3,
+      // Allow synthetic receipt writer scheduling under a fully parallel Windows
+      // PHX-CI suite. This is NOT the Windows OAuth/controller I/O deadline.
+      // Security assertions below still require explicit correlation mismatch.
+      resultTimeoutMs: 3000, pollIntervalMs: 3,
     });
     const pending = new DeterministicScenarioRunner({}, executor).run(scenario);
     const commands = [await reply(relay, "idle-ready", {validationBuild: validationBuild(windowsManifest)})];
@@ -226,7 +229,8 @@ test("S09A refuses iOS receipts with mismatched source, artifact, or device",asy
   ]) {
     const run = await runDualInstallationReceipts(expectedS09A.windowsManifestSha256,
       expectedS09A.iosManifestSha256,invalid);
-    strictEqual(run.result.status,"failed");
+    strictEqual(run.result.status,"failed",
+      "A provided mismatched iOS receipt must fail correlation, not time out; observed classification="+run.result.classification);
     strictEqual(run.result.classification,"result-correlation-mismatch");
   }
 });
