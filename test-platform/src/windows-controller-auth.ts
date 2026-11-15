@@ -79,10 +79,10 @@ async function secureShell(script:string,input:string,timeout:number,signal?:Abo
     let output="",reason="",stopped=false;
     const cancel=(why:string)=>{if(stopped)return;stopped=true;reason=why;child.kill();},onAbort=()=>cancel("controller-io-cancelled"),timer=setTimeout(()=>cancel("controller-io-timeout"),timeout);
     signal?.addEventListener("abort",onAbort,{once:true});
-    child.stdout.on("data",(data:Buffer)=>{output+=data.toString("utf8");if(output.length>1048576)cancel("controller-security-process-unavailable");});
+    child.stdout!.on("data",(data:Buffer)=>{output+=data.toString("utf8");if(output.length>1048576)cancel("controller-security-process-unavailable");});child.stdout!.on("error",()=>cancel("controller-security-process-unavailable"));
     child.on("error",()=>{if(!reason)reason="controller-security-process-unavailable";});
     child.on("close",code=>{clearTimeout(timer);signal?.removeEventListener("abort",onAbort);if(reason||code!==0)reject(new Error(reason||"controller-security-process-unavailable"));else resolve(output.trim());});
-    child.stdin.on("error",()=>{});child.stdin.end(input);if(signal?.aborted)onAbort();
+    child.stdin!.on("error",()=>{if(!reason)reason="controller-security-process-unavailable";});child.stdin!.end(input);if(signal?.aborted)onAbort();
   });
 }
 async function aclAsync(paths:readonly string[],apply:boolean,signal?:AbortSignal):Promise<void>{
