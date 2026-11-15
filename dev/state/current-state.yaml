@@ -1680,14 +1680,14 @@ bvp_drivefile_cross_client_readonly_2026_11_15:
   baseline_accepted_wco06_tree: "759cc887985823293cd75fa4239c10096a45fdcc"
   baseline_wco06_acceptance_head: "e09ab0ce98669cd56c7ec271fb854e00ab37d781"
   owner_authority: "DEC-359_LOCKED_READONLY_LIVE_GOOGLE_COMPATIBILITY"
-  status: "OWNER_AUTHORIZED_FROZEN_GUARD_CORRECTION_PENDING_TEST_FIRST_IMPLEMENTATION"
+  status: "DEC360_TEST_FIRST_GUARD_CORRECTION_COMMITTED_PHXCI_SOFTWARE_QUALIFICATION_PENDING"
   handoff-count: 0
   current_recipient_role: "BUILDER"
   source_qualification: "FIRST_RUN_BLOCKED_629_OF_631_FOCUSED_PASS_2_FAIL"
   live_google_execution: "NOT_RUN"
   live_google_compatibility_result: "NOT_ESTABLISHED"
   owner_account_and_obisidian_mailbox_id: "MUST_BE_LOCALLY_BOUND_FROM_ORIGINAL_APP_CONTEXT"
-  permitted_next: "DEC360_TEST_FIRST_GUARD_REPAIR_THEN_EXACT_SOURCE_PHXCI_SOFTWARE_ONLY"
+  permitted_next: "OWNER_EXACT_SOURCE_SOFTWARE_ONLY_PHXCI_DEC360_AUTHORIZED_GOVERNANCE_CLASS_WITH_LIVE_GOOGLE_DISABLED"
   no_new_mailbox_no_drive_mutation_no_physical: true
   dec359_probe_source_commit: "32de2818b1acb70716423a61a4febdf609aa542c"
   dec359_privacy_hardening_commit: "90752069f193c097b5575aac40d8d6fac7ed1144"
@@ -1704,4 +1704,8 @@ bvp_drivefile_cross_client_readonly_2026_11_15:
   dec359_live_google_calls_executed: false
   dec359_frozen_guard_repair_decision: "DEC-360_LOCKED_SCOPED_GOVERNANCE_EXCEPTION"
   dec359_frozen_guard_source_change_qualification: "NOT_RUN"
+  dec359_guard_test_first_sha: "bc7b0ef69e7420e4d19378fa7a4c1929c2466df5"
+  dec359_guard_correction_source_sha: "535979b6636bf5b3e487986b1839d4414aa1374c"
+  dec359_guard_correction_scope: "EXCLUDE_DEV_REVIEWS_ONLY_PRESERVE_DEV_PLANNING_AUTHORITY_STATE_SCANS"
+  dec359_expected_core_budget: "4850_OF_4850_PENDING_PHXCI_CONFIRMATION"
 
