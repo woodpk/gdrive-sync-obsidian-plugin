@@ -2,7 +2,7 @@ import { strictEqual, rejects, match, ok } from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { test } from "node:test";
 import { authorizeWindowsController, createWindowsControllerRequest, WindowsDpapiSecrets } from "../src/windows-controller-auth";
@@ -181,7 +181,6 @@ test("WCO-R1-F01 complete controller lock duration stays bounded through Windows
         :Response.json({files:[]})});
     strictEqual(next.reason==="controller-owner-busy",false);
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
-    strictEqual(networkCalls>=0,true);
   }finally{await f.cleanup();}
 });
 
@@ -198,7 +197,8 @@ test("WCO-R1-F01 cancellation during active NTFS credential work cannot commit a
     await rejects(pending,/controller-io-cancelled/);
     const retained=JSON.parse(store.getSecret(TOKEN_KEY)!);
     strictEqual(retained.accessToken,"expired");strictEqual(retained.refreshToken,"fake-only-refresh");
-    const names=await (await import("node:fs/promises")).readdir(join(process.env.LOCALAPPDATA!,"BRAIN-BVP","controller"));
-    strictEqual(names.some(name=>name.startsWith("bvp-test-")&&name.includes(".tmp")),false);
+    const names=await readdir(join(process.env.LOCALAPPDATA!,"BRAIN-BVP","controller"));
+    const prefix=f.tokenFile.split(/[\\/]/).pop()!+".";
+    strictEqual(names.some(name=>name.startsWith(prefix)&&name.endsWith(".tmp")),false);
   }finally{await f.cleanup();}
 });
