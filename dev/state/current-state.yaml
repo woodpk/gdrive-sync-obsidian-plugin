@@ -1437,7 +1437,7 @@ bvp_poll_error_observability_2026_10_25:
 
 bvp_windows_controller_oauth_2026_10_28:
   feature: "WS-07/BVP_WINDOWS_CONTROLLER_OAUTH"
-  status: "WCO06_CORRECTION_REQUIRED_REVIEWER_TO_BUILDER"
+  status: "WCO06_DEC358_OWNER_PIN_EXCEPTION_RECORDED_INDEPENDENT_REASSESSMENT_PENDING"
   decision: "DEC-357"
   owner_option: "A_SEPARATE_WINDOWS_OAUTH_PKCE_DPAPI_NOT_OBSIDIAN_IPC"
   workstream: "WS-07"
@@ -1455,16 +1455,16 @@ bvp_windows_controller_oauth_2026_10_28:
   test_status: "FOCUSED_628_PASS_OF_628_PRODUCT_1292_PASS_OF_1292_ALL_13_STAGES_PASS"
   exact_current_qualification_sha: "07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0"
   phxci_original_run: "494b79f3-b948-4544-a562-02971cdbc7d4"
-  independent_review: "WCO06_FINAL_PUBLISHED_CORRECTION_REQUIRED_NOT_ACCEPTED"
+  independent_review: "WCO06_ORIGINAL_CORRECTION_REQUIRED_RETAINED_DEC358_REASSESSMENT_PENDING"
   owner_role: "REVIEWER_SENDER_TO_BUILDER_COUNT_14"
   handoff-count: 14
   handoff-count-provenance: "WCO06_REVIEWER_TO_BUILDER_FROM_COUNT_13"
   parent_handoff_feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-07/BVP_RUNTIME_FAILURE_OBSERVABILITY"
   current_recipient_role: "BUILDER"
-  permitted_next: "BUILDER_REQUEST_OWNER_PIN_AUTHORITY_DETERMINATION_THEN_AUTHORIZED_REQUALIFICATION"
+  permitted_next: "NEW_INDEPENDENT_REVIEW_OF_SCOPED_DEC358_AUTHORITY_AND_UNCHANGED_WCO05_SOURCE_ORIGINAL_EVIDENCE"
   runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   frozen_budgets: "FRAMEWORK_CORE_4850_LIVE_AGENT_1250"
-  forbidden: "NO_GITHUB_ACTIONS_NO_BUDGET_OR_PIN_CHANGE_NO_PRODUCTION_SYNC_CHANGES"
+  forbidden: "NO_GITHUB_ACTIONS_NO_BUDGET_CHANGE_NO_FURTHER_PIN_CHANGE_NO_PRODUCTION_SYNC_CHANGES"
   google_scope: "EXACT_DRIVE_FILE"
   separate_oauth_client_existing_mailbox_visibility: "UNVERIFIED_OWNER_LIVE_COMPATIBILITY_GATE"
   require_existing_mailbox: true
@@ -1481,7 +1481,7 @@ bvp_windows_controller_oauth_2026_10_28:
   first_phxci_evidence_commit: "5a04d4710234f0a69a01c62e92179a381b23144f"
   first_phxci_verdict: "BLOCKED_CHANGESET_FAIL_REPOSITORY_PASS"
   first_phxci_source_issue: "WCO-R1-F01_TS2304_MISSING_READFILE_IMPORT_FOCUSED_TEST_NOT_RUN"
-  software_acceptance: "PHXCI_PASS_WCO06_REVIEWER_PENDING"
+  software_acceptance: "EXACT_SOURCE_PHXCI_PASS_DEC358_PIN_AUTHORIZED_INDEPENDENT_REASSESSMENT_PENDING"
   wco_r1_f01_correction_commit: "9568e5936761c796c886cf74f4946b90a363a226"
   wco_r1_f01_correction: "ONE_TEST_IMPORT_ADD_READFILE_NO_PRODUCTION_CHANGE"
   next_source_qualification: "WCO05_FROZEN_NO_RERUN_UNLESS_SUBSTANTIVE_FINDING_OR_OWNER_AUTHORIZATION"
@@ -1509,7 +1509,7 @@ bvp_windows_controller_oauth_2026_10_28:
   third_phxci_result: "11_OF_11_STAGES_PASS_FOCUSED_612_OF_612_PRODUCT_1292_OF_1292"
   handoff_sender_role: "REVIEWER"
   handoff_recipient_role: "BUILDER"
-  independent_review_verdict: "CORRECTION_REQUIRED_GOVERNANCE_PIN_AUTHORIZATION_NOT_VERIFIED"
+  independent_review_verdict: "HISTORICAL_CORRECTION_REQUIRED_DEC358_LATER_OWNER_EXCEPTION_NOT_YET_INDEPENDENTLY_ACCEPTED"
 
   r1_builder_corrective_status: "F01_F02_F03_SOURCE_AND_TESTS_COMMITTED_UNVERIFIED"
   r1_builder_f01_test_first_commit: "ba6f937e7f22ea8f508f209ff3769da56ecabc3c"
@@ -1611,3 +1611,20 @@ bvp_windows_controller_oauth_2026_10_28:
   wco05_review_gate: "WCO06_BLIND_FIRST_SOURCE_FINDINGS_PUBLISH_THEN_ORIGINAL_EVIDENCE_FINAL_VERDICT"
   wco05_handoff_status: "BUILDER_TO_REVIEWER_AUTHORIZED_NOT_YET_ACCEPTED"
 
+
+  dec358_governance_exception:
+    authority: "DEC-358"
+    owner_approval_scope: "SINGLE_DEC357_WCO06_SOFTWARE_ONLY_VERIFICATION_RUNTIME"
+    approved_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+    historical_runtime_sha: "69c4aa077d4a1a46d1e85e59f39d36285be99e83"
+    original_verified_source_sha: "07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0"
+    original_verified_git_tree: "759cc887985823293cd75fa4239c10096a45fdcc"
+    original_phxci_run_id: "e579438f-8a22-434d-8284-ef966f6db535"
+    original_evidence_commit: "6b7c67e0639cba184e875d6184497bad781317fd"
+    original_result: "13_OF_13_PASS_FOCUSED_628_OF_628_PRODUCT_1292_OF_1292"
+    original_reviewer_report: "dev/reviews/bvp-windows-controller-oauth-20261114-wco06-final.md"
+    historical_reviewer_verdict: "CORRECTION_REQUIRED_NOT_RETROACTIVELY_REWRITTEN"
+    next_reviewer_gate: "INDEPENDENT_REASSESSMENT_OF_DEC358_APPLICABILITY_AND_EXACT_UNCHANGED_EVIDENCE"
+    source_change: false
+    rerun_for_governance_only: false
+    live_oauth_drive_physical_merge_release_authorized: false
