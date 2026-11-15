@@ -1,6 +1,6 @@
 # WS-07 / DEC-357 — Independent Windows OAuth and Authoritative BVP Diagnostic Controller
 
-**Status:** NEW OWNER-APPROVED BUILD UNIT; IMPLEMENTATION DRAFT COMMITTED; **FIRST PHX-CI BLOCKED (FOCUSED TYPESCRIPT COMPILE)**; SOFTWARE **NOT QUALIFIED**; REVIEWER **NOT ACCEPTED**; OPERATION **NOT AUTHORIZED**.  
+**Status:** **WCO-05 PHX-CI SOFTWARE QUALIFICATION PASS; VERIFIED SOURCE FROZEN FOR WCO-06 INDEPENDENT REVIEW**; reviewer acceptance **PENDING**; real OAuth/Drive/physical operation, merge, install, deployment and release **NOT AUTHORIZED**.  
 **Owner decision:** 2026-10-28, Option A (separate Windows OAuth), not Option B (Obsidian↔Node authenticated IPC).  
 **Workstream:** WS-07 BRAIN Verification Platform; this is a **distinct follow-on build unit** dependent on DEC-352/354/355/356, not a new product workstream and not a revision to production WS-03 OAuth.  
 **Feature/branch:** `WS-07/BVP_WINDOWS_CONTROLLER_OAUTH` on `build/bvp-poll-error-observability-20261025` until separately re-bound by the Owner.  
@@ -195,3 +195,13 @@ The independently published R1 review `dev/reviews/bvp-windows-controller-oauth-
 
 
 **Final source-impact additions before qualification:** `854d4eb269ec1e63b1a0d92ea46d86379e2a0a10` revalidates token-file path/reparse-point identity after asynchronous ACL/DPAPI waits and before encrypted-file replacement, with temp-file symlink rejection. This addresses the added TOCTOU window from replacing synchronous operations with asynchronous security child processes. Both old synchronous APIs and the same NTFS ACL script bytes remain intact; the async code's internal subprocess stdout/stderr errors are fail-closed and cancellation classification is preserved. These safeguards are SOURCE-REVIEWED but remain **UNEXECUTED under PHX-CI**. Current candidate identity is the branch HEAD after the documentation closeout, not an earlier implementation checkpoint; no pass is inherited.
+
+## 11. Owner-authorized WCO-05 software freeze and WCO-06 review boundary — 2026-11-14 (America/New_York)
+
+**Immutable frozen software-only candidate:** source commit `07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0`; Git tree `759cc887985823293cd75fa4239c10096a45fdcc`. **Do not substitute the later evidence or state commit for the tested source identity.**
+
+**Original owner-operated PHX-CI qualification:** run `e579438f-8a22-434d-8284-ef966f6db535`, framework runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`, base `42460912847e363aa4fa11e23e0429944383889d`, result `CHANGE_SET_PASS / REPOSITORY_PASS / OVERALL_PASS`, focused `628/628` and product `1292/1292`, all 13 ordered stage results PASS with native exit 0. Original evidence committed at `6b7c67e0639cba184e875d6184497bad781317fd` (canonical `dev/_ca-output.md`, structured `dev/test-results/e579438f-8a22-434d-8284-ef966f6db535/result.json`). Original evidence remains unchanged.
+
+**Freeze effect:** WCO-05's software gate is satisfied **for exactly this candidate**; no further Builder implementation or evidence-mutating rerun is authorized without a substantive independent finding or separate Owner decision. Administrative freeze/handoff documentation is not executable source. WCO-06 remains **independent Reviewer acceptance pending**, not accepted by Builder.
+
+**Blind-first safeguard:** This section and all Builder-authored test, historical finding and PHX-CI narratives are **not available to Reviewer during blind Pass 1**. The reviewer must read only neutral normative authority (DEC-357 and sections 1–3 of this task as normative context) and the exact immutable product/validation-controller source, freezing/publishing blind findings under `dev/reviews/` before reading this section, source history, authored tests or verification evidence. Only then complete evidence-aware final review and publish a verdict. No live OAuth, personal Drive, physical devices, merge, install, release or deployment may occur merely because software PHX-CI passed.
