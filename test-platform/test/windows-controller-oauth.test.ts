@@ -275,3 +275,20 @@ test("WCO-R1-F03 token file ACL broadening is detected before the cached credent
     await rejects(async()=>store.getSecret(TOKEN_KEY),/controller-token-permissions-invalid/);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test("WCO-R1-F03 async controller request refuses broad token DACL before contacting Drive",async()=>{
+  const dir=await credentialFixture("brain-bvp-oauth-async-acl-"),file=join(dir,"tokens.dat");
+  try{
+    new WindowsDpapiSecrets(file).setSecret(TOKEN_KEY,JSON.stringify({
+      accessToken:"cached",refreshToken:"refresh",expiresAtMs:Date.now()+600000,
+      scope:"https://www.googleapis.com/auth/drive.file"
+    }));
+    const grant=spawnSync("icacls.exe",[file,"/grant","*S-1-5-32-545:(R)"],{encoding:"utf8",windowsHide:true});
+    strictEqual(grant.status,0,"fixture must actually create an unauthorized Users read grant");
+    let contacted=false;
+    const request=createWindowsControllerRequest({clientId:"desktop",tokenFile:file,
+      fetcher:async()=>{contacted=true;return Response.json({files:[]});}});
+    await rejects(()=>request("https://www.googleapis.com/drive/v3/files"),/controller-token-permissions-invalid/);
+    strictEqual(contacted,false,"untrusted token ACL cannot authorize even a mocked Drive request");
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
