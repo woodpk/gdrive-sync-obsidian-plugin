@@ -110,15 +110,15 @@ export class WindowsDpapiSecrets {
   }
   async getSecretAsync(id:string,signal?:AbortSignal):Promise<string|null>{
     this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");if(!existsSync(this.file))return null;
-    try{securedTokenLocation(this.file);await aclAsync([...this.secured.directories,this.file],false,signal);return await dpapiAsync(readFileSync(this.file,"utf8"),"Unprotect",signal);}
+    try{securedTokenLocation(this.file);await aclAsync([...this.secured.directories,this.file],false,signal);securedTokenLocation(this.file);return await dpapiAsync(readFileSync(this.file,"utf8"),"Unprotect",signal);}
     catch(error){if(timedOut(error)||error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;throw new Error("controller-token-unprotect-failed");}
   }
   async setSecretAsync(id:string,value:string,signal?:AbortSignal):Promise<void>{
     this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
-    await aclAsync(this.secured.directories,true,signal);const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
-    try{const cipher=await dpapiAsync(value,"Protect",signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
+    await aclAsync(this.secured.directories,true,signal);securedTokenLocation(this.file);const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
+    try{const cipher=await dpapiAsync(value,"Protect",signal);if(signal?.aborted)throw new Error("controller-io-cancelled");securedTokenLocation(this.file);
       writeFileSync(temp,cipher,{encoding:"utf8",mode:0o600,flag:"wx"});await aclAsync([temp],true,signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
-      renameSync(temp,this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
+      securedTokenLocation(this.file);if(lstatSync(temp).isSymbolicLink())throw new Error("controller-token-location-invalid");renameSync(temp,this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
     }finally{rmSync(temp,{force:true});}
   }
   deleteSecret(id:string):void {this.check(id);if(existsSync(this.file)){securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);}rmSync(this.file,{force:true});}
