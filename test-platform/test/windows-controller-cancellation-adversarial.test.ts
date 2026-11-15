@@ -184,3 +184,21 @@ test("WCO-R1-F01 complete controller lock duration stays bounded through Windows
     strictEqual(networkCalls>=0,true);
   }finally{await f.cleanup();}
 });
+
+test("WCO-R1-F01 cancellation during active NTFS credential work cannot commit a late token",async()=>{
+  const f=await fixture(true);
+  try{
+    const store=new WindowsDpapiSecrets(f.tokenFile),shutdown=new AbortController();
+    const pending=store.setSecretAsync(TOKEN_KEY,JSON.stringify({
+      accessToken:"cancelled-write",refreshToken:"cancelled-refresh",expiresAtMs:Date.now()+600000,scope:SCOPE
+    }),shutdown.signal);
+    // The asynchronous ACL child has been dispatched; cancellation must
+    // terminate it and preserve the prior encrypted token.
+    await Promise.resolve();shutdown.abort();
+    await rejects(pending,/controller-io-cancelled/);
+    const retained=JSON.parse(store.getSecret(TOKEN_KEY)!);
+    strictEqual(retained.accessToken,"expired");strictEqual(retained.refreshToken,"fake-only-refresh");
+    const names=await (await import("node:fs/promises")).readdir(join(process.env.LOCALAPPDATA!,"BRAIN-BVP","controller"));
+    strictEqual(names.some(name=>name.startsWith("bvp-test-")&&name.includes(".tmp")),false);
+  }finally{await f.cleanup();}
+});
