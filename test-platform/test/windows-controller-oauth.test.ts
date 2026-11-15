@@ -1,4 +1,4 @@
-import { strictEqual, rejects, match, notStrictEqual } from "node:assert/strict";
+import { strictEqual, rejects, throws, match, notStrictEqual } from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -356,7 +356,7 @@ test("DEC-359 GET-only original mailbox exact-ID and metadata-query match",async
     ["https://www.googleapis.com/drive/v3/files","POST"],
     ["https://www.googleapis.com/upload/drive/v3/files","GET"],
     ["https://not-google.invalid/drive/v3/files","GET"]
-  ] as const)await rejects(()=>dec359ReadOnly(f.request)(url,{method}),/dec359-method-or-target-rejected/);
+  ] as const)throws(()=>dec359ReadOnly(f.request)(url,{method}),/dec359-method-or-target-rejected/);
   strictEqual(f.calls.length,2);
 });
 test("DEC-359 visible original but different, absent, duplicate, or paginated query blocks",async()=>{
