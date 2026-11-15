@@ -18,9 +18,10 @@ export async function withWindowsControllerProcessLock<T>(root:string,work:()=>P
   try{return await work();}finally{await handle.close();await rm(path,{force:true});}
 }
 async function cycleCore(options:WindowsControllerCycleOptions){
-  const tokens=new WindowsDpapiSecrets(options.tokenFile).getSecret("brain-gdrive-oauth-tokens");
+  const tokens=await new WindowsDpapiSecrets(options.tokenFile).getSecretAsync("brain-gdrive-oauth-tokens",options.signal);
   if(!tokens)return{status:"unavailable" as const,reason:"controller-authentication-required"};
-  const request=createWindowsControllerRequest(options);
+  if(options.signal?.aborted)throw new Error("controller-io-cancelled");
+  const request=createWindowsControllerRequest(options,tokens);
   return runWindowsDiagnosticControllerOnce(request,options);
 }
 async function boundedCycle(options:WindowsControllerCycleOptions){
