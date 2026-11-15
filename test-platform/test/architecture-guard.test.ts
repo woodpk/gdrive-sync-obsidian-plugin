@@ -665,6 +665,44 @@ test("architecture guard allows historical non-authoritative archive prose", () 
   });
 });
 
+test("DEC-360 historical Reviewer evidence is not an active archive authority instruction", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/reviews/bvp-windows-controller-oauth-20261114-wco06-final.md",
+      "The Windows Node authoritative controller retained original run A/device/event and archive/retirement proof.\n",
+    );
+    assertPass(runGuard(root));
+  });
+});
+
+test("DEC-360 live planning instructions still reject archived task authority", () => {
+  withFixture((root) => {
+    writeText(
+      root,
+      "dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/active-task.md",
+      "Execute archive/pre-standard-dev-layout-2026-10/DEV/agents/legacy-task.md as the governing task authority.\n",
+    );
+    assertFailsWithRule(runGuard(root), "ARCHIVE_USED_AS_CURRENT_AUTHORITY");
+  });
+});
+
+test("DEC-360 active authority and state instructions remain protected from archive dependency", () => {
+  for (const path of [
+    "dev/authority/fixture-authority.md",
+    "dev/state/fixture-state.md",
+  ]) {
+    withFixture((root) => {
+      writeText(
+        root,
+        path,
+        "Read archive/pre-standard-dev-layout-2026-10/DEV/agents/legacy-task.md as required input to current execution.\n",
+      );
+      assertFailsWithRule(runGuard(root), "ARCHIVE_USED_AS_CURRENT_AUTHORITY");
+    });
+  }
+});
+
 test("architecture guard rejects ordinary changes to frozen governance", () => {
   withFixture((root) => {
     assertFailsWithRule(
