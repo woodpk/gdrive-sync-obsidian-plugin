@@ -1,6 +1,6 @@
 # Build Decomposition — BRAIN Verification Platform
 
-## Current successor unit — DEC-357 / BVP_WINDOWS_CONTROLLER_OAUTH (Owner-approved 2026-10-28)
+## DEC-357 / BVP_WINDOWS_CONTROLLER_OAUTH — accepted Windows software-only successor unit
 
 This is a **distinct new bounded WS-07 unit**, not the earlier DEC-351 CLI finalization task and not just DEC-356 F01 bookkeeping. The earlier heading below labeled “Current Owner-directed Build Unit — CLI result finalization” is **historical/parallel scope** for a separate branch; it is **not** the next assignment on `build/bvp-poll-error-observability-20261025`.
 
@@ -12,10 +12,10 @@ This is a **distinct new bounded WS-07 unit**, not the earlier DEC-351 CLI final
 | WCO-02 | Separate Windows Desktop OAuth PKCE, DPAPI and refresh, depends WCO-01 | Test-first scope, credential at-rest, callback/replay, missing auth |
 | WCO-03 | Authenticated existing-mailbox-only access and failure classification, depends WCO-02 | Test-first missing root does not create a second mailbox; cursor expiry, auth/rate failures |
 | WCO-04 | Real compiled Windows Node CLI/process singleton/lease-aware startup, depends WCO-03 | Actual-process and assembled fake-Drive/controller oracles, restart/contender/orphan lock |
-| WCO-05 | Source impact/budget/architecture review; freeze SHA, unchanged owner-operated software-only Windows PHX-CI | Original evidence and actual 11-stage, focused/product results; **FIRST PHX-CI BLOCKED**, focused TypeScript test compilation; new exact-source qualification needed |
-| WCO-06 | Fresh independent blind-first Reviewer acceptance, then separate Owner decision | **NOT STARTED**; no premature deployment or physical use |
+| WCO-05 | Source impact, frozen budgets and exact source qualification | **COMPLETE:** `07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0` / tree `759cc887985823293cd75fa4239c10096a45fdcc`; original run `e579438f-8a22-434d-8284-ef966f6db535`: 13/13 stages, 628/628 focused, 1292/1292 product PASS under Owner-approved DEC-358 runtime |
+| WCO-06 | Independent blind-first review and administrative acceptance | **COMPLETE: PASS WITH MINOR FINDINGS — ACCEPTED, software only**. Corrected Reviewer addendum `dev/reviews/bvp-windows-controller-oauth-20261114-wco06-acceptance-addendum.md`; Builder closeout `dev/planning/02-workstreams/WS-07-brain-verification-platform/tasks/wco06-dec357-accepted-software-only-closeout-2026-11-14.md`, handoff-count 14; no live operation authorization |
 
-The WCO-01–04 draft implementation/test files already exist, but their presence is **not proof of PASS**. Preserve the frozen WCO-001–011 requirements and architecture boundaries. An initial PHX-CI run was published while this documentation phase was underway and was **BLOCKED** by focused test compilation. Correct the identified source issue only after this dev-only refresh, then requalify a newly frozen exact source. PHX-CI is the sole execution authority for qualification. Handoff-count **10**, recipient **BUILDER**, remains unchanged until a real cross-role transition.
+**Current disposition:** WCO-01–06 now accepted for exact frozen Windows software-only scope after source-matched PHX-CI PASS and independent corrected WCO-06 acceptance. **Handoff-count 14**, recipient BUILDER, retained. Prior run BLOCKED/count-10 references are historical only. New live Google cross-client `drive.file` compatibility remains UNVERIFIED and separately Owner-reserved; no physical execution, master merge, installation or release approved.
 
 
 ## Current Owner-directed Build Unit — CLI result finalization (2026-10-24)

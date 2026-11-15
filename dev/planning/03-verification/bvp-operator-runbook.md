@@ -1,6 +1,13 @@
 # BVP Operator Runbook — Mandatory Fresh-Session Read
 
-## Current DEC-357 status — Reviewer R1 CORRECTION REQUIRED; Builder count 12
+## Current DEC-357 / WCO-06 controlling status — ACCEPTED software-only, NOT authorized for live use
+
+**Final independent disposition:** **PASS WITH MINOR FINDINGS — ACCEPTED** for exact source `07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0`, tree `759cc887985823293cd75fa4239c10096a45fdcc`, original PHX-CI run `e579438f-8a22-434d-8284-ef966f6db535`, original evidence `6b7c67e0639cba184e875d6184497bad781317fd`, and Owner-approved DEC-358 runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`. Original result: 13/13 stages PASS, focused 628/628, product 1292/1292, overall PASS exit 0. Corrected review: `dev/reviews/bvp-windows-controller-oauth-20261114-wco06-acceptance-addendum.md`; original historical CORRECTION REQUIRED report remains unmodified. **Handoff-count 14**, recipient BUILDER; Builder [closeout](../02-workstreams/WS-07-brain-verification-platform/tasks/wco06-dec357-accepted-software-only-closeout-2026-11-14.md) complete. Residual nonblocking findings F02/F03/F04 remain in the independent acceptance record.
+
+**Owner-reserved next decision:** whether to separately authorize a narrowly scoped *real* Google cross-client `drive.file` **existing-mailbox** compatibility test. This acceptance does **not** authorize live OAuth/Google Drive/vault, Windows/iOS physical testing, second mailbox/controller, permissions broadening, code/architecture/runtimes changes, master merge, installation, deployment or release. Do not rerun PHX-CI solely to reconsider closed F01.
+
+
+## Historical DEC-357 R1 checkpoint (superseded as current status) — CORRECTION REQUIRED, Builder count 12
 
 **The qualified historical R3 source** `3d55fa1bc8f46657b5462aa28a850a77124f76b4` passed the original unchanged pinned Windows PHX-CI (11/11 stages; focused 612/612; product 1292/1292). **Independent R1 later rejected acceptance**: `dev/reviews/bvp-windows-controller-oauth-20261028-r1-final.md` records WCO-R1-F01 (unbounded OAuth/Drive cycle), F02 (mixed authority-dir lock artifacts), F03 (token storage path/ACL) plus administrative F04 and fresh-review procedure F05. Current recipient remains **BUILDER, handoff-count 12**. Corrective source and adversarial test commits must receive **new exact-source PHX-CI** before any final Reviewer assignment; the earlier R3 PASS does NOT qualify the new source.
 
@@ -208,7 +215,7 @@ An explicit `archiveVerifiedDiagnostic(deviceId,eventId,archiveId)` operation is
 
 **Not yet implemented:** There is no independent trusted event-specific resolution acknowledgment/control-plane procedure, no destructive retirement operation, and no standalone background archival schedule. The existing Windows relay now opportunistically copies **at most one aged diagnostic per device/pump**, with a durable per-device receipt ledger under `.bvp-relay/diagnostic-archive-receipts/`; it does not remove originals. Thus protected unresolved active evidence may exceed the 90-day target and block new remote events; do not claim fully automated lifecycle compliance, global concurrency-atomic admission or freed Drive capacity. A future workflow may retire an explicitly resolved record only with verified specific acknowledgment, archived SHA/media provenance, and separately qualified code. No live personal Drive/vault, mobile/device execution or remote cleanup is authorized at this stage. New implementation is NOT PHX-CI-qualified until a new exact-source Windows run passes.
 
-## DEC-357 Windows OAuth controller (software-only) — unqualified, NOT for operation
+## DEC-357 Windows OAuth controller — historical draft instructions; software accepted but live operation NOT authorized
 
 On 2026-10-28 the Owner chose **Option A**: the separate Node/Windows BVP diagnostic controller authenticates independently to Google, **not** through an Obsidian→Node credential/IPC bridge. This applies exclusively to DEC-356 R5 F01. It does not authorize any live-device or personal Google Drive/vault operation.
 
