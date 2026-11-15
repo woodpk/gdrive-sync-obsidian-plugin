@@ -292,3 +292,102 @@ test("WCO-R1-F03 async controller request refuses broad token DACL before contac
     strictEqual(contacted,false,"untrusted token ACL cannot authorize even a mocked Drive request");
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+/** DEC-359: owner-authorized live GET-only Google compatibility; mock cases cannot prove live access. */
+type Dec359Request=(url:string,init?:RequestInit)=>Promise<Response>;
+const DEC359_TEST_ID="existingMailbox_0123456789";
+const DEC359_QUERY="trashed = false and appProperties has { key='brainBvpMailbox' and value='1' }";
+const dec359Root=(id=DEC359_TEST_ID)=>({id,mimeType:"application/vnd.google-apps.folder",trashed:false,appProperties:{brainBvpMailbox:"1"}});
+function dec359ReadOnly(request:Dec359Request):Dec359Request {
+  return (url,init)=>{
+    const parsed=new URL(url);
+    if(parsed.origin!=="https://www.googleapis.com"||
+      !/^\/drive\/v3\/files(?:\/[A-Za-z0-9_-]{10,180})?$/.test(parsed.pathname)||
+      (init?.method??"GET").toUpperCase()!=="GET"||init?.body!==undefined)
+      throw new Error("dec359-method-or-target-rejected");
+    return request(url,{method:"GET"});
+  };
+}
+function dec359ExactRoot(obj:unknown,id:string):boolean {
+  if(!obj||typeof obj!=="object"||Array.isArray(obj))return false;
+  const v=obj as Record<string,unknown>;
+  return v.id===id&&v.mimeType==="application/vnd.google-apps.folder"&&v.trashed===false&&
+    !!v.appProperties&&typeof v.appProperties==="object"&&
+    (v.appProperties as Record<string,unknown>).brainBvpMailbox==="1";
+}
+async function dec359Check(request:Dec359Request,expected:string):Promise<"VISIBLE">{
+  if(!/^[A-Za-z0-9_-]{10,180}$/.test(expected))throw new Error("dec359-original-mailbox-id-required");
+  const read=dec359ReadOnly(request);
+  const direct=new URL("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(expected));
+  direct.searchParams.set("fields","id,mimeType,trashed,appProperties");
+  const response=await read(direct.toString());
+  if(!response.ok)throw new Error("dec359-original-inaccessible");
+  if(!dec359ExactRoot(await response.json(),expected))throw new Error("dec359-original-identity-mismatch");
+  const listing=new URL("https://www.googleapis.com/drive/v3/files");
+  listing.searchParams.set("q",DEC359_QUERY);listing.searchParams.set("spaces","drive");
+  listing.searchParams.set("pageSize","10");
+  listing.searchParams.set("fields","nextPageToken,files(id,mimeType,trashed,appProperties)");
+  const found=await read(listing.toString());
+  if(!found.ok)throw new Error("dec359-query-inaccessible");
+  const result=await found.json() as {files?:unknown;nextPageToken?:unknown};
+  if(result.nextPageToken||!Array.isArray(result.files)||result.files.length!==1)
+    throw new Error("dec359-query-ambiguous-or-empty");
+  if(!dec359ExactRoot(result.files[0],expected))throw new Error("dec359-query-wrong-mailbox");
+  return "VISIBLE";
+}
+function dec359Fake(direct:Response=Response.json(dec359Root()),
+  listing:Response=Response.json({files:[dec359Root()]})){
+  const calls:{url:string;method:string}[]=[];
+  const request:Dec359Request=async(url,init)=>{calls.push({url,method:init?.method??"GET"});
+    return new URL(url).pathname==="/drive/v3/files"?listing:direct;};
+  return {request,calls};
+}
+test("DEC-359 GET-only original mailbox exact-ID and metadata-query match",async()=>{
+  const f=dec359Fake();strictEqual(await dec359Check(f.request,DEC359_TEST_ID),"VISIBLE");
+  strictEqual(f.calls.length,2);strictEqual(f.calls.every(x=>x.method==="GET"),true);
+  strictEqual(new URL(f.calls[1]!.url).searchParams.get("q"),DEC359_QUERY);
+  for(const [url,method] of [
+    ["https://www.googleapis.com/drive/v3/files","POST"],
+    ["https://www.googleapis.com/upload/drive/v3/files","GET"],
+    ["https://not-google.invalid/drive/v3/files","GET"]
+  ] as const)await rejects(()=>dec359ReadOnly(f.request)(url,{method}),/dec359-method-or-target-rejected/);
+  strictEqual(f.calls.length,2);
+});
+test("DEC-359 visible original but different, absent, duplicate, or paginated query blocks",async()=>{
+  for(const result of [{files:[]},{files:[dec359Root("anotherMailbox_0123456789")]},
+    {files:[dec359Root(),dec359Root()]},{files:[dec359Root()],nextPageToken:"more"}]){
+    const f=dec359Fake(Response.json(dec359Root()),Response.json(result));
+    await rejects(()=>dec359Check(f.request,DEC359_TEST_ID),/dec359-query-(?:wrong-mailbox|ambiguous-or-empty)/);
+  }
+});
+test("DEC-359 direct 403, 404, wrong marker or wrong ID stops before query",async()=>{
+  for(const original of [new Response(null,{status:403}),new Response(null,{status:404}),
+    Response.json({...dec359Root(),appProperties:{}}),
+    Response.json(dec359Root("anotherMailbox_0123456789"))]){
+    const f=dec359Fake(original);
+    await rejects(()=>dec359Check(f.request,DEC359_TEST_ID),/dec359-original-(?:inaccessible|identity-mismatch)/);
+    strictEqual(f.calls.length,1);
+  }
+  const f=dec359Fake();await rejects(()=>dec359Check(f.request,""),/dec359-original-mailbox-id-required/);
+  strictEqual(f.calls.length,0);
+});
+if(process.env.BVP_DEC359_LIVE_RUN==="YES"){
+  test("DEC-359 real Google cross-client GET-only check (Owner consent + qualified source only)",async()=>{
+    const e=process.env;
+    if(e.BVP_DEC359_LIVE_CONSENT!=="YES"||e.BVP_DEC359_OBSIDIAN_ID_ATTESTED!=="YES"||
+      e.BVP_DEC359_SAME_ACCOUNT_ATTESTED!=="YES"||
+      !/^[a-f0-9]{40}$/.test(e.BVP_DEC359_QUALIFIED_SOURCE??"")||
+      e.BVP_DEC359_SOURCE_SHA!==e.BVP_DEC359_QUALIFIED_SOURCE)
+      throw new Error("dec359-not-authorized-or-not-qualified");
+    const expected=e.BVP_DEC359_ORIGINAL_MAILBOX_ID??"";
+    const clientId=e.BVP_DEC359_DESKTOP_CLIENT_ID??"";
+    const tokenFile=e.BVP_DEC359_DPAPI_TOKEN_FILE??"";
+    if(!/^[A-Za-z0-9_-]{10,180}$/.test(expected)||
+      !/^[A-Za-z0-9._:-]{4,200}$/.test(clientId)||!tokenFile)
+      throw new Error("dec359-required-local-bindings-missing");
+    const result=await dec359Check(createWindowsControllerRequest({
+      clientId,tokenFile,fetcher:fetch,requestTimeoutMs:10000}),expected);
+    strictEqual(result,"VISIBLE");
+    process.stdout.write("BVP_DEC359_LIVE=VISIBLE_AND_DISCOVERABLE\n");
+  });
+}
