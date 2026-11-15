@@ -385,6 +385,11 @@ if(process.env.BVP_DEC359_LIVE_RUN==="YES"){
     if(!/^[A-Za-z0-9_-]{10,180}$/.test(expected)||
       !/^[A-Za-z0-9._:-]{4,200}$/.test(clientId)||!tokenFile)
       throw new Error("dec359-required-local-bindings-missing");
+    const source=spawnSync("git.exe",["rev-parse","HEAD"],{
+      cwd:process.cwd(),encoding:"utf8",windowsHide:true,timeout:10000
+    });
+    if(source.status!==0||source.stdout.trim()!==e.BVP_DEC359_QUALIFIED_SOURCE)
+      throw new Error("dec359-exact-source-identity-rejected");
     const result=await dec359Check(createWindowsControllerRequest({
       clientId,tokenFile,fetcher:fetch,requestTimeoutMs:10000}),expected);
     strictEqual(result,"VISIBLE");
