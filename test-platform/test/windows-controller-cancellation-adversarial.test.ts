@@ -135,3 +135,52 @@ test("WCO-R1-F01 explicit shutdown cancels a hanging Drive request and releases 
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
   }finally{await f.cleanup();}
 });
+
+test("WCO-R1-F01 async DPAPI and ACL credential read yields to the controller event loop",async()=>{
+  const f=await fixture(false);
+  try{
+    const store=new WindowsDpapiSecrets(f.tokenFile);
+    const read=store.getSecretAsync(TOKEN_KEY);
+    const winner=await Promise.race([read.then(()=>"credential"),new Promise<string>(r=>setTimeout(()=>r("timer"),0))]);
+    strictEqual(winner,"timer","Windows secure-storage subprocess must not synchronously block timer dispatch");
+    const saved=await read;
+    strictEqual(JSON.parse(saved!).accessToken,"cached");
+  }finally{await f.cleanup();}
+});
+
+test("WCO-R1-F01 aborting secure credential I/O fails closed without late token replacement",async()=>{
+  const f=await fixture(true);
+  try{
+    const store=new WindowsDpapiSecrets(f.tokenFile),stop=new AbortController();
+    stop.abort();
+    await rejects(()=>store.getSecretAsync(TOKEN_KEY,stop.signal),/controller-io-cancelled/);
+    await rejects(()=>store.setSecretAsync(TOKEN_KEY,JSON.stringify({
+      accessToken:"forbidden-late",refreshToken:"forbidden-late",expiresAtMs:Date.now()+600000,scope:SCOPE
+    }),stop.signal),/controller-io-cancelled/);
+    const retained=JSON.parse(store.getSecret(TOKEN_KEY)!);
+    strictEqual(retained.accessToken,"expired");
+    strictEqual(retained.refreshToken,"fake-only-refresh");
+  }finally{await f.cleanup();}
+});
+
+test("WCO-R1-F01 complete controller lock duration stays bounded through Windows security preflight",async()=>{
+  const f=await fixture(true);
+  try{
+    const started=Date.now();let networkCalls=0;
+    const result=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,
+      relayRoot:f.root,deviceId:f.deviceId,cycleTimeoutMs:500,requestTimeoutMs:60000,
+      fetcher:async()=>{networkCalls++;return never("https://oauth2.googleapis.com/token");}});
+    strictEqual(result.status,"unavailable");
+    match(result.reason??"",/controller-io-timeout/);
+    ok(Date.now()-started<8000,"entire lock-held cycle must not wait for 10s DPAPI or 35s ACL blocking child");
+    await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
+    const next=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,
+      relayRoot:f.root,deviceId:f.deviceId,cycleTimeoutMs:7000,requestTimeoutMs:200,
+      fetcher:async url=>String(url).includes("oauth2.googleapis.com/token")
+        ?Response.json({access_token:"restored",expires_in:3600,scope:SCOPE})
+        :Response.json({files:[]})});
+    strictEqual(next.reason==="controller-owner-busy",false);
+    await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
+    strictEqual(networkCalls>=0,true);
+  }finally{await f.cleanup();}
+});
