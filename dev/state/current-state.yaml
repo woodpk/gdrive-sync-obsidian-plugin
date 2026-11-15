@@ -1673,3 +1673,20 @@ bvp_windows_controller_oauth_2026_10_28:
     next_owner_decision: "SEPARATELY_AUTHORIZE_OR_DECLINE_REAL_DRIVE_FILE_CROSS_CLIENT_EXISTING_MAILBOX_COMPATIBILITY"
     live_google_oauth_drive_vault_physical_merge_install_release_authorized: false
 
+bvp_drivefile_cross_client_readonly_2026_11_15:
+  feature: "WS07_DEC359_EXISTING_MAILBOX_DRIVEFILE_CROSS_CLIENT"
+  branch: "feature/bvp-drivefile-cross-client-readonly-20261115"
+  baseline_accepted_wco06_source: "07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0"
+  baseline_accepted_wco06_tree: "759cc887985823293cd75fa4239c10096a45fdcc"
+  baseline_wco06_acceptance_head: "e09ab0ce98669cd56c7ec271fb854e00ab37d781"
+  owner_authority: "DEC-359_LOCKED_READONLY_LIVE_GOOGLE_COMPATIBILITY"
+  status: "OWNER_AUTHORIZED_AWAITING_NEW_PROBE_IMPLEMENTATION_AND_PHXCI_QUALIFICATION"
+  handoff-count: 0
+  current_recipient_role: "BUILDER"
+  source_qualification: "NOT_RUN"
+  live_google_execution: "NOT_RUN"
+  live_google_compatibility_result: "NOT_ESTABLISHED"
+  owner_account_and_obisidian_mailbox_id: "MUST_BE_LOCALLY_BOUND_FROM_ORIGINAL_APP_CONTEXT"
+  permitted_next: "TEST_FIRST_PHXCI_CONTROLLED_READONLY_PROBE_SOFTWARE_QUALIFICATION_THEN_OWNER_INTERACTIVE_OAUTH_AND_SINGLE_LIVE_PROBE"
+  no_new_mailbox_no_drive_mutation_no_physical: true
+
