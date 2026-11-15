@@ -59,36 +59,7 @@ function securedTokenLocation(path:string):{file:string;directories:string[]} {
   }
   return {file,directories};
 }
-const ACL_SCRIPT=String.raw`$ErrorActionPreference='Stop'
-$stage='request-parse'
-try {
-  $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
-  $stage='identity';$user=[Security.Principal.WindowsIdentity]::GetCurrent().User
-  $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-  foreach($p in $request.paths){
-    $stage='acl-read';$acl=Get-Acl -LiteralPath $p
-    $stage='owner-check';if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}
-    if($request.apply){
-      $stage='acl-native'
-      # Native icacls supports Windows DACL writes without Set-Acl's provider-specific failure.
-      # Remove inherited grants, replace current-user/SYSTEM grants, then verify the on-disk DACL.
-      $flags=if((Get-Item -LiteralPath $p).PSIsContainer){'(OI)(CI)'}else{''}
-      $grantUser='*'+$user.Value+':'+$flags+'F';$grantSystem='*'+$system.Value+':'+$flags+'F'
-      & icacls.exe $p /inheritance:r /grant:r $grantUser $grantSystem 2>$null | Out-Null
-      if($LASTEXITCODE -ne 0){throw 'acl-native-failed'}
-      $stage='acl-readback';$acl=Get-Acl -LiteralPath $p
-    }
-    $stage='inheritance-check';if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}
-    $stage='ace-check'
-    foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
-      if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}
-    }
-  }
-} catch {
-  # Print only a fixed operation class. Never print exception text, paths, ACL identities or tokens.
-  [Console]::Out.Write('BVP_ACL_STAGE='+$stage)
-  exit 70
-}`;
+const ACL_SCRIPT="$ErrorActionPreference='Stop'\n$stage='request-parse'\ntry {\n  $request=[Console]::In.ReadToEnd() | ConvertFrom-Json\n  $stage='identity';$user=[Security.Principal.WindowsIdentity]::GetCurrent().User\n  $system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')\n  foreach($p in $request.paths){\n    $stage='acl-read';$acl=Get-Acl -LiteralPath $p\n    $stage='owner-check';if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $user.Value){throw 'owner'}\n    if($request.apply){\n      $stage='acl-native'\n      # Native icacls supports Windows DACL writes without Set-Acl's provider-specific failure.\n      # Remove inherited grants, replace current-user/SYSTEM grants, then verify the on-disk DACL.\n      $flags=if((Get-Item -LiteralPath $p).PSIsContainer){'(OI)(CI)'}else{''}\n      $grantUser='*'+$user.Value+':'+$flags+'F';$grantSystem='*'+$system.Value+':'+$flags+'F'\n      & icacls.exe $p /inheritance:r /grant:r $grantUser $grantSystem 2>$null | Out-Null\n      if($LASTEXITCODE -ne 0){throw 'acl-native-failed'}\n      $stage='acl-readback';$acl=Get-Acl -LiteralPath $p\n    }\n    $stage='inheritance-check';if(-not $acl.AreAccessRulesProtected){throw 'inheritance'}\n    $stage='ace-check'\n    foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){\n      if($ace.AccessControlType -eq 'Allow' -and $ace.IdentityReference.Value -notin @($user.Value,$system.Value)){throw 'broad-access'}\n    }\n  }\n} catch {\n  # Print only a fixed operation class. Never print exception text, paths, ACL identities or tokens.\n  [Console]::Out.Write('BVP_ACL_STAGE='+$stage)\n  exit 70\n}";
 function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
   const processResult=spawnSync("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive",
     "-EncodedCommand",Buffer.from(ACL_SCRIPT,"utf16le").toString("base64")],{
@@ -104,17 +75,13 @@ function enforceTokenAcl(paths:readonly string[],apply:boolean):void {
 async function secureShell(script:string,input:string,timeout:number,signal?:AbortSignal):Promise<string>{
   if(signal?.aborted)throw new Error("controller-io-cancelled");
   return new Promise<string>((resolve,reject)=>{
-    const child=spawn("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",
-      Buffer.from(script,"utf16le").toString("base64")],{windowsHide:true,stdio:["pipe","pipe","ignore"]});
+    const child=spawn("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{windowsHide:true,stdio:["pipe","pipe","ignore"]});
     let output="",reason="",stopped=false;
-    const cancel=(why:string)=>{if(stopped)return;stopped=true;reason=why;child.kill();};
-    const onAbort=()=>cancel("controller-io-cancelled");
-    const timer=setTimeout(()=>cancel("controller-io-timeout"),timeout);
-    signal?.addEventListener("abort",onAbort,{once:true});
+    const cancel=(why:string)=>{if(stopped)return;stopped=true;reason=why;child.kill();},onAbort=()=>cancel("controller-io-cancelled");
+    const timer=setTimeout(()=>cancel("controller-io-timeout"),timeout);signal?.addEventListener("abort",onAbort,{once:true});
     child.stdout.on("data",(data:Buffer)=>{output+=data.toString("utf8");if(output.length>1048576)cancel("controller-security-process-unavailable");});
     child.on("error",()=>{reason="controller-security-process-unavailable";});
-    child.on("close",code=>{clearTimeout(timer);signal?.removeEventListener("abort",onAbort);
-      if(reason||code!==0)reject(new Error(reason||"controller-security-process-unavailable"));else resolve(output.trim());});
+    child.on("close",code=>{clearTimeout(timer);signal?.removeEventListener("abort",onAbort);if(reason||code!==0)reject(new Error(reason||"controller-security-process-unavailable"));else resolve(output.trim());});
     child.stdin.on("error",()=>{});child.stdin.end(input);if(signal?.aborted)onAbort();
   });
 }
@@ -124,8 +91,7 @@ async function aclAsync(paths:readonly string[],apply:boolean,signal?:AbortSigna
 }
 async function dpapiAsync(value:string,mode:"Protect"|"Unprotect",signal?:AbortSignal):Promise<string>{
   const raw=await secureShell(dpapiScript(mode),mode==="Protect"?Buffer.from(value,"utf8").toString("base64"):value,10000,signal);
-  if(!raw||!/^[A-Za-z0-9+/=]+$/.test(raw))throw new Error("controller-dpapi-unavailable");
-  return mode==="Protect"?raw:Buffer.from(raw,"base64").toString("utf8");
+  if(!raw||!/^[A-Za-z0-9+/=]+$/.test(raw))throw new Error("controller-dpapi-unavailable");return mode==="Protect"?raw:Buffer.from(raw,"base64").toString("utf8");
 }
 export class WindowsDpapiSecrets {
   private readonly secured:{file:string;directories:string[]};
@@ -148,23 +114,18 @@ export class WindowsDpapiSecrets {
     }finally{rmSync(temp,{force:true});}
   }
   async getSecretAsync(id:string,signal?:AbortSignal):Promise<string|null>{
-    this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");
-    if(!existsSync(this.file))return null;
+    this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");if(!existsSync(this.file))return null;
     try{securedTokenLocation(this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
       return await dpapiAsync(readFileSync(this.file,"utf8"),"Unprotect",signal);}
-    catch(error){if(timedOut(error)||error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;
-      throw new Error("controller-token-unprotect-failed");}
+    catch(error){if(timedOut(error)||error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;throw new Error("controller-token-unprotect-failed");}
   }
   async setSecretAsync(id:string,value:string,signal?:AbortSignal):Promise<void>{
-    this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");
-    mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
-    await aclAsync(this.secured.directories,true,signal);
-    const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
-    try{const cipher=await dpapiAsync(value,"Protect",signal);
-      if(signal?.aborted)throw new Error("controller-io-cancelled");
-      writeFileSync(temp,cipher,{encoding:"utf8",mode:0o600,flag:"wx"});
-      await aclAsync([temp],true,signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
-      renameSync(temp,this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
+    this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
+    await aclAsync(this.secured.directories,true,signal);const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
+    try{const cipher=await dpapiAsync(value,"Protect",signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
+      writeFileSync(temp,cipher,{encoding:"utf8",mode:0o600,flag:"wx"});await aclAsync([temp],true,signal);
+      if(signal?.aborted)throw new Error("controller-io-cancelled");renameSync(temp,this.file);
+      await aclAsync([...this.secured.directories,this.file],false,signal);
     }finally{rmSync(temp,{force:true});}
   }
   deleteSecret(id:string):void {this.check(id);if(existsSync(this.file)){securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);}rmSync(this.file,{force:true});}
