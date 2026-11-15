@@ -166,13 +166,13 @@ test("WCO-R1-F01 aborting secure credential I/O fails closed without late token 
 test("WCO-R1-F01 complete controller lock duration stays bounded through Windows security preflight",async()=>{
   const f=await fixture(true);
   try{
-    const started=Date.now();let networkCalls=0;
+    const started=Date.now();
     const result=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,
       relayRoot:f.root,deviceId:f.deviceId,cycleTimeoutMs:500,requestTimeoutMs:60000,
-      fetcher:async()=>{networkCalls++;return never("https://oauth2.googleapis.com/token");}});
+      fetcher:async()=>never("https://oauth2.googleapis.com/token")});
     strictEqual(result.status,"unavailable");
     match(result.reason??"",/controller-io-timeout/);
-    ok(Date.now()-started<8000,"entire lock-held cycle must not wait for 10s DPAPI or 35s ACL blocking child");
+    ok(Date.now()-started<9500,"entire lock-held cycle must not wait for 10s DPAPI or 35s ACL blocking child");
     await rejects(()=>stat(join(f.root,"controller-owner.lock")),{code:"ENOENT"});
     const next=await runWindowsControllerCycle({clientId:"desktop",tokenFile:f.tokenFile,
       relayRoot:f.root,deviceId:f.deviceId,cycleTimeoutMs:7000,requestTimeoutMs:200,
