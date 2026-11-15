@@ -702,6 +702,7 @@ export function runArchitectureGuard(options: { readonly repoRoot: string; reado
     const archiveReference = new RegExp(`(?:^|[\\s('"\\]])(?:\\./)?${escapeRegex(normalizeRepoPath(policy.archiveRoot))}/[^\\s)'"\\]]*`, "i");
     for (const file of listFiles(activeDev).filter((path) => path.toLowerCase().endsWith(".md"))) {
       const path = repoRelative(repoRoot, file);
+      if (path.startsWith(policy.activeDevRoot + "/reviews/")) continue; // Historical independent reviews are evidence, not governing inputs.
       for (const [index, line] of linesOf(readFileSync(file, "utf8")).entries()) if (archiveReference.test(line) && authorityTerms.test(line) && !historicalTerms.test(line)) add("ARCHIVE_USED_AS_CURRENT_AUTHORITY", path, `Line ${index + 1} treats authoritative archive root as current task/design/implementation authority.`);
     }
     if (changedPaths.length > 0 && changeClass === "ordinary") for (const raw of changedPaths) for (const piece of raw.split(/[,;\r\n]+/)) {
