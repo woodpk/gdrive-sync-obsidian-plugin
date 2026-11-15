@@ -1690,6 +1690,7 @@ bvp_drivefile_cross_client_readonly_2026_11_15:
   permitted_next: "TEST_FIRST_PHXCI_CONTROLLED_READONLY_PROBE_SOFTWARE_QUALIFICATION_THEN_OWNER_INTERACTIVE_OAUTH_AND_SINGLE_LIVE_PROBE"
   no_new_mailbox_no_drive_mutation_no_physical: true
   dec359_probe_source_commit: "32de2818b1acb70716423a61a4febdf609aa542c"
+  dec359_privacy_hardening_commit: "90752069f193c097b5575aac40d8d6fac7ed1144"
   dec359_synthetic_cases: "THREE_NEW_TESTS_UNEXECUTED"
   dec359_live_case: "OWNER_OPT_IN_ONLY_NO_LIVE_GOOGLE_RUN"
   dec359_approved_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
