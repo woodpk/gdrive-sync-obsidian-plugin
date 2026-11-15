@@ -77,8 +77,8 @@ async function secureShell(script:string,input:string,timeout:number,signal?:Abo
   return new Promise<string>((resolve,reject)=>{
     const child=spawn("pwsh.exe",["-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",Buffer.from(script,"utf16le").toString("base64")],{windowsHide:true,stdio:["pipe","pipe","ignore"]});
     let output="",reason="",stopped=false;
-    const cancel=(why:string)=>{if(stopped)return;stopped=true;reason=why;child.kill();},onAbort=()=>cancel("controller-io-cancelled");
-    const timer=setTimeout(()=>cancel("controller-io-timeout"),timeout);signal?.addEventListener("abort",onAbort,{once:true});
+    const cancel=(why:string)=>{if(stopped)return;stopped=true;reason=why;child.kill();},onAbort=()=>cancel("controller-io-cancelled"),timer=setTimeout(()=>cancel("controller-io-timeout"),timeout);
+    signal?.addEventListener("abort",onAbort,{once:true});
     child.stdout.on("data",(data:Buffer)=>{output+=data.toString("utf8");if(output.length>1048576)cancel("controller-security-process-unavailable");});
     child.on("error",()=>{reason="controller-security-process-unavailable";});
     child.on("close",code=>{clearTimeout(timer);signal?.removeEventListener("abort",onAbort);if(reason||code!==0)reject(new Error(reason||"controller-security-process-unavailable"));else resolve(output.trim());});
@@ -86,8 +86,7 @@ async function secureShell(script:string,input:string,timeout:number,signal?:Abo
   });
 }
 async function aclAsync(paths:readonly string[],apply:boolean,signal?:AbortSignal):Promise<void>{
-  try{await secureShell(ACL_SCRIPT,JSON.stringify({paths,apply}),35000,signal);}
-  catch(error){if(timedOut(error))throw error;throw new Error("controller-token-permissions-invalid");}
+  try{await secureShell(ACL_SCRIPT,JSON.stringify({paths,apply}),35000,signal);}catch(error){if(timedOut(error))throw error;throw new Error("controller-token-permissions-invalid");}
 }
 async function dpapiAsync(value:string,mode:"Protect"|"Unprotect",signal?:AbortSignal):Promise<string>{
   const raw=await secureShell(dpapiScript(mode),mode==="Protect"?Buffer.from(value,"utf8").toString("base64"):value,10000,signal);
@@ -100,32 +99,26 @@ export class WindowsDpapiSecrets {
   getSecret(id:string):string|null {
     this.check(id);if(!existsSync(this.file))return null;
     try{securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);return dpapi(readFileSync(this.file,"utf8"),"Unprotect");}
-    catch(error){if(error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;
-      throw new Error("controller-token-unprotect-failed");}
+    catch(error){if(error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;throw new Error("controller-token-unprotect-failed");}
   }
   setSecret(id:string,value:string):void {
-    this.check(id);mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
-    enforceTokenAcl(this.secured.directories,true);
+    this.check(id);mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);enforceTokenAcl(this.secured.directories,true);
     const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
-    try{
-      writeFileSync(temp,dpapi(value,"Protect"),{encoding:"utf8",mode:0o600,flag:"wx"});
-      enforceTokenAcl([temp],true);renameSync(temp,this.file);
-      enforceTokenAcl([...this.secured.directories,this.file],false);
+    try{writeFileSync(temp,dpapi(value,"Protect"),{encoding:"utf8",mode:0o600,flag:"wx"});
+      enforceTokenAcl([temp],true);renameSync(temp,this.file);enforceTokenAcl([...this.secured.directories,this.file],false);
     }finally{rmSync(temp,{force:true});}
   }
   async getSecretAsync(id:string,signal?:AbortSignal):Promise<string|null>{
     this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");if(!existsSync(this.file))return null;
-    try{securedTokenLocation(this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
-      return await dpapiAsync(readFileSync(this.file,"utf8"),"Unprotect",signal);}
+    try{securedTokenLocation(this.file);await aclAsync([...this.secured.directories,this.file],false,signal);return await dpapiAsync(readFileSync(this.file,"utf8"),"Unprotect",signal);}
     catch(error){if(timedOut(error)||error instanceof Error&&error.message==="controller-token-permissions-invalid")throw error;throw new Error("controller-token-unprotect-failed");}
   }
   async setSecretAsync(id:string,value:string,signal?:AbortSignal):Promise<void>{
     this.check(id);if(signal?.aborted)throw new Error("controller-io-cancelled");mkdirSync(dirname(this.file),{recursive:true});securedTokenLocation(this.file);
     await aclAsync(this.secured.directories,true,signal);const temp=this.file+"."+randomBytes(8).toString("hex")+".tmp";
     try{const cipher=await dpapiAsync(value,"Protect",signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
-      writeFileSync(temp,cipher,{encoding:"utf8",mode:0o600,flag:"wx"});await aclAsync([temp],true,signal);
-      if(signal?.aborted)throw new Error("controller-io-cancelled");renameSync(temp,this.file);
-      await aclAsync([...this.secured.directories,this.file],false,signal);
+      writeFileSync(temp,cipher,{encoding:"utf8",mode:0o600,flag:"wx"});await aclAsync([temp],true,signal);if(signal?.aborted)throw new Error("controller-io-cancelled");
+      renameSync(temp,this.file);await aclAsync([...this.secured.directories,this.file],false,signal);
     }finally{rmSync(temp,{force:true});}
   }
   deleteSecret(id:string):void {this.check(id);if(existsSync(this.file)){securedTokenLocation(this.file);enforceTokenAcl([...this.secured.directories,this.file],false);}rmSync(this.file,{force:true});}
@@ -136,12 +129,10 @@ function config(options:WindowsOAuthOptions){
   return new WindowsDpapiSecrets(options.tokenFile);
 }
 function tokens(raw:string|null):Tokens|undefined {
-  if(!raw)return undefined;
-  let value:Partial<Tokens>;
+  if(!raw)return undefined;let value:Partial<Tokens>;
   try{value=JSON.parse(raw) as Partial<Tokens>;}catch{throw new Error("controller-token-invalid");}
   if(typeof value.accessToken!=="string"||!Number.isFinite(value.expiresAtMs)||
-    value.scope!==SCOPE||(value.refreshToken!==undefined&&typeof value.refreshToken!=="string"))
-    throw new Error("controller-token-invalid");
+    value.scope!==SCOPE||(value.refreshToken!==undefined&&typeof value.refreshToken!=="string"))throw new Error("controller-token-invalid");
   return value as Tokens;
 }
 async function exchange(fetcher:typeof fetch,body:URLSearchParams,options:WindowsOAuthOptions):Promise<Record<string,unknown>> {
