@@ -1,4 +1,4 @@
-name: Publish canonical BRAIN BVP 0.1.20-bvp.3 prerelease
+name: Rebuild canonical BRAIN BVP 0.1.20-bvp.3 diagnostic
 
 on:
   push:
@@ -8,26 +8,25 @@ on:
       - .github/workflows/publish-bvp-0.1.20-bvp.3.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: publish-bvp-0.1.20-bvp.3
+  group: rebuild-bvp-0.1.20-bvp.3-diagnostic
   cancel-in-progress: false
 
 jobs:
-  publish:
+  rebuild:
     runs-on: ubuntu-latest
     env:
       REPOSITORY: woodpk/gdrive-sync-obsidian-plugin
-      VERSION: 0.1.20-bvp.3
       SOURCE_SHA: dedd783c1ce6efa1abd2bd5f34ed4e499321558e
       SOURCE_TREE: 3529e43d003d0af823b3b115e82948134f1298d2
-      BVP_DEC359_LIVE_RUN: "NO"
+      VERSION: 0.1.20-bvp.3
       BVP_VALIDATION_PRERELEASE_VERSION: 0.1.20-bvp.3
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Check out exact canonical master source
+      - name: Check out exact canonical source
         uses: actions/checkout@v4
         with:
           repository: woodpk/gdrive-sync-obsidian-plugin
@@ -43,129 +42,86 @@ jobs:
           cache: npm
           cache-dependency-path: source/package-lock.json
 
-      - name: Confirm canonical source identity
+      - name: Confirm exact source identity
         shell: bash
         run: |
           set -euo pipefail
-          actual_sha="$(git -C source rev-parse HEAD)"
-          actual_tree="$(git -C source rev-parse 'HEAD^{tree}')"
-          test "$actual_sha" = "$SOURCE_SHA"
-          test "$actual_tree" = "$SOURCE_TREE"
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git -C source rev-parse 'HEAD^{tree}')" = "$SOURCE_TREE"
           test -z "$(git -C source status --porcelain=v1 --untracked-files=all)"
 
-      - name: Refuse existing replacement release or tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          if gh release view "$VERSION" --repo "$REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::Release $VERSION already exists; refusing overwrite."
-            exit 1
-          fi
-          if gh api "repos/$REPOSITORY/git/ref/tags/$VERSION" >/dev/null 2>&1; then
-            echo "::error::Tag $VERSION already exists; refusing overwrite."
-            exit 1
-          fi
-
-      - name: Install locked packaging dependencies
+      - name: Install locked dependencies
         working-directory: source
         run: npm ci --no-audit --no-fund
 
-      - name: Generate canonical validation prerelease package
+      - name: Rebuild exact BVP validation package
         shell: bash
         working-directory: source
         run: |
           set -euo pipefail
           node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json
           node .test-build/bvp/test-platform/src/build-validation-artifact.js
-          mkdir -p .release/bvp
-          cp .test-build/bvp-live-device/plugin/main.js .release/bvp/main.js
-          cp .test-build/bvp-live-device/plugin/manifest.json .release/bvp/manifest.json
-          cp .test-build/bvp-live-device/plugin/build-identity.json .release/bvp/build-identity.json
+          mkdir -p .diagnostic/rebuilt
+          cp .test-build/bvp-live-device/plugin/main.js .diagnostic/rebuilt/main.js
+          cp .test-build/bvp-live-device/plugin/manifest.json .diagnostic/rebuilt/manifest.json
+          cp .test-build/bvp-live-device/plugin/build-identity.json .diagnostic/rebuilt/build-identity.json
           (
-            cd .release/bvp
+            cd .diagnostic/rebuilt
             sha256sum main.js manifest.json build-identity.json > release-sha256.txt
           )
+          node --check .diagnostic/rebuilt/main.js
 
-      - name: Confirm package source and immutable byte identities
+      - name: Download published comparison artifacts
         shell: bash
         working-directory: source
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const fs = require('fs');
-          const crypto = require('crypto');
-          const identity = JSON.parse(fs.readFileSync('.release/bvp/build-identity.json', 'utf8'));
-          const manifest = JSON.parse(fs.readFileSync('.release/bvp/manifest.json', 'utf8'));
-          const main = fs.readFileSync('.release/bvp/main.js');
-          const manifestBytes = fs.readFileSync('.release/bvp/manifest.json');
-          const sha = b => crypto.createHash('sha256').update(b).digest('hex');
-          if (identity.schemaVersion !== 1) throw new Error('unexpected build identity schema');
-          if (identity.sourceCommit !== process.env.SOURCE_SHA) throw new Error('source SHA mismatch');
-          if (identity.artifact !== 'main.js') throw new Error('artifact identity mismatch');
-          if (identity.artifactSize !== main.length) throw new Error('artifact size mismatch');
-          if (identity.artifactSha256 !== sha(main)) throw new Error('main.js identity hash mismatch');
-          if (identity.manifestSha256 !== sha(manifestBytes)) throw new Error('manifest identity hash mismatch');
-          if (manifest.id !== 'brain-google-drive-sync') throw new Error('plugin ID mismatch');
-          if (manifest.version !== process.env.VERSION) throw new Error('prerelease version mismatch');
-          if (manifest.isDesktopOnly !== false) throw new Error('mobile compatibility flag mismatch');
-          NODE
-          echo "CANONICAL_SOURCE_SHA=$SOURCE_SHA"
-          echo "CANONICAL_SOURCE_TREE=$SOURCE_TREE"
-          echo "Exact release asset hashes:"
-          cat .release/bvp/release-sha256.txt
-          echo "$(sha256sum .release/bvp/release-sha256.txt | awk '{print $1}')  release-sha256.txt"
+          mkdir -p .diagnostic/published-bvp3 .diagnostic/working-bvp1
+          gh release download 0.1.20-bvp.3 --repo "$REPOSITORY" --dir .diagnostic/published-bvp3
+          gh release download 0.1.20-bvp.1 --repo "$REPOSITORY" --dir .diagnostic/working-bvp1
 
-      - name: Publish canonical GitHub prerelease
+      - name: Produce deterministic comparison report
         shell: bash
         working-directory: source
         run: |
           set -euo pipefail
-          cat > .release/release-notes.md <<EOF
-          # BRAIN BVP $VERSION — canonical-master validation prerelease
+          report=.diagnostic/rebuild-report.txt
+          {
+            echo "BRAIN BVP 0.1.20-bvp.3 CONTROLLED REBUILD"
+            echo "SOURCE_SHA=$SOURCE_SHA"
+            echo "SOURCE_TREE=$SOURCE_TREE"
+            echo "RUNNER_NODE=$(node --version)"
+            echo
+            echo "=== REBUILT FILES ==="
+            stat -c '%n size=%s' .diagnostic/rebuilt/main.js .diagnostic/rebuilt/manifest.json .diagnostic/rebuilt/build-identity.json .diagnostic/rebuilt/release-sha256.txt
+            sha256sum .diagnostic/rebuilt/main.js .diagnostic/rebuilt/manifest.json .diagnostic/rebuilt/build-identity.json .diagnostic/rebuilt/release-sha256.txt
+            echo
+            echo "=== PUBLISHED BVP.3 FILES ==="
+            stat -c '%n size=%s' .diagnostic/published-bvp3/main.js .diagnostic/published-bvp3/manifest.json .diagnostic/published-bvp3/build-identity.json .diagnostic/published-bvp3/release-sha256.txt
+            sha256sum .diagnostic/published-bvp3/main.js .diagnostic/published-bvp3/manifest.json .diagnostic/published-bvp3/build-identity.json .diagnostic/published-bvp3/release-sha256.txt
+            echo
+            echo "=== WORKING BVP.1 FILES ==="
+            stat -c '%n size=%s' .diagnostic/working-bvp1/main.js .diagnostic/working-bvp1/manifest.json .diagnostic/working-bvp1/build-identity.json .diagnostic/working-bvp1/release-sha256.txt
+            sha256sum .diagnostic/working-bvp1/main.js .diagnostic/working-bvp1/manifest.json .diagnostic/working-bvp1/build-identity.json .diagnostic/working-bvp1/release-sha256.txt
+            echo
+            echo "=== BYTE COMPARISONS ==="
+            if cmp -s .diagnostic/rebuilt/main.js .diagnostic/published-bvp3/main.js; then echo "REBUILT_MAIN_EQUALS_PUBLISHED_BVP3=YES"; else echo "REBUILT_MAIN_EQUALS_PUBLISHED_BVP3=NO"; fi
+            if cmp -s .diagnostic/rebuilt/manifest.json .diagnostic/published-bvp3/manifest.json; then echo "REBUILT_MANIFEST_EQUALS_PUBLISHED_BVP3=YES"; else echo "REBUILT_MANIFEST_EQUALS_PUBLISHED_BVP3=NO"; fi
+            if cmp -s .diagnostic/rebuilt/build-identity.json .diagnostic/published-bvp3/build-identity.json; then echo "REBUILT_IDENTITY_EQUALS_PUBLISHED_BVP3=YES"; else echo "REBUILT_IDENTITY_EQUALS_PUBLISHED_BVP3=NO"; fi
+            if cmp -s .diagnostic/rebuilt/main.js .diagnostic/working-bvp1/main.js; then echo "REBUILT_MAIN_EQUALS_WORKING_BVP1=YES"; else echo "REBUILT_MAIN_EQUALS_WORKING_BVP1=NO"; fi
+            echo
+            echo "=== RUNTIME STRING CHECKS ==="
+            for s in "BRAIN Google Drive Sync" "Sync now" "Authenticate with Google" "BRAIN sync:"; do
+              if grep -Fq "$s" .diagnostic/rebuilt/main.js; then echo "PRESENT: $s"; else echo "MISSING: $s"; fi
+            done
+          } | tee "$report"
 
-          **TEST-ONLY. NOT A GENERAL PRODUCTION PLUGIN RELEASE.**
-
-          Canonical source branch: `master`
-          Canonical source commit: `$SOURCE_SHA`
-          Canonical source tree: `$SOURCE_TREE`
-
-          This supersedes the noncanonical historical `0.1.20-bvp.2` prerelease for installation and S09A validation use.
-
-          This publication step does not install the plugin on any device, perform OAuth, access Google Drive, initiate synchronization, or claim a new PHX-CI software qualification.
-          EOF
-
-          gh release create "$VERSION"             .release/bvp/main.js             .release/bvp/manifest.json             .release/bvp/build-identity.json             .release/bvp/release-sha256.txt             --repo "$REPOSITORY"             --target "$SOURCE_SHA"             --prerelease             --latest=false             --title "BRAIN BVP $VERSION (canonical master validation)"             --notes-file .release/release-notes.md
-
-      - name: Verify published prerelease metadata and exact bytes
-        shell: bash
-        working-directory: source
-        run: |
-          set -euo pipefail
-          release_json="$(gh release view "$VERSION" --repo "$REPOSITORY" --json tagName,isDraft,isPrerelease,assets,url)"
-          node - "$release_json" <<'NODE'
-          const r = JSON.parse(process.argv[2]);
-          if (r.tagName !== process.env.VERSION) throw new Error('published tag mismatch');
-          if (r.isDraft !== false) throw new Error('release unexpectedly draft');
-          if (r.isPrerelease !== true) throw new Error('release unexpectedly not prerelease');
-          const names = r.assets.map(x => x.name).sort();
-          const expected = ['build-identity.json','main.js','manifest.json','release-sha256.txt'].sort();
-          if (JSON.stringify(names) !== JSON.stringify(expected)) throw new Error('published asset list mismatch');
-          console.log('PUBLISHED_RELEASE_URL=' + r.url);
-          NODE
-
-          tag_sha="$(gh api "repos/$REPOSITORY/git/ref/tags/$VERSION" --jq '.object.sha')"
-          test "$tag_sha" = "$SOURCE_SHA"
-
-          mkdir -p .release/readback
-          gh release download "$VERSION" --repo "$REPOSITORY" --dir .release/readback
-          (
-            cd .release/readback
-            sha256sum -c ../bvp/release-sha256.txt
-          )
-          staged_checksum_hash="$(sha256sum .release/bvp/release-sha256.txt | awk '{print $1}')"
-          readback_checksum_hash="$(sha256sum .release/readback/release-sha256.txt | awk '{print $1}')"
-          test "$staged_checksum_hash" = "$readback_checksum_hash"
-
-          echo "PUBLICATION_RESULT=PASS"
-          echo "CANONICAL_MASTER_SOURCE_CONFIRMED=YES"
-          echo "STOP_AT_PUBLICATION=YES"
+      - name: Upload rebuilt package and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bvp-0.1.20-bvp.3-controlled-rebuild
+          path: |
+            source/.diagnostic/rebuilt/
+            source/.diagnostic/rebuild-report.txt
+          if-no-files-found: error
+          retention-days: 7
