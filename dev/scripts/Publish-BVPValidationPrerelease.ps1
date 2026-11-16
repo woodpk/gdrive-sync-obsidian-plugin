@@ -82,7 +82,10 @@ try {
   if ([IO.Path]::GetFullPath($actualRoot).TrimEnd('\','/') -ine $repoRoot.TrimEnd('\','/')) {
     throw 'Script directory is not the expected Git checkout root.'
   }
-  $remoteUrl = Run 'origin URL' 'git.exe' @('-C',$repoRoot,'remote','get-url','origin') $repoRoot
+  # Do not record the remote URL: a misconfigured HTTPS remote might embed a credential.
+  $remoteUrl = (& git.exe -C $repoRoot remote get-url origin 2>$null | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0 -or -not $remoteUrl) { throw 'Unable to resolve the origin URL.' }
+  $log.Add('Origin URL identity inspected without recording its potentially sensitive value.')
   if ($remoteUrl -notmatch '^(https://github[.]com/|git@github[.]com:|ssh://git@github[.]com/|git://github[.]com/)woodpk/gdrive-sync-obsidian-plugin([.]git)?/?$') {
     throw 'Git origin is not the expected BRAIN repository.'
   }
