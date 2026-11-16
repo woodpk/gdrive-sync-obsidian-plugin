@@ -20,7 +20,9 @@ $logPath = ''
 $source = 'NOT_RESOLVED'
 $releaseUrl = 'NOT_CREATED'
 $published = $false
+$publicationAttempted = $false
 $installed = $false
+$locationPushed = $false
 $transcribing = $false
 $steps = [Collections.Generic.List[string]]::new()
 $repoName = 'woodpk/gdrive-sync-obsidian-plugin'
@@ -51,11 +53,11 @@ function Invoke-ReleaseCommand {
 function Assert-ByteIdentity {
   param([string]$First,[string]$Second,[string]$Description)
   if (-not [IO.File]::Exists($First) -or -not [IO.File]::Exists($Second)) {
-    throw "$Description: required artifact missing."
+    throw "${Description}: required artifact missing."
   }
   $a = (Get-FileHash -LiteralPath $First -Algorithm SHA256).Hash
   $b = (Get-FileHash -LiteralPath $Second -Algorithm SHA256).Hash
-  if ($a -cne $b) { throw "$Description: published and built file hashes disagree." }
+  if ($a -cne $b) { throw "${Description}: published and built file hashes disagree." }
 }
 
 try {
@@ -94,6 +96,9 @@ try {
   $dirty = (Invoke-ReleaseCommand 'git.exe' @('-C',$repo,'status','--porcelain=v1','--untracked-files=all') 'Clean checkout').Trim()
   if ($dirty) { throw 'Checkout contains uncommitted changes; release is blocked.' }
   $env:BVP_DEC359_LIVE_RUN = 'NO'
+  Push-Location -LiteralPath $repo -ErrorAction Stop
+  $locationPushed = $true
+  $steps.Add('Repository working directory: PASS')
   Invoke-ReleaseCommand 'gh.exe' @('auth','status','--hostname','github.com') 'GitHub authentication' | Out-Null
   $currentTag = (Invoke-ReleaseCommand 'git.exe' @('-C',$repo,'ls-remote','--tags','origin',("refs/tags/" + $Version)) 'Existing tag check').Trim()
   $existingTag = [bool]$currentTag
@@ -128,6 +133,7 @@ try {
 
   $stage = 'Publish or reuse GitHub prerelease'
   if (-not $existingTag) {
+    $publicationAttempted = $true
     $notesFile = Join-Path $runRoot 'release-notes.md'
     @(
       '# BRAIN BVP validation-only prerelease ' + $Version,
@@ -161,6 +167,7 @@ try {
   $remoteCommit = ($remoteTagText -split '\s+')[0]
   if ($remoteCommit -cne $source) { throw 'Published tag source differs from the package source.' }
   $releaseUrl = [string]$release.url
+  $published = $true
 
   $download = Join-Path $runRoot 'downloaded-release'
   [IO.Directory]::CreateDirectory($download) | Out-Null
@@ -169,7 +176,6 @@ try {
     Assert-ByteIdentity (Join-Path $packageRoot $asset) (Join-Path $download $asset) $asset
   }
   $steps.Add('Published asset SHA-256 identity: PASS')
-  $published = $true
 
   $stage = 'Install downloaded prerelease in authorized Windows vault'
   if (@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue).Count -gt 0) {
@@ -231,12 +237,17 @@ try {
   $nextAction = 'Reopen Obsidian only when ready; do not initiate synchronization without authorization.'
 } catch {
   $failure = ('{0}: {1}' -f $stage,$_.Exception.Message)
-  $status = if ($published -and -not $installed) { 'PARTIAL' } else { 'BLOCKED' }
+  $status = if (($published -or $publicationAttempted) -and -not $installed) { 'PARTIAL' } else { 'BLOCKED' }
   $nextAction = if ($published) {
-    'Release exists; inspect preserved evidence, then rerun only after fixing the installation blocker.'
+    'Release exists; inspect preserved evidence and reconcile asset/install state before retrying.'
+  } elseif ($publicationAttempted) {
+    'Publication was attempted; inspect the GitHub tag and release before any retry.'
   } else { 'Inspect preserved evidence and resolve the reported build/publication blocker.' }
   $exitCode = 1
 } finally {
+  if ($locationPushed) {
+    try { Pop-Location -ErrorAction Stop } catch { $failure += '; working directory restoration failed'; $status = 'FAILED'; $exitCode = 1 }
+  }
   try { [Environment]::SetEnvironmentVariable('BVP_DEC359_LIVE_RUN',$priorLive,'Process') }
   catch { $failure += '; environment variable restoration failed'; $status = 'FAILED'; $exitCode = 1 }
   $duration = ((Get-Date) - $started).ToString('hh\:mm\:ss')
@@ -246,6 +257,7 @@ try {
     [pscustomobject]@{ Field = 'Version'; Value = $Version },
     [pscustomobject]@{ Field = 'Source SHA'; Value = $source },
     [pscustomobject]@{ Field = 'GitHub published'; Value = $published },
+    [pscustomobject]@{ Field = 'Publication attempted'; Value = $publicationAttempted },
     [pscustomobject]@{ Field = 'Release URL'; Value = $releaseUrl },
     [pscustomobject]@{ Field = 'Windows installed'; Value = $installed },
     [pscustomobject]@{ Field = 'Target vault'; Value = $VaultPath },
