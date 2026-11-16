@@ -4,17 +4,17 @@ STATUS: BLOCKED
 
 ## Verification summary
 
-- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited unsuccessfully.
+- Change-set verification: PASS
 - Repository verification: PASS
-- Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
+- Overall verification: BLOCKED; REPOSITORY-GATE FAILURE; A required non-verification gate did not complete successfully.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 7fa30197-d986-4afb-ac31-54d59ef54903
-- Repository: C:/temp/738382a7d914443ca1d66ecf943dcd50/phx-77e7c69d339d4090/w
+- Run ID: 4e031613-a535-40e7-a174-31207d341603
+- Repository: C:/temp/14af6402aa03430ca1401592a9e1c272/phx-157e7460bac941f4/w
 - Branch:
-- Verified HEAD: 420374e7ecb34d771c9de5131e0c9268a0ee4ef8
-- Verified tree: 87ac8513b4304790038fa0c71dd51f7fe5bf3992
-- Expected HEAD: 420374e7ecb34d771c9de5131e0c9268a0ee4ef8
+- Verified HEAD: f6aed01ac9e8c66133f70191c719072e3b24aaad
+- Verified tree: 83e41d02eaf4ce0356a0f032ce06cfba76e513b9
+- Expected HEAD: f6aed01ac9e8c66133f70191c719072e3b24aaad
 - Base SHA: 42460912847e363aa4fa11e23e0429944383889d
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,28 +24,28 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-11-16T11:14:25.5209333Z
-- Ended: 2026-11-16T11:17:32.2859699Z
+- Started: 2026-11-16T15:50:15.5588435Z
+- Ended: 2026-11-16T15:55:09.8457969Z
 
 ## Ordered stages
 
-- authority-check: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- preflight: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- node-preflight: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- node-project-files: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- install: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- typecheck: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- test-focused: FAIL (exit 1; TEST FAILURE; run 7fa30197-d986-4afb-ac31-54d59ef54903; reason: Stage 'test-focused' exited unsuccessfully.)
-- test: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- artifact-preparation: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 7fa30197-d986-4afb-ac31-54d59ef54903; reason: Dependent stage was not executed: test-focused (prerequisite is not an executed PASS with native exit 0))
-- build: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 7fa30197-d986-4afb-ac31-54d59ef54903; reason: Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0))
-- artifacts: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 7fa30197-d986-4afb-ac31-54d59ef54903; reason: Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0))
-- check: PASS (exit 0; NONE; run 7fa30197-d986-4afb-ac31-54d59ef54903)
-- repository-check: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 7fa30197-d986-4afb-ac31-54d59ef54903; reason: Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0))
+- authority-check: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- preflight: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- node-preflight: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- node-project-files: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- install: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- typecheck: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- test-focused: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- test: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- artifact-preparation: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- build: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- artifacts: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- check: PASS (exit 0; NONE; run 4e031613-a535-40e7-a174-31207d341603)
+- repository-check: FAIL (exit 1; REPOSITORY-GATE FAILURE; run 4e031613-a535-40e7-a174-31207d341603; reason: Stage 'repository-check' exited unsuccessfully.)
 
 ## Artifacts
 
-- None recorded for current run
+- main.js: 922631 bytes; SHA-256 6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d
 
 Final verdict: BLOCKED
-Failure classification: TEST FAILURE
+Failure classification: REPOSITORY-GATE FAILURE
