@@ -1734,3 +1734,28 @@ bvp_drivefile_cross_client_readonly_2026_11_15:
   dec359_live_qualified_source_checkout_requirement: "GIT_HEAD_EXACT_B1EF092C_NOT_EVIDENCE_OR_REVIEW_CLOSEOUT_SHA"
   dec359_live_mode: "SEPARATE_READ_ONLY_PHXCI_OWNER_CONTROLLED_NO_PHYSICAL_NO_GOOGLE_MUTATION"
   dec359_live_result: "NOT_ESTABLISHED"
+
+repository_consolidation_2026_11_16:
+  owner_decision: "DEC-361"
+  status: "COMPLETE_MASTER_CANONICAL_ACCEPTED_HISTORY"
+  canonical_branch: "master"
+  prior_master_sha: "42460912847e363aa4fa11e23e0429944383889d"
+  accepted_software_source_sha: "b1ef092cf5ce73c7811b5726ee803add2538df2c"
+  accepted_software_tree_sha: "b353df77de37e9c4a1c12a71ef2aac4b9fb4d109"
+  accepted_closeout_head_promoted_to_master: "45aeecbdda7b7285c44ccf8278ce8ea33f9e2016"
+  promotion_method: "NON_FORCED_EXPECTED_SHA_FAST_FORWARD"
+  prior_master_relation_to_closeout: "STRICT_ANCESTOR_823_BEHIND_0_AHEAD"
+  accepted_phxci_run: "cf399e60-fcdf-4165-b947-3fbc14e7d9ad"
+  accepted_reviewer_verdict: "PASS_WITH_MINOR_FINDINGS_SOFTWARE_ONLY"
+  accepted_reviewer_report: "dev/reviews/dec359-20261115-review-brain-10-final.md"
+  software_changed_by_promotion: false
+  history_rewritten: false
+  synthetic_merge_commit_created: false
+  stale_pr_152: "CLOSED_UNVERIFIED_NOT_INTEGRATED"
+  stale_pr_156: "CLOSED_OBSOLETE_PRERELEASE_PREPARATION_NOT_INTEGRATED"
+  prerelease_0_1_20_bvp_2: "HISTORICAL_NONCANONICAL_DO_NOT_INSTALL"
+  replacement_release_basis: "CANONICAL_MASTER_ONLY_AFTER_REPOSITORY_CONSOLIDATION"
+  windows_installation_from_noncanonical_release: "NOT_PERFORMED"
+  iphone_installation: "OWNER_MANAGED_OUTSIDE_THIS_CLOSEOUT"
+  oauth_drive_sync_activity: "NOT_PERFORMED"
+
