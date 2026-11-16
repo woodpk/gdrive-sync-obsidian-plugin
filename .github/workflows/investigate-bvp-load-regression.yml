@@ -1,0 +1,245 @@
+name: Investigate BRAIN plugin load regression
+
+on:
+  push:
+    branches:
+      - release/bvp-0.1.20-bvp.3-canonical-20261116
+    paths:
+      - .github/workflows/investigate-bvp-load-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY: woodpk/gdrive-sync-obsidian-plugin
+      SOURCE_SHA: dedd783c1ce6efa1abd2bd5f34ed4e499321558e
+      SOURCE_TREE: 3529e43d003d0af823b3b115e82948134f1298d2
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out exact canonical source
+        uses: actions/checkout@v4
+        with:
+          repository: woodpk/gdrive-sync-obsidian-plugin
+          ref: dedd783c1ce6efa1abd2bd5f34ed4e499321558e
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+
+      - name: Confirm source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git -C source rev-parse 'HEAD^{tree}')" = "$SOURCE_TREE"
+
+      - name: Install locked dependencies
+        working-directory: source
+        run: npm ci --no-audit --no-fund
+
+      - name: Download known release artifacts
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          for v in 0.1.18 0.1.19 0.1.20-bvp.1 0.1.20-bvp.3; do
+            mkdir -p ".diagnostic/releases/$v"
+            gh release download "$v" --repo "$REPOSITORY" --dir ".diagnostic/releases/$v"
+          done
+
+      - name: Build current production-only probe
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          mkdir -p .diagnostic/probes/production
+          node scripts/build.mjs
+          cp main.js .diagnostic/probes/production/main.js
+          cp manifest.json .diagnostic/probes/production/manifest.json
+          node <<'NODE'
+          const fs=require('fs');
+          const p='.diagnostic/probes/production/manifest.json';
+          const m=JSON.parse(fs.readFileSync(p,'utf8'));
+          m.version='0.1.20-prodprobe.1';
+          fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n');
+          NODE
+          node --check .diagnostic/probes/production/main.js
+
+      - name: Build current thin-wrapper probe
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          mkdir -p .diagnostic/probes/thin
+          cat > .diagnostic/thin-entry.ts <<'TS'
+          import ProductionPlugin from "../src/main";
+          class ThinBvpProbePlugin extends ProductionPlugin {
+            async onload(): Promise<void> {
+              await super.onload();
+            }
+          }
+          export default ThinBvpProbePlugin;
+          TS
+          node --input-type=module <<'NODE'
+          import { build } from 'esbuild';
+          await build({
+            entryPoints:['.diagnostic/thin-entry.ts'],
+            bundle:true,
+            platform:'browser',
+            format:'cjs',
+            target:'es2022',
+            outfile:'.diagnostic/probes/thin/main.js',
+            external:['obsidian','electron','node:*'],
+            sourcemap:false,
+            minify:false,
+            treeShaking:true,
+            logLevel:'info'
+          });
+          NODE
+          cp manifest.json .diagnostic/probes/thin/manifest.json
+          node <<'NODE'
+          const fs=require('fs');
+          const p='.diagnostic/probes/thin/manifest.json';
+          const m=JSON.parse(fs.readFileSync(p,'utf8'));
+          m.version='0.1.20-thinprobe.1';
+          fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n');
+          NODE
+          node --check .diagnostic/probes/thin/main.js
+
+      - name: Extract bundle module inventories
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          mkdir -p .diagnostic/inventories
+          node <<'NODE'
+          const fs=require('fs');
+          const path=require('path');
+          const inputs={
+            '0.1.18':'.diagnostic/releases/0.1.18/main.js',
+            '0.1.19':'.diagnostic/releases/0.1.19/main.js',
+            '0.1.20-bvp.1':'.diagnostic/releases/0.1.20-bvp.1/main.js',
+            '0.1.20-bvp.3':'.diagnostic/releases/0.1.20-bvp.3/main.js',
+            'production-probe':'.diagnostic/probes/production/main.js',
+            'thin-probe':'.diagnostic/probes/thin/main.js'
+          };
+          for (const [name,file] of Object.entries(inputs)) {
+            const text=fs.readFileSync(file,'utf8');
+            const mods=new Set();
+            for (const line of text.split(/\r?\n/)) {
+              const m=line.match(/^\s*\/\/\s+((?:src|test-platform)\/[^\s].*\.(?:ts|js))\s*$/);
+              if(m) mods.add(m[1]);
+            }
+            const arr=[...mods].sort();
+            fs.writeFileSync('.diagnostic/inventories/'+name+'.txt',arr.join('\n')+'\n');
+            console.log(name+' module-markers='+arr.length);
+          }
+          NODE
+
+      - name: Compare module inventories and startup-sensitive sources
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          report=.diagnostic/investigation-report.txt
+          {
+            echo "BRAIN LOAD REGRESSION INVESTIGATION"
+            echo "SOURCE_SHA=$SOURCE_SHA"
+            echo "SOURCE_TREE=$SOURCE_TREE"
+            echo
+            echo "=== ARTIFACT HASHES / SIZES ==="
+            for v in 0.1.18 0.1.19 0.1.20-bvp.1 0.1.20-bvp.3; do
+              stat -c "$v main.js size=%s" ".diagnostic/releases/$v/main.js"
+              sha256sum ".diagnostic/releases/$v/main.js"
+            done
+            for p in production thin; do
+              stat -c "$p-probe main.js size=%s" ".diagnostic/probes/$p/main.js"
+              sha256sum ".diagnostic/probes/$p/main.js"
+            done
+            echo
+            echo "=== MODULE COUNTS ==="
+            for f in .diagnostic/inventories/*.txt; do echo "$(basename "$f" .txt) $(grep -c . "$f" || true)"; done
+            echo
+            echo "=== MODULES ADDED: 0.1.18 -> 0.1.19 ==="
+            comm -13 .diagnostic/inventories/0.1.18.txt .diagnostic/inventories/0.1.19.txt || true
+            echo
+            echo "=== MODULES ADDED: 0.1.19 -> BVP.1 ==="
+            comm -13 .diagnostic/inventories/0.1.19.txt .diagnostic/inventories/0.1.20-bvp.1.txt || true
+            echo
+            echo "=== MODULES ADDED: BVP.1 -> BVP.3 ==="
+            comm -13 .diagnostic/inventories/0.1.20-bvp.1.txt .diagnostic/inventories/0.1.20-bvp.3.txt || true
+            echo
+            echo "=== MODULES REMOVED: BVP.1 -> BVP.3 ==="
+            comm -23 .diagnostic/inventories/0.1.20-bvp.1.txt .diagnostic/inventories/0.1.20-bvp.3.txt || true
+            echo
+            echo "=== BVP.3 EXTRA MODULES VS CURRENT PRODUCTION PROBE ==="
+            comm -13 .diagnostic/inventories/production-probe.txt .diagnostic/inventories/0.1.20-bvp.3.txt || true
+            echo
+            echo "=== THIN PROBE EXTRA MODULES VS CURRENT PRODUCTION PROBE ==="
+            comm -13 .diagnostic/inventories/production-probe.txt .diagnostic/inventories/thin-probe.txt || true
+            echo
+            echo "=== TOP-LEVEL RISKY GLOBAL REFERENCES IN BVP-ONLY SOURCE FILES ==="
+            grep -RInE '^[[:space:]]*(const|let|var)[[:space:]].*(window\.|localStorage|crypto\.|navigator\.|document\.)|^[[:space:]]*(window\.|localStorage|crypto\.|navigator\.|document\.)' test-platform/src/live-device test-platform/src/bvp-runtime-error-journal.ts || true
+            echo
+            echo "=== REQUIRED PRODUCTION UI STRINGS ==="
+            for f in .diagnostic/releases/0.1.18/main.js .diagnostic/releases/0.1.19/main.js .diagnostic/releases/0.1.20-bvp.1/main.js .diagnostic/releases/0.1.20-bvp.3/main.js .diagnostic/probes/production/main.js .diagnostic/probes/thin/main.js; do
+              echo "--- $f"
+              for s in "BRAIN Google Drive Sync" "Sync now" "Authenticate with Google" "BRAIN sync:"; do
+                if grep -Fq "$s" "$f"; then echo "PRESENT: $s"; else echo "MISSING: $s"; fi
+              done
+            done
+          } | tee "$report"
+
+      - name: Run CommonJS module-evaluation smoke with Obsidian stubs
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          cat > .diagnostic/eval-smoke.cjs <<'NODE'
+          const Module=require('module');
+          const path=require('path');
+          const realLoad=Module._load;
+          class Plugin {}
+          const stub=new Proxy({Plugin,Notice:class{},Platform:{isDesktopApp:true},requestUrl:async()=>({status:200,json:{}})},{
+            get(t,p){ if(p in t)return t[p]; return class {}; }
+          });
+          Module._load=function(request,parent,isMain){
+            if(request==='obsidian') return stub;
+            if(request==='electron') return {};
+            return realLoad.apply(this,arguments);
+          };
+          for(const file of process.argv.slice(2)){
+            try{
+              delete require.cache[require.resolve(path.resolve(file))];
+              const mod=require(path.resolve(file));
+              const exp=mod?.default??mod;
+              console.log('EVAL_PASS '+file+' exportType='+typeof exp);
+            }catch(e){
+              console.log('EVAL_FAIL '+file+' '+(e&&e.stack||e));
+              process.exitCode=1;
+            }
+          }
+          NODE
+          node .diagnostic/eval-smoke.cjs             .diagnostic/releases/0.1.18/main.js             .diagnostic/releases/0.1.19/main.js             .diagnostic/releases/0.1.20-bvp.1/main.js             .diagnostic/releases/0.1.20-bvp.3/main.js             .diagnostic/probes/production/main.js             .diagnostic/probes/thin/main.js | tee .diagnostic/eval-smoke.txt
+
+      - name: Upload investigation package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bvp-load-regression-investigation
+          path: |
+            source/.diagnostic/investigation-report.txt
+            source/.diagnostic/eval-smoke.txt
+            source/.diagnostic/inventories/
+            source/.diagnostic/probes/
+          if-no-files-found: error
+          retention-days: 7
