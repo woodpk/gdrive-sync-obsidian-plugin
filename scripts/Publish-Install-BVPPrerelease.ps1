@@ -30,6 +30,8 @@ $branch = 'release/bvp-0.1.20-bvp.2-preparation-20261116'
 $assetNames = @('main.js','manifest.json','build-identity.json','release-sha256.txt')
 $backupDirectory = ''
 $priorLive = [Environment]::GetEnvironmentVariable('BVP_DEC359_LIVE_RUN','Process')
+$priorPath = [Environment]::GetEnvironmentVariable('Path','Process')
+$pathModified = $false
 
 function Invoke-ReleaseCommand {
   param([string]$Executable,[string[]]$Arguments,[string]$Operation)
@@ -82,9 +84,19 @@ try {
   if (@(Get-Process -Name Obsidian -ErrorAction SilentlyContinue).Count -gt 0) {
     throw 'Close Obsidian completely before installing plugin files. No release or install attempted.'
   }
-  foreach ($exe in @('git.exe','node.exe','npm.cmd','gh.exe')) {
-    if (-not (Get-Command $exe -ErrorAction SilentlyContinue)) { throw "Required tool not available: $exe" }
+  foreach ($exe in @('git.exe','node.exe','npm.cmd','gh.exe','cmd.exe')) {
+    if (-not (Get-Command $exe -CommandType Application -ErrorAction SilentlyContinue)) { throw "Required executable not available: $exe" }
   }
+  # Windows npm lifecycle hooks (e.g. esbuild install.js) run under cmd.exe, not
+  # PowerShell. They require an unquoted real directory containing node.exe in PATH.
+  $nodeCommand = Get-Command 'node.exe' -CommandType Application -ErrorAction Stop | Select-Object -First 1
+  $nodeFile = [string]$nodeCommand.Source
+  $nodeDir = [IO.Path]::GetDirectoryName($nodeFile)
+  if (-not [IO.File]::Exists((Join-Path $nodeDir 'node.exe'))) { throw 'Node executable directory cannot be resolved.' }
+  $env:Path = $nodeDir + [IO.Path]::PathSeparator + $priorPath
+  $pathModified = $true
+  Invoke-ReleaseCommand 'cmd.exe' @('/d','/c','where node.exe && node.exe --version') 'Windows npm lifecycle Node preflight' | Out-Null
+  $steps.Add(('Windows child-process Node directory: {0}' -f $nodeDir))
   $actualRepo = (Invoke-ReleaseCommand 'git.exe' @('-C',$repo,'rev-parse','--show-toplevel') 'Repository root').Trim().Replace('/','\')
   if ([IO.Path]::GetFullPath($actualRepo).TrimEnd('\') -ine $repo.TrimEnd('\')) {
     throw 'Script must run from its own repository checkout.'
@@ -249,7 +261,11 @@ try {
     try { Pop-Location -ErrorAction Stop } catch { $failure += '; working directory restoration failed'; $status = 'FAILED'; $exitCode = 1 }
   }
   try { [Environment]::SetEnvironmentVariable('BVP_DEC359_LIVE_RUN',$priorLive,'Process') }
-  catch { $failure += '; environment variable restoration failed'; $status = 'FAILED'; $exitCode = 1 }
+  catch { $failure += '; BVP environment restoration failed'; $status = 'FAILED'; $exitCode = 1 }
+  if ($pathModified) {
+    try { [Environment]::SetEnvironmentVariable('Path',$priorPath,'Process') }
+    catch { $failure += '; process PATH restoration failed'; $status = 'FAILED'; $exitCode = 1 }
+  }
   $duration = ((Get-Date) - $started).ToString('hh\:mm\:ss')
   $fields = @(
     [pscustomobject]@{ Field = 'Status'; Value = $status },
