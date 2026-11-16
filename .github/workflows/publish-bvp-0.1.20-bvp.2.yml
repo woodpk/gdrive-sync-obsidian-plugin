@@ -1,0 +1,157 @@
+name: Publish BRAIN BVP 0.1.20-bvp.2 prerelease
+
+on:
+  push:
+    branches:
+      - release/bvp-0.1.20-bvp.2-publication-20261116
+    paths:
+      - .github/workflows/publish-bvp-0.1.20-bvp.2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-bvp-0.1.20-bvp.2
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY: woodpk/gdrive-sync-obsidian-plugin
+      VERSION: 0.1.20-bvp.2
+      SOURCE_SHA: b1ef092cf5ce73c7811b5726ee803add2538df2c
+      SOURCE_TREE: b353df77de37e9c4a1c12a71ef2aac4b9fb4d109
+      BVP_DEC359_LIVE_RUN: "NO"
+      BVP_VALIDATION_PRERELEASE_VERSION: 0.1.20-bvp.2
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out accepted source
+        uses: actions/checkout@v4
+        with:
+          repository: woodpk/gdrive-sync-obsidian-plugin
+          ref: b1ef092cf5ce73c7811b5726ee803add2538df2c
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+
+      - name: Confirm exact accepted source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_sha="$(git -C source rev-parse HEAD)"
+          actual_tree="$(git -C source rev-parse 'HEAD^{tree}')"
+          test "$actual_sha" = "$SOURCE_SHA"
+          test "$actual_tree" = "$SOURCE_TREE"
+          test -z "$(git -C source status --porcelain=v1 --untracked-files=all)"
+
+      - name: Refuse an existing release or tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $VERSION already exists; refusing overwrite."
+            exit 1
+          fi
+          if git -C source ls-remote --exit-code --tags "https://github.com/$REPOSITORY.git" "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag $VERSION already exists; refusing overwrite."
+            exit 1
+          fi
+
+      - name: Install locked packaging dependencies
+        working-directory: source
+        run: npm ci --no-audit --no-fund
+
+      - name: Build validation-only prerelease assets
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          node node_modules/typescript/bin/tsc -p test-platform/tsconfig.json
+          node .test-build/bvp/test-platform/src/build-validation-artifact.js
+          mkdir -p .release/bvp
+          cp .test-build/bvp-live-device/plugin/main.js .release/bvp/main.js
+          cp .test-build/bvp-live-device/plugin/manifest.json .release/bvp/manifest.json
+          cp .test-build/bvp-live-device/plugin/build-identity.json .release/bvp/build-identity.json
+          cd .release/bvp
+          sha256sum main.js manifest.json build-identity.json > release-sha256.txt
+
+      - name: Confirm package provenance
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const identity = JSON.parse(fs.readFileSync('.release/bvp/build-identity.json', 'utf8'));
+          const manifest = JSON.parse(fs.readFileSync('.release/bvp/manifest.json', 'utf8'));
+          const main = fs.readFileSync('.release/bvp/main.js');
+          const manifestBytes = fs.readFileSync('.release/bvp/manifest.json');
+          const sha = b => crypto.createHash('sha256').update(b).digest('hex');
+          const expectedSource = process.env.SOURCE_SHA;
+          const expectedVersion = process.env.VERSION;
+          if (identity.schemaVersion !== 1) throw new Error('unexpected build identity schema');
+          if (identity.sourceCommit !== expectedSource) throw new Error('source SHA mismatch');
+          if (identity.artifact !== 'main.js') throw new Error('artifact identity mismatch');
+          if (identity.artifactSize !== main.length) throw new Error('artifact size mismatch');
+          if (identity.artifactSha256 !== sha(main)) throw new Error('main.js hash mismatch');
+          if (identity.manifestSha256 !== sha(manifestBytes)) throw new Error('manifest hash mismatch');
+          if (manifest.id !== 'brain-google-drive-sync') throw new Error('plugin ID mismatch');
+          if (manifest.version !== expectedVersion) throw new Error('release version mismatch');
+          if (manifest.isDesktopOnly !== false) throw new Error('mobile compatibility flag mismatch');
+          NODE
+          echo "Exact release asset hashes:"
+          cat .release/bvp/release-sha256.txt
+
+      - name: Publish GitHub prerelease
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          cat > .release/release-notes.md <<EOF
+          # BRAIN BVP $VERSION — validation-only prerelease
+
+          **TEST-ONLY. NOT A GENERAL PRODUCTION PLUGIN RELEASE.**
+
+          Accepted source commit: `$SOURCE_SHA`
+          Accepted source tree: `$SOURCE_TREE`
+
+          This release contains the validation-only BVP Obsidian plugin bundle for the S09A physical Windows/iOS readiness stage.
+
+          Publication does not install the plugin on any device, perform OAuth, access Google Drive, initiate synchronization, or constitute new PHX-CI qualification.
+          EOF
+
+          gh release create "$VERSION"             .release/bvp/main.js             .release/bvp/manifest.json             .release/bvp/build-identity.json             .release/bvp/release-sha256.txt             --repo "$REPOSITORY"             --target "$SOURCE_SHA"             --prerelease             --latest=false             --title "BRAIN BVP $VERSION (validation only)"             --notes-file .release/release-notes.md
+
+      - name: Verify published prerelease and exact assets
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          release_json="$(gh release view "$VERSION" --repo "$REPOSITORY" --json tagName,isDraft,isPrerelease,url)"
+          node -e '
+            const x=JSON.parse(process.argv[1]);
+            if(x.tagName!==process.env.VERSION || x.isDraft!==false || x.isPrerelease!==true) process.exit(1);
+            console.log("Published release:",x.url);
+          ' "$release_json"
+
+          mkdir -p .release/readback
+          gh release download "$VERSION" --repo "$REPOSITORY" --dir .release/readback
+          (
+            cd .release/readback
+            sha256sum -c ../bvp/release-sha256.txt
+          )
+
+          tag_sha="$(git ls-remote "https://github.com/$REPOSITORY.git" "refs/tags/$VERSION" | awk '{print $1}')"
+          test "$tag_sha" = "$SOURCE_SHA"
+          echo "PUBLICATION_RESULT=PASS"
+          echo "STOP_AT_PUBLICATION=YES"
