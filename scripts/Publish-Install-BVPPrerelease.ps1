@@ -157,7 +157,8 @@ try {
   }
   $remoteTag = (Invoke-ReleaseCommand 'git.exe' @('-C',$repo,'ls-remote','--tags','origin',("refs/tags/" + $Version)) 'Published tag source').Trim()
   $remoteDeref = (Invoke-ReleaseCommand 'git.exe' @('-C',$repo,'ls-remote','--tags','origin',("refs/tags/" + $Version + '^{}')) 'Published tag dereference').Trim()
-  $remoteCommit = ((if ($remoteDeref) { $remoteDeref } else { $remoteTag }) -split '\s+')[0]
+  $remoteTagText = if ($remoteDeref) { $remoteDeref } else { $remoteTag }
+  $remoteCommit = ($remoteTagText -split '\s+')[0]
   if ($remoteCommit -cne $source) { throw 'Published tag source differs from the package source.' }
   $releaseUrl = [string]$release.url
 
