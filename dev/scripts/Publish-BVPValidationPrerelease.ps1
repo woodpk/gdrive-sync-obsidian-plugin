@@ -88,8 +88,11 @@ try {
   }
   $dirty = Run 'operator checkout cleanliness' 'git.exe' @('-C',$repoRoot,'status','--porcelain=v1','--untracked-files=all') $repoRoot
   if ($dirty) { throw 'The operator checkout is not clean.' }
-  $scriptBranchAncestor = Run 'operator branch identity' 'git.exe' @('-C',$repoRoot,'merge-base','--is-ancestor','origin/' + $operatorBranch,'HEAD') $repoRoot
-  $null = $scriptBranchAncestor
+  $actualBranch = Run 'operator branch name' 'git.exe' @('-C',$repoRoot,'branch','--show-current') $repoRoot
+  if ($actualBranch -cne $operatorBranch) { throw 'Operator must execute from the dedicated release publication branch.' }
+  $remoteOperator = Run 'remote operator SHA' 'git.exe' @('-C',$repoRoot,'rev-parse',('origin/' + $operatorBranch)) $repoRoot
+  $localOperator = Run 'local operator SHA' 'git.exe' @('-C',$repoRoot,'rev-parse','HEAD') $repoRoot
+  if ($localOperator -cne $remoteOperator) { throw 'Operator checkout differs from the published release script branch.' }
 
   $existingTag = Run 'preexisting release tag' 'git.exe' @('-C',$repoRoot,'ls-remote','--tags','origin',('refs/tags/' + $version)) $repoRoot
   if ($existingTag) { throw 'Release tag already exists; refusing to republish or overwrite.' }
