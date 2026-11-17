@@ -1,13 +1,13 @@
-/** Immutable, allowlisted test-only artifacts for S09A's existing Windows
- * validation plugin and its separately published BRAT iOS prerelease.
+/** Immutable, allowlisted canonical BVP 0.1.20-bvp.3 artifacts for S09A's
+ * disposable Windows and iOS/iPadOS validation participants.
  * These are SHA-256 digests of actual release bytes, not mutable version claims.
  * Defined in the S09A test-battery layer; production and generic live-device
  * agents do not own release-specific artifact allowlists.
  */
 export const S09A_VALIDATION_ARTIFACTS = Object.freeze({
-  sourceCommit: "2bf51ca15aec9c752e3ac7769fcf3ac237df99df",
-  artifactSha256: "90508d2ff89140ee6a1af2c4190ecb0e93b265a62f92b8c02d6b5523e75721f7",
-  windowsManifestSha256: "d4e1c6602550e5c6cbd5d233dcc993abca9955d03777a683ce4ab37b01747965",
-  iosManifestSha256: "1788bcaa4a9dd05d22ec03b0ba56bd3a72d4fa4541e2e5ec74c1a43253ce54a5",
-  iosReleaseTag: "0.1.20-bvp.1",
+  sourceCommit: "dedd783c1ce6efa1abd2bd5f34ed4e499321558e",
+  artifactSha256: "772ca4e37222b14f3907ee0ce373589907b52760771006c1e3f58e34a9eaa2e1",
+  windowsManifestSha256: "332b2f0f7bd8674a7775a9eefd1fd7629439926e1a89b1c08f0955b4226ac96b",
+  iosManifestSha256: "332b2f0f7bd8674a7775a9eefd1fd7629439926e1a89b1c08f0955b4226ac96b",
+  iosReleaseTag: "0.1.20-bvp.3",
 });

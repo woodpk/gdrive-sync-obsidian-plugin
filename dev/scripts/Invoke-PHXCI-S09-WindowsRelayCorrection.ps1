@@ -30,6 +30,7 @@ $framework = '4cf0c865c7b189641e2acebc0a6ad757b6f01992'
 $branch = 'NOT_SELECTED'
 try {
 $branch = 'fix/s09-bvp-live-controller-20261022'
+if ($RunS09ADualPhysicalReadiness) { $branch = 'fix/s09a-bvp3-physical-readiness-20261116' }
 # Explicit software-only feature verification cannot select any physical or recovery mode.
 if ($SoftwareOnlyGovernance -and -not $SoftwareOnlyBranch) {
   throw 'Governance qualification requires an explicit software-only branch.'
@@ -113,7 +114,7 @@ try {
   # Perform input-only validation before spending time in PHX-CI or requesting
   # approval. Invalid input has no external effects and is safely rerunnable.
   if ($RunS09ADualPhysicalReadiness) {
-    $iosId = (Read-Host 'iPhone BRAIN test-vault Device identity (32 lowercase hexadecimal digits; device: prefix optional)').Trim()
+    $iosId = (Read-Host 'iOS/iPadOS BRAIN test-vault Device identity (32 lowercase hexadecimal digits; device: prefix optional)').Trim()
     if ($iosId -cmatch '^[a-f0-9]{32}$') { $iosId = 'device:' + $iosId }
     if ($iosId -cnotmatch '^device:[a-f0-9]{32}$') { throw 'Invalid iOS device identity; no test dispatched.' }
   }
@@ -199,7 +200,7 @@ try {
     $postQualificationDirty = @(& git.exe -C $repository status --porcelain=v1 --untracked-files=all)
     if ($LASTEXITCODE -ne 0 -or $postQualificationDirty.Count -ne 0) { throw 'Dirty qualification checkout; physical battery not dispatched.' }
     $approvalPrompt = if ($RunS09ADualPhysicalReadiness) {
-      'Confirm exact BVP validation-only builds on BOTH disposable Windows and iPhone vaults, independent OAuth and intended managed test root, automatic sync disabled, existing BVP mailbox; authorize TWO status observations and BVP mailbox metadata writes (type YES)'
+      'Confirm exact BVP 0.1.20-bvp.3 validation builds on BOTH disposable Windows and iOS/iPadOS vaults, independent OAuth and intended managed test root, automatic sync disabled, first sync not completed, existing BVP mailbox; authorize TWO status observations and BVP mailbox metadata writes (type YES)'
     } else {
       'Confirm Google Drive already contains BRAIN BVP Mailbox and Windows Obsidian BVP is open; authorize ONE smoke fixture/control run (type YES)'
     }

@@ -424,6 +424,21 @@ owner_current_testing_directive:
     no_credentials_or_remote_ids_recorded: true
   next_testing_activity: "IOS_VALIDATION_INSTALL_AND_DEVICE_BINDING_THEN_OWNER_GATED_S09A_DUAL_DEVICE_PHYSICAL_READINESS"
   next_testing_prerequisite: "APPROVED_ISOLATED_IOS_VALIDATION_INSTALL_DEVICE_MAPPING_MAILBOX_OWNERSHIP_OPERATION_EFFECT_BUDGET_AND_EXPLICIT_OWNER_PHYSICAL_CONSENT"
+  bvp3_physical_rebinding_2026_11_16:
+    status: "BUILDER_IMPLEMENTED_PENDING_NEW_PHXCI"
+    branch: "fix/s09a-bvp3-physical-readiness-20261116"
+    test_first_commit_1: "fc6c14bc5099c80c951f61825a6afbc9b0a2d7c3"
+    test_first_commit_2: "31973f2174c67eae75d54856c13ca408103ef8ea"
+    canonical_release: "0.1.20-bvp.3"
+    installed_source_commit: "dedd783c1ce6efa1abd2bd5f34ed4e499321558e"
+    installed_main_sha256: "772ca4e37222b14f3907ee0ce373589907b52760771006c1e3f58e34a9eaa2e1"
+    installed_manifest_sha256: "332b2f0f7bd8674a7775a9eefd1fd7629439926e1a89b1c08f0955b4226ac96b"
+    windows_vault: "D:\\~TESTING\\bvp-2"
+    mobile_participant: "IPAD_OWNER_REPORTED_CONFIGURED_AND_READY"
+    windows_first_sync_completed: false
+    automatic_sync: "DISABLED"
+    physical_dispatch: "NOT_PERFORMED"
+    qualification_required: "NEW_EXACT_SOURCE_PHXCI_BEFORE_PHYSICAL_DISPATCH"
 
 
 release_019_candidate:

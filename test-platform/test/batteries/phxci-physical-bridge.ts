@@ -767,13 +767,18 @@ export async function loadPublishedBridgeAttempt(
   }
   return attempt;
 }
-/** Physically installed Windows BVP relay, never a personal or arbitrary vault. */
+/** Physically installed Windows BVP relay, never a personal or arbitrary vault.
+ * The exact bvp-2 relay is current. The historical S08F shape remains accepted
+ * only so immutable older physical evidence can still be reconciled read-only.
+ */
 function isApprovedWindowsPluginRelay(path: string): boolean {
-  return typeof path === "string" && !path.includes("..") &&
-    !path.includes("\0") && !path.startsWith("\\\\") &&
-    win32.isAbsolute(path) &&
-    /^D:\\bvp-s08f-vault-[a-f0-9]{32}\\\.obsidian\\plugins\\brain-google-drive-sync\\\.bvp-relay$/i.test(path) &&
-    win32.normalize(path).toLowerCase() === path.toLowerCase();
+  if (typeof path !== "string" || path.includes("..") || path.includes("\0") ||
+      path.startsWith("\\\\") || !win32.isAbsolute(path) ||
+      win32.normalize(path).toLowerCase() !== path.toLowerCase()) return false;
+  const normalized = win32.normalize(path).toLowerCase();
+  const current = "D:\\~TESTING\\bvp-2\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay".toLowerCase();
+  const historical = /^D:\\bvp-s08f-vault-[a-f0-9]{32}\\\.obsidian\\plugins\\brain-google-drive-sync\\\.bvp-relay$/i;
+  return normalized === current || historical.test(path);
 }
 
 /** Construct only the existing BVP CLI's supported arguments, never a shell command. */
@@ -1385,7 +1390,7 @@ function prepareApprovedWindowsSmokeRequest(): string {
       scratch.includes("..") || scratch.startsWith("\\\\") || existsSync(scratch)) {
     fail("physical-smoke-scratch-must-be-new");
   }
-  const relayRoot = "D:\\bvp-s08f-vault-0f4c76d5c20b4aad80f69109c852c93b\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay";
+  const relayRoot = "D:\\~TESTING\\bvp-2\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay";
   if (!existsSync(relayRoot)) fail("physical-installed-relay-not-ready");
   const pluginRoot = win32.dirname(relayRoot);
   const original = win32.join(pluginRoot, "build-identity.json");
@@ -1540,9 +1545,9 @@ export async function main(): Promise<void> {
   if (head.status !== 0 || !HEX40.test(head.stdout.trim())) fail("source-unavailable");
   const currentHead = head.stdout.trim();
   if (request.expectation.mode === "initial" && currentHead !== request.expectation.sourceCommit) {
-    // Installed 0.1.19 BVP bytes remain pinned to the original source. Only
-    // this nonshipping controller bridge, its focused tests and state/evidence
-    // may advance; no product, scenario, manifest or PHX-CI config drift.
+    // Installed canonical 0.1.20-bvp.3 bytes remain pinned to their release
+    // source. Only this nonshipping controller bridge, focused tests and
+    // state/evidence may advance; no product runtime or scenario drift.
     if (simulated || !request.paths.physicalPluginRelayRoot ||
         !["windows-live-smoke", "s09a-dual-device-readiness"].includes(request.expectation.battery)) {
       fail("source-identity-mismatch");
@@ -1557,8 +1562,8 @@ export async function main(): Promise<void> {
         typeof diff.stdout !== "string") fail("source-compatibility-unproven");
     const allowed = new Set([
       "test-platform/test/batteries/phxci-physical-bridge.ts",
-      // Controller-only adaptation: installed 0.1.19 Windows bytes and plugin
-      // source remain frozen. These files only correlate exact iOS prerelease proof.
+      // Controller-only adaptation: installed canonical bvp.3 product bytes
+      // and source remain frozen. These files only bind exact physical proof.
       "test-platform/test/batteries/s09a-validation-artifacts.ts",
       "test-platform/src/live-device/live-scenario-executor.ts",
       "test-platform/test/batteries/run-live-battery.ts",
@@ -1608,9 +1613,11 @@ export async function main(): Promise<void> {
   let privatePhysicalDeviceId: string | undefined;
   let privateIosDeviceId: string | undefined;
   const dualReadiness = request.expectation.battery === "s09a-dual-device-readiness";
-  // No shipping plugin changes: verify the *actual* installed Windows validation
-  // files and settled pairing. On iOS, the physical device's returned installed
-  // build measurement must independently prove the matching validation artifact.
+  // Verify the *actual* canonical bvp.3 Windows validation files and pairing.
+  // S09A readiness is intentionally PRE-first-sync; the unrelated historical
+  // Windows smoke retains its completed-first-sync requirement. On iOS/iPadOS,
+  // the physical device's returned installed-build measurement independently
+  // proves the matching canonical validation artifact.
   if (!simulated) {
     if (!["windows-live-smoke", "s09a-dual-device-readiness"].includes(request.expectation.battery) ||
         !request.paths.physicalPluginRelayRoot ||
@@ -1643,7 +1650,7 @@ export async function main(): Promise<void> {
     if (typeof settings!.deviceIdentity !== "string" ||
         publicPhysicalDeviceId(settings!.deviceIdentity) !== request.expectation.deviceIds.windows ||
         !settings!.vaultIdentity || !settings!.remoteRootId ||
-        settings!.firstSyncCompleted !== true ||
+        (dualReadiness ? settings!.firstSyncCompleted !== false : settings!.firstSyncCompleted !== true) ||
         settings!.startupResumeEnabled !== false ||
         settings!.localChangeEnabled !== false ||
         settings!.periodicEnabled !== false) {

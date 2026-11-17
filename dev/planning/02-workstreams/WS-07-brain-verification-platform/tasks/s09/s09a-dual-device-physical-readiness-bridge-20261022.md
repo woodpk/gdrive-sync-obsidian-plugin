@@ -59,3 +59,23 @@ The already PHX-CI-qualified, disposable Windows BVP installation must remain un
 The pending S09A operator-software qualification is now reconciled as **SATISFIED BY LATER DESCENDANT PHX-CI EVIDENCE**. Corrected operator commit `f272b41aaf5e23f01d6b73731797bfc15a474eee` is an ancestor of accepted source `b1ef092cf5ce73c7811b5726ee803add2538df2c`. PHX-CI run `cf399e60-fcdf-4165-b947-3fbc14e7d9ad` qualified that descendant under runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`, with 634/634 focused tests and 1,292/1,292 product tests passing; the focused run explicitly included the S09A dual-device physical route, owner-gated PHX-CI-only entrypoint, device-identity validation, fail-closed missing-iOS behavior, privacy projection, and physical-scope containment cases. Original evidence is preserved at commit `479b660e97df95387492346431e949c10fa4daee` under `dev/test-results/cf399e60-fcdf-4165-b947-3fbc14e7d9ad/`.
 
 This reconciliation does **not** rewrite the original blocked run or its failure, does not claim that the S09A physical battery has executed, does not establish live iPhone/Google compatibility, and does not authorize physical dispatch. It removes only the obsolete requirement to perform another software-only PHX-CI run before beginning the already-defined iPhone installation/binding and owner-gated physical-readiness setup. Per the operating protocol's administrative-rerun rule, no redundant SUT rerun is required solely to repair this bookkeeping state.
+
+
+## 2026-11-16 — Canonical 0.1.20-bvp.3 physical-readiness rebinding
+
+Owner reported both the disposable Windows vault `D:\\~TESTING\\bvp-2` and the isolated iPad vault configured with canonical BVP prerelease `0.1.20-bvp.3`, independent Google OAuth, the intended shared managed remote, automatic synchronization disabled, and first synchronization not yet completed. The Windows installed `build-identity.json` was read directly and reported:
+
+- source commit `dedd783c1ce6efa1abd2bd5f34ed4e499321558e`
+- `main.js` SHA-256 `772ca4e37222b14f3907ee0ce373589907b52760771006c1e3f58e34a9eaa2e1`
+- manifest SHA-256 `332b2f0f7bd8674a7775a9eefd1fd7629439926e1a89b1c08f0955b4226ac96b`
+- artifact size 1,018,010 bytes
+
+The S09A controller allowlist is therefore being advanced from the superseded 0.1.19/0.1.20-bvp.1 identities to the exact canonical `0.1.20-bvp.3` identities on both Windows and iOS/iPadOS. The active Windows physical relay binding is changed to `D:\\~TESTING\\bvp-2\\.obsidian\\plugins\\brain-google-drive-sync\\.bvp-relay`; the historical S08F relay shape remains accepted only for read-only reconciliation of immutable old evidence.
+
+S09A readiness explicitly requires the new Windows vault to remain **pre-first-sync** (`firstSyncCompleted=false`) with startup/local-change/periodic automatic synchronization disabled. This does not authorize first synchronization. Historical non-S09A Windows-smoke semantics remain unchanged.
+
+**Test-change integrity:** prior cross-device hash tests were not weakened; their old artifact literals were replaced by the exact Owner-observed canonical release identities, while negative cases continue to inject independently wrong hashes/source/device identities. New source-inspection coverage requires the bvp-2 relay, pre-first-sync S09A gate, and dedicated physical branch selection.
+
+**Ten-family adequacy:** nominal canonical dual-device identity/idle-ready path; malformed/wrong hash and identity boundaries; forbidden initial-sync/other-battery transitions; retry/recovery preserved by existing bridge authority; duplicate identity/order protections; persisted installed-build and data.json checks; private-to-public identity/security projection; existing relay/live-runner integration; architecture/path allowlist invariants; fail-closed physical dispatch and no-sync/destructive boundary are all covered by the existing S09A focused family plus the new rebinding assertions. No production synchronization behavior changes.
+
+This is a substantive validation-controller change and therefore requires a new exact-source PHX-CI PASS before any physical dispatch. No physical command has been sent by this rebinding work.
