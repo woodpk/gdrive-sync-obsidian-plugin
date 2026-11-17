@@ -182,6 +182,9 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(productionText.includes(BVP_MAILBOX_RUNTIME_GLOBAL), false);
   equal(productionText.includes("BRAIN BVP Mailbox"), false);
 
+  const inheritedPrereleaseVersion = process.env.BVP_VALIDATION_PRERELEASE_VERSION;
+  delete process.env.BVP_VALIDATION_PRERELEASE_VERSION;
+  try {
   const first = await buildValidationArtifact(repositoryRoot);
   ok(existsSync(first.artifactPath));
   ok(existsSync(first.manifestPath));
@@ -243,16 +246,22 @@ test("S08B validation artifact is separate, production-faithful, traceable, and 
   equal(second.manifestSha256, first.manifestSha256);
   deepEqual(second.testPlatformInputs, first.testPlatformInputs);
   // DEC-352 prerelease packaging must not alter tracked shipping manifest.
-  const previousVersion=process.env.BVP_VALIDATION_PRERELEASE_VERSION;
-  try{
-    process.env.BVP_VALIDATION_PRERELEASE_VERSION="0.1.20-bvp.2";
-    const candidate=await buildValidationArtifact(repositoryRoot);
-    equal(JSON.parse(readFileSync(candidate.manifestPath,"utf8")).version,"0.1.20-bvp.2");
-    equal(candidate.manifestSha256,sha256(readFileSync(candidate.manifestPath)));
-    equal(candidate.sourceCommit,first.sourceCommit);
-    equal(JSON.parse(readFileSync(resolve(repositoryRoot,"manifest.json"),"utf8")).version,"0.1.19");
-  }finally{
-    if(previousVersion===undefined)delete process.env.BVP_VALIDATION_PRERELEASE_VERSION;
-    else process.env.BVP_VALIDATION_PRERELEASE_VERSION=previousVersion;
+  process.env.BVP_VALIDATION_PRERELEASE_VERSION="0.1.20-bvp.2";
+  const candidate=await buildValidationArtifact(repositoryRoot);
+  equal(JSON.parse(readFileSync(candidate.manifestPath,"utf8")).version,"0.1.20-bvp.2");
+  equal(candidate.manifestSha256,sha256(readFileSync(candidate.manifestPath)));
+  equal(candidate.sourceCommit,first.sourceCommit);
+  equal(JSON.parse(readFileSync(resolve(repositoryRoot,"manifest.json"),"utf8")).version,"0.1.19");
+
+  // Preserve the fail-closed prerelease-version oracle while keeping the
+  // baseline artifact build hermetic from inherited operator/PHX environment.
+  process.env.BVP_VALIDATION_PRERELEASE_VERSION="0.1.20";
+  await rejects(
+    () => buildValidationArtifact(repositoryRoot),
+    /bvp-validation-prerelease-version-invalid/,
+  );
+  } finally {
+    if (inheritedPrereleaseVersion === undefined) delete process.env.BVP_VALIDATION_PRERELEASE_VERSION;
+    else process.env.BVP_VALIDATION_PRERELEASE_VERSION = inheritedPrereleaseVersion;
   }
 });
