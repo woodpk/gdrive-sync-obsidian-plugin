@@ -233,6 +233,16 @@ test("S09A operator binds a fresh source at each invocation and does not depend 
   strictEqual((operator.match(/Write-Output \('PHX-CI_EXIT_CODE='/g)??[]).length,1);
   strictEqual((operator.match(/--run-approved-s09a-dual-readiness/g)??[]).length,1);
 });
+
+test("S09A bvp.3 readiness binds the new disposable Windows vault and requires pre-first-sync state",()=>{
+  const bridge=readFileSync(resolve(process.cwd(),"test-platform/test/batteries/phxci-physical-bridge.ts"),"utf8");
+  const operator=readFileSync(resolve(process.cwd(),"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
+  strictEqual(bridge.includes('D:\\\\~TESTING\\\\bvp-2\\\\.obsidian\\\\plugins\\\\brain-google-drive-sync\\\\.bvp-relay'),true);
+  strictEqual(bridge.includes('dualReadiness ? settings!.firstSyncCompleted !== false : settings!.firstSyncCompleted !== true'),true);
+  strictEqual(operator.includes("fix/s09a-bvp3-physical-readiness-20261116"),true);
+  strictEqual(operator.includes("if ($RunS09ADualPhysicalReadiness) { $branch = 'fix/s09a-bvp3-physical-readiness-20261116' }"),true);
+});
+
 test("S09A iOS ID input is validated before expensive PHX-CI qualification and user consent remains after qualification",()=>{
   const operator=readFileSync(resolve(process.cwd(),"dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1"),"utf8");
   const validated=operator.indexOf("if ($iosId -cnotmatch '^device:[a-f0-9]{32}$')");
