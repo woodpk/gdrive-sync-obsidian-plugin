@@ -1767,3 +1767,12 @@ repository_consolidation_2026_11_16:
   iphone_installation: "OWNER_MANAGED_OUTSIDE_THIS_CLOSEOUT"
   oauth_drive_sync_activity: "NOT_PERFORMED"
 
+dec339_minimal_integration_planning_2026_11_17:
+  status: "OWNER_DIRECTED_PLANNING_COMMITTED_NO_ACTIVATION"
+  plan: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md"
+  baseline_master_sha: "f507cbcc669568d1cb480abca469bdb1a7d184b8"
+  implementation: "DORMANT_DEC339_SOFTWARE_ON_MASTER;_PRODUCTION_RUNTIME_STILL_LEGACY_ASSEMBLER_AND_INDEXEDDB_V1"
+  sequence: "WS02_STORAGE_CURSOR_SAFETY;WS03_METADATA_TRANSPORT;WS05_ISOLATED_PARITY;WS05_DEFAULT_OFF_RUNTIME;WS07_INDEPENDENT_GATES"
+  deferred: "D339_06_TARGETED_EXECUTOR_READS"
+  constraints: "NO_NEW_WORKSTREAM_NO_REBUILD_NO_GITHUB_ACTIONS_NO_PRODUCT_CODE_OR_RUNTIME_CHANGE_NO_DB_MIGRATION_NO_ACTIVATION_NO_LIVE_DRIVE_NO_PHYSICAL_TEST_NO_RELEASE"
+  active_workstream_unchanged: true
