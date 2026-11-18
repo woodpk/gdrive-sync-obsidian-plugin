@@ -42,7 +42,6 @@ const device = id<"DeviceIdentity">("device:production-authority") as DeviceIden
 const generation = id<"SemanticStateGeneration">("generation:production-authority");
 const target = path("notes/authority.md");
 const expectedRemoteId = remoteId("remote:authority");
-const candidateRemoteId = remoteId("remote:authority:candidate");
 const hash = id<"ContentHash">("hash:authority") as ContentHash;
 const managedRemote: ManagedRemoteIdentity = { rootId: remoteId("root:authority"), vaultIdentity: vault, protocolVersion: id<"ProtocolVersion">("1") };
 const stateContext: StateLoadContext = { expectation: "existing-pairing", expectedVaultIdentity: vault, expectedDeviceIdentity: device };
@@ -102,7 +101,7 @@ function realExecutor(values: { observedRemoteId?: RemoteObjectId; onRawUpdate?:
     update: async () => { values.onRawUpdate?.(); return { ok: true, value: { remoteObjectId: expectedRemoteId, evidence: { hash, sizeBytes: 3 } } }; },
     listForReconciliation: async () => ({ ok: true, value: { entries: values.listCandidate === false
       ? [{ path: target, entityKind: "file", remoteObjectId: expectedRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:1" }, trashed: false }]
-      : [{ path: target, entityKind: "file", remoteObjectId: candidateRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:candidate" }, trashed: false }], completeness: { status: "complete" } } }),
+      : [{ path: target, entityKind: "file", remoteObjectId: expectedRemoteId, content: { hash, sizeBytes: 3, revision: "remote-revision:2" }, trashed: false }], completeness: { status: "complete" } } }),
   } as unknown as GoogleDrivePort;
   return new ProductSynchronizationExecutor(local, drive, stateStore() as never, stateContext, () => ({ managedRemote, remoteEnumerationComplete: true }));
 }
@@ -119,18 +118,15 @@ function executable(): ExecutablePlannedOperation {
 }
 function reliableRemote(log: string[]): ReliableRemoteMutationPort {
   return {
-    async reserveFileCreateIdentity(_root, intentId, targetPath, intendedContent) {
-      log.push("reserve-update-candidate");
-      return { ok: true, value: { kind: "reserved-file-create", intentId, reservedRemoteObjectId: candidateRemoteId, path: targetPath, intendedContent } };
-    },
+    async reserveFileCreateIdentity() { throw new Error("DEC-362 must not reserve replacement identity for update"); },
     async reserveFolderCreateIdentity() { throw new Error("not used"); },
     async createReserved() { throw new Error("raw create not expected"); },
     async updateExisting(identity) {
       log.push("updateExisting");
       assert.equal(identity.kind, "existing-file-content-update");
       assert.equal(identity.remoteObjectId, expectedRemoteId);
-      assert.equal(identity.candidateRemoteObjectId, candidateRemoteId);
-      return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: candidateRemoteId, predecessorRemoteObjectId: expectedRemoteId, predecessorRevision: identity.expectedRevision, intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent, preservedRemoteObjectIds: [expectedRemoteId, candidateRemoteId] } };
+      assert.equal(identity.updateProtocol, "stable-object-in-place");
+      return { status: "verified-effect", applicationProof: { kind: "same-object-content-update", remoteObjectId: expectedRemoteId, expectedRevision: identity.expectedRevision, verifiedRevision: id<"RemoteRevisionId">("remote-revision:2"), intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent } };
     },
     async moveExisting() { throw new Error("not used"); }, async trashExisting() { throw new Error("not used"); },
   };
@@ -155,7 +151,7 @@ test("D production update stops at effect-verified until authoritative canonical
   let raw = 0; const log: string[] = []; const store = new WritableAuthorityStore(); const legacy = realExecutor({ onRawUpdate: () => { raw += 1; } });
   const adapter = createAuthoritativeProductExecutor(legacy, store, stateStore() as never, stateContext, managedRemote, { reliableRemoteMutationPort: reliableRemote(log) });
   const result = await adapter.execute(executable());
-  assert.equal(result.status, "durable-verified-success"); assert.equal(raw, 0); assert.deepEqual(log, ["reserve-update-candidate", "updateExisting"]);
+  assert.equal(result.status, "durable-verified-success"); assert.equal(raw, 0); assert.deepEqual(log, ["updateExisting"]);
   const stages = store.saves.flatMap(saved => saved.operationIntents.flatMap(intent => intent.effects.map(effect => effect.stage)));
   assert.equal(stages.includes("intent-persisted"), true); assert.equal(stages.includes("dispatch-authorized"), true); assert.equal(stages.includes("effect-verified"), true);
   assert.equal(stages.includes("state-committed"), false, "executor cannot persist state-committed before canonical BASE/state commit");
