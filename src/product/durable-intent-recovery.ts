@@ -324,6 +324,7 @@ async function preflightVerifiedEffects(
         const entries = await remoteEntries();
         if (!entries) return `effect-verified durable REMOTE update ${effect.effectId} lacks complete REMOTE observation`;
         const convergence = verifyStableRemoteUpdateConvergence(effect.descriptor, entries);
+        if (convergence.status !== "converged") return `${effect.effectId}: stable REMOTE identity/content is not converged (${convergence.reason})`;
       }
       const failure = await verifyCurrentPhysicalReality(legacy, lifecycle, intent, effect, loaded.state, remote, dependencies, remoteEntries);
       emitStateRecoveryDiagnostic(diagnostics, failure ? "warn" : "debug", "recovery.durable", "effect-verified-preflight-observation", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, fromStage: effect.stage, result: failure ? "outcome-unknown" : "verified-effect", ...(failure ? { reason: failure } : {}) });
