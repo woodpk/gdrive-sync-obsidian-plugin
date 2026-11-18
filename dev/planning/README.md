@@ -1,6 +1,8 @@
 # Planning
 
-**DEC-339 (2026-11-17):** [Minimal production inventory integration](02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) is the single current cross-workstream plan. Dormant software exists; live database migration, activation and release remain unauthorized.
+**DEC-362 (2026-11-18):** [Stable Drive-ID content-update correction](02-workstreams/WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md) is the required corrective prerequisite before DEC-339 planner cutover/activation. Ordinary existing-file update and clean-merge propagation must preserve the established Google Drive ID; implementation has not started.
+
+**DEC-339 (2026-11-17):** [Minimal production inventory integration](02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) remains the current inventory integration plan, now explicitly gated behind DEC-362. Dormant software exists; live database migration, activation and release remain unauthorized.
 
 Purpose: current target-system definition, workstream decomposition, requirement coverage, and verification planning derived from project authority.
 
