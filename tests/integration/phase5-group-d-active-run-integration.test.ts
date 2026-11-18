@@ -499,24 +499,22 @@ test("G2 scenario 25 remote change during an active production run is deferred t
       const actual = ev(text);
       assert.equal(actual.hash, mutation.intendedContent.hash);
       assert.equal(actual.sizeBytes, mutation.intendedContent.sizeBytes);
-      preservedRemotePredecessors.set(String(predecessor.remoteObjectId), predecessor);
-      const candidate: RemoteFile = {
+      const updated: RemoteFile = {
         path: mutation.path,
         text,
-        evidence: { hash: mutation.intendedContent.hash, sizeBytes: mutation.intendedContent.sizeBytes, revision: remoteRevision(mutation.path, `candidate-${candidateSequence}`) },
-        remoteObjectId: mutation.candidateRemoteObjectId,
+        evidence: { hash: mutation.intendedContent.hash, sizeBytes: mutation.intendedContent.sizeBytes, revision: remoteRevision(mutation.path, "updated") },
+        remoteObjectId: mutation.remoteObjectId,
       };
-      remoteFiles.set(String(mutation.path), candidate);
+      remoteFiles.set(String(mutation.path), updated);
       return {
         status: "verified-effect" as const,
         applicationProof: {
-          kind: "immutable-candidate-preservation" as const,
-          candidateRemoteObjectId: mutation.candidateRemoteObjectId,
-          predecessorRemoteObjectId: mutation.remoteObjectId,
-          predecessorRevision: mutation.expectedRevision,
+          kind: "same-object-content-update" as const,
+          remoteObjectId: mutation.remoteObjectId,
+          expectedRevision: mutation.expectedRevision,
+          verifiedRevision: id<"RemoteRevisionId">("updated"),
           intendedContent: mutation.intendedContent,
           verifiedContent: mutation.intendedContent,
-          preservedRemoteObjectIds: [mutation.remoteObjectId, mutation.candidateRemoteObjectId],
         },
       };
     },
