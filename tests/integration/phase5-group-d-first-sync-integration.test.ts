@@ -81,9 +81,7 @@ class MemorySyncBoundary {
   cursorCounter = 0;
   remoteIdCounter = 0;
   localTokenCounter = 0;
-  private readonly preservedRemotePredecessors = new Map<string, RemoteFile>();
-  private readonly preservedRemoteRecoveryReadsRemaining = new Map<string, number>();
-  private readonly pendingRemoteCandidates = new Map<string, RemoteFile>();
+  private readonly pendingSameIdUpdates = new Map<string, RemoteFile>();
   private readonly stagedLocalTransactions = new Map<string, { text: string; evidence: ContentEvidence }>();
 
   constructor(readonly identity: ManagedRemoteIdentity) {}
@@ -174,7 +172,7 @@ class MemorySyncBoundary {
     }),
     getStartCursor: async () => ({ ok: true as const, value: cur(`cursor:${++this.cursorCounter}`) }),
     listForReconciliation: async () => {
-      this.promotePendingRemoteCandidates();
+      this.promotePendingSameIdUpdates();
       const entries = [...this.remoteFiles.values()].map(file => ({
         path: file.path,
         entityKind: "file" as const,
@@ -182,7 +180,6 @@ class MemorySyncBoundary {
         content: file.evidence,
         trashed: false,
       }));
-      this.advancePreservedRemoteRecoveryReads();
       return {
         ok: true as const,
         value: {
@@ -203,7 +200,7 @@ class MemorySyncBoundary {
         : { ok: true as const, value: { status: "absent" as const, side: "remote" as const, path } };
     },
     download: async (remoteObjectId: RemoteObjectId) => {
-      const file = [...this.remoteFiles.values(), ...this.preservedRemotePredecessors.values(), ...this.pendingRemoteCandidates.values()].find(candidate => candidate.remoteObjectId === remoteObjectId);
+      const file = [...this.remoteFiles.values(), ...this.pendingSameIdUpdates.values()].find(candidate => candidate.remoteObjectId === remoteObjectId);
       if (!file) return { ok: false as const, signal: { kind: "not-found" as const, remoteObjectId } };
       return { ok: true as const, value: { remoteObjectId, content: source(file.text), evidence: file.evidence } };
     },
@@ -282,33 +279,32 @@ class MemorySyncBoundary {
       if (actual.hash !== identity.intendedContent.hash || actual.sizeBytes !== identity.intendedContent.sizeBytes) {
         return { status: "verified-not-applied", reason: "fixture source does not match intended update content" };
       }
-      const candidate: RemoteFile = {
+      const updated: RemoteFile = {
         path: identity.path,
         text,
         evidence: { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: `r${++this.remoteIdCounter}` },
-        remoteObjectId: identity.candidateRemoteObjectId,
+        remoteObjectId: identity.remoteObjectId,
       };
       this.updateRemoteCalls.push(String(identity.path));
       if (this.updateFailureOnce) {
         this.updateFailureOnce = false;
-        this.pendingRemoteCandidates.set(String(identity.path), candidate);
+        this.pendingSameIdUpdates.set(String(identity.path), updated);
         return {
           status: "outcome-unknown",
           reason: "offline",
           operationalFailure: { kind: "transient-failure", source: "google-drive", detail: "offline" },
         };
       }
-      this.preserveAndPromoteRemoteCandidate(predecessor, candidate);
+      this.remoteFiles.set(String(identity.path), updated);
       return {
         status: "verified-effect",
         applicationProof: {
-          kind: "immutable-candidate-preservation",
-          candidateRemoteObjectId: identity.candidateRemoteObjectId,
-          predecessorRemoteObjectId: identity.remoteObjectId,
-          predecessorRevision: identity.expectedRevision,
+          kind: "same-object-content-update",
+          remoteObjectId: identity.remoteObjectId,
+          expectedRevision: identity.expectedRevision,
+          verifiedRevision: id<"RemoteRevisionId">(String(updated.evidence.revision)),
           intendedContent: identity.intendedContent,
           verifiedContent: identity.intendedContent,
-          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
         },
       };
     },
@@ -354,29 +350,11 @@ class MemorySyncBoundary {
     recover: async transaction => ({ status: "blocked", reason: "fixture has no interrupted local transaction", transaction }),
   };
 
-  private preserveAndPromoteRemoteCandidate(predecessor: RemoteFile, candidate: RemoteFile, recoveryReads?: number): void {
-    const predecessorId = String(predecessor.remoteObjectId);
-    this.preservedRemotePredecessors.set(predecessorId, predecessor);
-    if (recoveryReads !== undefined) this.preservedRemoteRecoveryReadsRemaining.set(predecessorId, recoveryReads);
-    this.remoteFiles.set(String(candidate.path), candidate);
-  }
-
-  private advancePreservedRemoteRecoveryReads(): void {
-    for (const [predecessorId, remaining] of this.preservedRemoteRecoveryReadsRemaining) {
-      if (remaining <= 1) {
-        this.preservedRemoteRecoveryReadsRemaining.delete(predecessorId);
-        this.preservedRemotePredecessors.delete(predecessorId);
-      } else {
-        this.preservedRemoteRecoveryReadsRemaining.set(predecessorId, remaining - 1);
-      }
-    }
-  }
-
-  private promotePendingRemoteCandidates(): void {
-    for (const [path, candidate] of this.pendingRemoteCandidates) {
-      const predecessor = this.remoteFiles.get(path);
-      if (predecessor) this.preserveAndPromoteRemoteCandidate(predecessor, candidate, 4);
-      this.pendingRemoteCandidates.delete(path);
+  private promotePendingSameIdUpdates(): void {
+    for (const [path, updated] of this.pendingSameIdUpdates) {
+      const current = this.remoteFiles.get(path);
+      if (current && current.remoteObjectId === updated.remoteObjectId) this.remoteFiles.set(path, updated);
+      this.pendingSameIdUpdates.delete(path);
     }
   }
 
