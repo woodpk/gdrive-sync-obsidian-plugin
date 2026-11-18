@@ -17,3 +17,7 @@ Authoritative executable acceptance is through PHX-CI under DEC-334. Workstream-
 ## Whole-project evidence relationship
 
 See `../../03-verification/verification-plan.md` and `../requirement-workstream-coverage.md` for cross-workstream evidence ownership and target requirement coverage.
+
+## DEC-339 integration-specific evidence (2026-11-17)
+
+Compare legacy and inventory-backed LOCAL/REMOTE/BASE snapshots, planner operations, identity ambiguity and destructive safety on identical inputs. Include cursor drift, root-wide provenance, incomplete scopes, failure/restart, recovery, rollback-aware legacy mode and full fallback. Verify that durable intents and executor preconditions are unchanged. Measure **real** request count and latency against today's **incremental** path and relevant Windows/iOS resource behavior. Existing PHX-CI/BVP and independent review remain mandatory; see [the integration plan](tasks/dec339-inventory-production-integration-2026-11-17.md).

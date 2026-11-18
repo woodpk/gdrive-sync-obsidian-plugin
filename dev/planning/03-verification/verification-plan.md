@@ -80,9 +80,12 @@ The BVP is complete only when objective evidence proves all of the following.
 
 WS-06 and WS-07 prepare construction evidence and Stage-3 readiness. Stage 3 remains an independent product/system validation activity and is not satisfied merely by Stage-2A construction verification.
 
-## Future metadata-inventory architecture verification (DEC-339)
+## DEC-339 dormant-software integration verification (2026-11-17)
 
-Target Specification §7.9 is owned by WS-02 (durable inventory/BASE separation, restart and migration), WS-03 (Drive ID/parent/provenance and complete/incremental observations), WS-05 (safe production planning/execution integration), and WS-07 (PHX-CI-consumed deterministic and appropriate physical evidence). Require exact safety parity for duplicate identities, invalid/stale change cursors, partial enumeration, multi-device moves/deletions, uncertain outcomes and crashes, plus bounded iOS memory/storage. Quantify per-operation request count/latency before and after; targeted reads may replace full-tree passes only with proven equivalent authority, uniqueness and convergence. No live-run authorization follows from this planning update.
+The [single WS-05 integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) assigns WS-02 v1/v2 compatibility, rollback and atomic inventory+cursor enforcement; WS-03 unchanged authenticated `drive.file` metadata/Changes and provenance; WS-05 default-off product wiring with **same** planner/executor, verified fallback and recovery. WS-07 reuses existing PHX-CI/BVP deterministic cases; no new runner.
+
+Measure inventory-on/off safety equivalence and actual per-operation requests, latency and device memory/storage **against the active incremental Changes path**, not only full-tree enumeration. Prove migrations/faults/rollback without live pairing mutations; record exact-source PHX-CI evidence under `dev/test-results/<runId>/`, require independent review and separate Owner authorization before live migration/physical rollout/release. D339-06 targeted executor convergence remains deferred. Planning changes confer no new execution authority.
+
 
 ## WS-07 DEC-357 Windows OAuth controller — current software-only verification gate
 

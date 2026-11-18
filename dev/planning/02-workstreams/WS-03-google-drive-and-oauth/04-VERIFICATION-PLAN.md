@@ -17,3 +17,7 @@ Authoritative executable acceptance is through PHX-CI under DEC-334. Workstream-
 ## Whole-project evidence relationship
 
 See `../../03-verification/verification-plan.md` and `../requirement-workstream-coverage.md` for cross-workstream evidence ownership and target requirement coverage.
+
+## DEC-339 integration-specific evidence (2026-11-17)
+
+Through existing PHX-CI, prove the metadata reader uses the existing authenticated `drive.file` transport with safe paginated Changes, stable IDs/parents, duplicate siblings, out-of-domain objects, permission loss, incomplete searches and invalid cursors. No real Google API use is authorized by planning. Follow the [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md).
