@@ -1,5 +1,10 @@
 # Verification Plan — BRAIN Verification Platform
 
+## DEC-339 integration evidence (2026-11-17)
+
+Reuse existing PHX-CI/BVP verification for the [WS-05 minimal inventory integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md): inventory-on/off safety equivalence, cursor/storage/fault cases, request/latency comparison against the **current incremental** path, and representative Windows/iOS resource observations. Do not add a runner, extend frozen BVP authority, execute real Drive/device actions or treat deterministic tests as physical acceptance. D339-06 executor optimization is deferred; separate Owner activation is required.
+
+
 ## DEC-351 scenario-ID CLI test contract — 2026-10-24
 
 **PLANNED ONLY; NOT RUN.** The [bounded direct scenario-ID task](tasks/bvp-direct-scenario-id-cli-2026-10-24.md) shall expose a **single** exact-ID deterministic scenario CLI over the existing BVP TypeScript runner; read-only scenario catalog discovery is permitted. Its test-first acceptance matrix must prove: (1) each supported deterministic definition can be selected by exact ID and executes **only once**; (2) incomplete/duplicated registry mappings and scenario ID/mode mismatches fail; (3) missing/malformed/repeated/unknown flags, unknown/live-only IDs and inappropriate paths cause **no dispatch**; (4) scenarios returning failed/blocked/unsupported stay nonzero, with trustworthy diagnostics and no synthetic PASS; (5) repeated/concurrent runs remain isolated; (6) result JSON persistence, schema and error behavior; (7) identity/privacy and absence of secrets/raw captures in public evidence; (8) compatibility with existing battery CLI and compiled CommonJS output; (9) frozen architecture/LOC limits, shipping isolation, no second runner, zero scenario-specific PS scripts; and (10) end-to-end determinism, adversarial oracle sensitivity and fail-closed/no physical or real Drive effects. Builder must trace all mandatory ten test families, including concrete reason for any not applicable; do not relax test expectations for PASS.

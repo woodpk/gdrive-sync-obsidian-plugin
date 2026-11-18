@@ -4,6 +4,10 @@
 
 This is the canonical whole-system coverage artifact required by the workstream standard. It preserves the accepted product requirement-to-phase matrix by mapping Phase 1–6 directly to WS-01–WS-06 and preserves the accepted BVP requirement-to-phase matrix inside WS-07.
 
+## DEC-339 cross-workstream ownership (2026-11-17)
+
+Target Specification §7.9 is covered by **WS-02** inventory/storage/cursor safety, **WS-03** authenticated Drive metadata and Changes, **WS-05** existing product assembler/controller integration, **WS-07** existing PHX-CI/BVP proof, and relevant **WS-06** resource hardening. Use the [single WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). No new workstream, second execution engine or normative requirement ID.
+
 ## Product Requirement-to-Workstream Coverage
 
 The table assigns every normative target-system requirement family to the phase or phases responsible for implementing it. WS-06 provides final construction verification for all families.

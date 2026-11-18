@@ -1,5 +1,7 @@
 # Planning
 
+**DEC-339 (2026-11-17):** [Minimal production inventory integration](02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) is the single current cross-workstream plan. Dormant software exists; live database migration, activation and release remain unauthorized.
+
 Purpose: current target-system definition, workstream decomposition, requirement coverage, and verification planning derived from project authority.
 
 Allowed artifact classes: target-system specifications and traceability, canonical workstreams and their build decompositions, requirement-to-workstream coverage, and Stage-1/whole-project verification planning.

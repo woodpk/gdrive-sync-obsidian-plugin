@@ -29,6 +29,10 @@ WS-02, WS-03, and WS-04 are the accepted parallel-safe construction wave after W
 No workstream is introduced merely for organizational convenience; this mapping preserves the dependency and ownership boundaries established by the accepted Stage-1 decompositions.
 
 
+## DEC-339 production inventory integration — planned (2026-11-17)
+
+[One minimal WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) coordinates WS-02 storage, WS-03 read-only Drive metadata, WS-05 default-off observation wiring and WS-07 existing verification. DEC-339 implementation is dormant; no new workstream, greenfield rebuild, executor change, schema migration or activation follows from this plan.
+
 ## Current WS-07 successor Build Unit — DEC-357
 
 **BVP_WINDOWS_CONTROLLER_OAUTH** is an Owner-approved, separate **WS-07** unit, not a new global workstream and not a change to WS-03 production OAuth. Canonical [task and BVP-WCO-001–011 requirements](WS-07-brain-verification-platform/tasks/bvp-windows-controller-oauth-2026-10-28.md). It follows the DEC-356 R5 corrective F01, uses Option A (independent Windows OAuth PKCE/DPAPI, no Obsidian IPC), and is **WCO-06 PASS WITH MINOR FINDINGS — ACCEPTED for exact frozen Windows software-only scope**, under DEC-358 and the corrected independent [Reviewer addendum](../reviews/bvp-windows-controller-oauth-20261114-wco06-acceptance-addendum.md). Original PHX-CI passed 13/13 stages, focused 628/628, product 1292/1292 against `07f8b20c12e4ab769c4bb8e8b386663d9f02f7f0`. [Builder acceptance closeout](WS-07-brain-verification-platform/tasks/wco06-dec357-accepted-software-only-closeout-2026-11-14.md) retains handoff-count 14. Real cross-client Google `drive.file` compatibility is unverified and Owner-gated; no live OAuth/Drive, physical operation, merge or release authorized.
