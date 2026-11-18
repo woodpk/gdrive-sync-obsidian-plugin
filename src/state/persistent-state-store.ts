@@ -169,8 +169,7 @@ function isRemoteFileMutationShape(value: unknown): boolean {
   if (value.kind === "existing-file-content-update") {
     return isString(value.remoteObjectId)
       && isString(value.expectedRevision)
-      && value.updateProtocol === "immutable-candidate-preservation"
-      && isString(value.candidateRemoteObjectId)
+      && value.updateProtocol === "stable-object-in-place"
       && isCanonicalContentProof(value.intendedContent)
       && isIdentityAuthority(value.identityAuthority);
   }

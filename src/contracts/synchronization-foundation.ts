@@ -205,8 +205,7 @@ export type RemoteMutationIdentity =
       readonly remoteObjectId: RemoteObjectId;
       readonly expectedRevision: RemoteRevisionId;
       readonly path: VaultPath;
-      readonly updateProtocol: "immutable-candidate-preservation";
-      readonly candidateRemoteObjectId: RemoteObjectId;
+      readonly updateProtocol: "stable-object-in-place";
       readonly intendedContent: CanonicalFileContentProof;
       readonly identityAuthority: IdentityAuthorityProof;
     }
@@ -230,10 +229,10 @@ export type RemoteMutationIdentity =
 export type RemoteMutationApplicationProof =
   | { readonly kind: "reserved-create"; readonly remoteObjectId: RemoteObjectId; readonly path: VaultPath; readonly verifiedContent?: CanonicalFileContentProof }
   | {
-      readonly kind: "immutable-candidate-preservation";
-      readonly candidateRemoteObjectId: RemoteObjectId;
-      readonly predecessorRemoteObjectId: RemoteObjectId;
-      readonly predecessorRevision: RemoteRevisionId;
+      readonly kind: "same-object-content-update";
+      readonly remoteObjectId: RemoteObjectId;
+      readonly expectedRevision: RemoteRevisionId;
+      readonly verifiedRevision: RemoteRevisionId;
       readonly intendedContent: CanonicalFileContentProof;
       readonly verifiedContent: CanonicalFileContentProof;
       readonly preservedRemoteObjectIds: readonly RemoteObjectId[];
@@ -249,15 +248,16 @@ export type RemoteMutationOutcome =
   | { readonly status: "outcome-unknown"; readonly reason: string };
 
 export type RemoteUpdateVerificationEvidence =
-  | { readonly kind: "final-content-observed-only"; readonly finalContentMatchesCandidate: boolean }
-  | { readonly kind: "immutable-candidate-preservation"; readonly finalContentMatchesCandidate: boolean; readonly proof: Extract<RemoteMutationApplicationProof, { readonly kind: "immutable-candidate-preservation" }> };
+  | { readonly kind: "final-content-observed-only"; readonly finalContentMatchesExpected: boolean }
+  | { readonly kind: "same-object-content-update"; readonly finalContentMatchesExpected: boolean; readonly proof: Extract<RemoteMutationApplicationProof, { readonly kind: "same-object-content-update" }> };
 
-/** Proves non-destructive materialization only. It deliberately says nothing about logical-path conflict status. */
+/** Content alone never proves update identity and revision continuity. */
 export function remoteUpdateWasSafelyMaterialized(evidence: RemoteUpdateVerificationEvidence): boolean {
-  if (evidence.kind !== "immutable-candidate-preservation" || !evidence.finalContentMatchesCandidate) return false;
-  return evidence.proof.intendedContent.hash === evidence.proof.verifiedContent.hash
-    && evidence.proof.intendedContent.sizeBytes === evidence.proof.verifiedContent.sizeBytes
-    && evidence.proof.preservedRemoteObjectIds.includes(evidence.proof.predecessorRemoteObjectId);
+  if (evidence.kind !== "same-object-content-update" || !evidence.finalContentMatchesExpected) return false;
+  return evidence.proof.remoteObjectId.length > 0
+    && evidence.proof.expectedRevision !== evidence.proof.verifiedRevision
+    && evidence.proof.intendedContent.hash === evidence.proof.verifiedContent.hash
+    && evidence.proof.intendedContent.sizeBytes === evidence.proof.verifiedContent.sizeBytes;
 }
 
 export type RemotePathConvergenceAuthority =

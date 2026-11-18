@@ -35,7 +35,7 @@ import {
   type ReconstructedDurableRecovery,
 } from "./durable-intent-recovery-base";
 import type { ProductSynchronizationExecutor } from "./production-executor";
-import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
+import { verifyStableRemoteUpdateConvergence } from "./remote-update-convergence";
 
 export { reconstructDurableRecovery } from "./durable-intent-recovery-base";
 export type { DurableIntentRecoveryDependencies, DurableIntentRecoveryResult, RemoteUpdateFinalizationPort, ReconstructedDurableRecovery } from "./durable-intent-recovery-base";
@@ -79,7 +79,7 @@ function validateDescriptor(
       return "REMOTE file descriptor contradicts persisted mutation identity/content";
     }
     if (mutation.kind === "reserved-file-create") return descriptor.mutationKind === "create" ? undefined : "REMOTE file create descriptor has incompatible mutation kind";
-    if (descriptor.mutationKind !== "update" || mutation.updateProtocol !== "immutable-candidate-preservation") return "REMOTE update descriptor lacks immutable-candidate authority";
+    if (descriptor.mutationKind !== "update" || mutation.updateProtocol !== "stable-object-in-place") return "REMOTE update descriptor lacks stable-ID update authority";
     if (mutation.identityAuthority.status !== "unique"
       || mutation.identityAuthority.generation !== intent.semanticAuthority.generation
       || mutation.identityAuthority.path !== descriptor.targetPath
@@ -225,12 +225,10 @@ async function observePhysicalReality(
   if (descriptor.kind === "remote-file") {
     const mutation = descriptor.remoteMutation;
     if (mutation.kind === "existing-file-content-update") {
-      const update = verifyPreservedRemoteUpdateConvergence(descriptor, entries);
+      const update = verifyStableRemoteUpdateConvergence(descriptor, entries);
       return update.status === "converged"
-        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-update", { descriptor, candidate: update.candidate }) }
-        : { status: "outcome-unknown", reason: update.status === "predecessor-retirement-required"
-          ? "REMOTE update predecessor remains live and requires bounded retirement"
-          : update.reason };
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-update", { descriptor, observed: update.observed }) }
+        : { status: "outcome-unknown", reason: update.reason };
     }
     const actual = uniqueRemote(entries, descriptor.targetPath, "file");
     return actual?.remoteObjectId === mutation.reservedRemoteObjectId && actual.content?.hash === descriptor.intendedContent.hash && actual.content.sizeBytes === descriptor.intendedContent.sizeBytes
@@ -288,15 +286,8 @@ async function preverifyOutstandingRemoteUpdates(
         || effect.descriptor.remoteMutation.kind !== "existing-file-content-update") continue;
       const entries = await remoteEntries();
       if (!entries) return `durable REMOTE update ${effect.effectId} lacks complete REMOTE observation`;
-      const convergence = verifyPreservedRemoteUpdateConvergence(effect.descriptor, entries);
+      const convergence = verifyStableRemoteUpdateConvergence(effect.descriptor, entries);
       emitStateRecoveryDiagnostic(diagnostics, convergence.status === "converged" ? "info" : "debug", "recovery.durable", "remote-update-preverification-classification", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, fromStage: effect.stage, semanticGeneration: String(intent.semanticAuthority.generation), classification: convergence.status });
-      if (convergence.status === "predecessor-retirement-required") {
-        const finalizer = dependencies.remoteUpdateFinalizationPort?.finalizeExistingUpdate;
-        if (!finalizer) return `durable REMOTE update ${effect.effectId} requires predecessor retirement but the recovery finalizer is unavailable`;
-        const outcome = await finalizer.call(dependencies.remoteUpdateFinalizationPort, effect.descriptor.remoteMutation);
-        if (outcome.status !== "verified-effect") return `durable REMOTE update ${effect.effectId} predecessor retirement did not verify (${outcome.status}: ${outcome.reason})`;
-        remotePromise = undefined;
-      }
       const observed = await observePhysicalReality(legacy, lifecycle, intent, effect, loaded.state, remote, dependencies, remoteEntries, false);
       if (observed.status !== "verified-effect") continue;
       const recorded = await lifecycle.recordPhysicalResult(String(intent.operationId), effect.effectId, observed);
@@ -332,14 +323,7 @@ async function preflightVerifiedEffects(
       if (effect.descriptor.kind === "remote-file" && effect.descriptor.remoteMutation.kind === "existing-file-content-update") {
         const entries = await remoteEntries();
         if (!entries) return `effect-verified durable REMOTE update ${effect.effectId} lacks complete REMOTE observation`;
-        const convergence = verifyPreservedRemoteUpdateConvergence(effect.descriptor, entries);
-        if (convergence.status === "predecessor-retirement-required") {
-          const finalizer = dependencies.remoteUpdateFinalizationPort?.finalizeExistingUpdate;
-          if (!finalizer) return `effect-verified durable REMOTE update ${effect.effectId} requires predecessor retirement but the recovery finalizer is unavailable`;
-          const outcome = await finalizer.call(dependencies.remoteUpdateFinalizationPort, effect.descriptor.remoteMutation);
-          if (outcome.status !== "verified-effect") return `effect-verified durable REMOTE update ${effect.effectId} predecessor retirement did not verify (${outcome.status}: ${outcome.reason})`;
-          remotePromise = undefined;
-        }
+        const convergence = verifyStableRemoteUpdateConvergence(effect.descriptor, entries);
       }
       const failure = await verifyCurrentPhysicalReality(legacy, lifecycle, intent, effect, loaded.state, remote, dependencies, remoteEntries);
       emitStateRecoveryDiagnostic(diagnostics, failure ? "warn" : "debug", "recovery.durable", "effect-verified-preflight-observation", { operationId: String(intent.operationId), intentId: String(intent.intentId), effectId: effect.effectId, fromStage: effect.stage, result: failure ? "outcome-unknown" : "verified-effect", ...(failure ? { reason: failure } : {}) });

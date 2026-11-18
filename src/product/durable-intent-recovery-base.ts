@@ -36,6 +36,7 @@ import { emitStateRecoveryDiagnostic } from "../diagnostics/authority-state-reco
 import { sha256Text } from "../util/sha256";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ProductSynchronizationExecutor } from "./production-executor";
+import { verifyStableRemoteUpdateConvergence } from "./remote-update-convergence";
 
 export interface RemoteUpdateFinalizationPort {
   finalizeExistingUpdate(identity: Extract<RemoteMutationIdentity, { readonly kind: "existing-file-content-update" }>, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome>;
@@ -102,7 +103,7 @@ function validateDescriptor(intent: RecoverableOperationIntentV1_1, effect: Reco
       return "REMOTE file descriptor contradicts persisted mutation identity/content";
     }
     if (mutation.kind === "reserved-file-create") return descriptor.mutationKind === "create" ? undefined : "REMOTE file create descriptor has incompatible mutation kind";
-    if (descriptor.mutationKind !== "update" || mutation.updateProtocol !== "immutable-candidate-preservation") return "REMOTE update descriptor lacks immutable-candidate authority";
+    if (descriptor.mutationKind !== "update" || mutation.updateProtocol !== "stable-object-in-place") return "REMOTE update descriptor lacks stable-ID update authority";
     if (mutation.identityAuthority.generation !== intent.semanticAuthority.generation || mutation.identityAuthority.path !== descriptor.targetPath || mutation.identityAuthority.remoteObjectId !== mutation.remoteObjectId) {
       return "REMOTE update descriptor identity authority is contradictory";
     }
@@ -169,7 +170,7 @@ function remoteIdentity(intent: RecoverableOperationIntentV1_1, canonical: Trust
     const mutation = remote.remoteMutation;
     return mutation.kind === "reserved-file-create"
       ? { resulting: mutation.reservedRemoteObjectId }
-      : { resulting: mutation.candidateRemoteObjectId, predecessor: mutation.remoteObjectId };
+      : { resulting: mutation.remoteObjectId };
   }
   if (remote?.kind === "remote-folder-create") return { resulting: remote.remoteMutation.reservedRemoteObjectId };
   if (remote?.kind === "move") return { resulting: remote.remoteObjectId ?? remote.identityAuthority.remoteObjectId };
@@ -361,9 +362,14 @@ async function observePersistedEffect(legacy: ProductSynchronizationExecutor, de
   if (!entries) return { status: "outcome-unknown", reason: "complete REMOTE listing unavailable during durable recovery" };
   if (descriptor.kind === "remote-file") {
     const mutation = descriptor.remoteMutation;
-    const rid = mutation.kind === "reserved-file-create" ? mutation.reservedRemoteObjectId : mutation.candidateRemoteObjectId;
+    if (mutation.kind === "existing-file-content-update") {
+      const result = verifyStableRemoteUpdateConvergence(descriptor, entries);
+      return result.status === "converged"
+        ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-stable-update", { descriptor, observed: result.observed }) }
+        : { status: "outcome-unknown", reason: result.reason };
+    }
     const match = uniqueRemote(entries, descriptor.targetPath, "file");
-    return match?.remoteObjectId === rid && match.content?.hash === descriptor.intendedContent.hash && match.content.sizeBytes === descriptor.intendedContent.sizeBytes
+    return match?.remoteObjectId === mutation.reservedRemoteObjectId && match.content?.hash === descriptor.intendedContent.hash && match.content.sizeBytes === descriptor.intendedContent.sizeBytes
       ? { status: "verified-effect", verificationEvidenceRef: evidenceRef("durable-recovery-remote-file", { descriptor, observed: match }) }
       : { status: "outcome-unknown", reason: "REMOTE file does not prove persisted identity/content without ambiguity" };
   }

@@ -46,7 +46,7 @@ import { executionDiagnosticEmitterFor, executionRequestAttributionFor, type Exe
 import type { RequestAttributionScope } from "../diagnostics/request-attribution";
 import { DurableEffectLifecycleCoordinator, type PhysicalEffectDispatchResult } from "./operation-isolation";
 import type { ExecutorRunEvidence, ProductSynchronizationExecutor } from "./production-executor";
-import { verifyPreservedRemoteUpdateConvergence } from "./remote-update-convergence";
+import { verifyStableRemoteUpdateConvergence } from "./remote-update-convergence";
 import type { ProductTextVersionStore } from "./text-version-store";
 import type { InventoryTargetedConvergenceReader, TargetedConvergenceContext } from "./inventory-targeted-convergence-read";
 
@@ -144,7 +144,7 @@ function resultingRemoteObjectId(operation: ExecutablePlannedOperation, effects:
     if (descriptor.kind === "remote-file") {
       return descriptor.remoteMutation.kind === "reserved-file-create"
         ? descriptor.remoteMutation.reservedRemoteObjectId
-        : descriptor.remoteMutation.candidateRemoteObjectId;
+        : descriptor.remoteMutation.remoteObjectId;
     }
     if (descriptor.kind === "move" && descriptor.targetSide === "remote" && descriptor.remoteObjectId) return descriptor.remoteObjectId;
     if (descriptor.kind === "trash" && descriptor.targetSide === "remote" && descriptor.remoteObjectId) return descriptor.remoteObjectId;
@@ -383,8 +383,6 @@ async function prepareIntent(
     const intended = canonical(source?.evidence ?? operation.contentVersion.content);
     const revision = expectedRemoteRevision(operation, operation.remoteObjectId);
     if (!source || !intended || !revision) return { status: "blocked", reason: "REMOTE update requires canonical source and exact REMOTE revision" };
-    const candidate = await remote.reserveFileCreateIdentity(root, intentId, operation.path, intended);
-    if (!candidate.ok) return { status: "blocked", reason: `REMOTE update candidate reservation failed: ${candidate.signal.kind}` };
     add("remote-file", {
       kind: "remote-file",
       targetSide: "remote",
@@ -396,8 +394,7 @@ async function prepareIntent(
         remoteObjectId: operation.remoteObjectId,
         expectedRevision: revision,
         path: operation.path,
-        updateProtocol: "immutable-candidate-preservation",
-        candidateRemoteObjectId: candidate.value.reservedRemoteObjectId,
+        updateProtocol: "stable-object-in-place",
         intendedContent: intended,
         identityAuthority: identity,
       },
@@ -462,8 +459,6 @@ async function prepareIntent(
     const tx = localTransaction(operation, intended, "merge", "replace");
     if (!tx) return { status: "blocked", reason: "clean merge LOCAL side lacks exact prior authority" };
     add("local-merge", { kind: "local-file", targetSide: "local", mutationKind: "replace", targetPath: operation.path, localTransactionId: tx.transactionId, intendedContent: intended }, source.content, tx);
-    const candidate = await remote.reserveFileCreateIdentity(root, intentId, operation.path, intended);
-    if (!candidate.ok) return { status: "blocked", reason: `clean merge candidate reservation failed: ${candidate.signal.kind}` };
     add("remote-merge", {
       kind: "remote-file",
       targetSide: "remote",
@@ -475,8 +470,7 @@ async function prepareIntent(
         remoteObjectId: operation.remoteObjectId,
         expectedRevision: revision,
         path: operation.path,
-        updateProtocol: "immutable-candidate-preservation",
-        candidateRemoteObjectId: candidate.value.reservedRemoteObjectId,
+        updateProtocol: "stable-object-in-place",
         intendedContent: intended,
         identityAuthority: identity,
       },
@@ -505,10 +499,8 @@ async function verifyRemote(legacy: ProductSynchronizationExecutor, descriptor: 
   const active = result.value.entries.filter(value => !value.trashed);
   if (descriptor.kind === "remote-file") {
     if (descriptor.remoteMutation.kind === "existing-file-content-update") {
-      const update = verifyPreservedRemoteUpdateConvergence(descriptor, active);
-      return update.status === "converged" ? { ok: true } : { ok: false, reason: update.status === "predecessor-retirement-required"
-        ? "REMOTE update predecessor remains live after mutation dispatch"
-        : update.reason };
+      const update = verifyStableRemoteUpdateConvergence(descriptor, active);
+      return update.status === "converged" ? { ok: true } : { ok: false, reason: update.reason };
     }
     const expected = descriptor.remoteMutation.reservedRemoteObjectId;
     const matches = active.filter(value => value.path === descriptor.targetPath);

@@ -2,24 +2,19 @@ import type { RecoverablePhysicalMutationDescriptorV1_1, RemoteEntry } from "../
 
 type RemoteFileDescriptor = Extract<RecoverablePhysicalMutationDescriptorV1_1, { readonly kind: "remote-file" }>;
 
-export type PreservedRemoteUpdateConvergence =
-  | { readonly status: "converged"; readonly candidate: RemoteEntry }
-  | { readonly status: "predecessor-retirement-required"; readonly predecessor: RemoteEntry; readonly candidate: RemoteEntry }
+export type StableRemoteUpdateConvergence =
+  | { readonly status: "converged"; readonly observed: RemoteEntry }
   | { readonly status: "not-converged"; readonly reason: string };
 
-/**
- * An immutable-candidate update converges only when the candidate is the sole
- * live object at the logical path. The exact persisted predecessor/candidate
- * pair is recognized only as a bounded, resumable retirement state. No other
- * same-path multi-object topology is accepted here.
- */
-export function verifyPreservedRemoteUpdateConvergence(
+/** DEC-362: only the established object ID at a unique live path may converge. */
+export function verifyStableRemoteUpdateConvergence(
   descriptor: RemoteFileDescriptor,
   entries: readonly RemoteEntry[],
-): PreservedRemoteUpdateConvergence {
+): StableRemoteUpdateConvergence {
   const mutation = descriptor.remoteMutation;
-  if (descriptor.mutationKind !== "update" || mutation.kind !== "existing-file-content-update") {
-    return { status: "not-converged", reason: "descriptor is not an existing-file-content-update" };
+  if (descriptor.mutationKind !== "update" || mutation.kind !== "existing-file-content-update"
+    || mutation.updateProtocol !== "stable-object-in-place") {
+    return { status: "not-converged", reason: "descriptor is not a stable existing-file-content-update" };
   }
   if (descriptor.targetPath !== mutation.path
     || descriptor.intendedContent.algorithm !== "sha256"
@@ -31,39 +26,18 @@ export function verifyPreservedRemoteUpdateConvergence(
     || mutation.identityAuthority.remoteObjectId !== mutation.remoteObjectId) {
     return { status: "not-converged", reason: "persisted REMOTE update descriptor authority is inconsistent" };
   }
-  if (mutation.remoteObjectId === mutation.candidateRemoteObjectId) {
-    return { status: "not-converged", reason: "predecessor and candidate identities are not distinct" };
+  const live = entries.filter(entry => !entry.trashed && entry.path === descriptor.targetPath);
+  if (live.length !== 1 || live[0]?.remoteObjectId !== mutation.remoteObjectId) {
+    return { status: "not-converged", reason: "established remote identity is not the unique live path occupant" };
   }
-
-  const samePath = entries.filter(entry => !entry.trashed && entry.path === descriptor.targetPath);
-  const predecessors = samePath.filter(entry => entry.remoteObjectId === mutation.remoteObjectId);
-  const candidates = samePath.filter(entry => entry.remoteObjectId === mutation.candidateRemoteObjectId);
-  if (samePath.length === 1 && predecessors.length === 0 && candidates.length === 1) {
-    const candidate = candidates[0]!;
-    if (candidate.entityKind !== "file"
-      || candidate.content?.hash !== descriptor.intendedContent.hash
-      || candidate.content.sizeBytes !== descriptor.intendedContent.sizeBytes) {
-      return { status: "not-converged", reason: "REMOTE update candidate does not match persisted intended content" };
-    }
-    return { status: "converged", candidate };
+  const observed = live[0]!;
+  if (observed.entityKind !== "file"
+    || observed.content?.hash !== descriptor.intendedContent.hash
+    || observed.content.sizeBytes !== descriptor.intendedContent.sizeBytes) {
+    return { status: "not-converged", reason: "established remote file does not contain intended content" };
   }
-
-  if (samePath.length !== 2 || predecessors.length !== 1 || candidates.length !== 1) {
-    return { status: "not-converged", reason: "REMOTE update path is not the sole candidate or exact resumable predecessor/candidate pair" };
+  if (!observed.content.revision || observed.content.revision === String(mutation.expectedRevision)) {
+    return { status: "not-converged", reason: "established remote file lacks a verified new revision" };
   }
-
-  const predecessor = predecessors[0]!;
-  const candidate = candidates[0]!;
-  if (predecessor.entityKind !== "file" || candidate.entityKind !== "file") {
-    return { status: "not-converged", reason: "REMOTE update predecessor/candidate are not both files" };
-  }
-  if (predecessor.content?.revision !== String(mutation.expectedRevision)) {
-    return { status: "not-converged", reason: "REMOTE update predecessor revision does not match persisted expectedRevision" };
-  }
-  if (candidate.content?.hash !== descriptor.intendedContent.hash
-    || candidate.content.sizeBytes !== descriptor.intendedContent.sizeBytes) {
-    return { status: "not-converged", reason: "REMOTE update candidate does not match persisted intended content" };
-  }
-
-  return { status: "predecessor-retirement-required", predecessor, candidate };
+  return { status: "converged", observed };
 }
