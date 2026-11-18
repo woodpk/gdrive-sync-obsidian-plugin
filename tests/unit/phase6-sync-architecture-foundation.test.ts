@@ -154,7 +154,7 @@ test("R2 durable trash recovery descriptor retains destructive authority", () =>
 
 test("R2 clean merge keeps separately recoverable physical effects", () => {
   const localEffect: RecoverableMutationEffect = { effectId: "local", descriptor: { kind: "local-file", targetSide: "local", mutationKind: "replace", targetPath: path("merge.md"), localTransactionId: transactionId, intendedContent: canonical("merged") }, stage: "state-committed" };
-  const remoteIdentity: RemoteMutationIdentity = { kind: "existing-file-content-update", intentId, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("rev0"), path: path("merge.md"), updateProtocol: "immutable-candidate-preservation", candidateRemoteObjectId: remoteId("candidate"), intendedContent: canonical("merged"), identityAuthority: identityAuthority(path("merge.md"), remoteId("R0")) };
+  const remoteIdentity: RemoteMutationIdentity = { kind: "existing-file-content-update", intentId, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("rev0"), path: path("merge.md"), updateProtocol: "stable-object-in-place", intendedContent: canonical("merged"), identityAuthority: identityAuthority(path("merge.md"), remoteId("R0")) };
   const remoteEffect: RecoverableMutationEffect = { effectId: "remote", descriptor: { kind: "remote-file", targetSide: "remote", mutationKind: "update", targetPath: path("merge.md"), remoteMutation: remoteIdentity, intendedContent: canonical("merged") }, stage: "outcome-unknown" };
   const intent: RecoverableOperationIntent = { logicalKind: "clean-text-merge", operationId, intentId, semanticAuthority: { generation: generation("semantic:merge") }, effects: [localEffect, remoteEffect] };
   assert.equal(recoverableOperationIsComplete(intent), false);
@@ -170,28 +170,29 @@ test("R3 safe remote move and trash outcomes preserve unknown versus verified ef
   assert.equal(verifiedTrash.status, "verified-effect");
 });
 
-test("R4 concurrent RI allows safe materialization but not ordinary convergence", () => {
-  const proof = { kind: "immutable-candidate-preservation" as const, candidateRemoteObjectId: remoteId("RW"), predecessorRemoteObjectId: remoteId("R0"), predecessorRevision: remoteRevision("r0"), intendedContent: canonical("writer"), verifiedContent: canonical("writer"), preservedRemoteObjectIds: [remoteId("R0"), remoteId("RI")] };
-  const materialized = remoteUpdateWasSafelyMaterialized({ kind: "immutable-candidate-preservation", finalContentMatchesCandidate: true, proof });
+test("R4 a same-object content proof alone does not authorize convergence with independent occupants", () => {
+  const proof = { kind: "same-object-content-update" as const, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("r0"), verifiedRevision: remoteRevision("r1"), intendedContent: canonical("writer"), verifiedContent: canonical("writer") };
+  const materialized = remoteUpdateWasSafelyMaterialized({ kind: "same-object-content-update", finalContentMatchesExpected: true, proof });
   const convergence: RemotePathConvergenceAuthority = { status: "conflict-preserved", independentRemoteObjectIds: [remoteId("RI")] };
   assert.equal(materialized, true);
   assert.equal(remoteUpdateEligibleForOrdinaryConvergence(materialized, convergence), false);
-  assert.equal(proof.preservedRemoteObjectIds.includes(remoteId("RI")), true);
+  assert.equal(proof.remoteObjectId, remoteId("R0"));
 });
 
-test("R4 true conflict-free remote application requires separate convergence authority", () => {
-  const proof = { kind: "immutable-candidate-preservation" as const, candidateRemoteObjectId: remoteId("RW"), predecessorRemoteObjectId: remoteId("R0"), predecessorRevision: remoteRevision("r0"), intendedContent: canonical("writer"), verifiedContent: canonical("writer"), preservedRemoteObjectIds: [remoteId("R0")] };
-  const materialized = remoteUpdateWasSafelyMaterialized({ kind: "immutable-candidate-preservation", finalContentMatchesCandidate: true, proof });
-  const convergence: RemotePathConvergenceAuthority = { status: "conflict-free", basis: "no-independent-candidate", authoritativeRemoteObjectIds: [remoteId("RW")] };
+test("R4 true conflict-free same-ID update requires separate convergence authority", () => {
+  const proof = { kind: "same-object-content-update" as const, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("r0"), verifiedRevision: remoteRevision("r1"), intendedContent: canonical("writer"), verifiedContent: canonical("writer") };
+  const materialized = remoteUpdateWasSafelyMaterialized({ kind: "same-object-content-update", finalContentMatchesExpected: true, proof });
+  const convergence: RemotePathConvergenceAuthority = { status: "conflict-free", basis: "no-independent-candidate", authoritativeRemoteObjectIds: [remoteId("R0")] };
   assert.equal(remoteUpdateEligibleForOrdinaryConvergence(materialized, convergence), true);
 });
 
-test("R5 lost response recovery validates exact durable intended upload version rather than current LOCAL", () => {
-  const identity: RemoteMutationIdentity = { kind: "existing-file-content-update", intentId, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("r0"), path: path("note.md"), updateProtocol: "immutable-candidate-preservation", candidateRemoteObjectId: remoteId("candidate"), intendedContent: canonical("L1"), identityAuthority: identityAuthority() };
+test("R5 lost response recovery validates same Drive ID and exact durable intended content", () => {
+  const identity: RemoteMutationIdentity = { kind: "existing-file-content-update", intentId, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("r0"), path: path("note.md"), updateProtocol: "stable-object-in-place", intendedContent: canonical("L1"), identityAuthority: identityAuthority() };
   assert.equal(identity.kind, "existing-file-content-update");
-  const proof = { kind: "immutable-candidate-preservation" as const, candidateRemoteObjectId: remoteId("candidate"), predecessorRemoteObjectId: remoteId("R0"), predecessorRevision: remoteRevision("r0"), intendedContent: identity.intendedContent, verifiedContent: canonical("L1"), preservedRemoteObjectIds: [remoteId("R0")] };
-  assert.equal(remoteUpdateWasSafelyMaterialized({ kind: "immutable-candidate-preservation", finalContentMatchesCandidate: true, proof }), true);
-  assert.equal(remoteUpdateWasSafelyMaterialized({ kind: "immutable-candidate-preservation", finalContentMatchesCandidate: true, proof: { ...proof, verifiedContent: canonical("L2") } }), false);
+  const proof = { kind: "same-object-content-update" as const, remoteObjectId: remoteId("R0"), expectedRevision: remoteRevision("r0"), verifiedRevision: remoteRevision("r1"), intendedContent: identity.intendedContent, verifiedContent: canonical("L1") };
+  assert.equal(remoteUpdateWasSafelyMaterialized({ kind: "same-object-content-update", finalContentMatchesExpected: true, proof }), true);
+  assert.equal(remoteUpdateWasSafelyMaterialized({ kind: "same-object-content-update", finalContentMatchesExpected: true, proof: { ...proof, verifiedContent: canonical("L2") } }), false);
+  assert.equal(remoteUpdateWasSafelyMaterialized({ kind: "same-object-content-update", finalContentMatchesExpected: true, proof: { ...proof, verifiedRevision: remoteRevision("r0") } }), false);
 });
 
 test("R6 cache-bypassing integrity reconciliation seam is distinct from ordinary cached read", () => {
