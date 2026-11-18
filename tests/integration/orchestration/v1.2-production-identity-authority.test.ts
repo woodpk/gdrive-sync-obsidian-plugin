@@ -191,9 +191,9 @@ function productionHarness(kind: "upload-update" | "trash-remote") {
     async updateExisting(descriptor: any) {
       seamCalls.push("updateExisting");
       remoteEntries = [
-        { path: target, entityKind: "file", remoteObjectId: descriptor.candidateRemoteObjectId, content: { hash: localHash, sizeBytes: 3, revision: "revision:candidate" }, trashed: false },
+        { path: target, entityKind: "file", remoteObjectId: descriptor.remoteObjectId, content: { hash: localHash, sizeBytes: 3, revision: "revision:updated" }, trashed: false },
       ];
-      return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: descriptor.candidateRemoteObjectId, predecessorRemoteObjectId: descriptor.remoteObjectId, predecessorRevision: descriptor.expectedRevision, intendedContent: descriptor.intendedContent, verifiedContent: descriptor.intendedContent, preservedRemoteObjectIds: [descriptor.remoteObjectId, descriptor.candidateRemoteObjectId] } };
+      return { status: "verified-effect", applicationProof: { kind: "same-object-content-update", remoteObjectId: descriptor.remoteObjectId, expectedRevision: descriptor.expectedRevision, verifiedRevision: revision("revision:updated"), intendedContent: descriptor.intendedContent, verifiedContent: descriptor.intendedContent } };
     },
     async trashExisting(descriptor: any) {
       seamCalls.push("trashExisting");
