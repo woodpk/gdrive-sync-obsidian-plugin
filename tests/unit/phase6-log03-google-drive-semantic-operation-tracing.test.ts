@@ -58,51 +58,52 @@ const root = () => ({ id: "root", name: "BRAIN Sync", mimeType: folderMime, tras
 const contentRoot = () => ({ id: "content", name: "vault", mimeType: folderMime, parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-content" } });
 const configRoot = () => ({ id: "config", name: "__brain_sync_portable_config__", mimeType: folderMime, parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-portable-config" } });
 const privateFolder = () => ({ id: "private", name: "private", mimeType: folderMime, parents: ["content"], trashed: false, appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const predecessorFile = (trashed = false) => ({ id: "pred", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed, size: "3", sha256Checksum: "old", version: "old-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const candidateFile = () => ({ id: "cand", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "4", sha256Checksum: "abc", version: "candidate-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const thirdFile = () => ({ id: "third", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "4", sha256Checksum: "third", version: "third-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const originalFile = () => ({ id: "pred", name: "SECRET-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "3", sha256Checksum: "old", version: "old-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const changedFile = () => ({ ...originalFile(), size: "4", sha256Checksum: "abc", version: "new-revision" });
+const unrelatedFile = () => ({ ...changedFile(), id: "third", sha256Checksum: "third" });
 
 function updateIdentity(secretPath = "private/SECRET-target.md") {
   const target = path(secretPath);
   return {
     kind: "existing-file-content-update",
-    intentId: intent(`intent:${secretPath}`),
+    intentId: intent("intent:" + secretPath),
     remoteObjectId: id("pred"),
     expectedRevision: revision("old-revision"),
     path: target,
-    updateProtocol: "immutable-candidate-preservation",
-    candidateRemoteObjectId: id("cand"),
+    updateProtocol: "stable-object-in-place",
     intendedContent: { algorithm: "sha256", hash: contentHash("sha256:abc"), sizeBytes: 4 },
     identityAuthority: { status: "unique", generation: contractId<"SemanticStateGeneration">("generation:1"), path: target, remoteObjectId: id("pred") },
   } as never;
 }
 
 const bytes: BinaryContentSource = { sizeBytes: 4, async *openChunks() { yield new Uint8Array([1, 2, 3, 4]); } };
-type UpdateScenario = "success" | "candidate-missing-from-list" | "retirement-ambiguous" | "post-list-stale" | "third-occupant";
+type UpdateScenario = "success" | "missing-from-list" | "upload-ambiguous" | "post-list-stale" | "third-occupant";
 
 async function updateFixture(scenario: UpdateScenario) {
   const diagnostics = await logger();
   diagnostics.beginSyncRun("log03-test");
-  let candidateGets = 0;
-  let retired = false;
-  let retirementPatchCalls = 0;
+  let applied = false;
+  let uploadCalls = 0;
+  let metaPatchCalls = 0;
+  let listCalls = 0;
+  const identity = { rootId: id("root"), vaultIdentity: vault("vault-1"), protocolVersion: contractId<"ProtocolVersion">("1") };
   const handler = async (url: string, init: PortableRequestInit = {}): Promise<DriveResult<Response>> => {
     const decoded = norm(url);
-    if (url === "https://upload.example/session") return ok(candidateFile());
-    if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files?")) return ok({}, 200, { location: "https://upload.example/session" });
-    if (url.includes("/files/pred?")) {
-      if (init.method === "PATCH") {
-        retirementPatchCalls += 1;
-        retired = true;
-        if (scenario === "retirement-ambiguous") return failure("transient-failure", "response-lost");
-        return ok(predecessorFile(true));
-      }
-      return ok(predecessorFile(retired));
+    if (url === "https://upload.example/session") {
+      const headers = new Headers(init.headers);
+      if (headers.get("content-range") === "bytes */4") return failure("transient-failure", "status-unobservable");
+      applied = true;
+      return scenario === "upload-ambiguous" ? failure("transient-failure", "upload-response-lost") : ok(changedFile());
     }
-    if (url.includes("/files/cand?")) {
-      candidateGets += 1;
-      if (candidateGets === 1) return failure("not-found");
-      return ok(candidateFile());
+    if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files/pred?")) {
+      assert.equal(init.method, "PATCH");
+      uploadCalls++;
+      return ok({}, 200, { location: "https://upload.example/session" });
+    }
+    if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files?")) throw new Error("replacement object must never be created");
+    if (url.includes("/files/pred?")) {
+      if (init.method === "PATCH") { metaPatchCalls++; throw new Error("predecessor trash must never be dispatched"); }
+      return ok(applied ? changedFile() : originalFile());
     }
     if (url.includes("/files/private?")) return ok(privateFolder());
     if (url.includes("/files/content?")) return ok(contentRoot());
@@ -112,86 +113,82 @@ async function updateFixture(scenario: UpdateScenario) {
     if (decoded.includes("'root' in parents") && decoded.includes("name='__brain_sync_portable_config__'")) return ok({ files: [configRoot()] });
     if (decoded.includes("'content' in parents") && decoded.includes("name='private'")) return ok({ files: [privateFolder()] });
     if (decoded.includes("'private' in parents") && decoded.includes("name='SECRET-target.md'")) {
-      if (!retired) {
-        if (scenario === "candidate-missing-from-list") return ok({ files: [predecessorFile(false)] });
-        if (scenario === "third-occupant") return ok({ files: [predecessorFile(false), candidateFile(), thirdFile()] });
-        return ok({ files: [predecessorFile(false), candidateFile()] });
-      }
-      if (scenario === "post-list-stale") return ok({ files: [predecessorFile(false), candidateFile()] });
-      return ok({ files: [candidateFile()] });
+      listCalls++;
+      if (scenario === "missing-from-list") return ok({ files: [] });
+      if (scenario === "third-occupant") return ok({ files: [originalFile(), unrelatedFile()] });
+      if (scenario === "post-list-stale" && applied) return ok({ files: [originalFile()] });
+      return ok({ files: [applied ? changedFile() : originalFile()] });
     }
-    throw new Error(`unexpected request: ${decoded} ${init.method ?? "GET"}`);
+    throw new Error("unexpected request: " + decoded + " " + (init.method ?? "GET"));
   };
   const backing = new MemorySecrets();
+  backing.setSecret("brain-gdrive-paired-account", "acct");
   const secrets = new ObsidianSecretStore(backing);
-  const adapter = new GoogleDriveAdapter(new GoogleOAuthSession({ clientId: "c", redirectUri: "https://callback.invalid" }, secrets), new StubTransport(handler), secrets, diagnostics);
+  const adapter = new GoogleDriveAdapter(
+    new GoogleOAuthSession({ clientId: "c", redirectUri: "https://callback.invalid" }, secrets),
+    new StubTransport(handler), secrets, diagnostics, () => identity as ManagedRemoteIdentity,
+  );
   const outcome = await adapter.updateExisting(updateIdentity(), bytes);
-  return { diagnostics, outcome, retirementPatchCalls };
+  return { diagnostics, outcome, uploadCalls, metaPatchCalls, listCalls };
 }
 
 function semanticEvents(diagnostics: DiagnosticLogger) {
   return diagnostics.snapshot().filter(event => event.component === "drive.semantic");
 }
 
-test("LOG-03 exposes candidate direct-GET success while pre-retirement path listing omits the candidate without changing the existing branch", async () => {
-  const { diagnostics, outcome, retirementPatchCalls } = await updateFixture("candidate-missing-from-list");
+test("LOG-03 same-ID observation refuses missing path occupant before any upload", async () => {
+  const { diagnostics, outcome, uploadCalls, metaPatchCalls } = await updateFixture("missing-from-list");
   assert.equal(outcome.status, "conflict-preserved");
-  assert.equal("reason" in outcome ? outcome.reason : undefined, "update-path-contains-independent-candidate");
-  assert.equal(retirementPatchCalls, 0);
+  assert.equal(uploadCalls, 0);
+  assert.equal(metaPatchCalls, 0);
   const events = semanticEvents(diagnostics);
-  assert.ok(events.some(event => event.event === "drive-exact-id-observation-result" && event.fields?.stage === "candidate-after-upload" && event.fields?.result === "present"));
-  assert.ok(events.some(event => event.event === "drive-update-topology-observed" && event.fields?.stage === "pre-retirement" && event.fields?.occupancyCount === 1));
-  assert.ok(events.some(event => event.event === "drive-update-retirement-branch" && event.fields?.result === "retirement-not-reached" && event.fields?.reason === "candidate-not-listed-at-logical-path"));
+  assert.ok(events.some(event => event.event === "drive-exact-id-observation-result" && event.fields?.stage === "stable-update-before" && event.fields?.result === "present"));
+  assert.ok(events.some(event => event.event === "drive-update-topology-observed" && event.fields?.stage === "stable-update-before"));
   assert.equal(diagnostics.renderText().includes("private/SECRET-target.md"), false);
   assert.equal(diagnostics.renderText().includes("intent:private/SECRET-target.md"), false);
 });
 
-test("LOG-03 distinguishes an ambiguous predecessor retirement response from later physical verification", async () => {
-  const { diagnostics, outcome, retirementPatchCalls } = await updateFixture("retirement-ambiguous");
+test("LOG-03 ambiguous same-ID upload response is resolved by exact-ID post-observation", async () => {
+  const { diagnostics, outcome, uploadCalls, metaPatchCalls } = await updateFixture("upload-ambiguous");
   assert.equal(outcome.status, "verified-effect");
-  assert.equal(retirementPatchCalls, 1);
+  assert.equal(uploadCalls, 1);
+  assert.equal(metaPatchCalls, 0);
   const events = semanticEvents(diagnostics);
-  assert.ok(events.some(event => event.event === "drive-update-predecessor-retirement-dispatch" && event.fields?.result === "transport-failure" && event.fields?.driveSignal === "transient-failure"));
-  assert.ok(events.some(event => event.event === "drive-exact-id-observation-result" && event.fields?.stage === "predecessor-after-retirement" && event.fields?.trashed === true));
+  assert.ok(events.some(event => event.event === "drive-update-same-id-upload-result" && event.fields?.result === "uncertain" && event.fields?.driveSignal === "transient-failure"));
+  assert.ok(events.some(event => event.event === "drive-exact-id-observation-result" && event.fields?.stage === "stable-update-after"));
   assert.ok(events.some(event => event.event === "drive-update-convergence" && event.fields?.result === "verified-effect"));
 });
 
-test("LOG-03 exposes post-trash exact-ID and logical-path disagreement without changing convergence outcome", async () => {
-  const { diagnostics, outcome, retirementPatchCalls } = await updateFixture("post-list-stale");
+test("LOG-03 exact-ID metadata and stale path topology fail closed", async () => {
+  const { diagnostics, outcome, uploadCalls, metaPatchCalls } = await updateFixture("post-list-stale");
   assert.equal(outcome.status, "outcome-unknown");
-  assert.equal("reason" in outcome ? outcome.reason : undefined, "update-candidate-is-not-sole-live-path-occupant-after-retirement");
-  assert.equal(retirementPatchCalls, 1);
-  const events = semanticEvents(diagnostics);
-  assert.ok(events.some(event => event.event === "drive-exact-id-observation-result" && event.fields?.stage === "predecessor-after-retirement" && event.fields?.trashed === true));
-  assert.ok(events.some(event => event.event === "drive-update-topology-observed" && event.fields?.stage === "post-retirement" && event.fields?.occupancyCount === 2));
+  assert.equal(uploadCalls, 1);
+  assert.equal(metaPatchCalls, 0);
+  assert.ok(semanticEvents(diagnostics).some(event => event.event === "drive-update-topology-observed" && event.fields?.stage === "stable-update-after"));
 });
 
-test("LOG-03 distinguishes an independent third occupant and never reaches predecessor retirement", async () => {
-  const { diagnostics, outcome, retirementPatchCalls } = await updateFixture("third-occupant");
+test("LOG-03 independent third occupant blocks update without uploading or deleting", async () => {
+  const { diagnostics, outcome, uploadCalls, metaPatchCalls } = await updateFixture("third-occupant");
   assert.equal(outcome.status, "conflict-preserved");
-  assert.equal(retirementPatchCalls, 0);
-  const branch = semanticEvents(diagnostics).find(event => event.event === "drive-update-retirement-branch");
-  assert.equal(branch?.fields?.reason, "independent-occupant-present");
-  assert.equal(branch?.fields?.occupancyCount, 3);
-  assert.match(String(branch?.fields?.occupantRemoteObjectIds), /third/);
+  assert.equal(uploadCalls, 0);
+  assert.equal(metaPatchCalls, 0);
+  assert.ok(semanticEvents(diagnostics).some(event => event.event === "drive-update-topology-observed" && event.fields?.occupancyCount === 2));
 });
 
-test("LOG-03 successful immutable-candidate update records causal stages while preserving verified-effect result", async () => {
-  const { diagnostics, outcome, retirementPatchCalls } = await updateFixture("success");
+test("LOG-03 successful stable-ID update records causal stages without candidate replacement", async () => {
+  const { diagnostics, outcome, uploadCalls, metaPatchCalls } = await updateFixture("success");
   assert.equal(outcome.status, "verified-effect");
-  assert.equal(retirementPatchCalls, 1);
+  assert.equal(uploadCalls, 1);
+  assert.equal(metaPatchCalls, 0);
   const names = semanticEvents(diagnostics).map(event => event.event);
   for (const expected of [
     "drive-update-entered",
-    "drive-update-candidate-upload-dispatch",
-    "drive-update-candidate-upload-result",
-    "drive-update-finalization-entered",
-    "drive-update-candidate-verification",
+    "drive-update-same-id-upload-dispatch",
+    "drive-update-same-id-upload-result",
     "drive-update-topology-observed",
-    "drive-update-predecessor-retirement-dispatch",
-    "drive-update-predecessor-retirement-observed",
     "drive-update-convergence",
-  ]) assert.ok(names.includes(expected), `${expected} missing`);
+  ]) assert.ok(names.includes(expected), expected + " missing");
+  assert.equal(names.some(name => name.includes("predecessor-retirement") || name.includes("candidate-upload")), false);
 });
 
 test("LOG-03 create, move, and trash emit semantic operation events without exposing raw logical names", async () => {
