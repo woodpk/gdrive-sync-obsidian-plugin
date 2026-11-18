@@ -583,3 +583,33 @@ test("G2 scenario 9 transient offline failure preserves prior cursor then a late
     assert.equal(afterReconnect.state.base[0]?.content?.hash, sha256Text("edited while offline"));
   }
 });
+
+test("DEC362 two simulated devices update in sequence and converge without rotating the Drive ID", async () => {
+  const path = vp("cross-device-stable-id.md");
+  const established = rid("remote:cross-device-stable");
+  const a = await harness({ trusted: trustedState(path, established, "base"), local: [[String(path), "base"]], remote: [[String(path), "base", String(established)]] });
+  a.boundary.setLocal(path, "edited on A");
+  assert.equal((await executeReviewed(a.controller)).operations[0]?.kind, "upload-update");
+  assert.equal(a.boundary.remoteFiles.get(String(path))?.remoteObjectId, established);
+  assert.equal(a.boundary.remoteFiles.get(String(path))?.text, "edited on A");
+
+  const b = await harness({ trusted: trustedState(path, established, "base"), local: [[String(path), "base"]], remote: [[String(path), "edited on A", String(established)]] });
+  assert.equal((await executeReviewed(b.controller)).operations[0]?.kind, "download-update");
+  assert.equal(b.boundary.localFiles.get(String(path))?.text, "edited on A");
+  let stateB = await b.store.load(b.context);
+  assert.equal(stateB.status, "trusted");
+  if (stateB.status === "trusted") assert.equal(stateB.state.remoteMappings[0]?.remoteObjectId, established);
+
+  b.boundary.setLocal(path, "edited on B");
+  assert.equal((await executeReviewed(b.controller)).operations[0]?.kind, "upload-update");
+  assert.equal(b.boundary.remoteFiles.get(String(path))?.remoteObjectId, established);
+  a.boundary.externalRemoteEdit(path, "edited on B");
+  assert.equal((await executeReviewed(a.controller)).operations[0]?.kind, "download-update");
+  assert.equal(a.boundary.localFiles.get(String(path))?.text, "edited on B");
+  const stateA = await a.store.load(a.context);
+  stateB = await b.store.load(b.context);
+  assert.equal(stateA.status, "trusted");
+  assert.equal(stateB.status, "trusted");
+  if (stateA.status === "trusted") assert.equal(stateA.state.remoteMappings[0]?.remoteObjectId, established);
+  if (stateB.status === "trusted") assert.equal(stateB.state.remoteMappings[0]?.remoteObjectId, established);
+});
