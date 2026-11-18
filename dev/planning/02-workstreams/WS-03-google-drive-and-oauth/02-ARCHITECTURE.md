@@ -26,6 +26,13 @@ Phase 1 only. Phase 3 may execute in parallel with Phases 2 and 4.
 
 Repository-specific implementation mechanics remain engineering discretion only within these fixed ownership and invariant boundaries.
 
+## DEC-362 stable remote identity correction (2026-11-18)
+
+For an already-established managed file, the Drive boundary MUST use a same-object content update and preserve the established Google Drive file ID/`remoteObjectId`. Pre-generated/reserved IDs are for genuinely new object creation and retry identity, not routine replacement of an existing logical file. Before mutation, revalidate exact object identity and applicable revision/content preconditions; after mutation, verify the **same ID** with the intended resulting revision/content before authoritative state commit. Stale revision/identity, access loss, concurrent modification or ambiguous network outcome remains fail-closed and recovery-owned. Path/name equality is never authority to adopt a different ID.
+
+The historical `immutable-candidate-preservation` replacement protocol is therefore nonconforming for ordinary existing-file content updates. This WS-03 correction is a hard prerequisite to DEC-339 planner cutover. Canonical corrective task: [stable Drive-ID content-update correction](../WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md).
+
+
 ## DEC-339 implementation boundary (2026-11-17)
 
 The read-only `inventory-metadata-source.ts` and `verified-metadata-inventory-reader.ts` already exist dormant. WS-03's remaining contribution is a **narrow interface to the existing production-authenticated Drive transport** and equivalence evidence for baseline, Changes pagination, stable ID/parent identity, root-wide provenance and explicit inaccessible/unknown outcomes. No new OAuth client, permission or mutation authority. Follow the [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md).
