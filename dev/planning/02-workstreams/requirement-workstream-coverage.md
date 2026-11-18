@@ -6,7 +6,7 @@ This is the canonical whole-system coverage artifact required by the workstream 
 
 ## DEC-339 cross-workstream ownership (2026-11-17)
 
-Target Specification §7.9 is covered by **WS-02** inventory/storage/cursor safety, **WS-03** authenticated Drive metadata and Changes, **WS-05** existing product assembler/controller integration, **WS-07** existing PHX-CI/BVP proof, and relevant **WS-06** resource hardening. Use the [single WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). No new workstream, second execution engine or normative requirement ID.
+Target Specification §7.9 is covered by **WS-02** local and remote inventory/storage/cursor safety, **WS-03** authenticated Drive metadata and Changes, **WS-05** existing product assembler/controller integration through isolated shadow, observation-only and default-off planner cutover, **WS-07** direct BVP operational scenarios plus PHX-CI changed-software qualification (DEC-338/350), and relevant **WS-06** resource hardening. Deferred D339-06 targeted executor read verification remains in the original future scope. Use the [single WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). No new workstream, second execution engine or normative requirement ID.
 
 ## Product Requirement-to-Workstream Coverage
 

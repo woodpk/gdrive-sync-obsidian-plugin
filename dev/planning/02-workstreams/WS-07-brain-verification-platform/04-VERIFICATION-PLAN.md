@@ -2,7 +2,7 @@
 
 ## DEC-339 integration evidence (2026-11-17)
 
-Reuse existing PHX-CI/BVP verification for the [WS-05 minimal inventory integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md): inventory-on/off safety equivalence, cursor/storage/fault cases, request/latency comparison against the **current incremental** path, and representative Windows/iOS resource observations. Do not add a runner, extend frozen BVP authority, execute real Drive/device actions or treat deterministic tests as physical acceptance. D339-06 executor optimization is deferred; separate Owner activation is required.
+For the [WS-05 minimal inventory integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md), **PHX-CI qualifies changed software** (DEC-338); **operational BVP tests run directly** using the already available BVP command interface (DEC-350), not through PHX-CI. Exercise isolated storage-only shadow, local-hint refresh/invalidation, observation-only parity, cursor/storage/fault/recovery, and inventory-on/off safety equivalence. Compare request/latency against the **current incremental** path. Run Windows-first with existing virtual iPhone/iPad simulation (DEC-347); label SIMULATED honestly, and leave actual iOS hardware/resource evidence UNVERIFIED pending separate Owner authorization. Do not add a runner, change frozen BVP authority, or execute real Drive/device actions. D339-06 targeted executor proof remains a separately gated future goal, not part of initial cutover.
 
 
 ## DEC-351 scenario-ID CLI test contract — 2026-10-24

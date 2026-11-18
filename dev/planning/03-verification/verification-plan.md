@@ -2,7 +2,7 @@
 
 ## Authority and execution model
 
-PHX-CI is the exclusive authoritative executable verification system under DEC-334. Repository-controlled checks may be consumed by PHX-CI, but they do not become independent acceptance authorities. GitHub Actions are prohibited for BVP acceptance.
+The pinned PHX-CI is the exclusive **software-change qualification** system under DEC-338. Separate BVP **operational** test execution follows DEC-350 and runs BVP directly, not through PHX-CI. Repository-controlled checks may be consumed by PHX-CI, but they do not become independent acceptance authorities. GitHub Actions are prohibited for BVP acceptance.
 
 Verification must preserve exact source identity, run identity, PHX-CI runtime/framework identity, stage results, repository checks, build/artifact results, and final classification. Historical finalized run evidence belongs under `dev/test-results/<runId>/`.
 
@@ -82,9 +82,9 @@ WS-06 and WS-07 prepare construction evidence and Stage-3 readiness. Stage 3 rem
 
 ## DEC-339 dormant-software integration verification (2026-11-17)
 
-The [single WS-05 integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) assigns WS-02 v1/v2 compatibility, rollback and atomic inventory+cursor enforcement; WS-03 unchanged authenticated `drive.file` metadata/Changes and provenance; WS-05 default-off product wiring with **same** planner/executor, verified fallback and recovery. WS-07 reuses existing PHX-CI/BVP deterministic cases; no new runner.
+The [single WS-05 integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) assigns WS-02 v1/v2 compatibility, local file/folder hints, rollback and atomic inventory+cursor enforcement; WS-03 unchanged authenticated `drive.file` metadata/Changes and provenance; WS-05 **isolated storage-only shadow → observation-only comparison → default-off planner cutover**, preserving the existing planner/executor, full fallback and recovery.
 
-Measure inventory-on/off safety equivalence and actual per-operation requests, latency and device memory/storage **against the active incremental Changes path**, not only full-tree enumeration. Prove migrations/faults/rollback without live pairing mutations; record exact-source PHX-CI evidence under `dev/test-results/<runId>/`, require independent review and separate Owner authorization before live migration/physical rollout/release. D339-06 targeted executor convergence remains deferred. Planning changes confer no new execution authority.
+**Changed-software qualification** uses exact-source PHX-CI (DEC-338), followed by independent blind-first Reviewer acceptance; source-bound evidence belongs in `dev/test-results/<runId>/`. **Operational BVP scenarios** run the existing BVP interface directly (DEC-350), with Windows-first virtual iPhone/iPad simulation (DEC-347), and do **not** count as real iOS/physical evidence. Compare equivalent inventory-on/off safety and actual request/latency measurements **against the active incremental Changes path**, not only full-tree enumeration. Resource/physical behavior not demonstrated remains explicitly unverified. D339-06 targeted executor reads are **deferred, not cancelled**, and require a separate proof/activation gate. DEC-340-01 verification-integrity, S09/`data.json`, exact-artifact promotion and any physical/live migration/release approvals remain independent unresolved-or-separately-verified gates; recheck current authoritative status before activation. This plan grants no execution authority.
 
 
 ## WS-07 DEC-357 Windows OAuth controller — current software-only verification gate

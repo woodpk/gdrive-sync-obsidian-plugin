@@ -8,7 +8,7 @@ The BRAIN product target specification contains **190 normative requirement/inva
 
 ## DEC-339 integration traceability (2026-11-17)
 
-[Target Specification §7.9](target-system-specification.md) adds **no new numbered requirement family**. WS-02 owns state/atomic cursor and rollback; WS-03 owns Drive observation/provenance; WS-05 owns product integration; WS-07/PHX-CI owns verification, with WS-06 resource evidence where required. See the [single integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). The 190 existing product requirement IDs and accepted historical phase scopes are unchanged.
+[Target Specification §7.9](target-system-specification.md) adds **no new numbered requirement family**. WS-02 owns the **per-device LOCAL file/folder inventory hints**, remote-observation storage, atomic cursor and rollback; WS-03 owns Drive observation/provenance; WS-05 owns phased shadow, observation-only and default-off product integration; WS-07 owns direct BVP operational scenarios while PHX-CI qualifies changed software (DEC-338/350), with WS-06 resource evidence where required. D339-06 targeted executor proof remains a separately gated future objective. See the [single integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). The 190 existing product requirement IDs and accepted historical phase scopes are unchanged.
 
 ## Product requirement families
 
