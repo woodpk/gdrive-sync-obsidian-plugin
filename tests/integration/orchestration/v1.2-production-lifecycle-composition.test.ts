@@ -207,6 +207,7 @@ test("D production clean merge persists and verifies independent LOCAL and REMOT
   const authority = authorityFor([target]);
   const result = await executor(h, authority).execute(op({ operationId: id<"OperationId">("op:merge"), kind: "clean-text-merge", path: target, targetSide: "remote", remoteObjectId: remote, contentVersion: { path: target, entityKind: "file", content: { hash, sizeBytes: 3 }, observationToken: id<"ObservationToken">("prior-token") }, preconditions: [base(target), identity(target, remote), { kind: "remote-object", remoteObjectId: remote, expectedRevision: "revision:merge" }, { kind: "path-observation", side: "local", path: target, expected: "present", observationToken: "prior-token" }, { kind: "content-evidence", side: "local", path: target, expected: { hash: priorHash, sizeBytes: 3 } }] }));
   assert.equal(result.status, "durable-verified-success");
+  if (result.status === "durable-verified-success") assert.equal(result.receipt.resultingRemoteObjectId, remote);
   const effects = authority.value.operationIntents[0]?.effects ?? [];
   assert.equal(effects.length, 2); assert.equal(effects.every(effect => effect.stage === "effect-verified"), true); assert.deepEqual(effects.map(effect => effect.descriptor.targetSide), ["local", "remote"]);
 });
