@@ -41,11 +41,8 @@ const context = { expectation: "existing-pairing", expectedVaultIdentity: vault,
 function remoteFile(remoteObjectId: RemoteObjectId, hash = priorHash, sizeBytes = 3, revision = String(expectedRevision)): RemoteEntry {
   return { path: target, entityKind: "file", remoteObjectId, content: { hash, sizeBytes, revision }, trashed: false };
 }
-function exactIntermediateTopology(): RemoteEntry[] {
-  return [remoteFile(predecessor), remoteFile(candidate, intendedHash, intended.sizeBytes, "candidate-revision")];
-}
 function convergedTopology(): RemoteEntry[] {
-  return [remoteFile(candidate, intendedHash, intended.sizeBytes, "candidate-revision")];
+  return [remoteFile(predecessor, intendedHash, intended.sizeBytes, "new-revision")];
 }
 function canonicalState(): TrustedSynchronizationState {
   return {
@@ -117,7 +114,7 @@ function updateIntent(stage: "dispatch-authorized" | "outcome-unknown" | "effect
         kind: "remote-file", targetSide: "remote", mutationKind: "update", targetPath: target, intendedContent: intended,
         remoteMutation: {
           kind: "existing-file-content-update", intentId, remoteObjectId: predecessor, expectedRevision, path: target,
-          updateProtocol: "immutable-candidate-preservation", candidateRemoteObjectId: candidate, intendedContent: intended,
+          updateProtocol: "stable-object-in-place", intendedContent: intended,
           identityAuthority: { status: "unique", generation, path: target, remoteObjectId: predecessor },
         },
       },
@@ -189,31 +186,15 @@ function fixture(topologyAfterUpdate: UpdateTopology = () => convergedTopology()
       return {
         status: "verified-effect",
         applicationProof: {
-          kind: "immutable-candidate-preservation", candidateRemoteObjectId: identity.candidateRemoteObjectId,
-          predecessorRemoteObjectId: identity.remoteObjectId, predecessorRevision: identity.expectedRevision,
+          kind: "same-object-content-update", remoteObjectId: identity.remoteObjectId,
+          expectedRevision: identity.expectedRevision, verifiedRevision: id<"RemoteRevisionId">("new-revision"),
           intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent,
-          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
         },
       };
     },
-    async finalizeExistingUpdate(identity: any) {
+    async finalizeExistingUpdate() {
       finalizeUpdateCalls += 1;
-      const convergence = entries.filter(entry => entry.path === identity.path);
-      if (convergence.length !== 2
-        || !convergence.some(entry => entry.remoteObjectId === identity.remoteObjectId)
-        || !convergence.some(entry => entry.remoteObjectId === identity.candidateRemoteObjectId)) {
-        return { status: "conflict-preserved", reason: "not-exactly-resumable", preservedRemoteObjectIds: convergence.map(entry => entry.remoteObjectId) };
-      }
-      entries = convergence.filter(entry => entry.remoteObjectId === identity.candidateRemoteObjectId);
-      return {
-        status: "verified-effect",
-        applicationProof: {
-          kind: "immutable-candidate-preservation", candidateRemoteObjectId: identity.candidateRemoteObjectId,
-          predecessorRemoteObjectId: identity.remoteObjectId, predecessorRevision: identity.expectedRevision,
-          intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent,
-          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
-        },
-      };
+      throw new Error("DEC-362 recovery is read-only: no predecessor retirement");
     },
     async moveExisting() { throw new Error("move not expected"); },
     async trashExisting() { throw new Error("trash not expected"); },
@@ -242,49 +223,63 @@ async function expectUpdateRejected(topology: UpdateTopology) {
   assert.equal(f.rawRemoteCalls(), 0);
 }
 
-test("D-C13-T1 ordinary convergence requires the candidate to be the sole live path occupant", async () => {
+test("DEC362 C13 ordinary update preserves established remote ID and requires unique same-ID convergence", async () => {
   const f = fixture();
   const { authority, executor } = ordinaryExecutor(f);
   const result = await executor.execute(updateOperation());
   assert.equal(result.status, "durable-verified-success");
+  if (result.status === "durable-verified-success") assert.equal(result.receipt.resultingRemoteObjectId, predecessor);
   assert.equal(f.reliableUpdateCalls(), 1);
   assert.equal(f.rawRemoteCalls(), 0);
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "effect-verified");
 });
 
-test("D-C13-T2 restart retires the exact predecessor/candidate intermediate without redispatching content", async () => {
-  const f = fixture(() => convergedTopology(), exactIntermediateTopology());
+test("DEC362 C13 restart observes same-ID result without redispatch or predecessor retirement", async () => {
+  const f = fixture(() => convergedTopology(), convergedTopology());
   const authority = new AuthorityStore([updateIntent("outcome-unknown")]);
-  const result = await recoverOutstandingDurableIntents(f.legacy as never, authority, f.canonical as never, context as never, managedRemote, { remoteUpdateFinalizationPort: f.remoteMutation } as never);
+  const result = await recoverOutstandingDurableIntents(f.legacy as never, authority, f.canonical as never, context as never, managedRemote);
   assert.equal(result.status, "recovered");
   assert.equal(f.reliableUpdateCalls(), 0);
-  assert.equal(f.finalizeUpdateCalls(), 1);
+  assert.equal(f.finalizeUpdateCalls(), 0);
   assert.equal(f.rawRemoteCalls(), 0);
   assert.equal(authority.value.operationIntents[0]?.effects[0]?.stage, "state-committed");
-  assert.equal(f.canonical.value.remoteMappings.find(value => value.path === target)?.remoteObjectId, candidate);
+  assert.equal(f.canonical.value.remoteMappings.find(value => value.path === target)?.remoteObjectId, predecessor);
+  assert.equal(f.canonical.value.base.find(value => value.path === target)?.remoteObjectId, predecessor);
 });
 
-test("D-C13-T3 REMOTE create retains strict exact-one same-path convergence", async () => {
-  const f = fixture(() => exactIntermediateTopology(), [remoteFile(extra)]);
+test("DEC362 C13 REMOTE create still uses reserved ID and rejects conflicting occupied path", async () => {
+  const f = fixture(() => convergedTopology(), [remoteFile(extra)]);
   const { executor } = ordinaryExecutor(f);
   const result = await executor.execute(createOperation());
   assert.equal(result.status, "blocking-failure");
   assert.equal(f.rawRemoteCalls(), 0);
 });
 
-test("D-C13-T4 wrong predecessor identity is rejected", async () => {
-  await expectUpdateRejected(() => [remoteFile(wrong), remoteFile(candidate, intendedHash, intended.sizeBytes, "candidate-revision")]);
+test("DEC362 C13 same-name unrelated remote ID is never adopted", async () => {
+  await expectUpdateRejected(() => [remoteFile(wrong, intendedHash, intended.sizeBytes, "new-revision")]);
 });
 
-test("D-C13-T5 unexpected third same-path object is rejected", async () => {
-  await expectUpdateRejected(() => [...exactIntermediateTopology(), remoteFile(extra)]);
+test("DEC362 C13 unrelated sibling makes remote path ambiguous", async () => {
+  await expectUpdateRejected(() => [...convergedTopology(), remoteFile(extra)]);
 });
 
-test("D-C13-T6 wrong candidate identity and candidate content mismatch are both rejected", async () => {
-  await expectUpdateRejected(() => [remoteFile(predecessor), remoteFile(wrong, intendedHash, intended.sizeBytes, "candidate-revision")]);
-  await expectUpdateRejected(() => [remoteFile(predecessor), remoteFile(candidate, priorHash, intended.sizeBytes + 1, "candidate-revision")]);
+test("DEC362 C13 wrong content or size cannot be committed", async () => {
+  await expectUpdateRejected(() => [remoteFile(predecessor, priorHash, intended.sizeBytes, "new-revision")]);
+  await expectUpdateRejected(() => [remoteFile(predecessor, intendedHash, intended.sizeBytes + 1, "new-revision")]);
 });
 
-test("D-C13-T7 predecessor revision mismatch is rejected", async () => {
-  await expectUpdateRejected(() => [remoteFile(predecessor, priorHash, 3, "remote-revision:wrong"), remoteFile(candidate, intendedHash, intended.sizeBytes, "candidate-revision")]);
+test("DEC362 C13 missing or unchanged revision is not a verified remote update", async () => {
+  await expectUpdateRejected(() => [remoteFile(predecessor, intendedHash, intended.sizeBytes, String(expectedRevision))]);
+  await expectUpdateRejected(() => [remoteFile(predecessor, intendedHash, intended.sizeBytes, "")]);
+});
+
+test("DEC362 C13 unknown restart outcome fails closed, retaining original mapping", async () => {
+  const f = fixture(() => convergedTopology(), [remoteFile(predecessor)]);
+  const authority = new AuthorityStore([updateIntent("outcome-unknown")]);
+  const result = await recoverOutstandingDurableIntents(f.legacy as never, authority, f.canonical as never, context as never, managedRemote);
+  assert.equal(result.status, "recovery-required");
+  assert.equal(f.reliableUpdateCalls(), 0);
+  assert.equal(f.finalizeUpdateCalls(), 0);
+  assert.equal(f.canonical.value.remoteMappings.find(value => value.path === target)?.remoteObjectId, predecessor);
+  assert.equal(f.canonical.saves, 0);
 });
