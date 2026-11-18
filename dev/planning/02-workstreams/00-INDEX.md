@@ -29,9 +29,13 @@ WS-02, WS-03, and WS-04 are the accepted parallel-safe construction wave after W
 No workstream is introduced merely for organizational convenience; this mapping preserves the dependency and ownership boundaries established by the accepted Stage-1 decompositions.
 
 
+## DEC-362 stable Drive-ID correction — prerequisite (2026-11-18)
+
+[One WS-05-owned corrective task](WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md) coordinates WS-03 same-object Drive mutation semantics with WS-05 executor/recovery/merge integration. Existing-file content updates and clean merges must preserve the established Google Drive ID. This is a hard prerequisite to DEC-339 planner cutover/activation; no new workstream is created.
+
 ## DEC-339 production inventory integration — planned (2026-11-17)
 
-[One minimal WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) coordinates WS-02 storage, WS-03 read-only Drive metadata, WS-05 default-off observation wiring and WS-07 existing verification. DEC-339 implementation is dormant; no new workstream, greenfield rebuild, executor change, schema migration or activation follows from this plan.
+[One minimal WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) coordinates WS-02 storage, WS-03 read-only Drive metadata, WS-05 default-off observation wiring and WS-07 existing verification. DEC-339 implementation is dormant and now gated behind DEC-362; no new workstream, greenfield rebuild, schema migration or activation follows from this plan.
 
 ## Current WS-07 successor Build Unit — DEC-357
 
