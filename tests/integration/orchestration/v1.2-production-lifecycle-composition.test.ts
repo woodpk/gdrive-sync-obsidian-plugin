@@ -111,9 +111,9 @@ function harness(initial: { local?: Record<string, LocalEntry>; remote?: RemoteE
     async updateExisting(identity: any) {
       mutationCalls.push(`update:${String(identity.path)}`);
       remoteEntries = [
-        { path: identity.path, entityKind: "file", remoteObjectId: identity.candidateRemoteObjectId, hash: String(hash), sizeBytes: 3, content: { hash: String(hash), sizeBytes: 3, revision: "revision:candidate" }, trashed: false },
+        { path: identity.path, entityKind: "file", remoteObjectId: identity.remoteObjectId, hash: String(hash), sizeBytes: 3, content: { hash: String(hash), sizeBytes: 3, revision: "revision:updated" }, trashed: false },
       ];
-      return { status: "verified-effect", applicationProof: { kind: "immutable-candidate-preservation", candidateRemoteObjectId: identity.candidateRemoteObjectId, predecessorRemoteObjectId: identity.remoteObjectId, predecessorRevision: identity.expectedRevision, intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent, preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId] } };
+      return { status: "verified-effect", applicationProof: { kind: "same-object-content-update", remoteObjectId: identity.remoteObjectId, expectedRevision: identity.expectedRevision, verifiedRevision: id<"RemoteRevisionId">("revision:updated"), intendedContent: identity.intendedContent, verifiedContent: identity.intendedContent } };
     },
     async moveExisting(identity: any) {
       mutationCalls.push(`remote-move:${String(identity.fromPath)}->${String(identity.toPath)}`);
