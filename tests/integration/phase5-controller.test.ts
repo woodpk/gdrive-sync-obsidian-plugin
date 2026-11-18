@@ -124,18 +124,17 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
     },
     updateExisting: async (identity, content) => {
       await textOf(content);
-      candidateRemoteObjectId = identity.candidateRemoteObjectId;
-      candidateEvidence = { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: "candidate-update" };
+      assert.equal(identity.remoteObjectId, remoteId);
+      remoteEvidence = { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: "updated-revision" };
       return {
         status: "verified-effect",
         applicationProof: {
-          kind: "immutable-candidate-preservation",
-          candidateRemoteObjectId: identity.candidateRemoteObjectId,
-          predecessorRemoteObjectId: identity.remoteObjectId,
-          predecessorRevision: identity.expectedRevision,
+          kind: "same-object-content-update",
+          remoteObjectId: identity.remoteObjectId,
+          expectedRevision: identity.expectedRevision,
+          verifiedRevision: id<"RemoteRevisionId">("updated-revision"),
           intendedContent: identity.intendedContent,
           verifiedContent: identity.intendedContent,
-          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
         },
       };
     },
