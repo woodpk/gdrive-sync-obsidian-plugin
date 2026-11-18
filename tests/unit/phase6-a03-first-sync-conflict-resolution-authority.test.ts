@@ -178,18 +178,16 @@ class Boundary {
       if (!predecessor || predecessor.remoteObjectId !== identity.remoteObjectId || predecessor.evidence.revision !== String(identity.expectedRevision)) return { status: "verified-not-applied" as const, reason: "predecessor authority changed" };
       const text = await textOf(content);
       this.updateCalls.push(String(identity.path));
-      this.preserved.set(String(predecessor.remoteObjectId), predecessor);
-      this.remoteFiles.set(String(identity.path), { path: identity.path, text, evidence: evidence(text, `r${++this.remoteCounter}`), remoteObjectId: identity.candidateRemoteObjectId });
+      this.remoteFiles.set(String(identity.path), { path: identity.path, text, evidence: evidence(text, `r${++this.remoteCounter}`), remoteObjectId: identity.remoteObjectId });
       return {
         status: "verified-effect" as const,
         applicationProof: {
-          kind: "immutable-candidate-preservation" as const,
-          candidateRemoteObjectId: identity.candidateRemoteObjectId,
-          predecessorRemoteObjectId: identity.remoteObjectId,
-          predecessorRevision: identity.expectedRevision,
+          kind: "same-object-content-update" as const,
+          remoteObjectId: identity.remoteObjectId,
+          expectedRevision: identity.expectedRevision,
+          verifiedRevision: id<"RemoteRevisionId">(`r${this.remoteCounter}`),
           intendedContent: identity.intendedContent,
           verifiedContent: identity.intendedContent,
-          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
         },
       };
     },
