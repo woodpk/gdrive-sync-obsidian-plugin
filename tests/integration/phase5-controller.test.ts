@@ -123,7 +123,7 @@ async function conflictHarness(onTrustedBaselineEstablished?: () => Promise<void
       return { status: "verified-effect", applicationProof: { kind: "reserved-create", remoteObjectId: identity.reservedRemoteObjectId, path: identity.path, verifiedContent: identity.intendedContent } };
     },
     updateExisting: async (identity, content) => {
-      await textOf(content);
+      remoteText = await textOf(content);
       assert.equal(identity.remoteObjectId, remoteId);
       remoteEvidence = { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes, revision: "updated-revision" };
       return {
