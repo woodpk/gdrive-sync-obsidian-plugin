@@ -193,7 +193,7 @@ function productionHarness(kind: "upload-update" | "trash-remote") {
       remoteEntries = [
         { path: target, entityKind: "file", remoteObjectId: descriptor.remoteObjectId, content: { hash: localHash, sizeBytes: 3, revision: "revision:updated" }, trashed: false },
       ];
-      return { status: "verified-effect", applicationProof: { kind: "same-object-content-update", remoteObjectId: descriptor.remoteObjectId, expectedRevision: descriptor.expectedRevision, verifiedRevision: revision("revision:updated"), intendedContent: descriptor.intendedContent, verifiedContent: descriptor.intendedContent } };
+      return { status: "verified-effect", applicationProof: { kind: "same-object-content-update", remoteObjectId: descriptor.remoteObjectId, expectedRevision: descriptor.expectedRevision, verifiedRevision: id<"RemoteRevisionId">("revision:updated"), intendedContent: descriptor.intendedContent, verifiedContent: descriptor.intendedContent } };
     },
     async trashExisting(descriptor: any) {
       seamCalls.push("trashExisting");
