@@ -18,6 +18,22 @@ Authoritative software-change acceptance is through the pinned PHX-CI under **DE
 
 See `../../03-verification/verification-plan.md` and `../requirement-workstream-coverage.md` for cross-workstream evidence ownership and target requirement coverage.
 
+## DEC-362 stable-ID update evidence (2026-11-18)
+
+Before DEC-339 planner cutover, exact-source PHX-CI evidence must prove:
+
+- ordinary existing-file content update preserves `remoteObjectId_before == remoteObjectId_after`;
+- clean-text-merge remote propagation preserves the same established Drive ID;
+- stale ID/revision/content preconditions reject before mutation;
+- retry after transport interruption or ambiguous response resolves the exact established ID without duplicate replacement creation;
+- crash/restart before dispatch, after provider mutation, and before state commit remains recoverable and never adopts a different same-name/path object;
+- concurrent writer/revision drift blocks or replans safely;
+- post-effect verification proves intended resulting content/revision on the same ID before authoritative success;
+- genuine creates still use create/reserved-ID retry semantics without conflating create and update identity.
+
+No real Google Drive mutation is authorized merely by this plan; live/provider execution remains separately Owner-gated.
+
+
 ## DEC-339 integration-specific evidence (2026-11-17)
 
 Through existing PHX-CI, prove the metadata reader uses the existing authenticated `drive.file` transport with safe paginated Changes, stable IDs/parents, duplicate siblings, out-of-domain objects, permission loss, incomplete searches and invalid cursors. No real Google API use is authorized by planning. Follow the [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md).
