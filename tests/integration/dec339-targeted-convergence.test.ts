@@ -200,7 +200,7 @@ test("D339-06 never accepts update/move/trash/deletion/recovery as positive targ
     { ...fileCreate, mutationKind: "update", remoteMutation: {
       kind: "existing-file-content-update", intentId, remoteObjectId: target,
       expectedRevision: id<"RemoteRevisionId">("revision:1"),
-      path, updateProtocol: "immutable-candidate-preservation", candidateRemoteObjectId: target,
+      path, updateProtocol: "stable-object-in-place",
       intendedContent: fileCreate.intendedContent,
       identityAuthority: { status: "unique", generation: semantic, path, remoteObjectId: target },
     } },
