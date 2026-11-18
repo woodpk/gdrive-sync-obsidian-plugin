@@ -66,6 +66,6 @@ Phase 1 only. Phase 3 may execute in parallel with Phases 2 and 4.
 - Do not implement final sync orchestration, preview UI, or conflict/recovery UI.
 - Do not broaden Drive scope, add Shared Drive support, or add multiple sync targets.
 
-## Prospective DEC-339 unit — design only, not executable
+## DEC-339 remaining integration (2026-11-17)
 
-Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After independent design review, capacity-size and SHA-bind **D339-03** for verified baseline/Changes observation, stable ID+parent provenance, duplicate-aware targeted proof and explicit unknown/incomplete failure classifications. It depends on WS-02 D339-01 frozen contracts; may overlap WS-02 D339-02 only with distinct writable surfaces. It does not alter `src/state/**`, `src/product/**` orchestration, or any PHX-CI/BVP frozen governance surface. Exact affected paths, tests, and predecessor identity are rebound at dispatch.
+D339-03's metadata source/reader exists dormant; **do not rebuild it**. Under the [single WS-05 task](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md), WS-03 provides the narrow existing-OAuth metadata transport seam and provider/Changes/provenance equivalence. Preserve `drive.file`, explicit incomplete/unknown results and full-reconciliation fallback. Accepted Phase-3 scope stays unchanged.
