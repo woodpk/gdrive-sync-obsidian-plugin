@@ -38,7 +38,6 @@ const vault = id<"VaultIdentity">("vault:lat04") as VaultIdentity;
 const device = id<"DeviceIdentity">("device:lat04") as DeviceIdentity;
 const remoteRoot = rid("root:lat04");
 const expectedRemote = rid("remote:lat04:predecessor");
-const candidateRemote = rid("remote:lat04:candidate");
 const hash = id<"ContentHash">("hash:lat04") as ContentHash;
 const baseFingerprint = id<"BaseFingerprint">("base:lat04");
 const initialGeneration = generation("semantic:lat04:1");
@@ -164,7 +163,7 @@ function harness(
   let remoteRevision = "remote-revision:lat04:1";
   let physicalMutations = 0;
   let ordinaryValidationCalls = 0;
-  let reserveHookCalled = false;
+  let preparationHookCalled = false;
 
   const local = {
     observe: async () => ({
@@ -178,6 +177,7 @@ function harness(
     }),
     readFile: async (_path: VaultPath, expected?: string) => {
       if (expected && expected !== localToken) throw new Error("stale local source token");
+      if (!preparationHookCalled) { preparationHookCalled = true; onReserve?.(hookApi); }
       return { content: bytes, evidence: { hash, sizeBytes: 3 }, stability: "stable", observationToken: id<"ObservationToken">(localToken) };
     },
     validatePath: async () => ({ status: "compatible" }),
@@ -218,26 +218,23 @@ function harness(
   };
 
   const reliableRemote: ReliableRemoteMutationPort = {
-    async reserveFileCreateIdentity(_root, intentId, path, intendedContent) {
-      if (!reserveHookCalled) { reserveHookCalled = true; onReserve?.(hookApi); }
-      return { ok: true, value: { kind: "reserved-file-create", intentId, reservedRemoteObjectId: candidateRemote, path, intendedContent } };
-    },
+    async reserveFileCreateIdentity() { throw new Error("DEC-362 updates may not reserve a replacement ID"); },
     async reserveFolderCreateIdentity() { throw new Error("not used"); },
     async createReserved() { throw new Error("not used"); },
     async updateExisting(identity) {
       physicalMutations += 1;
-      remoteObjectId = identity.candidateRemoteObjectId;
-      remoteRevision = "remote-revision:lat04:candidate";
+      assert.equal(identity.remoteObjectId, expectedRemote);
+      remoteObjectId = identity.remoteObjectId;
+      remoteRevision = "remote-revision:lat04:2";
       return {
         status: "verified-effect",
         applicationProof: {
-          kind: "immutable-candidate-preservation",
-          candidateRemoteObjectId: identity.candidateRemoteObjectId,
-          predecessorRemoteObjectId: identity.remoteObjectId,
-          predecessorRevision: identity.expectedRevision,
+          kind: "same-object-content-update",
+          remoteObjectId: identity.remoteObjectId,
+          expectedRevision: identity.expectedRevision,
+          verifiedRevision: id<"RemoteRevisionId">("remote-revision:lat04:2"),
           intendedContent: identity.intendedContent,
           verifiedContent: identity.intendedContent,
-          preservedRemoteObjectIds: [identity.remoteObjectId, identity.candidateRemoteObjectId],
         },
       };
     },
