@@ -98,9 +98,8 @@ class Boundary{
       if(!predecessor||predecessor.rid!==identity.remoteObjectId||predecessor.evidence.revision!==String(identity.expectedRevision))return{status:"verified-not-applied" as const,reason:"fixture predecessor authority changed before update"};
       const text=await txt(content),actual=ev(text);
       if(actual.hash!==identity.intendedContent.hash||actual.sizeBytes!==identity.intendedContent.sizeBytes)return{status:"verified-not-applied" as const,reason:"fixture update content does not match intended identity"};
-      this.preservedRemotePredecessors.set(String(predecessor.rid),{path:identity.path,file:predecessor});
-      this.remote.set(String(identity.path),{text,evidence:ev(text,`r${++this.rev}`),token:id<"ObservationToken">("u") as ObservationToken,rid:identity.candidateRemoteObjectId});
-      return{status:"verified-effect" as const,applicationProof:{kind:"immutable-candidate-preservation" as const,candidateRemoteObjectId:identity.candidateRemoteObjectId,predecessorRemoteObjectId:identity.remoteObjectId,predecessorRevision:identity.expectedRevision,intendedContent:identity.intendedContent,verifiedContent:identity.intendedContent,preservedRemoteObjectIds:[identity.remoteObjectId,identity.candidateRemoteObjectId]}};
+      this.remote.set(String(identity.path),{text,evidence:ev(text,`r${++this.rev}`),token:id<"ObservationToken">("u") as ObservationToken,rid:identity.remoteObjectId});
+      return{status:"verified-effect" as const,applicationProof:{kind:"same-object-content-update" as const,remoteObjectId:identity.remoteObjectId,expectedRevision:identity.expectedRevision,verifiedRevision:id<"RemoteRevisionId">(`r${this.rev}`),intendedContent:identity.intendedContent,verifiedContent:identity.intendedContent}};
     },
     moveExisting:async identity=>{
       const e=[...this.remote.entries()].find(([,f])=>f.rid===identity.remoteObjectId);
