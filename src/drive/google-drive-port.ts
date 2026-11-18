@@ -117,11 +117,10 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
 
   private updateDiagnosticFields(identity: UpdateIdentity, fields: SafeDiagnosticFields = {}): SafeDiagnosticFields {
     return {
-      operation: "immutable-candidate-update",
+      operation: "same-object-update",
       intentId: opaqueDiagnosticId(String(identity.intentId)),
       pathKey: diagnosticPathKey(String(identity.path)),
-      predecessorRemoteObjectId: String(identity.remoteObjectId),
-      candidateRemoteObjectId: String(identity.candidateRemoteObjectId),
+      remoteObjectId: String(identity.remoteObjectId),
       contentHash: String(identity.intendedContent.hash),
       sizeBytes: identity.intendedContent.sizeBytes,
       expectedRevision: String(identity.expectedRevision),
@@ -135,7 +134,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
 
   private exactObservation(role: string, remoteObjectId: RemoteObjectId, observed: DriveResult<DriveFile>, identity?: UpdateIdentity): void {
     const fields: SafeDiagnosticFields = {
-      operation: identity ? "immutable-candidate-update" : "exact-id-observation",
+      operation: identity ? "same-object-update" : "exact-id-observation",
       stage: role,
       observationSource: "exact-id",
       remoteObjectId: String(remoteObjectId),
@@ -158,7 +157,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
 
   private topologyObservation(path: VaultPath, stage: string, files: readonly DriveFile[], status: string, identity?: UpdateIdentity): void {
     this.semantic(identity ? "drive-update-topology-observed" : "drive-logical-path-topology-observed", {
-      operation: identity ? "immutable-candidate-update" : "logical-path-observation",
+      operation: identity ? "same-object-update" : "logical-path-observation",
       stage,
       pathKey: diagnosticPathKey(String(path)),
       occupancyCount: files.length,
@@ -324,52 +323,93 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
   }
 
   async updateExisting(identity:UpdateIdentity,content:BinaryContentSource,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcomeV1_3>{
-    this.updateEvent(identity,"drive-update-entered",{stage:"update-existing"});
-    if(identity.updateProtocol!=="immutable-candidate-preservation"){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"unsupported-update-protocol"});return {status:"outcome-unknown",reason:"unsupported-update-protocol"};}
-    if(cancelled(cancellation)){this.updateEvent(identity,"drive-update-convergence",{result:"verified-not-applied",reason:"cancelled-before-dispatch"});return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};}
-    const predecessor=await this.getFile(identity.remoteObjectId);
-    this.exactObservation("predecessor-entry",identity.remoteObjectId,predecessor,identity);
-    if(!predecessor.ok){this.updateEvent(identity,"drive-update-convergence",{result:"failure",reason:"predecessor-observation-failed",driveSignal:predecessor.signal.kind});return this.outcomeFromSignalValue(predecessor.signal,"update-predecessor");}
-    const predecessorVerified=predecessor.value.trashed||revisionMatches(predecessor.value,identity.expectedRevision);
-    this.updateEvent(identity,"drive-update-predecessor-verification",{stage:"predecessor-entry",predecessorVerified,trashed:Boolean(predecessor.value.trashed),...(predecessor.value.version?{observedRevision:predecessor.value.version}:{})});
-    if(!predecessor.value.trashed&&!revisionMatches(predecessor.value,identity.expectedRevision)){this.updateEvent(identity,"drive-update-convergence",{result:"conflict-preserved",reason:"remote-revision-precondition-failed"});return {status:"conflict-preserved",reason:"remote-revision-precondition-failed",preservedRemoteObjectIds:[identity.remoteObjectId]};}
-    const root=await this.updateRootAndAuthority(identity,predecessor.value);
-    if(!root.ok){this.updateEvent(identity,"drive-update-convergence",{result:root.outcome.status,reason:"update-root-or-authority-failed"});return root.outcome;}
-    const candidateBefore=await this.getFile(identity.candidateRemoteObjectId);
-    this.exactObservation("candidate-before",identity.candidateRemoteObjectId,candidateBefore,identity);
-    if(candidateBefore.ok){this.updateEvent(identity,"drive-update-candidate-branch",{stage:"candidate-before",result:"candidate-already-present"});return this.finalizeVerifiedUpdateCandidate(identity,predecessor.value,candidateBefore.value,root.rootId,cancellation);}
-    if(candidateBefore.signal.kind!=="not-found"){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-pre-observation-failed",driveSignal:candidateBefore.signal.kind});return this.outcomeUnknown(candidateBefore.signal,"candidate-pre-observation");}
-    if(predecessor.value.trashed){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-absent-after-predecessor-retirement"});return {status:"outcome-unknown",reason:"update-candidate-absent-after-predecessor-retirement"};}
-    const parentId=predecessor.value.parents?.length===1?predecessor.value.parents[0]:undefined;
-    if(!parentId){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"predecessor-parent-unobservable"});return {status:"outcome-unknown",reason:"predecessor-parent-unobservable"};}
-    const provenance:DomainProvenance={managedRootId:root.rootId,domain:domainForLogicalPath(identity.path)};
-    this.updateEvent(identity,"drive-update-candidate-upload-dispatch",{stage:"candidate-upload",result:"started"});
-    const sent=await this.resumableUpload("create",identity.candidateRemoteObjectId,identity.path,parentId,content,{hash:identity.intendedContent.hash,sizeBytes:identity.intendedContent.sizeBytes},provenance);
-    this.updateEvent(identity,"drive-update-candidate-upload-result",{stage:"candidate-upload",result:sent.ok?"success":"failure",...(!sent.ok?{driveSignal:sent.signal.kind}:{})});
-    if(cancelled(cancellation)){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"cancelled-after-candidate-dispatch"});return {status:"outcome-unknown",reason:"synchronization-cancelled-after-candidate-dispatch"};}
-    const candidate=await this.getFile(identity.candidateRemoteObjectId);
-    this.exactObservation("candidate-after-upload",identity.candidateRemoteObjectId,candidate,identity);
-    const predecessorAfter=await this.getFile(identity.remoteObjectId);
-    this.exactObservation("predecessor-after-candidate",identity.remoteObjectId,predecessorAfter,identity);
-    if(!candidate.ok){if(!sent.ok&&candidate.signal.kind==="not-found"){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-dispatch-ambiguous",driveSignal:sent.signal.kind});return remoteMutationOutcomeWithDriveSignalV1_3({status:"outcome-unknown",reason:`candidate-dispatch-ambiguous:${sent.signal.kind}:candidate-absent-after-observation`},sent.signal);}this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-post-observation-failed",driveSignal:candidate.signal.kind});return this.outcomeUnknown(candidate.signal,"candidate-post-observation");}
-    if(!predecessorAfter.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"predecessor-post-observation-failed",driveSignal:predecessorAfter.signal.kind});return this.outcomeUnknown(predecessorAfter.signal,"predecessor-post-observation");}
-    return this.finalizeVerifiedUpdateCandidate(identity,predecessorAfter.value,candidate.value,root.rootId,cancellation);
+    this.updateEvent(identity,"drive-update-entered",{stage:"stable-id-update"});
+    if(identity.updateProtocol!=="stable-object-in-place")return {status:"outcome-unknown",reason:"unsupported-stable-id-update-protocol"};
+    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};
+    if(content.sizeBytes!==undefined&&content.sizeBytes!==identity.intendedContent.sizeBytes)return {status:"verified-not-applied",reason:"content-size-precondition-mismatch"};
+    const configured=await this.configuredManagedRoot();
+    if(!configured.ok)return this.outcomeUnknown(configured.signal,"stable-update-configured-root");
+    const before=await this.getFile(identity.remoteObjectId);
+    this.exactObservation("stable-update-before",identity.remoteObjectId,before,identity);
+    if(!before.ok)return this.outcomeFromSignalValue(before.signal,"stable-update-before");
+    if(before.value.trashed||before.value.mimeType===FOLDER_MIME)return {status:"conflict-preserved",reason:"stable-update-target-not-live-file",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const authority=await this.updateRootAndAuthority(identity,before.value);
+    if(!authority.ok)return authority.outcome;
+    if(authority.rootId!==configured.value.rootId)return {status:"conflict-preserved",reason:"stable-update-wrong-managed-root",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const provenance=this.validateFileProvenance(before.value,{managedRootId:configured.value.rootId,domain:domainForLogicalPath(identity.path)},true);
+    if(!provenance.ok)return this.outcomeFromSignalValue(provenance.signal,"stable-update-provenance");
+    const topology=await this.resolveLogicalPathCandidates(configured.value.rootId,identity.path);
+    if(!topology.ok)return this.outcomeUnknown(topology.signal,"stable-update-pre-topology");
+    this.topologyObservation(identity.path,"stable-update-before",topology.value.files,topology.value.status,identity);
+    if(topology.value.status!=="unique"||topology.value.file.id!==String(identity.remoteObjectId))return {status:"conflict-preserved",reason:"stable-update-path-identity-ambiguous",preservedRemoteObjectIds:topology.value.files.map(file=>rid(file.id))};
+    if(!revisionMatches(before.value,identity.expectedRevision)){
+      if(before.value.version&&canonicalMatches(before.value,identity.intendedContent)){
+        this.updateEvent(identity,"drive-update-retry-observation",{stage:"prior-effect",result:"same-id-intended-content-observed"});
+        return this.verifyStableUpdateResult(identity,configured.value.rootId,before.value);
+      }
+      return {status:"conflict-preserved",reason:"stable-update-stale-revision",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    }
+    if(canonicalMatches(before.value,identity.intendedContent))return {status:"outcome-unknown",reason:"stable-update-intended-content-already-at-original-revision"};
+    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};
+    const renewed=await this.getFile(identity.remoteObjectId);
+    this.exactObservation("stable-update-dispatch-precondition",identity.remoteObjectId,renewed,identity);
+    if(!renewed.ok)return this.outcomeUnknown(renewed.signal,"stable-update-dispatch-precondition");
+    if(renewed.value.trashed||!revisionMatches(renewed.value,identity.expectedRevision)||renewed.value.id!==String(identity.remoteObjectId))
+      return {status:"conflict-preserved",reason:"stable-update-revision-changed-before-dispatch",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    this.updateEvent(identity,"drive-update-same-id-upload-dispatch",{stage:"existing-id-upload",result:"started"});
+    const dispatched=await this.resumableUpload("update",identity.remoteObjectId,identity.path,undefined,content,{hash:identity.intendedContent.hash,sizeBytes:identity.intendedContent.sizeBytes});
+    this.updateEvent(identity,"drive-update-same-id-upload-result",{stage:"existing-id-upload",result:dispatched.ok?"success":"uncertain",...(!dispatched.ok?{driveSignal:dispatched.signal.kind}:{})});
+    if(cancelled(cancellation))return {status:"outcome-unknown",reason:"synchronization-cancelled-after-stable-update-dispatch"};
+    if(dispatched.ok&&dispatched.value.remoteObjectId!==identity.remoteObjectId)return {status:"outcome-unknown",reason:"upload-receipt-rotated-established-identity"};
+    const after=await this.getFile(identity.remoteObjectId);
+    this.exactObservation("stable-update-after",identity.remoteObjectId,after,identity);
+    if(!after.ok)return !dispatched.ok
+      ? remoteMutationOutcomeWithDriveSignalV1_3({status:"outcome-unknown",reason:"ambiguous-stable-update-and-post-observation"},dispatched.signal)
+      : this.outcomeUnknown(after.signal,"stable-update-post-observation");
+    const result=await this.verifyStableUpdateResult(identity,configured.value.rootId,after.value,dispatched.ok?dispatched.value.evidence?.revision:undefined);
+    if(result.status!=="verified-effect"&&!dispatched.ok&&result.status==="outcome-unknown")
+      return remoteMutationOutcomeWithDriveSignalV1_3(result,dispatched.signal);
+    return result;
   }
 
+  /** Read-only restart verification; never uploads or retires a predecessor. */
   async finalizeExistingUpdate(identity:UpdateIdentity,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcomeV1_3>{
-    this.updateEvent(identity,"drive-update-entered",{stage:"finalize-existing-update"});
-    if(identity.updateProtocol!=="immutable-candidate-preservation"){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"unsupported-update-protocol"});return {status:"outcome-unknown",reason:"unsupported-update-protocol"};}
-    if(cancelled(cancellation)){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"cancelled-before-update-finalization"});return {status:"outcome-unknown",reason:"synchronization-cancelled-before-update-finalization"};}
-    const predecessor=await this.getFile(identity.remoteObjectId);
-    this.exactObservation("predecessor-finalization-entry",identity.remoteObjectId,predecessor,identity);
-    if(!predecessor.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"finalization-predecessor-observation-failed",driveSignal:predecessor.signal.kind});return this.outcomeUnknown(predecessor.signal,"update-finalization-predecessor");}
-    if(!predecessor.value.trashed&&!revisionMatches(predecessor.value,identity.expectedRevision)){this.updateEvent(identity,"drive-update-convergence",{result:"conflict-preserved",reason:"remote-revision-precondition-failed"});return {status:"conflict-preserved",reason:"remote-revision-precondition-failed",preservedRemoteObjectIds:[identity.remoteObjectId]};}
-    const root=await this.updateRootAndAuthority(identity,predecessor.value);
-    if(!root.ok){this.updateEvent(identity,"drive-update-convergence",{result:root.outcome.status,reason:"update-root-or-authority-failed"});return root.outcome;}
-    const candidate=await this.getFile(identity.candidateRemoteObjectId);
-    this.exactObservation("candidate-finalization-entry",identity.candidateRemoteObjectId,candidate,identity);
-    if(!candidate.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"finalization-candidate-observation-failed",driveSignal:candidate.signal.kind});return this.outcomeUnknown(candidate.signal,"update-finalization-candidate");}
-    return this.finalizeVerifiedUpdateCandidate(identity,predecessor.value,candidate.value,root.rootId,cancellation);
+    if(cancelled(cancellation))return {status:"outcome-unknown",reason:"cancelled-before-stable-update-observation"};
+    const configured=await this.configuredManagedRoot();
+    if(!configured.ok)return this.outcomeUnknown(configured.signal,"stable-update-recovery-root");
+    const after=await this.getFile(identity.remoteObjectId);
+    if(!after.ok)return this.outcomeUnknown(after.signal,"stable-update-recovery-exact-id");
+    const authority=await this.updateRootAndAuthority(identity,after.value);
+    if(!authority.ok)return authority.outcome;
+    if(authority.rootId!==configured.value.rootId)return {status:"conflict-preserved",reason:"stable-update-recovery-wrong-root",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    return this.verifyStableUpdateResult(identity,configured.value.rootId,after.value);
+  }
+
+  private async verifyStableUpdateResult(identity:UpdateIdentity,rootId:RemoteObjectId,observed:DriveFile,dispatchedRevision?:string):Promise<RemoteMutationOutcomeV1_3>{
+    if(observed.id!==String(identity.remoteObjectId)||observed.trashed||observed.mimeType===FOLDER_MIME)
+      return {status:"conflict-preserved",reason:"stable-update-post-identity-not-live-file",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    if(!observed.version||revisionMatches(observed,identity.expectedRevision))
+      return {status:"outcome-unknown",reason:"stable-update-post-revision-not-advanced"};
+    if(dispatchedRevision&&observed.version!==dispatchedRevision)
+      return {status:"outcome-unknown",reason:"stable-update-post-revision-drift"};
+    if(!canonicalMatches(observed,identity.intendedContent))
+      return {status:"conflict-preserved",reason:"stable-update-post-content-mismatch",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const roots=await this.domainRoots(rootId);
+    if(!roots.ok)return this.outcomeUnknown(roots.signal,"stable-update-post-domain");
+    const observedPath=await this.logicalPathForFile(observed,roots.value);
+    if(!observedPath.ok)return this.outcomeUnknown(observedPath.signal,"stable-update-post-path");
+    if(observedPath.value!==identity.path)return {status:"conflict-preserved",reason:"stable-update-post-path-mismatch",preservedRemoteObjectIds:[identity.remoteObjectId]};
+    const provenance=this.validateFileProvenance(observed,{managedRootId:rootId,domain:domainForLogicalPath(identity.path)},true);
+    if(!provenance.ok)return this.outcomeFromSignalValue(provenance.signal,"stable-update-post-provenance");
+    const topology=await this.resolveLogicalPathCandidates(rootId,identity.path);
+    if(!topology.ok)return this.outcomeUnknown(topology.signal,"stable-update-post-topology");
+    this.topologyObservation(identity.path,"stable-update-after",topology.value.files,topology.value.status,identity);
+    if(topology.value.status!=="unique"||topology.value.file.id!==String(identity.remoteObjectId)||!canonicalMatches(topology.value.file,identity.intendedContent)||topology.value.file.version!==observed.version)
+      return {status:"outcome-unknown",reason:"stable-update-post-topology-not-uniquely-converged"};
+    const revision=contractId<"RemoteRevisionId">(observed.version) as RemoteRevisionId;
+    this.updateEvent(identity,"drive-update-convergence",{result:"verified-effect",reason:"established-id-content-revision-verified",remoteObjectId:String(identity.remoteObjectId),observedRevision:observed.version});
+    return {status:"verified-effect",receipt:{remoteObjectId:identity.remoteObjectId,path:identity.path,evidence:evidence(observed)},
+      applicationProof:{kind:"same-object-content-update",remoteObjectId:identity.remoteObjectId,expectedRevision:identity.expectedRevision,verifiedRevision:revision,intendedContent:identity.intendedContent,verifiedContent:identity.intendedContent}};
   }
 
   async moveExisting(identity:Extract<RemoteMutationIdentity,{readonly kind:"identity-preserving-move"}>,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcomeV1_3>{
@@ -441,64 +481,6 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     return {ok:true,rootId:root.value};
   }
 
-  private async finalizeVerifiedUpdateCandidate(identity:UpdateIdentity,predecessor:DriveFile,candidate:DriveFile,rootId:RemoteObjectId,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcomeV1_3>{
-    const preserved=[identity.remoteObjectId,identity.candidateRemoteObjectId] as RemoteObjectId[];
-    this.updateEvent(identity,"drive-update-finalization-entered",{stage:"finalize-verified-candidate"});
-    const predecessorVerified=(predecessor.trashed||revisionMatches(predecessor,identity.expectedRevision))&&predecessor.id===String(identity.remoteObjectId);
-    this.updateEvent(identity,"drive-update-predecessor-verification",{stage:"finalization",predecessorVerified,trashed:Boolean(predecessor.trashed),...(predecessor.version?{observedRevision:predecessor.version}:{})});
-    if((!predecessor.trashed&&!revisionMatches(predecessor,identity.expectedRevision))||predecessor.id!==String(identity.remoteObjectId)){this.updateEvent(identity,"drive-update-convergence",{result:"conflict-preserved",reason:"predecessor-not-at-expected-revision"});return {status:"conflict-preserved",reason:"predecessor-not-at-expected-revision",preservedRemoteObjectIds:preserved};}
-    const candidateVerified=!candidate.trashed&&candidate.id===String(identity.candidateRemoteObjectId)&&canonicalMatches(candidate,identity.intendedContent);
-    this.updateEvent(identity,"drive-update-candidate-verification",{stage:"content-revision-identity",candidateVerified,trashed:Boolean(candidate.trashed),...(candidate.version?{observedRevision:candidate.version}:{})});
-    if(candidate.trashed||candidate.id!==String(identity.candidateRemoteObjectId)||!canonicalMatches(candidate,identity.intendedContent)){this.updateEvent(identity,"drive-update-convergence",{result:"conflict-preserved",reason:"candidate-content-not-authoritatively-verified"});return {status:"conflict-preserved",reason:"candidate-content-not-authoritatively-verified",preservedRemoteObjectIds:preserved};}
-    const roots=await this.domainRoots(rootId);
-    if(!roots.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-domain-unobservable",driveSignal:roots.signal.kind});return this.outcomeUnknown(roots.signal,"candidate-domain");}
-    const candidatePath=await this.logicalPathForFile(candidate,roots.value);
-    if(!candidatePath.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-path-unobservable",driveSignal:candidatePath.signal.kind});return this.outcomeUnknown(candidatePath.signal,"candidate-path");}
-    const candidatePathVerified=candidatePath.value===identity.path;
-    this.updateEvent(identity,"drive-update-candidate-path-verification",{stage:"candidate-path",candidateVerified:candidatePathVerified});
-    if(candidatePath.value!==identity.path){this.updateEvent(identity,"drive-update-convergence",{result:"conflict-preserved",reason:"candidate-observed-at-unintended-path"});return {status:"conflict-preserved",reason:"candidate-observed-at-unintended-path",preservedRemoteObjectIds:preserved};}
-    const before=await this.resolveLogicalPathCandidates(rootId,identity.path);
-    if(!before.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"pre-retirement-topology-unobservable",driveSignal:before.signal.kind});return this.outcomeUnknown(before.signal,"update-path");}
-    const liveBefore=before.value.files.map(file=>rid(file.id));
-    this.topologyObservation(identity.path,"pre-retirement",before.value.files,before.value.status,identity);
-    const allowed=new Set(preserved.map(String));
-    const candidateListed=liveBefore.includes(identity.candidateRemoteObjectId);
-    const independent=liveBefore.filter(id=>!allowed.has(String(id)));
-    if(!candidateListed||independent.length>0){
-      this.updateEvent(identity,"drive-update-retirement-branch",{stage:"pre-retirement",result:"retirement-not-reached",reason:!candidateListed?"candidate-not-listed-at-logical-path":"independent-occupant-present",occupancyCount:liveBefore.length,occupantRemoteObjectIds:renderDiagnosticOccupantIds(liveBefore.map(String))});
-      this.updateEvent(identity,"drive-update-convergence",{result:"conflict-preserved",reason:"update-path-contains-independent-candidate"});
-      return {status:"conflict-preserved",reason:"update-path-contains-independent-candidate",preservedRemoteObjectIds:liveBefore};
-    }
-    if(!predecessor.trashed){
-      if(liveBefore.length!==2||!liveBefore.includes(identity.remoteObjectId)){
-        this.updateEvent(identity,"drive-update-retirement-branch",{stage:"pre-retirement",result:"retirement-not-reached",reason:"predecessor-live-state-not-exactly-resumable",occupancyCount:liveBefore.length,occupantRemoteObjectIds:renderDiagnosticOccupantIds(liveBefore.map(String))});
-        this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"update-predecessor-live-state-is-not-exactly-resumable"});
-        return {status:"outcome-unknown",reason:"update-predecessor-live-state-is-not-exactly-resumable"};
-      }
-      if(cancelled(cancellation)){this.updateEvent(identity,"drive-update-retirement-branch",{stage:"pre-retirement",result:"retirement-not-reached",reason:"cancelled-before-predecessor-retirement"});return {status:"outcome-unknown",reason:"synchronization-cancelled-before-predecessor-retirement"};}
-      this.updateEvent(identity,"drive-update-retirement-branch",{stage:"pre-retirement",result:"retirement-dispatch-authorized",reason:"exact-predecessor-candidate-topology"});
-      this.updateEvent(identity,"drive-update-predecessor-retirement-dispatch",{stage:"predecessor-retirement",result:"started"});
-      const dispatched=await this.request(`${DRIVE_API}/files/${encodeURIComponent(String(identity.remoteObjectId))}?fields=${encodeURIComponent(FIELDS)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({trashed:true})});
-      this.updateEvent(identity,"drive-update-predecessor-retirement-dispatch",{stage:"predecessor-retirement",result:dispatched.ok?"transport-success":"transport-failure",...(!dispatched.ok?{driveSignal:dispatched.signal.kind}:{})});
-      const predecessorAfter=await this.getFile(identity.remoteObjectId);
-      this.exactObservation("predecessor-after-retirement",identity.remoteObjectId,predecessorAfter,identity);
-      if(!predecessorAfter.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"retirement-post-observation-failed",driveSignal:predecessorAfter.signal.kind});return !dispatched.ok
-        ? remoteMutationOutcomeWithDriveSignalV1_3({status:"outcome-unknown",reason:`update-predecessor-retirement-post-observation-${predecessorAfter.signal.kind}`},operationalFailureFromDriveSignalV1_3(predecessorAfter.signal)?predecessorAfter.signal:dispatched.signal)
-        : this.outcomeUnknown(predecessorAfter.signal,"update-predecessor-retirement-post-observation");}
-      if(!predecessorAfter.value.trashed){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"update-predecessor-retirement-not-verified",trashed:false});return !dispatched.ok
-        ? remoteMutationOutcomeWithDriveSignalV1_3({status:"outcome-unknown",reason:"update-predecessor-retirement-not-verified"},dispatched.signal)
-        : {status:"outcome-unknown",reason:"update-predecessor-retirement-not-verified"};}
-      this.updateEvent(identity,"drive-update-predecessor-retirement-observed",{stage:"predecessor-retirement",result:"verified-trashed",trashed:true});
-    } else {
-      this.updateEvent(identity,"drive-update-retirement-branch",{stage:"pre-retirement",result:"retirement-already-observed",reason:"predecessor-already-trashed"});
-    }
-    const after=await this.resolveLogicalPathCandidates(rootId,identity.path);
-    if(!after.ok){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"post-retirement-topology-unobservable",driveSignal:after.signal.kind});return this.outcomeUnknown(after.signal,"update-convergence-path");}
-    this.topologyObservation(identity.path,"post-retirement",after.value.files,after.value.status,identity);
-    if(after.value.status!=="unique"||after.value.file.id!==String(identity.candidateRemoteObjectId)||after.value.file.trashed||!canonicalMatches(after.value.file,identity.intendedContent)){this.updateEvent(identity,"drive-update-convergence",{result:"outcome-unknown",reason:"candidate-not-sole-live-occupant",occupancyCount:after.value.files.length,occupantRemoteObjectIds:renderDiagnosticOccupantIds(after.value.files.map(file=>file.id))});return {status:"outcome-unknown",reason:"update-candidate-is-not-sole-live-path-occupant-after-retirement"};}
-    this.updateEvent(identity,"drive-update-convergence",{result:"verified-effect",reason:"candidate-sole-live-occupant",candidateVerified:true,predecessorVerified:true,occupancyCount:1,occupantRemoteObjectIds:renderDiagnosticOccupantIds([after.value.file.id])});
-    return {status:"verified-effect",receipt:{remoteObjectId:identity.candidateRemoteObjectId,path:identity.path,evidence:evidence(after.value.file)},applicationProof:{kind:"immutable-candidate-preservation",candidateRemoteObjectId:identity.candidateRemoteObjectId,predecessorRemoteObjectId:identity.remoteObjectId,predecessorRevision:identity.expectedRevision,intendedContent:identity.intendedContent,verifiedContent:identity.intendedContent,preservedRemoteObjectIds:preserved}};
-  }
   private moveVerified(identity:Extract<RemoteMutationIdentity,{readonly kind:"identity-preserving-move"}>,file:DriveFile):RemoteMutationOutcome{return {status:"verified-effect",receipt:{remoteObjectId:identity.remoteObjectId,path:identity.toPath,evidence:file.mimeType===FOLDER_MIME?undefined:evidence(file)},applicationProof:{kind:"identity-preserving-move",remoteObjectId:identity.remoteObjectId,fromPath:identity.fromPath,toPath:identity.toPath}};}
   private outcomeFromSignal(signal:DriveSignal,prefix:string):RemoteMutationOutcomeV1_3{if(signal.kind==="conflict")return {status:"conflict-preserved",reason:`${prefix}:${signal.detail}`,preservedRemoteObjectIds:[]};if(signal.kind==="not-found")return {status:"verified-not-applied",reason:`${prefix}:not-found`};return this.outcomeUnknown(signal,prefix);}
   private outcomeFromSignalValue(signal:DriveSignal,prefix:string):RemoteMutationOutcomeV1_3{return this.outcomeFromSignal(signal,prefix);}
