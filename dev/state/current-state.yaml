@@ -1768,7 +1768,14 @@ repository_consolidation_2026_11_16:
   oauth_drive_sync_activity: "NOT_PERFORMED"
 
 dec362_stable_remote_identity_correction_2026_11_18:
-  status: "OWNER_DIRECTED_DOCUMENTATION_AND_PLANNING;IMPLEMENTATION_NOT_STARTED"
+  status: "OWNER_AUTHORIZED_BUILDER_IMPLEMENTATION_COMMITTED;PHXCI_NOT_YET_RUN;REVIEW_NOT_YET_STARTED"
+  builder_branch: "fix/dec362-stable-drive-id-content-update-20261118"
+  builder_last_code_and_tests_commit_before_state: "2258818c00f2e54795026b052c34408b22298920"
+  verification_status: "UNQUALIFIED_SOURCE_ONLY_NO_EXECUTABLE_TESTS_CLAIMED"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC-362"
   authority: "DEC-362"
   task: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md"
   defect: "ORDINARY_EXISTING_FILE_UPDATE_AND_CLEAN_MERGE_CURRENTLY_REPLACE_DRIVE_OBJECT_ID_VIA_CANDIDATE_AND_RETIRE_PREDECESSOR"

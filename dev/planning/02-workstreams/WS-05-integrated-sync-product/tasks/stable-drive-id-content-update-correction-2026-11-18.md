@@ -1,7 +1,7 @@
 # DEC-362 — Stable Drive-ID Content-Update Correction
 
 **Date:** 2026-11-18  
-**Status:** Owner-directed **planning/corrective prerequisite only**. Production implementation has **not** started. No code mutation, PHX-CI run, live Drive/vault action, installation, release or physical test is authorized by this document.  
+**Status:** Owner-authorized **Builder corrective implementation committed; PHX-CI qualification pending**. Source and tests have changed only under DEC-362. No PHX-CI PASS, independent Reviewer acceptance, live Drive/vault action, installation, release or physical test is claimed or authorized by this status.  
 **Owner:** WS-05 integrated product, with WS-03 owning the Google Drive mutation primitive.  
 **Dependency role:** **HARD PREREQUISITE** to DEC-339/PR #157 inventory planner cutover or activation.
 
