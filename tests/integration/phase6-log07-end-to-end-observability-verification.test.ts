@@ -99,50 +99,45 @@ const root = () => ({ id: "root", name: "BRAIN Sync", mimeType: folderMime, tras
 const contentRoot = () => ({ id: "content", name: "vault", mimeType: folderMime, parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-content" } });
 const configRoot = () => ({ id: "config", name: "__brain_sync_portable_config__", mimeType: folderMime, parents: ["root"], trashed: false, appProperties: { brainSyncRole: "brain-sync-portable-config" } });
 const privateFolder = () => ({ id: "private", name: "private", mimeType: folderMime, parents: ["content"], trashed: false, appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const predecessor = (trashed = false) => ({ id: "pred", name: "PRIVATE-target.md", mimeType: "text/plain", parents: ["private"], trashed, size: "3", sha256Checksum: "old", version: "old-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const candidate = () => ({ id: "cand", name: "PRIVATE-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "4", sha256Checksum: "abc", version: "candidate-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
-const third = () => ({ id: "third", name: "PRIVATE-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "4", sha256Checksum: "third", version: "third-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const establishedBefore = () => ({ id: "pred", name: "PRIVATE-target.md", mimeType: "text/plain", parents: ["private"], trashed: false, size: "3", sha256Checksum: "old", version: "old-revision", appProperties: { brainManagedRootId: "root", brainSyncDomain: "content" } });
+const establishedAfter = () => ({ ...establishedBefore(), size: "4", sha256Checksum: "abc", version: "new-revision" });
+const third = () => ({ ...establishedAfter(), id: "third", sha256Checksum: "third" });
 const jsonResponse = (body: unknown, status = 200, headers: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
 const errorResponse = (status: number, reason: string) => jsonResponse({ error: { errors: [{ reason }] } }, status);
 const normalize = (url: string) => decodeURIComponent(url).replace(/\+/g, " ");
 
-type UpdateScenario = "success" | "candidate-direct-only" | "retirement-ambiguous" | "post-list-stale" | "third-candidate";
+type UpdateScenario = "success" | "missing-path" | "upload-ambiguous" | "post-list-stale" | "third-occupant";
 function updateIdentity() {
   return {
-    kind: "existing-file-content-update",
-    intentId,
-    remoteObjectId: cid<"RemoteObjectId">("pred"),
-    expectedRevision: cid<"RemoteRevisionId">("old-revision"),
-    path: targetPath,
-    updateProtocol: "immutable-candidate-preservation",
-    candidateRemoteObjectId: cid<"RemoteObjectId">("cand"),
-    intendedContent: intended,
+    kind: "existing-file-content-update", intentId, remoteObjectId: cid<"RemoteObjectId">("pred"),
+    expectedRevision: cid<"RemoteRevisionId">("old-revision"), path: targetPath,
+    updateProtocol: "stable-object-in-place", intendedContent: intended,
     identityAuthority: { status: "unique", generation, path: targetPath, remoteObjectId: cid<"RemoteObjectId">("pred") },
   } as never;
 }
 async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLogger) {
-  let uploaded = false;
-  let retired = false;
-  let patchCalls = 0;
+  let uploaded = false, uploadCalls = 0;
   const requests: string[] = [];
   const fetcher: typeof fetch = async (input, init) => {
-    const url = String(input);
-    const method = (init?.method ?? "GET").toUpperCase();
-    requests.push(`${method} ${url}`);
+    const url = String(input), method = (init?.method ?? "GET").toUpperCase();
+    requests.push(method + " " + url);
     const decoded = normalize(url);
     if (url.includes("/about?")) return jsonResponse({ user: { permissionId: "permission:log07" } });
-    if (url.includes("/files/generateIds?")) return jsonResponse({ ids: ["cand"] });
-    if (url === "https://upload.example/session") { uploaded = true; return jsonResponse(candidate()); }
-    if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files?")) return jsonResponse({}, 200, { location: "https://upload.example/session" });
-    if (url.includes("/files/pred?")) {
-      if (method === "PATCH") {
-        patchCalls += 1;
-        retired = true;
-        return scenario === "retirement-ambiguous" ? errorResponse(503, "backendError") : jsonResponse(predecessor(true));
-      }
-      return jsonResponse(predecessor(retired));
+    if (url === "https://upload.example/session") {
+      if (method !== "PUT") throw new Error("resumable upload must use PUT");
+      uploaded = true;
+      return scenario === "upload-ambiguous" ? errorResponse(503, "backendError") : jsonResponse(establishedAfter());
     }
-    if (url.includes("/files/cand?")) return uploaded ? jsonResponse(candidate()) : errorResponse(404, "notFound");
+    if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files/pred?")) {
+      assert.equal(method, "PATCH");
+      uploadCalls++;
+      return jsonResponse({}, 200, { location: "https://upload.example/session" });
+    }
+    if (url.startsWith("https://www.googleapis.com/upload/drive/v3/files?")) throw new Error("replacement object creation forbidden");
+    if (url.includes("/files/pred?")) {
+      if (method === "PATCH") throw new Error("predecessor retirement forbidden");
+      return jsonResponse(uploaded ? establishedAfter() : establishedBefore());
+    }
     if (url.includes("/files/private?")) return jsonResponse(privateFolder());
     if (url.includes("/files/content?")) return jsonResponse(contentRoot());
     if (url.includes("/files/config?")) return jsonResponse(configRoot());
@@ -151,38 +146,22 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
     if (decoded.includes("'root' in parents") && decoded.includes("name='__brain_sync_portable_config__'")) return jsonResponse({ files: [configRoot()] });
     if (decoded.includes("'content' in parents") && decoded.includes("name='private'")) return jsonResponse({ files: [privateFolder()] });
     if (decoded.includes("'private' in parents") && decoded.includes("name='PRIVATE-target.md'")) {
-      if (!retired) {
-        if (!uploaded || scenario === "candidate-direct-only") return jsonResponse({ files: [predecessor(false)] });
-        if (scenario === "third-candidate") return jsonResponse({ files: [predecessor(false), candidate(), third()] });
-        return jsonResponse({ files: [predecessor(false), candidate()] });
-      }
-      return scenario === "post-list-stale" ? jsonResponse({ files: [predecessor(false), candidate()] }) : jsonResponse({ files: [candidate()] });
+      if (scenario === "missing-path") return jsonResponse({ files: [] });
+      if (scenario === "third-occupant") return jsonResponse({ files: [establishedBefore(), third()] });
+      if (uploaded && scenario === "post-list-stale") return jsonResponse({ files: [establishedBefore()] });
+      return jsonResponse({ files: [uploaded ? establishedAfter() : establishedBefore()] });
     }
     if (decoded.includes("'content' in parents") && !decoded.includes("name=")) return jsonResponse({ files: [privateFolder()] });
-    if (decoded.includes("'private' in parents") && !decoded.includes("name=")) {
-      const liveOccupants = retired
-        ? [candidate()]
-        : uploaded
-          ? [predecessor(false), candidate(), ...(scenario === "third-candidate" ? [third()] : [])]
-          : [predecessor(false)];
-      return jsonResponse({ files: liveOccupants });
-    }
+    if (decoded.includes("'private' in parents") && !decoded.includes("name=")) return jsonResponse({ files: [uploaded ? establishedAfter() : establishedBefore(), ...(scenario === "third-occupant" ? [third()] : [])] });
     if (decoded.includes("'config' in parents") && !decoded.includes("name=")) return jsonResponse({ files: [] });
-    if (decoded.includes("appProperties has { key='brainManagedRootId' and value='root' }") && decoded.includes("trashed=false")) {
-      const managedObjects = retired
-        ? [privateFolder(), candidate()]
-        : uploaded
-          ? [privateFolder(), predecessor(false), candidate(), ...(scenario === "third-candidate" ? [third()] : [])]
-          : [privateFolder(), predecessor(false)];
-      return jsonResponse({ files: managedObjects });
-    }
-    throw new Error(`unexpected request ${method} ${decoded}`);
+    if (decoded.includes("appProperties has { key='brainManagedRootId' and value='root' }") && decoded.includes("trashed=false")) return jsonResponse({ files: [privateFolder(), uploaded ? establishedAfter() : establishedBefore()] });
+    throw new Error("unexpected request " + method + " " + decoded);
   };
-  const backing = new MemorySecrets();
-  const oauth = makeSession(backing, fetcher);
+  const backing = new MemorySecrets(), oauth = makeSession(backing, fetcher);
   const transport = new GoogleHttpTransport(oauth, fetcher, { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, maxConcurrency: 2 }, async () => undefined, () => 0, () => 0, diagnostics, () => requests.length);
-  const adapter = new GoogleDriveAdapter(oauth, transport, new ObsidianSecretStore(backing), diagnostics);
-  return { adapter, requests, patchCalls: () => patchCalls, run: (cancellation?: { cancelled: boolean }) => adapter.updateExisting(updateIdentity(), bytes, cancellation as never) };
+  const configured = { rootId: cid<"RemoteObjectId">("root"), vaultIdentity: cid<"VaultIdentity">("vault-log07"), protocolVersion: cid<"ProtocolVersion">("1") };
+  const adapter = new GoogleDriveAdapter(oauth, transport, new ObsidianSecretStore(backing), diagnostics, () => configured);
+  return { adapter, requests, patchCalls: () => uploadCalls, run: (cancellation?: { cancelled: boolean }) => adapter.updateExisting(updateIdentity(), bytes, cancellation as never) };
 }
 
 const executionVault = cid<"VaultIdentity">("vault-log07") as VaultIdentity;
@@ -384,84 +363,47 @@ async function generationAdvanceRecoveryWorld() {
   return { store, diagnostics, plan, surface: controller.currentSurface(), before };
 }
 
-test("LOG07-S1 production controller/executor/Drive composition proves remote-update lifecycle end to end", async () => {
+test("LOG07-S1 production controller/executor/Drive composition retains established Drive ID", async () => {
   const world = await productionUpdateWorld();
   const authority = await world.store.loadAuthority();
   assert.equal(authority.status, "trusted");
   if (authority.status !== "trusted") throw new Error("trusted authority required");
   const text = await makeBundle(world.diagnostics, authority);
-  const parsed = JSON.parse(text);
-  const records = events(text);
-  const eventNames = records.map(value => value.event).join(",");
-  assert.ok(authority.state.base.some(entry => entry.path === targetPath && entry.remoteObjectId === cid<"RemoteObjectId">("cand")), `candidate canonical commit missing; events=${eventNames}`);
+  const parsed = JSON.parse(text), records = events(text);
+  assert.ok(authority.state.base.some(entry => entry.path === targetPath && String(entry.remoteObjectId) === "pred"));
   assert.equal(authority.state.operationIntents.length, 1);
   assert.ok(authority.state.operationIntents[0]?.effects.every(effect => effect.stage === "state-committed"));
-  assert.ok(parsed.authorityState.base.records.some((entry: any) => entry.remoteObjectId === "cand"));
+  assert.ok(parsed.authorityState.base.records.some((entry: any) => entry.remoteObjectId === "pred"));
   assert.ok(parsed.authorityState.operationJournal.records.some((entry: any) => entry.operationId === String(operationId) && entry.status === "completed"));
-  for (const expected of [
-    "operation-start",
-    "drive-update-candidate-upload-dispatch",
-    "drive-update-candidate-upload-result",
-    "drive-update-candidate-verification",
-    "drive-update-predecessor-retirement-dispatch",
-    "drive-update-convergence",
-    "physical-verification-complete",
-    "state-commit-complete",
-    "durable-finalization-complete",
-    "operation-complete",
-    "sync-run-complete",
-  ]) assert.ok(records.some(value => value.event === expected), `${expected} missing; events=${eventNames}`);
-  assert.ok(records.some(v => v.event === "drive-update-candidate-verification" && v.fields?.candidateVerified === true));
-  assert.ok(records.some(v => v.event === "drive-update-convergence" && v.fields?.result === "verified-effect" && v.fields?.reason === "candidate-sole-live-occupant"));
-  assert.ok(records.some(v => v.event === "state-commit-complete" && v.fields?.result === "committed"));
-  assert.ok(records.some(v => v.event === "durable-finalization-complete" && v.fields?.toStage === "state-committed"));
-  const index = parsed.causalIndex.runs[0];
-  assert.ok(index.planIds.includes(String(planId)) && index.operationIds.includes(String(operationId)) && index.intentIds.length > 0 && index.requestIds.length > 0);
+  for (const expected of ["operation-start","drive-update-same-id-upload-dispatch","drive-update-same-id-upload-result","drive-update-convergence","physical-verification-complete","state-commit-complete","durable-finalization-complete","operation-complete","sync-run-complete"]) {
+    assert.ok(records.some(value => value.event === expected), expected + " missing");
+  }
+  assert.ok(records.some(v => v.event === "drive-update-convergence" && v.fields?.result === "verified-effect" && v.fields?.reason === "established-id-content-revision-verified"));
   assert.equal(world.driveWorld.patchCalls(), 1);
   assert.equal(text.includes(rawPath), false);
 });
-
-test("LOG07-S2 candidate direct GET can diverge from path LIST without inventing retirement", async () => {
-  const diagnostics = await makeLogger();
-  diagnostics.beginSyncRun("log07-candidate-direct-only");
-  const world = await updateWorld("candidate-direct-only", diagnostics);
-  const result = await world.run();
-  const text = await makeBundle(diagnostics);
-  const records = events(text);
-  assert.equal(result.status, "conflict-preserved");
-  assert.equal(world.patchCalls(), 0);
-  assert.ok(records.some(v => v.event === "drive-exact-id-observation-result" && v.fields?.stage === "candidate-after-upload" && v.fields?.result === "present"));
-  assert.ok(records.some(v => v.event === "drive-update-topology-observed" && v.fields?.stage === "pre-retirement" && v.fields?.occupancyCount === 1));
-  assert.ok(records.some(v => v.event === "drive-update-retirement-branch" && v.fields?.result === "retirement-not-reached" && v.fields?.reason === "candidate-not-listed-at-logical-path"));
-  assert.equal(records.some(v => v.event === "drive-update-predecessor-retirement-dispatch"), false);
-  assert.ok(records.some(v => v.event === "drive-update-convergence" && v.fields?.result === "conflict-preserved"));
+test("LOG07-S2 missing live path occupant blocks update despite exact-ID presence", async () => {
+  const diagnostics = await makeLogger(); diagnostics.beginSyncRun("log07-missing");
+  const world = await updateWorld("missing-path", diagnostics), result = await world.run();
+  assert.equal(result.status, "conflict-preserved"); assert.equal(world.patchCalls(), 0);
+  assert.ok(events(await makeBundle(diagnostics)).some(v => v.event === "drive-update-topology-observed" && v.fields?.occupancyCount === 0));
 });
-
-test("LOG07-S3/S4/S5 ambiguous retirement, delayed path visibility, and third-candidate contamination remain distinct", async () => {
-  for (const scenario of ["retirement-ambiguous", "post-list-stale", "third-candidate"] as const) {
-    const diagnostics = await makeLogger();
-    diagnostics.beginSyncRun(`log07-${scenario}`);
-    const world = await updateWorld(scenario, diagnostics);
-    const result = await world.run();
-    const records = events(await makeBundle(diagnostics));
-    if (scenario === "retirement-ambiguous") {
-      assert.equal(result.status, "verified-effect");
-      assert.equal(world.patchCalls(), 1);
-      assert.ok(records.some(v => v.event === "drive-update-predecessor-retirement-dispatch" && v.fields?.result === "transport-failure"));
-      assert.ok(records.some(v => v.event === "google-http-request-failed" && v.fields?.endpointClass === "drive.files.patch"));
-      assert.ok(records.some(v => v.event === "drive-exact-id-observation-result" && v.fields?.stage === "predecessor-after-retirement" && v.fields?.trashed === true));
-    } else if (scenario === "post-list-stale") {
-      assert.equal(result.status, "outcome-unknown");
-      assert.ok(records.some(v => v.event === "drive-exact-id-observation-result" && v.fields?.stage === "predecessor-after-retirement" && v.fields?.trashed === true));
-      assert.ok(records.some(v => v.event === "drive-update-topology-observed" && v.fields?.stage === "post-retirement" && v.fields?.occupancyCount === 2));
-    } else {
-      assert.equal(result.status, "conflict-preserved");
-      assert.equal(world.patchCalls(), 0);
-      assert.ok(records.some(v => v.event === "drive-update-retirement-branch" && v.fields?.reason === "independent-occupant-present" && v.fields?.occupancyCount === 3));
-    }
-  }
+test("LOG07-S3 ambiguous same-ID upload response proves intended content by observation", async () => {
+  const diagnostics = await makeLogger(); diagnostics.beginSyncRun("log07-ambiguous");
+  const world = await updateWorld("upload-ambiguous", diagnostics), result = await world.run();
+  assert.equal(result.status, "verified-effect"); assert.equal(world.patchCalls(), 1);
+  assert.ok(events(await makeBundle(diagnostics)).some(v => v.event === "drive-update-convergence" && v.fields?.result === "verified-effect"));
 });
-
+test("LOG07-S4 inconsistent post-upload path observation stays uncertain", async () => {
+  const diagnostics = await makeLogger(); diagnostics.beginSyncRun("log07-stale-path");
+  const world = await updateWorld("post-list-stale", diagnostics), result = await world.run();
+  assert.equal(result.status, "outcome-unknown"); assert.equal(world.patchCalls(), 1);
+});
+test("LOG07-S5 additional same-name occupant blocks dispatch", async () => {
+  const diagnostics = await makeLogger(); diagnostics.beginSyncRun("log07-third");
+  const world = await updateWorld("third-occupant", diagnostics), result = await world.run();
+  assert.equal(result.status, "conflict-preserved"); assert.equal(world.patchCalls(), 0);
+});
 test("LOG07-S6 repaired production controller exports outstanding-intent recovery lifecycle", async () => {
   const world = await recoveryWorld();
   assert.equal(world.thrown, undefined);
