@@ -653,8 +653,8 @@ test("production canary: generic text-version composition enables a real clean t
   ) {
     throw new Error("merged remote result missing after clean-merge execution");
   }
-  notStrictEqual(convergedRemote.value.remoteObjectId, remoteObjectId);
-  strictEqual(world.drive.inspectObject(remoteObjectId)?.trashed, true);
+  strictEqual(convergedRemote.value.remoteObjectId, remoteObjectId, "clean merge must preserve the original Drive ID");
+  strictEqual(world.drive.inspectObject(remoteObjectId)?.trashed, false, "successful same-ID update must not trash its original");
   strictEqual(
     decoder.decode(
       Uint8Array.from(

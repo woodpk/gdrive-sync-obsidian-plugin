@@ -205,7 +205,7 @@ test("256-file vault plus 64-file update batch preserves identity/state and emit
     equal(observed.ok, true);
     if (!observed.ok || observed.value.status !== "present") throw new Error(`missing updated scale file: ${path}`);
     const updatedId = String(observed.value.remoteObjectId);
-    ok(updatedId !== initialIds.get(path), `updated path must converge on its immutable candidate identity: ${path}`);
+    equal(updatedId, initialIds.get(path), `DEC-362 updates must retain the established Drive ID: ${path}`);
     postUpdateIds.set(path, updatedId);
     equal(String(observed.value.content?.hash), expectedHash(VAULT_FILE_BYTES, 0x80 + index));
   }

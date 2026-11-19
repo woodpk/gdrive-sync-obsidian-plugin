@@ -168,11 +168,11 @@ function commonDrive(url: string): Promise<DriveResult<Response>> | undefined {
   if (u.includes("'root' in parents") && u.includes("__brain_sync_portable_config__")) return ok({ files: [config()] });
   return undefined;
 }
-function adapter(handler: (url: string, init?: PortableRequestInit) => Promise<DriveResult<Response>>) {
+function adapter(handler: (url: string, init?: PortableRequestInit) => Promise<DriveResult<Response>>, configuredRoot?: ManagedRemoteIdentity) {
   const memory = new MemorySecrets();
   memory.setSecret("brain-gdrive-paired-account", "acct");
   const store = new ObsidianSecretStore(memory);
-  return new GoogleDriveAdapter(new GoogleOAuthSession({ clientId: "client", redirectUri: "https://callback" }, store), new StubTransport(handler), store);
+  return new GoogleDriveAdapter(new GoogleOAuthSession({ clientId: "client", redirectUri: "https://callback" }, store), new StubTransport(handler), store, undefined, configuredRoot ? () => configuredRoot : undefined);
 }
 async function waitUntil(predicate: () => boolean, attempts = 100) {
   for (let i = 0; i < attempts; i += 1) {
@@ -475,7 +475,7 @@ class MergeWorld {
         return ok({ files: [...this.files.values()].filter(file => file.parents.includes(parent) && !file.trashed && (!wantedName || file.name === wantedName)) });
       }
       throw new Error(`unhandled merge URL ${u}`);
-    });
+    }, managedRemote);
   }
 }
 function version(path: VaultPath, text: string, revision: string, extra: Partial<VersionReference> = {}): VersionReference {
