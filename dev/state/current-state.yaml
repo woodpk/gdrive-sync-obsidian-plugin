@@ -1823,3 +1823,24 @@ dec339_minimal_integration_planning_2026_11_17:
   deferred: "D339_06_TARGETED_EXECUTOR_READS"
   constraints: "NO_NEW_WORKSTREAM_NO_REBUILD_NO_GITHUB_ACTIONS_NO_PRODUCT_CODE_OR_RUNTIME_CHANGE_NO_DB_MIGRATION_NO_ACTIVATION_NO_LIVE_DRIVE_NO_PHYSICAL_TEST_NO_RELEASE"
   active_workstream_unchanged: true
+
+
+dec339_ws02_storage_upgrade_2026_11_19:
+  status: "BUILDER_SOURCE_TESTS_COMMITTED;PHXCI_QUALIFICATION_PENDING"
+  owner_authorization: "2026-11-19_EXPLICIT_DEC339_INTEGRATION_BUILDER_PROCEED_SOFTWARE_ONLY"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_STORAGE_UPGRADE_INTEROPERABILITY"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws02-storage-safety-20261119"
+  starting_dec362_closeout_sha: "d554b58a19f09a17354dee6f9af571ea060c9db1"
+  source_and_tests_commit: "a3a8e916a8982943500c559162025513c1b4e488"
+  planning_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-storage-upgrade-interoperability-2026-11-19.md"
+  verification_launcher: "dev/scripts/Invoke-PHXCI-DEC339-WS02.ps1"
+  phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+  phxci_verdict: "NOT_RUN"
+  reviewer_status: "NOT_ENGAGED"
+  master_or_pr157_merge_authorized: false
+  inventory_activation_authorized: false
+  live_provider_or_physical_authorized: false
+  next_action: "COMPLETE_REMAINING_WS02_STORAGE_CURSOR_SAFETY_AND_RUN_EXACT_SOURCE_PINNED_PHXCI"
