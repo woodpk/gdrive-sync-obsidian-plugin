@@ -1834,7 +1834,7 @@ dec339_ws02_storage_upgrade_2026_11_19:
   handoff-recipient-role: BUILDER
   branch: "build/dec339-ws02-storage-safety-20261119"
   starting_dec362_closeout_sha: "d554b58a19f09a17354dee6f9af571ea060c9db1"
-  source_and_tests_commit: "a3a8e916a8982943500c559162025513c1b4e488"
+  source_and_tests_commit: "0dda2ca7b27323892dccc2812323f3b65c6d7f50"
   planning_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-storage-upgrade-interoperability-2026-11-19.md"
   verification_launcher: "dev/scripts/Invoke-PHXCI-DEC339-WS02.ps1"
   phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
