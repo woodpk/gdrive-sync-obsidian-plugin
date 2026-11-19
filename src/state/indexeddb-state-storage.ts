@@ -89,13 +89,33 @@ export class IndexedDbStateByteStorage implements StateByteStorage {
   private open(): Promise<IDBDatabase> {
     this.database ??= new Promise<IDBDatabase>((resolve, reject) => {
       const request = this.indexedDb.open(this.databaseName, 1);
+      let failed = false;
       request.onupgradeneeded = () => {
         const database = request.result;
         if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME);
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error("Unable to open synchronization state database"));
-      request.onblocked = () => reject(new Error("Synchronization state database upgrade is blocked"));
+      request.onsuccess = () => {
+        const database = request.result;
+        if (failed) { database.close(); return; }
+        // A live v1 reader must release its connection when a newer inventory
+        // schema requests an upgrade. Reopening explicitly at v1 after that
+        // upgrade still fails closed; rollback requires the v2-aware adapter.
+        database.onversionchange = () => {
+          database.close();
+          this.database = undefined;
+        };
+        resolve(database);
+      };
+      request.onerror = () => {
+        failed = true;
+        this.database = undefined;
+        reject(request.error ?? new Error("Unable to open synchronization state database"));
+      };
+      request.onblocked = () => {
+        failed = true;
+        this.database = undefined;
+        reject(new Error("Synchronization state database upgrade is blocked"));
+      };
     });
     return this.database;
   }

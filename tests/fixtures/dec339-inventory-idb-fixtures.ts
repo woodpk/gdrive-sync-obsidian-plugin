@@ -27,14 +27,24 @@ const getField = (value: unknown, path: string): unknown => (value as Record<str
 
 export class FakeDatabase {
   version = 0;
+  /** Capture the last opened connection for versionchange lifecycle tests. */
+  lastOpened?: IDBDatabase;
+  closeCount = 0;
+  blockNextOpen = false;
   abortNextPublication = false;
   abortedPublicationStores: readonly string[] | null = null;
   tables = new Map<string, StoredTable>();
   openFactory(): IDBFactory {
     return { open: (_name: string, version?: number) => {
       const action: { result?: IDBDatabase; error?: Error;
-        onsuccess?: () => void; onerror?: () => void; onupgradeneeded?: () => void } = {};
+        onsuccess?: () => void; onerror?: () => void; onupgradeneeded?: () => void;
+        onblocked?: () => void } = {};
       queueMicrotask(() => {
+        if (this.blockNextOpen) {
+          this.blockNextOpen = false;
+          action.onblocked?.();
+          return;
+        }
         const target = version ?? (this.version || 1);
         if (target < this.version) {
           action.error = new Error("VersionError");
@@ -44,6 +54,7 @@ export class FakeDatabase {
         const upgrading = target > this.version;
         this.version = target;
         action.result = this.handle();
+        this.lastOpened = action.result;
         if (upgrading) action.onupgradeneeded?.();
         action.onsuccess?.();
       });
@@ -64,7 +75,7 @@ export class FakeDatabase {
       },
       transaction: (names: readonly string[] | string, mode: IDBTransactionMode) =>
         this.transaction(Array.isArray(names) ? names : [names], mode),
-      close: () => undefined,
+      close: () => { self.closeCount++; },
       onversionchange: null,
     } as unknown as IDBDatabase;
   }

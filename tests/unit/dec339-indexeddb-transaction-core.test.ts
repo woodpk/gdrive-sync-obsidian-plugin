@@ -235,3 +235,47 @@ test("incremental COW generation keeps older indexed roots reachable after atomi
     await read.value.release();
   }
 });
+
+
+test("WS-02 legacy v1 connection closes for a v2 upgrade without losing canonical bytes or backup", async () => {
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const legacy = new IndexedDbStateByteStorage("device:idb:test", factory);
+  const original = new TextEncoder().encode("preserved-canonical-state");
+  const newer = new TextEncoder().encode("preserved-canonical-state-after-cas");
+
+  await legacy.write(original);
+  const backupId = await legacy.backup(original);
+  assert.ok(backupId.startsWith("backup:"));
+  assert.equal(await legacy.compareAndSwap(new Uint8Array([0]), newer), false);
+  assert.deepEqual(await legacy.read(), original);
+  const connection = db.lastOpened;
+  assert.ok(connection);
+  assert.equal(typeof connection.onversionchange, "function");
+  connection.onversionchange?.call(connection, {} as IDBVersionChangeEvent);
+  assert.equal(db.closeCount, 1, "old database connection must release its upgrade block");
+
+  // A version-aware connection survives the additive schema upgrade and retains
+  // both the original canonical bytes and the historical backup.
+  const upgraded = new IndexedDbInventoryObservationStore("device:idb:test", factory);
+  await upgraded.publicationSnapshot(fence);
+  assert.equal(db.version, 2);
+  const compatible = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  assert.deepEqual(await compatible.read(), original);
+  const backup = db.tables.get("sync-state")?.records.get(JSON.stringify(backupId));
+  assert.deepEqual(backup, original);
+  await assert.rejects(legacy.read(), /VersionError/,
+    "a v1-only adapter must refuse upgraded state instead of assuming rollback safety");
+  assert.deepEqual(await compatible.read(), original);
+});
+
+test("WS-02 a blocked legacy open is retryable without changing canonical authority", async () => {
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const legacy = new IndexedDbStateByteStorage("device:idb:test", factory);
+  db.blockNextOpen = true;
+  await assert.rejects(legacy.read(), /upgrade is blocked/);
+  assert.equal(db.version, 0, "blocked open must not create or upgrade a database");
+  assert.equal(await legacy.read(), undefined, "retry must use a fresh open request");
+  const bytes = new TextEncoder().encode("trusted-bytes");
+  await legacy.write(bytes);
+  assert.deepEqual(await legacy.read(), bytes);
+});
