@@ -240,8 +240,14 @@ test("foundation v1.3 C15: predecessor approved contract/document bytes remain e
     assert.ok(current.length > predecessorSize, `${file} must append successor material`);
     assert.equal(gitBlobSha1(current.subarray(0, predecessorSize)), predecessorBlobSha, `${file} predecessor prefix changed`);
   }
-  const untouchedFoundation = readCanonicalGitBlob("src/contracts/synchronization-foundation.ts");
-  assert.equal(gitBlobSha1(untouchedFoundation), "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6");
+  // Preserve the exact historical approved contract without misrepresenting
+  // the DEC-362-authorized successor as byte-identical to its predecessor.
+  const predecessorBlob = execFileSync("git", ["cat-file", "blob", "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6"]);
+  assert.equal(gitBlobSha1(predecessorBlob), "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6");
+  const successor = readCanonicalGitBlob("src/contracts/synchronization-foundation.ts");
+  assert.notEqual(gitBlobSha1(successor), "fde30f9ed2b13b878476759c3c0f4d7ddbbc5af6");
+  assert.match(successor.toString("utf8"), /"stable-object-in-place"/);
+  assert.match(successor.toString("utf8"), /"same-object-content-update"/);
 });
 
 test("foundation v1.3 C16: documentation succession material is appended after approved predecessor prefixes", () => {

@@ -328,8 +328,8 @@ test("C1 reviewed first-sync Keep local crosses only the unresolved-path authori
   assert.equal(result.status, "accepted", result.status === "rejected" ? result.reason : undefined);
   assert.deepEqual(h.boundary.updateCalls, ["collision.bin"]);
   assert.equal(h.boundary.remoteFiles.get("collision.bin")?.text, "LOCAL");
-  assert.equal(h.boundary.preserved.get(String(originalRemote.remoteObjectId))?.text, "REMOTE", "immutable predecessor identity remains preserved");
-  assert.equal(h.boundary.preserved.get(String(originalRemote.remoteObjectId))?.evidence.revision, originalRemote.evidence.revision);
+  assert.equal(h.boundary.remoteFiles.get("collision.bin")?.remoteObjectId, originalRemote.remoteObjectId, "keep-local retains the exact existing Drive identity");
+  assert.notEqual(h.boundary.remoteFiles.get("collision.bin")?.evidence.revision, originalRemote.evidence.revision, "in-place update advances revision");
   const committed = await h.store.load(h.context);
   assert.equal(committed.status, "trusted");
   if (committed.status === "trusted") {
@@ -352,7 +352,7 @@ test("C1 portable app.json Keep local leaves one planner-visible candidate and a
   assert.equal(result.status, "accepted", result.status === "rejected" ? result.reason : undefined);
   const listing = await h.boundary.drive.listForReconciliation();
   assert.equal(listing.value.entries.filter(entry => String(entry.path) === path).length, 1);
-  assert.equal(h.boundary.preserved.get(String(predecessor.remoteObjectId))?.text, "REMOTE-PORTABLE");
+  assert.equal(h.boundary.remoteFiles.get(path)?.remoteObjectId, predecessor.remoteObjectId);
   const committed = await h.store.load(h.context);
   assert.equal(committed.status, "trusted");
   if (committed.status === "trusted") {

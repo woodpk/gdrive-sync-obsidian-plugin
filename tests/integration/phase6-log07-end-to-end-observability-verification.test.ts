@@ -157,7 +157,9 @@ async function updateWorld(scenario: UpdateScenario, diagnostics?: DiagnosticLog
     if (decoded.includes("appProperties has { key='brainManagedRootId' and value='root' }") && decoded.includes("trashed=false")) return jsonResponse({ files: [privateFolder(), uploaded ? establishedAfter() : establishedBefore()] });
     throw new Error("unexpected request " + method + " " + decoded);
   };
-  const backing = new MemorySecrets(), oauth = makeSession(backing, fetcher);
+  const backing = new MemorySecrets();
+  backing.setSecret("brain-gdrive-paired-account", "permission:log07");
+  const oauth = makeSession(backing, fetcher);
   const transport = new GoogleHttpTransport(oauth, fetcher, { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, maxConcurrency: 2 }, async () => undefined, () => 0, () => 0, diagnostics, () => requests.length);
   const configured = { rootId: cid<"RemoteObjectId">("root"), vaultIdentity: cid<"VaultIdentity">("vault-log07"), protocolVersion: cid<"ProtocolVersion">("1") };
   const adapter = new GoogleDriveAdapter(oauth, transport, new ObsidianSecretStore(backing), diagnostics, () => configured);

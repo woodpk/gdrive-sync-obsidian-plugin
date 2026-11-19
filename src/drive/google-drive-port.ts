@@ -325,7 +325,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
   async updateExisting(identity:UpdateIdentity,content:BinaryContentSource,cancellation?:SynchronizationCancellationSignal):Promise<RemoteMutationOutcomeV1_3>{
     this.updateEvent(identity,"drive-update-entered",{stage:"stable-id-update"});
     if(identity.updateProtocol!=="stable-object-in-place")return {status:"outcome-unknown",reason:"unsupported-stable-id-update-protocol"};
-    if(cancelled(cancellation))return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};
+    if(cancelled(cancellation)){this.updateEvent(identity,"drive-update-convergence",{result:"verified-not-applied",reason:"cancelled-before-dispatch"});return {status:"verified-not-applied",reason:"synchronization-cancelled-before-dispatch"};}
     if(content.sizeBytes!==undefined&&content.sizeBytes!==identity.intendedContent.sizeBytes)return {status:"verified-not-applied",reason:"content-size-precondition-mismatch"};
     const configured=await this.configuredManagedRoot();
     if(!configured.ok)return this.outcomeUnknown(configured.signal,"stable-update-configured-root");

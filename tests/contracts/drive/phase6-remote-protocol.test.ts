@@ -67,14 +67,14 @@ test("DEC362 Drive updates the existing file ID via resumable PATCH, never trash
     const u=norm(url),c=common(url);if(c)return c;
     if(u.includes("/files/content?"))return ok(content());
     if(u.includes("/files/config?"))return ok(config());
+    if(u.startsWith("https://www.googleapis.com/upload/drive/v3/files/old?")){
+      assert.equal(init?.method,"PATCH");uploads++;return ok({},200,{location:"https://upload.example/update"});
+    }
     if(u.includes("/files/old?")){
       if(init?.method==="PATCH"){trashes++;throw new Error("forbidden predecessor retirement");}
       return ok(file());
     }
     if(u.includes("'content' in parents")&&u.includes("name='note.md'"))return ok({files:[file()]});
-    if(u.startsWith("https://www.googleapis.com/upload/drive/v3/files/old?")){
-      assert.equal(init?.method,"PATCH");uploads++;return ok({},200,{location:"https://upload.example/update"});
-    }
     if(u.startsWith("https://www.googleapis.com/upload/drive/v3/files?")){creates++;throw new Error("forbidden candidate creation");}
     if(u==="https://upload.example/update"){assert.equal(init?.method,"PUT");applied=true;return ok(file());}
     throw new Error("unexpected request "+u);

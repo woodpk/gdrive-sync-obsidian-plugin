@@ -89,6 +89,7 @@ async function updateFixture(scenario: UpdateScenario) {
   const identity = { rootId: id("root"), vaultIdentity: vault("vault-1"), protocolVersion: contractId<"ProtocolVersion">("1") };
   const handler = async (url: string, init: PortableRequestInit = {}): Promise<DriveResult<Response>> => {
     const decoded = norm(url);
+    if (decoded.includes("/about?")) return ok({ user: { permissionId: "acct" } });
     if (url === "https://upload.example/session") {
       const headers = new Headers(init.headers);
       if (headers.get("content-range") === "bytes */4") return failure("transient-failure", "status-unobservable");
