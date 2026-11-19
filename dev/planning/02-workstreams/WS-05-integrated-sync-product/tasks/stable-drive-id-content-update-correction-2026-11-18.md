@@ -1,7 +1,7 @@
 # DEC-362 — Stable Drive-ID Content-Update Correction
 
 **Date:** 2026-11-18  
-**Status:** Owner-authorized **Builder corrective implementation committed; PHX-CI qualification pending**. Source and tests have changed only under DEC-362. No PHX-CI PASS, independent Reviewer acceptance, live Drive/vault action, installation, release or physical test is claimed or authorized by this status.  
+**Status:** Owner-authorized **Builder correction PHX-CI PASS; independent Reviewer acceptance PENDING**. Verified frozen source `640845815dc85672c2411b1b7d3ae48f17a86bc2`, tree `133efbae0fc19162c168caf567ec663de04115fa`, PHX-CI run `56e68fb7-2b1f-4b47-9969-9e871bd30f7a`, published evidence commit `8f7dfdefa96eae3bec7a1acc4fc22763757756a5`. No independent acceptance, DEC-339/PR #157 planner cutover, activation, live Drive/vault action, physical test, installation or release is authorized by this status.  
 **Owner:** WS-05 integrated product, with WS-03 owning the Google Drive mutation primitive.  
 **Dependency role:** **HARD PREREQUISITE** to DEC-339/PR #157 inventory planner cutover or activation.
 
@@ -151,3 +151,12 @@ At minimum, acceptance must demonstrate:
 This corrective work comes **before** DEC-339 planner cutover/activation. Storage-only shadow and observation-only work may be reasoned about independently, but no inventory-backed production planner activation should be treated as eligible while the shipping mutation engine intentionally rotates identity for ordinary content revisions.
 
 D339-06 remains a later optimization of eligible verification reads. It does not substitute for this correction and must not be used to paper over replacement-ID mutation semantics.
+
+## 11. Builder verification closeout and independent review transfer (2026-11-18 local)
+
+- **Verification result:** pinned Windows PHX-CI **PASS**, software-only, physical dispatch disabled. The 13 reported stages all PASS, including source authority checks, typechecks, focused tests (634/634), product tests (1308/1308), build, artifacts, and repository-check.
+- **Frozen exact SUT:** source `640845815dc85672c2411b1b7d3ae48f17a86bc2`; Git tree `133efbae0fc19162c168caf567ec663de04115fa`; base `f507cbcc669568d1cb480abca469bdb1a7d184b8`.
+- **Verification evidence:** run `56e68fb7-2b1f-4b47-9969-9e871bd30f7a`; evidence-only direct-child publication commit `8f7dfdefa96eae3bec7a1acc4fc22763757756a5`; canonical files `dev/test-results/56e68fb7-2b1f-4b47-9969-9e871bd30f7a/{result.json,result.md,terminal.log}` and `dev/_ca-output.md` at the evidence publication commit.
+- **Boundary:** PASS is software qualification, **not** independent correctness acceptance. No physical/live verification has been authorized or performed. Treat the later Builder state/handoff commits as administrative descendants, **not** new source verification.
+- **Next gate:** independent blind-first source and adversarial review under [DEC-362 Reviewer assignment](dec362-stable-drive-id-post-phxci-independent-review-2026-11-18.md) and [Builder-to-Reviewer handoff](../../../../state/handoffs/dec362-stable-drive-id-builder-to-reviewer-2026-11-18.md). This is handoff-count **1**; no Reviewer verdict exists yet.
+- **PR #157 remains blocked** until independent Reviewer acceptance and any Owner-required integration authorization.
