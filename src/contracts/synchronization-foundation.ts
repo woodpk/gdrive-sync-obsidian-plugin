@@ -235,7 +235,6 @@ export type RemoteMutationApplicationProof =
       readonly verifiedRevision: RemoteRevisionId;
       readonly intendedContent: CanonicalFileContentProof;
       readonly verifiedContent: CanonicalFileContentProof;
-      readonly preservedRemoteObjectIds: readonly RemoteObjectId[];
     }
   | { readonly kind: "identity-preserving-move"; readonly remoteObjectId: RemoteObjectId; readonly fromPath: VaultPath; readonly toPath: VaultPath }
   | { readonly kind: "trash"; readonly remoteObjectId: RemoteObjectId; readonly path: VaultPath; readonly trashed: true };
