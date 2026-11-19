@@ -3,7 +3,7 @@
 **Authorized:** Owner, 2026-11-19. **Builder:** `build-brain-67`.
 **Starting SHA:** `d554b58a19f09a17354dee6f9af571ea060c9db1`.
 **Branch:** `build/dec339-ws02-storage-safety-20261119`.
-**Status:** BUILDER IN PROGRESS; **NO PHX-CI QUALIFICATION YET**.
+**Status:** BUILDER CORRECTION; R1 PHX-CI **BLOCKED**, R2 exact-source qualification pending.
 
 ## Bounded first increment
 
@@ -35,3 +35,12 @@ The shipping v1 IndexedDB byte-store connection must relinquish its connection o
 ## Further WS-02 work before final qualification
 
 Inspect and, where necessary, repair every canonical cursor writer, safe legacy/v2 fallback, blocked version upgrades in realistic IDB implementation, exact rollback behavior, scope change/resume local-hint invalidation, incomplete/ambiguous authority and preservation of BASE, intents and durable effects. Test each materially applicable family and execute all software qualification **only through pinned PHX-CI**. No PASS or Reviewer handoff is claimed by this record.
+
+## R1 software qualification — original outcome retained
+
+- Exact source: `43c6f5d4ac68e832e5c6d8e6b60a912664a88073`, tree `877ebfcebde2a41ea1e9b8c95a95b73d17f67227`.
+- Original pinned PHX-CI run: `ad1f838c-bca9-4135-a72a-be9b8383da2f`; evidence commit `428da1bc90f9b26aa88ba30570cdc1de31e5df17`.
+- Exact verdict: focused 631/634; 3 failures, product 1313/1313 PASS, TypeScript typecheck PASS, change-set FAIL, repository PASS, overall BLOCKED (exit 201).
+- Two guard failures were directly caused by adding `dev/scripts/Invoke-PHXCI-DEC339-WS02.ps1` (fifth PowerShell script against the frozen four-script budget and mismatch against the P1 exact-script inventory). Remove the extra script; **do not** alter any guard, budget, inventory manifest or test oracle.
+- Independently, the preexisting `s08e-external-live-executor` test **production execution has a separate bounded receipt deadline from routine commands** reported `failed` instead of `completed`. No evidence yet establishes why; it must PASS in the next full PHX-CI qualification or be investigated and corrected without suppressing safety expectations.
+- R1 original failure evidence is immutable; this remediation does not relabel it or assert software acceptance. The existing `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1` software-only mode is the repository-controlled PHX-CI launcher. Because that operator requires `C:\\temp\\<GUID>\\<repo>` placement, its owner bootstrap creates a throwaway clone at that shape, freezes the new source SHA, and calls it with `-SoftwareOnlyBranch` and `-ExpectedSourceSha`. No physical flags are used. Preserve the run root for diagnosis and publish results through PHX-CI.
