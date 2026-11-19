@@ -315,161 +315,68 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
   }
 
   async updateExisting(identity: UpdateIdentity, content: BinaryContentSource, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
-    if (identity.updateProtocol !== "immutable-candidate-preservation") {
-      return { status: "outcome-unknown", reason: "unsupported-update-protocol" };
+    if (identity.updateProtocol !== "stable-object-in-place") {
+      return { status: "outcome-unknown", reason: "unsupported-stable-id-update-protocol" };
     }
     if (cancelled(cancellation)) {
-      return {
-        status: "verified-not-applied",
-        reason: "synchronization-cancelled-before-dispatch",
-      };
+      return { status: "verified-not-applied", reason: "synchronization-cancelled-before-dispatch" };
     }
-
-    const predecessor = this.drive.inspectObject(identity.remoteObjectId);
-    const precondition = this.validateUpdatePredecessor(identity, predecessor);
-    if (precondition) return precondition;
-
-    let candidate = this.drive.inspectObject(identity.candidateRemoteObjectId);
-    if (!candidate) {
-      const dispatched = await this.drive.createWithRemoteObjectId(
-        this.managedRemote.rootId,
-        identity.candidateRemoteObjectId,
-        {
-          path: identity.path,
-          entityKind: "file",
-          content,
-          expectedEvidence: {
-            hash: identity.intendedContent.hash,
-            sizeBytes: identity.intendedContent.sizeBytes,
-          },
-        },
-      );
-      const observationFailure = this.takePostMutationObservationFailure();
-      if (observationFailure) {
-        return { status: "outcome-unknown", reason: observationFailure };
-      }
-      candidate = this.drive.inspectObject(identity.candidateRemoteObjectId);
-      if (!candidate) {
-        return {
-          status: "outcome-unknown",
-          reason: dispatched.ok
-            ? "update-candidate-post-observation-missing"
-            : `candidate-dispatch-ambiguous:${dispatched.signal.kind}`,
-        };
-      }
+    const before = this.drive.inspectObject(identity.remoteObjectId);
+    if (before && !before.trashed && before.revision !== String(identity.expectedRevision)
+        && canonicalMatches(before, identity.intendedContent)) {
+      return this.finalizeExistingUpdate(identity, cancellation);
     }
-    return this.finalizeExistingUpdate(identity, cancellation);
+    const invalid = this.validateUpdatePredecessor(identity, before);
+    if (invalid) return invalid;
+    const live = this.drive.inspectObjectsAtPath(this.managedRemote.rootId, identity.path);
+    if (live.length !== 1 || live[0]?.remoteObjectId !== identity.remoteObjectId) {
+      return { status: "conflict-preserved", reason: "stable-id-update-path-ambiguous", preservedRemoteObjectIds: live.map(item => item.remoteObjectId) };
+    }
+    const dispatched = await this.drive.update({
+      remoteObjectId: identity.remoteObjectId,
+      path: identity.path,
+      content,
+      expectedRemoteRevision: String(identity.expectedRevision),
+      expectedEvidence: { hash: identity.intendedContent.hash, sizeBytes: identity.intendedContent.sizeBytes },
+    });
+    const observationFailure = this.takePostMutationObservationFailure();
+    if (observationFailure) return { status: "outcome-unknown", reason: observationFailure };
+    const verified = await this.finalizeExistingUpdate(identity, cancellation);
+    if (verified.status === "verified-effect") return verified;
+    if (!dispatched.ok) return { status: "outcome-unknown", reason: "stable-id-dispatch-ambiguous:" + dispatched.signal.kind };
+    return verified;
   }
 
+  /** Read-only, exact-ID recovery; never creates a candidate or trashes a predecessor. */
   async finalizeExistingUpdate(identity: UpdateIdentity, cancellation?: SynchronizationCancellationSignal): Promise<RemoteMutationOutcome> {
-    if (cancelled(cancellation)) {
-      return {
-        status: "outcome-unknown",
-        reason: "synchronization-cancelled-before-update-finalization",
-      };
+    if (cancelled(cancellation)) return { status: "outcome-unknown", reason: "synchronization-cancelled-before-stable-id-observation" };
+    const observed = this.drive.inspectObject(identity.remoteObjectId);
+    if (!observed || observed.trashed || observed.entityKind !== "file"
+        || observed.rootId !== this.managedRemote.rootId || observed.path !== identity.path) {
+      return { status: "outcome-unknown", reason: "established-remote-object-not-verified" };
     }
-
-    const predecessor = this.drive.inspectObject(identity.remoteObjectId);
-    const precondition = this.validateUpdatePredecessor(identity, predecessor);
-    if (precondition) return precondition;
-
-    const candidate = this.drive.inspectObject(identity.candidateRemoteObjectId);
-    const preserved = [
-      identity.remoteObjectId,
-      identity.candidateRemoteObjectId,
-    ] as const;
-    if (!canonicalMatches(candidate, identity.intendedContent)) {
-      return {
-        status: "conflict-preserved",
-        reason: "candidate-content-not-authoritatively-verified",
-        preservedRemoteObjectIds: preserved,
-      };
+    if (identity.identityAuthority.remoteObjectId !== identity.remoteObjectId
+        || identity.identityAuthority.path !== identity.path || identity.identityAuthority.status !== "unique") {
+      return { status: "conflict-preserved", reason: "stable-id-update-authority-mismatch", preservedRemoteObjectIds: [identity.remoteObjectId] };
     }
-    if (String(candidate?.path) !== String(identity.path)) {
-      return {
-        status: "conflict-preserved",
-        reason: "candidate-observed-at-unintended-path",
-        preservedRemoteObjectIds: preserved,
-      };
+    const live = this.drive.inspectObjectsAtPath(this.managedRemote.rootId, identity.path);
+    if (live.length !== 1 || live[0]?.remoteObjectId !== identity.remoteObjectId) {
+      return { status: "conflict-preserved", reason: "stable-id-update-independent-sibling", preservedRemoteObjectIds: live.map(item => item.remoteObjectId) };
     }
-
-    const before = this.drive.inspectObjectsAtPath(
-      this.managedRemote.rootId,
-      identity.path,
-    );
-    const allowed = new Set(preserved.map(String));
-    const independent = before.filter(
-      object => !allowed.has(String(object.remoteObjectId)),
-    );
-    if (
-      !before.some(
-        object => object.remoteObjectId === identity.candidateRemoteObjectId,
-      ) ||
-      independent.length > 0
-    ) {
-      return {
-        status: "conflict-preserved",
-        reason: "update-path-contains-independent-candidate",
-        preservedRemoteObjectIds: before.map(object => object.remoteObjectId),
-      };
+    if (!canonicalMatches(observed, identity.intendedContent)
+        || observed.revision === String(identity.expectedRevision)) {
+      return { status: "outcome-unknown", reason: "stable-id-update-content-or-revision-not-proven" };
     }
-
-    if (predecessor && !predecessor.trashed) {
-      if (
-        before.length !== 2 ||
-        !before.some(object => object.remoteObjectId === identity.remoteObjectId)
-      ) {
-        return {
-          status: "outcome-unknown",
-          reason: "update-predecessor-live-state-is-not-exactly-resumable",
-        };
-      }
-      const retired = await this.drive.trash(identity.remoteObjectId);
-      const observationFailure = this.takePostMutationObservationFailure();
-      if (observationFailure) {
-        return { status: "outcome-unknown", reason: observationFailure };
-      }
-      const afterRetirement = this.drive.inspectObject(identity.remoteObjectId);
-      if (!afterRetirement?.trashed) {
-        return {
-          status: "outcome-unknown",
-          reason: retired.ok
-            ? "update-predecessor-retirement-not-verified"
-            : `update-predecessor-retirement-${retired.signal.kind}`,
-        };
-      }
-    }
-
-    const after = this.drive.inspectObjectsAtPath(
-      this.managedRemote.rootId,
-      identity.path,
-    );
-    if (
-      after.length !== 1 ||
-      after[0]?.remoteObjectId !== identity.candidateRemoteObjectId ||
-      !canonicalMatches(after[0], identity.intendedContent)
-    ) {
-      return {
-        status: "outcome-unknown",
-        reason: "update-candidate-is-not-sole-live-path-occupant-after-retirement",
-      };
-    }
-
     return {
       status: "verified-effect",
-      receipt: {
-        remoteObjectId: identity.candidateRemoteObjectId,
-        path: identity.path,
-        evidence: after[0].evidence,
-      },
+      receipt: { remoteObjectId: identity.remoteObjectId, path: identity.path, evidence: observed.evidence },
       applicationProof: {
-        kind: "immutable-candidate-preservation",
-        candidateRemoteObjectId: identity.candidateRemoteObjectId,
-        predecessorRemoteObjectId: identity.remoteObjectId,
-        predecessorRevision: identity.expectedRevision,
+        kind: "same-object-content-update",
+        remoteObjectId: identity.remoteObjectId,
+        expectedRevision: identity.expectedRevision,
+        verifiedRevision: observed.revision as UpdateIdentity["expectedRevision"],
         intendedContent: identity.intendedContent,
         verifiedContent: identity.intendedContent,
-        preservedRemoteObjectIds: preserved,
       },
     };
   }
@@ -756,10 +663,7 @@ export class InMemoryReliableRemoteMutationPort implements ReliableRemoteMutatio
         preservedRemoteObjectIds: [identity.remoteObjectId],
       };
     }
-    if (
-      !predecessor.trashed &&
-      predecessor.revision !== String(identity.expectedRevision)
-    ) {
+    if (predecessor.trashed || predecessor.revision !== String(identity.expectedRevision)) {
       return {
         status: "conflict-preserved",
         reason: "remote-revision-precondition-failed",
