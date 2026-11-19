@@ -450,27 +450,23 @@ class MergeWorld {
       if (u.includes("/files/config?")) return ok(config());
       if (u.includes("/files/generateIds")) return ok({ ids: [this.candidateId] });
       if (u.includes("brainSyncRole") && u.includes("brain-sync-root")) return ok({ files: [root()] });
-      if (u.startsWith("https://www.googleapis.com/upload/")) {
-        const metadata = typeof init.body === "string" ? JSON.parse(init.body) as { name?: string } : {};
-        this.pendingName = metadata.name ?? String(this.path);
+      if (u.startsWith("https://www.googleapis.com/upload/drive/v3/files/remote:merge-predecessor?")) {
+        assert.equal(init.method, "PATCH", "clean merge must update established remote identity");
         return ok({}, 200, { location: "https://upload.example/h-u3-merge" });
       }
+      if (u.startsWith("https://www.googleapis.com/upload/")) throw new Error("DEC-362 forbids replacement-object upload");
       if (u === "https://upload.example/h-u3-merge") {
         const range = new Headers(init.headers).get("content-range") ?? "";
         if (range.startsWith("bytes */")) return fail("transient-failure", "status-response-lost");
         const intended = this.intended;
         if (!intended) throw new Error("missing intended merge proof");
         this.uploadDispatches += 1;
-        this.files.set(this.candidateId, { id: this.candidateId, name: this.pendingName, mimeType: "application/octet-stream", parents: ["content"], trashed: false, size: String(intended.sizeBytes), sha256Checksum: String(intended.hash).replace(/^sha256:/, ""), version: "1", appProperties: provenance() });
+        const original = this.files.get("remote:merge-predecessor");
+        if (!original) throw new Error("established remote identity missing");
+        this.files.set(original.id, { ...original, size: String(intended.sizeBytes), sha256Checksum: String(intended.hash).replace(/^sha256:/, ""), version: "8" });
         return fail("transient-failure", "upload-response-lost");
       }
-      if (init.method === "PATCH") {
-        const fileId = /\/files\/([^/?]+)\?/.exec(u)?.[1];
-        const file = fileId ? this.files.get(fileId) : undefined;
-        if (!file) return fail("not-found");
-        file.trashed = true;
-        return fail("transient-failure", "retirement-response-lost");
-      }
+      if (init.method === "PATCH") throw new Error("DEC-362 forbids predecessor retirement");
       const direct = /\/files\/([^/?]+)\?/.exec(u)?.[1];
       if (direct) { const file = this.files.get(direct); return file ? ok(file) : fail("not-found"); }
       const parent = /'([^']+)' in parents/.exec(u)?.[1];
@@ -563,7 +559,7 @@ test("H-I7 F clean merge requires independent B LOCAL and A REMOTE durable verif
   assert.deepEqual(effects.map(value => value.descriptor.targetSide), ["local", "remote"]);
   assert.equal(effects.every(value => value.stage === "state-committed"), true);
   assert.ok(rawLocal.adapterLog.some(value => value.startsWith("write:")), "LOCAL merge effect used B transaction staging");
-  assert.equal(world.uploadDispatches, 1, "REMOTE merge effect used A immutable candidate update");
+  assert.equal(world.uploadDispatches, 1, "REMOTE merge effect used same-ID resumable update");
   assert.equal(canonicalAfter.base.find(value => value.path === path)?.content?.hash, assessment.mergedVersion.content?.hash);
   assert.notEqual(canonicalAfter.base.find(value => value.path === path)?.content?.hash, canonicalBefore.base.find(value => value.path === path)?.content?.hash);
 });
