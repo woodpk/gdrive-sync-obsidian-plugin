@@ -3,7 +3,7 @@
 **Authorized:** Owner, 2026-11-19. **Builder:** `build-brain-67`.
 **Starting SHA:** `d554b58a19f09a17354dee6f9af571ea060c9db1`.
 **Branch:** `build/dec339-ws02-storage-safety-20261119`.
-**Status:** BUILDER CORRECTION; R1 PHX-CI **BLOCKED**, R2 exact-source qualification pending.
+**Status:** **BUILDER-QUALIFIED (BU-01 bounded increment); independent Reviewer final acceptance PENDING.** Overall WS-02 storage-safety and DEC-339 integration gates are NOT complete.
 
 ## Bounded first increment
 
@@ -44,3 +44,11 @@ Inspect and, where necessary, repair every canonical cursor writer, safe legacy/
 - Two guard failures were directly caused by adding `dev/scripts/Invoke-PHXCI-DEC339-WS02.ps1` (fifth PowerShell script against the frozen four-script budget and mismatch against the P1 exact-script inventory). Remove the extra script; **do not** alter any guard, budget, inventory manifest or test oracle.
 - Independently, the preexisting `s08e-external-live-executor` test **production execution has a separate bounded receipt deadline from routine commands** reported `failed` instead of `completed`. No evidence yet establishes why; it must PASS in the next full PHX-CI qualification or be investigated and corrected without suppressing safety expectations.
 - R1 original failure evidence is immutable; this remediation does not relabel it or assert software acceptance. The existing `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1` software-only mode is the repository-controlled PHX-CI launcher. Because that operator requires `C:\\temp\\<GUID>\\<repo>` placement, its owner bootstrap creates a throwaway clone at that shape, freezes the new source SHA, and calls it with `-SoftwareOnlyBranch` and `-ExpectedSourceSha`. No physical flags are used. Preserve the run root for diagnosis and publish results through PHX-CI.
+
+## R2 software qualification — Builder-qualified increment only
+
+- **Qualified unchanged candidate**: `c19b8885007cfd62b954fd6cb60221fb6901e9b2`, tree `44e4b66a56298d17b70a2f48803728678e21fa4c`.
+- **Canonical PHX-CI**: run `9a728c86-4f89-450d-9ef7-5c54c59c9c66`; independently read back original PASS evidence published at commit `d9c7e01cf107d03abefa1c869d33976a75cf3fbe`, `dev/test-results/9a728c86-4f89-450d-9ef7-5c54c59c9c66/` and `dev/_ca-output.md`.
+- **Outcome**: 13/13 stages PASS, 634/634 focused and 1313/1313 product tests PASS, repository PASS, overall PASS, physical activity disabled; no new launcher and no budget/oracle relaxation.
+- **Scope limitation**: this completed increment addresses IndexedDB connection versionchange, blocked/late open, v2 reader interoperability, canonical bytes/backup retention, and inventory invalidation for cursor changes. **It is not the entire WS-02 step-1 storage integration, v2-aware rollback gate or DEC-339 activation.** The explicit remainder above remains scheduled after independent review. The R1 S08E timing failure was not explained; the same test passed unchanged in R2 and is not represented as disproven.
+- **Mandatory independent decision**: Reviewer conducts a blind source-first review followed by ten-family source/test/evidence assessment; Builder PHX-CI PASS alone is not acceptance. Source and tests remain frozen at the SHA above. This Builder continuity record is not appropriate blind-first reading before the independent assessment is published.
