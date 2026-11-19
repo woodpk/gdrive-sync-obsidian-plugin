@@ -399,3 +399,52 @@ test("D339-04B known stable-ID mask hides prior row without becoming deletion au
 });
 
 /** Assert the persisted canonical cursor and active generation as one accepted pair. */
+
+
+test("WS-02 appendLearnedRemoteBatch cursor writer invalidates an active inventory atomically", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("ws02-learned-batch-base"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), inventory)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const before = await inventory.openRead();
+  assert.equal(before.status, "verified-observation");
+  if (before.status === "verified-observation") await before.value.release();
+
+  const canonical = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const authority = await canonical.loadAuthority();
+  assert.equal(authority.status, "trusted");
+  if (authority.status !== "trusted") return;
+
+  const nextCursor = c("changes:ws02-learned-batch");
+  const batch = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("ws02-batch"),
+      startingToken: cursor1,
+      terminalStartToken: nextCursor,
+      persistenceRevision: authority.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [],
+  };
+  const learned = await canonical.appendLearnedRemoteBatch(
+    batch, authority.state.persistenceRevision, authority.state.semanticGeneration);
+  assert.equal(learned.status, "saved");
+  const after = await canonical.loadAuthority();
+  assert.equal(after.status, "trusted");
+  if (after.status !== "trusted") return;
+  assert.equal(after.state.changeCursor, nextCursor);
+  assert.equal(after.state.learnedRemoteBatches.length, 1);
+  assert.equal(after.state.learnedRemoteBatches[0].checkpoint.batchId, batch.checkpoint.batchId);
+  assert.equal((await inventory.openRead()).status, "stale",
+    "legacy cursor progress must never leave the old inventory actionable");
+
+  const pointer = await inventory.publicationSnapshot(fence);
+  assert.equal(pointer.status, "trusted-fence");
+  if (pointer.status === "trusted-fence") {
+    assert.equal(pointer.value.activeGeneration, null);
+    assert.equal(pointer.value.canonicalCursor, nextCursor);
+  }
+});
