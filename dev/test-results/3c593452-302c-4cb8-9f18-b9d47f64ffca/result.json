@@ -1,0 +1,262 @@
+{
+  "schemaVersion": "2",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)"
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)"
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "b03269284ed6269055e08ec793d4e74539b5eeb2",
+    "verifiedTree": "2ed33d82aaae6f4a99759a58dbfdc2902f50cadc",
+    "expectedHead": "b03269284ed6269055e08ec793d4e74539b5eeb2",
+    "baseSha": "f507cbcc669568d1cb480abca469bdb1a7d184b8"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.6",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-11-19T02:32:23.7057451Z",
+  "endedAt": "2026-11-19T02:33:23.7451964Z",
+  "stages": [
+    {
+      "name": "authority-check",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "phx-ci git gate",
+      "stdout": "repository=C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w\r\nbranch=\r\nhead=b03269284ed6269055e08ec793d4e74539b5eeb2\r\ntree=2ed33d82aaae6f4a99759a58dbfdc2902f50cadc",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:32:24",
+      "endedAt": "11/19/2026 02:32:26"
+    },
+    {
+      "name": "preflight",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "& 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:\\temp\\38ef88f537a3412cbd093bf2d33d5981'",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.6\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:32:27",
+      "endedAt": "11/19/2026 02:32:28"
+    },
+    {
+      "name": "node-preflight",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "& 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:\\temp\\38ef88f537a3412cbd093bf2d33d5981\\phx-9757e4be42e54c7e\\w' -OutputPath 'C:\\temp\\38ef88f537a3412cbd093bf2d33d5981\\phx-9757e4be42e54c7e\\w/.phx-ci/tool-versions.json'",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:32:29",
+      "endedAt": "11/19/2026 02:32:31"
+    },
+    {
+      "name": "node-project-files",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "& 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:\\temp\\38ef88f537a3412cbd093bf2d33d5981\\phx-9757e4be42e54c7e\\w'",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:32:33",
+      "endedAt": "11/19/2026 02:32:34"
+    },
+    {
+      "name": "install",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "npm ci",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 6s\n\nfound 0 vulnerabilities\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:32:35",
+      "endedAt": "11/19/2026 02:32:43"
+    },
+    {
+      "name": "typecheck",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "npm run typecheck",
+      "stdout": "\n> brain-google-drive-sync@0.1.19 typecheck\n> tsc --noEmit\n\nsrc/drive/google-drive-port.ts(412,7): error TS2322: Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: RemoteRevisionId; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n  Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: RemoteRevisionId; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/integration/orchestration/lat04-authoritative-precondition-dedup.test.ts(224,11): error TS2719: Type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...' is not assignable to type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...'. Two different types with this name exist, but they are unrelated.\r\n  Type 'Promise<{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }>' is not assignable to type 'Promise<RemoteMutationOutcome>'.\r\n    Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }' is not assignable to type 'RemoteMutationOutcome'.\r\n      Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }' is not assignable to type '{ readonly status: \"verified-effect\"; readonly receipt?: RemoteMutationReceipt | undefined; readonly applicationProof: RemoteMutationApplicationProof; }'.\r\n        Types of property 'applicationProof' are incompatible.\r\n          Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n            Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/integration/orchestration/v1.2-production-authority-path.test.ts(124,11): error TS2719: Type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...' is not assignable to type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...'. Two different types with this name exist, but they are unrelated.\r\n  Type 'Promise<{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }>' is not assignable to type 'Promise<RemoteMutationOutcome>'.\r\n    Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }' is not assignable to type 'RemoteMutationOutcome'.\r\n      Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }' is not assignable to type '{ readonly status: \"verified-effect\"; readonly receipt?: RemoteMutationReceipt | undefined; readonly applicationProof: RemoteMutationApplicationProof; }'.\r\n        Types of property 'applicationProof' are incompatible.\r\n          Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n            Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/integration/phase5-controller.test.ts(125,5): error TS2719: Type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...' is not assignable to type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...'. Two different types with this name exist, but they are unrelated.\r\n  Type 'Promise<{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }>' is not assignable to type 'Promise<RemoteMutationOutcome>'.\r\n    Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }' is not assignable to type 'RemoteMutationOutcome'.\r\n      Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; }' is not assignable to type '{ readonly status: \"verified-effect\"; readonly receipt?: RemoteMutationReceipt | undefined; readonly applicationProof: RemoteMutationApplicationProof; }'.\r\n        Types of property 'applicationProof' are incompatible.\r\n          Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n            Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/integration/phase5-group-d-active-run-integration.test.ts(490,5): error TS2322: Type '(mutation: { readonly kind: \"existing-file-content-update\"; readonly intentId: MutationIntentId; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly path: VaultPath; readonly updateProtocol: \"stable-object-in-place\"; readonly intendedContent: CanonicalFileContentProof; read...' is not assignable to type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: MutationIntentId; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly path: VaultPath; readonly updateProtocol: \"stable-object-in-place\"; readonly intendedContent: CanonicalFileContentProof; read...'.\r\n  Type 'Promise<{ status: \"verified-not-applied\"; reason: string; applicationProof?: undefined; } | { status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof...' is not assignable to type 'Promise<RemoteMutationOutcome>'.\r\n    Type '{ status: \"verified-not-applied\"; reason: string; applicationProof?: undefined; } | { status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifi...' is not assignable to type 'RemoteMutationOutcome'.\r\n      Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; reason?: undefined; }' is not assignable to type 'RemoteMutationOutcome'.\r\n        Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; reason?: undefined; }' is not assignable to type '{ readonly status: \"verified-effect\"; readonly receipt?: RemoteMutationReceipt | undefined; readonly applicationProof: RemoteMutationApplicationProof; }'.\r\n          Types of property 'applicationProof' are incompatible.\r\n            Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n              Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/integration/phase5-group-d-conflict-destruction-integration.test.ts(96,5): error TS2719: Type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...' is not assignable to type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...'. Two different types with this name exist, but they are unrelated.\r\n  Type 'Promise<{ status: \"verified-not-applied\"; reason: string; applicationProof?: undefined; } | { status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof...' is not assignable to type 'Promise<RemoteMutationOutcome>'.\r\n    Type '{ status: \"verified-not-applied\"; reason: string; applicationProof?: undefined; } | { status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifi...' is not assignable to type 'RemoteMutationOutcome'.\r\n      Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; reason?: undefined; }' is not assignable to type 'RemoteMutationOutcome'.\r\n        Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; reason?: undefined; }' is not assignable to type '{ readonly status: \"verified-effect\"; readonly receipt?: RemoteMutationReceipt | undefined; readonly applicationProof: RemoteMutationApplicationProof; }'.\r\n          Types of property 'applicationProof' are incompatible.\r\n            Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n              Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/integration/phase5-group-d-first-sync-integration.test.ts(272,5): error TS2719: Type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...' is not assignable to type '(identity: { readonly kind: \"existing-file-content-update\"; readonly intentId: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contracts/common\").MutationIntentId; ... 5 more ...; readonly identityAuthority: import(\"C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w/src/contr...'. Two different types with this name exist, but they are unrelated.\r\n  Type 'Promise<{ status: \"verified-not-applied\"; reason: string; operationalFailure?: undefined; applicationProof?: undefined; } | { status: \"outcome-unknown\"; reason: string; operationalFailure: { kind: \"transient-failure\"; source: \"google-drive\"; detail: string; }; applicationProof?: undefined; } | { ...; }>' is not assignable to type 'Promise<RemoteMutationOutcomeV1_3>'.\r\n    Type '{ status: \"verified-not-applied\"; reason: string; operationalFailure?: undefined; applicationProof?: undefined; } | { status: \"outcome-unknown\"; reason: string; operationalFailure: { kind: \"transient-failure\"; source: \"google-drive\"; detail: string; }; applicationProof?: undefined; } | { ...; }' is not assignable to type 'RemoteMutationOutcomeV1_3'.\r\n      Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; reason?: undefined; operationalFailure?: un...' is not assignable to type 'RemoteMutationOutcomeV1_3'.\r\n        Type '{ status: \"verified-effect\"; applicationProof: { kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<...>; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }; reason?: undefined; operationalFailure?: un...' is not assignable to type '{ readonly status: \"verified-effect\"; readonly receipt?: RemoteMutationReceipt | undefined; readonly applicationProof: RemoteMutationApplicationProof; }'.\r\n          Types of property 'applicationProof' are incompatible.\r\n            Type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' is not assignable to type 'RemoteMutationApplicationProof'.\r\n              Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: CanonicalFileContentProof; verifiedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/dec362-stable-drive-id.test.ts(96,123): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: Brand<string, \"RemoteRevisionId\">; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: { ...; }; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/dec362-stable-drive-id.test.ts(97,124): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: Brand<string, \"RemoteRevisionId\">; verifiedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: { ...; }; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/dec362-stable-drive-id.test.ts(98,123): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ verifiedContent: { algorithm: \"sha256\"; hash: Brand<string, \"ContentHash\">; sizeBytes: number; }; kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: Brand<...>; verifiedRevision: Brand<...>; intendedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/dec362-stable-drive-id.test.ts(99,123): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ verifiedRevision: Brand<string, \"RemoteRevisionId\">; kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: Brand<string, \"RemoteRevisionId\">; intendedContent: { ...; }; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/phase6-sync-architecture-foundation.test.ts(175,131): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: RemoteRevisionId; intendedContent: { ...; }; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/phase6-sync-architecture-foundation.test.ts(184,131): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: RemoteRevisionId; intendedContent: { ...; }; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/phase6-sync-architecture-foundation.test.ts(193,123): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: RemoteRevisionId; intendedContent: CanonicalFileContentProof; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/phase6-sync-architecture-foundation.test.ts(194,123): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ verifiedContent: { algorithm: \"sha256\"; hash: ContentHash; sizeBytes: number; }; kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; verifiedRevision: RemoteRevisionId; intendedContent: CanonicalFileContentProof; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\ntests/unit/phase6-sync-architecture-foundation.test.ts(195,123): error TS2741: Property 'preservedRemoteObjectIds' is missing in type '{ verifiedRevision: RemoteRevisionId; kind: \"same-object-content-update\"; remoteObjectId: RemoteObjectId; expectedRevision: RemoteRevisionId; intendedContent: CanonicalFileContentProof; verifiedContent: { ...; }; }' but required in type '{ readonly kind: \"same-object-content-update\"; readonly remoteObjectId: RemoteObjectId; readonly expectedRevision: RemoteRevisionId; readonly verifiedRevision: RemoteRevisionId; readonly intendedContent: CanonicalFileContentProof; readonly verifiedContent: CanonicalFileContentProof; readonly preservedRemoteObjectIds...'.\r\n",
+      "stderr": "",
+      "exitCode": 2,
+      "classification": "PRODUCT FAILURE",
+      "result": "FAIL",
+      "reason": "Stage 'typecheck' exited unsuccessfully.",
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:32:45",
+      "endedAt": "11/19/2026 02:32:58"
+    },
+    {
+      "name": "test-focused",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "typecheck"
+      ],
+      "startedAt": "11/19/2026 02:33:05",
+      "endedAt": "11/19/2026 02:33:05"
+    },
+    {
+      "name": "test",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "typecheck"
+      ],
+      "startedAt": "11/19/2026 02:33:08",
+      "endedAt": "11/19/2026 02:33:08"
+    },
+    {
+      "name": "artifact-preparation",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0); test-focused (prerequisite is not an executed PASS with native exit 0); test (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "typecheck",
+        "test-focused",
+        "test"
+      ],
+      "startedAt": "11/19/2026 02:33:11",
+      "endedAt": "11/19/2026 02:33:11"
+    },
+    {
+      "name": "build",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "artifact-preparation"
+      ],
+      "startedAt": "11/19/2026 02:33:13",
+      "endedAt": "11/19/2026 02:33:13"
+    },
+    {
+      "name": "artifacts",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "build"
+      ],
+      "startedAt": "11/19/2026 02:33:14",
+      "endedAt": "11/19/2026 02:33:14"
+    },
+    {
+      "name": "check",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "phx-ci git gate",
+      "stdout": "repository=C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w\r\nbranch=\r\nhead=b03269284ed6269055e08ec793d4e74539b5eeb2\r\ntree=2ed33d82aaae6f4a99759a58dbfdc2902f50cadc",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/19/2026 02:33:15",
+      "endedAt": "11/19/2026 02:33:17"
+    },
+    {
+      "name": "repository-check",
+      "runId": "3c593452-302c-4cb8-9f18-b9d47f64ffca",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "artifacts"
+      ],
+      "startedAt": "11/19/2026 02:33:19",
+      "endedAt": "11/19/2026 02:33:19"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": "BLOCKED",
+  "repositoryGateResult": "PASS",
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}

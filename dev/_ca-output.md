@@ -1,21 +1,21 @@
-STATUS: COMPLETE
+STATUS: BLOCKED
 
 # phx-ci evidence - gdrive-sync-obsidian-plugin
 
 ## Verification summary
 
-- Change-set verification: PASS
-- Repository verification: PASS
-- Overall verification: PASS
+- Change-set verification: BLOCKED; DEPENDENCY FAILURE; Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)
+- Repository verification: BLOCKED; DEPENDENCY FAILURE; Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)
+- Overall verification: BLOCKED; PRODUCT FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: cf399e60-fcdf-4165-b947-3fbc14e7d9ad
-- Repository: C:/temp/2c2383a06414486da6d33af6fe712918/phx-6937e47143c24a6b/w
+- Run ID: 3c593452-302c-4cb8-9f18-b9d47f64ffca
+- Repository: C:/temp/38ef88f537a3412cbd093bf2d33d5981/phx-9757e4be42e54c7e/w
 - Branch:
-- Verified HEAD: b1ef092cf5ce73c7811b5726ee803add2538df2c
-- Verified tree: b353df77de37e9c4a1c12a71ef2aac4b9fb4d109
-- Expected HEAD: b1ef092cf5ce73c7811b5726ee803add2538df2c
-- Base SHA: 42460912847e363aa4fa11e23e0429944383889d
+- Verified HEAD: b03269284ed6269055e08ec793d4e74539b5eeb2
+- Verified tree: 2ed33d82aaae6f4a99759a58dbfdc2902f50cadc
+- Expected HEAD: b03269284ed6269055e08ec793d4e74539b5eeb2
+- Base SHA: f507cbcc669568d1cb480abca469bdb1a7d184b8
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
 - PowerShell: 7.6.6
@@ -24,27 +24,28 @@ STATUS: COMPLETE
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-11-15T21:54:55.9473939Z
-- Ended: 2026-11-15T21:59:53.8035362Z
+- Started: 2026-11-19T02:32:23.7057451Z
+- Ended: 2026-11-19T02:33:23.7451964Z
 
 ## Ordered stages
 
-- authority-check: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- preflight: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- node-preflight: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- node-project-files: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- install: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- typecheck: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- test-focused: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- test: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- artifact-preparation: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- build: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- artifacts: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- check: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
-- repository-check: PASS (exit 0; NONE; run cf399e60-fcdf-4165-b947-3fbc14e7d9ad)
+- authority-check: PASS (exit 0; NONE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca)
+- preflight: PASS (exit 0; NONE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca)
+- node-preflight: PASS (exit 0; NONE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca)
+- node-project-files: PASS (exit 0; NONE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca)
+- install: PASS (exit 0; NONE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca)
+- typecheck: FAIL (exit 2; PRODUCT FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Stage 'typecheck' exited unsuccessfully.)
+- test-focused: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0))
+- test: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0))
+- artifact-preparation: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0); test-focused (prerequisite is not an executed PASS with native exit 0); test (prerequisite is not an executed PASS with native exit 0))
+- build: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0))
+- artifacts: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0))
+- check: PASS (exit 0; NONE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca)
+- repository-check: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 3c593452-302c-4cb8-9f18-b9d47f64ffca; reason: Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0))
 
 ## Artifacts
 
-- main.js: 922631 bytes; SHA-256 6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d
+- None recorded for current run
 
-Final verdict: COMPLETE
+Final verdict: BLOCKED
+Failure classification: PRODUCT FAILURE
