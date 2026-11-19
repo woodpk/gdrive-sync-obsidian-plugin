@@ -133,17 +133,25 @@ export class IndexedDbInventoryAwareStateByteStorage implements StateByteStorage
         // Unversioned opens work with both the existing v1 and additive inventory v2 databases.
         // An older binary that explicitly opens v1 cannot be assumed rollback compatible.
         const request = this.indexedDb.open(this.databaseName);
+        let failed = false;
         request.onupgradeneeded = () => {
           const database = request.result;
           if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME);
         };
         request.onsuccess = () => {
           const db = request.result;
+          if (failed) { db.close(); return; }
           db.onversionchange = () => { db.close(); this.database = undefined; };
           resolve(db);
         };
-        request.onerror = () => reject(request.error ?? new Error("Unable to open synchronization state database"));
-        request.onblocked = () => reject(new Error("Synchronization state database upgrade is blocked"));
+        request.onerror = () => {
+          failed = true;
+          reject(request.error ?? new Error("Unable to open synchronization state database"));
+        };
+        request.onblocked = () => {
+          failed = true;
+          reject(new Error("Synchronization state database upgrade is blocked"));
+        };
       });
       this.database = pending.catch(error => { this.database = undefined; throw error; });
     }

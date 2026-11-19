@@ -212,14 +212,22 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
     if (!this.database) {
       const promise = new Promise<IDBDatabase>((resolve, reject) => {
         const action = this.indexedDb.open(this.databaseName, DB_VERSION);
+        let failed = false;
         action.onupgradeneeded = () => createSchema(action.result);
         action.onsuccess = () => {
           const db = action.result;
+          if (failed) { db.close(); return; }
           db.onversionchange = () => { db.close(); this.database = undefined; };
           resolve(db);
         };
-        action.onerror = () => reject(action.error ?? new Error("inventory-indexeddb-open-failed"));
-        action.onblocked = () => reject(new Error("inventory-indexeddb-upgrade-blocked"));
+        action.onerror = () => {
+          failed = true;
+          reject(action.error ?? new Error("inventory-indexeddb-open-failed"));
+        };
+        action.onblocked = () => {
+          failed = true;
+          reject(new Error("inventory-indexeddb-upgrade-blocked"));
+        };
       });
       this.database = promise.catch(e => { this.database = undefined; throw e; });
     }

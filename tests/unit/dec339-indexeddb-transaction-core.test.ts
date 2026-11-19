@@ -279,3 +279,40 @@ test("WS-02 a blocked legacy open is retryable without changing canonical author
   await legacy.write(bytes);
   assert.deepEqual(await legacy.read(), bytes);
 });
+
+
+test("WS-02 blocked v2-aware state open cannot adopt a late success and retries safely", async () => {
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const original = new TextEncoder().encode("canonical-state-intact");
+  await new IndexedDbStateByteStorage("device:idb:test", factory).write(original);
+  const compatible = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  db.blockNextOpen = true;
+  await assert.rejects(compatible.read(), /upgrade is blocked/);
+  assert.equal(db.resumeBlockedOpen(), true);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(db.closeCount, 1, "late completion from rejected open must close");
+  assert.deepEqual(await compatible.read(), original);
+});
+
+test("WS-02 blocked v2 inventory upgrade and late completion preserve canonical state", async () => {
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const legacy = new IndexedDbStateByteStorage("device:idb:test", factory);
+  const authority = new PersistentSynchronizationStateStore(legacy);
+  const initial = createInitialAuthorityState({
+    persistenceRevision: r0, semanticGeneration: s0,
+    vaultIdentity: fence.vaultIdentity, deviceIdentity: fence.deviceIdentity,
+  });
+  assert.equal((await authority.saveTrusted(initial)).status, "saved");
+  const before = await legacy.read();
+  assert.ok(before);
+  const inventory = new IndexedDbInventoryObservationStore("device:idb:test", factory);
+  db.blockNextOpen = true;
+  assert.equal((await inventory.publicationSnapshot(fence)).status, "recovery-required");
+  assert.equal(db.resumeBlockedOpen(), true);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(db.closeCount, 1, "late blocked-open completion must close");
+  assert.equal((await inventory.publicationSnapshot(fence)).status, "trusted-fence");
+  assert.equal(db.version, 2);
+  const current = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  assert.deepEqual(await current.read(), before);
+});

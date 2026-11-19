@@ -31,6 +31,14 @@ export class FakeDatabase {
   lastOpened?: IDBDatabase;
   closeCount = 0;
   blockNextOpen = false;
+  private blockedOpenContinuation?: () => void;
+  resumeBlockedOpen(): boolean {
+    const continueOpen = this.blockedOpenContinuation;
+    if (!continueOpen) return false;
+    this.blockedOpenContinuation = undefined;
+    queueMicrotask(continueOpen);
+    return true;
+  }
   abortNextPublication = false;
   abortedPublicationStores: readonly string[] | null = null;
   tables = new Map<string, StoredTable>();
@@ -39,12 +47,7 @@ export class FakeDatabase {
       const action: { result?: IDBDatabase; error?: Error;
         onsuccess?: () => void; onerror?: () => void; onupgradeneeded?: () => void;
         onblocked?: () => void } = {};
-      queueMicrotask(() => {
-        if (this.blockNextOpen) {
-          this.blockNextOpen = false;
-          action.onblocked?.();
-          return;
-        }
+      const performOpen = () => {
         const target = version ?? (this.version || 1);
         if (target < this.version) {
           action.error = new Error("VersionError");
@@ -57,6 +60,15 @@ export class FakeDatabase {
         this.lastOpened = action.result;
         if (upgrading) action.onupgradeneeded?.();
         action.onsuccess?.();
+      };
+      queueMicrotask(() => {
+        if (this.blockNextOpen) {
+          this.blockNextOpen = false;
+          this.blockedOpenContinuation = performOpen;
+          action.onblocked?.();
+          return;
+        }
+        performOpen();
       });
       return action as unknown as IDBOpenDBRequest;
     } } as unknown as IDBFactory;
