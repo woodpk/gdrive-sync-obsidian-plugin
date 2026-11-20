@@ -738,6 +738,12 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
   async replaceRecoveryState(state: TrustedSynchronizationState, context: StateLoadContext): Promise<RecoveryReplacementResult> {
     if (!validateLegacyStateShape(state) || state.schemaVersion !== this.currentSchemaVersion) return { status: "recovery-required", reason: "recovery candidate is not valid trusted state" };
     if (hasAuthorityMarker(state) && state.authoritySchemaVersion === 2 && (!isDurableSynchronizationAuthorityState(state) || this.semanticValidator.validate(state).length > 0)) return { status: "recovery-required", reason: "recovery candidate has v1.1 semantic contradictions" };
+    // Corrupt source bytes cannot authenticate their own pairing. An explicit
+    // device+vault fence must match the candidate before any backup or CAS.
+    if (!context.expectedVaultIdentity || !context.expectedDeviceIdentity)
+      return { status: "recovery-required", reason: "recovery replacement requires explicit vault and device identity fences" };
+    if (state.vaultIdentity !== context.expectedVaultIdentity || state.deviceIdentity !== context.expectedDeviceIdentity)
+      return { status: "recovery-required", reason: "recovery candidate does not match the expected pairing identity" };
     if (!this.storage.compareAndSwap) return { status: "recovery-required", reason: "atomic compare-and-swap storage is required for recovery replacement" };
     const source = await this.storage.read(); const loaded = await this.load(context); if (loaded.status !== "recovery-required") return { status: "not-recovery", reason: "current persisted state is not in a recovery condition" };
     const backupId = await this.storage.backup(source ?? new Uint8Array()); let sourceRevision: StateRevision | undefined;

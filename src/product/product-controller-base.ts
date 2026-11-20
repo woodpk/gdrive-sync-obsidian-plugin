@@ -280,6 +280,29 @@ function executionFailureBoundary(stage: ExecutionLifecycleStage): { readonly st
   }
 }
 
+/**
+ * Shipping controller's canonical cursor writer. Keep this single CAS-bound
+ * transition shared with the test seam; no inventory activation or new writer.
+ */
+export async function commitTrustedCursorWithCas(
+  stateStore: PersistentSynchronizationStateStore,
+  stateContext: StateLoadContext,
+  cursor: NonNullable<AssembledPlanningInput["nextCursor"]>,
+  expectedStartCursor: AssembledPlanningInput["nextCursor"],
+): Promise<"saved" | "untrusted" | "refused"> {
+  const loaded = await stateStore.load(stateContext);
+  if (loaded.status !== "trusted") return "untrusted";
+  // Google Changes tokens are opaque: never overwrite an unrelated cursor
+  // with a terminal token computed from an earlier observation.
+  if (loaded.state.changeCursor !== expectedStartCursor && loaded.state.changeCursor !== cursor)
+    return "refused";
+  const current = String(loaded.state.stateRevision);
+  const match = /^(.*?)(\d+)$/.exec(current);
+  const next = cid<"StateRevision">(match ? `${match[1]}${Number(match[2]) + 1}` : `${current}:1`);
+  const saved = await stateStore.saveTrusted({ ...loaded.state, stateRevision: next, changeCursor: cursor }, loaded.state.stateRevision);
+  return saved.status === "saved" ? "saved" : "refused";
+}
+
 export class ProductControllerBase implements ProductControlPort {
   private surface: ProductSurfaceState = { status: { kind: "idle-ready" }, conflicts: [] };
   private readonly listeners = new Set<(surface: ProductSurfaceState) => void>();
@@ -709,7 +732,10 @@ export class ProductControllerBase implements ProductControlPort {
       }
 
       if (!globalFailure && !needsReplan && !partial) {
-        const cursorCommitted = planned.assembly.nextCursor ? await this.commitCursor(planned.assembly.nextCursor) : true;
+        const cursorStart = planned.assembly.input.state.status === "trusted"
+          ? planned.assembly.input.state.state.changeCursor : undefined;
+        const cursorCommitted = planned.assembly.nextCursor
+          ? await this.commitCursor(planned.assembly.nextCursor, cursorStart) : true;
         if (cursorCommitted) {
           const trusted = await this.options.stateStore.load(this.options.stateContext);
           if (trusted.status === "trusted") {
@@ -919,19 +945,14 @@ export class ProductControllerBase implements ProductControlPort {
     if (saved.status !== "saved") throw new Error(`unable to establish initial trusted state: ${saved.status}`);
   }
 
-  private async commitCursor(cursor: AssembledPlanningInput["nextCursor"]): Promise<boolean> {
+  private async commitCursor(
+    cursor: AssembledPlanningInput["nextCursor"],
+    expectedStartCursor: AssembledPlanningInput["nextCursor"],
+  ): Promise<boolean> {
     if (!cursor) return true;
-    const loaded = await this.options.stateStore.load(this.options.stateContext);
-    if (loaded.status !== "trusted") return false;
-    const current = String(loaded.state.stateRevision);
-    const match = /^(.*?)(\d+)$/.exec(current);
-    const next = cid<"StateRevision">(match ? `${match[1]}${Number(match[2]) + 1}` : `${current}:1`);
-    const saved = await this.options.stateStore.saveTrusted({ ...loaded.state, stateRevision: next, changeCursor: cursor }, loaded.state.stateRevision);
-    if (saved.status !== "saved") {
-      this.setStatus({ kind: "recovery-required", reason: "incremental Drive cursor could not be committed atomically" });
-      return false;
-    }
-    return true;
+    const result = await commitTrustedCursorWithCas(this.options.stateStore, this.options.stateContext, cursor, expectedStartCursor);
+    if (result === "refused") this.setStatus({ kind: "recovery-required", reason: "incremental Drive cursor could not be committed atomically" });
+    return result === "saved";
   }
 
   private mapPlanningError(error: unknown): void {

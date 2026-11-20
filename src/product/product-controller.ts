@@ -34,16 +34,26 @@ function nextRevision(current: StateRevision): StateRevision {
   return contractId<"StateRevision">(match ? `${match[1]}${Number(match[2]) + 1}` : `${raw}:1`) as StateRevision;
 }
 
-async function persistLearnedRemoteBatch(
+export async function persistLearnedRemoteBatch(
   assembly: AssembledPlanningInput,
   authorityStore: SynchronizationAuthorityStoreV1_1,
-  options: ProductControllerOptions,
+  options: Pick<ProductControllerOptions, "stateStore" | "stateContext">,
 ): Promise<void> {
   const batch = assembly.remoteChangeBatch;
   if (!batch) return;
   const loaded = await authorityStore.loadAuthority();
   if (loaded.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch cannot be learned without trusted writable synchronization authority");
   const existing = loaded.state.learnedRemoteBatches.find(value => value.checkpoint.batchId === batch.checkpoint.batchId);
+  if (existing && (existing.checkpoint.startingToken !== batch.checkpoint.startingToken ||
+      existing.checkpoint.terminalStartToken !== batch.checkpoint.terminalStartToken))
+    throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch ID was replayed with incompatible cursor tokens");
+  const latestLearnedToken = loaded.state.learnedRemoteBatches.at(-1)?.checkpoint.terminalStartToken;
+  const validPredecessor = latestLearnedToken ?? loaded.state.changeCursor;
+  if (!existing && validPredecessor !== batch.checkpoint.startingToken)
+    throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch starts from an unrelated durable cursor");
+  if (existing && loaded.state.changeCursor !== batch.checkpoint.startingToken &&
+      loaded.state.changeCursor !== batch.checkpoint.terminalStartToken)
+    throw new SnapshotAssemblyError("recovery-required", "replayed REMOTE batch conflicts with canonical cursor");
   if (!existing) {
     const candidate = {
       ...loaded.state,
@@ -59,6 +69,8 @@ async function persistLearnedRemoteBatch(
     const state = await options.stateStore.load(options.stateContext);
     if (state.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but trusted canonical cursor state is unavailable");
     if (state.state.changeCursor === batch.checkpoint.terminalStartToken) return;
+    if (state.state.changeCursor !== batch.checkpoint.startingToken)
+      throw new SnapshotAssemblyError("recovery-required", "durable REMOTE cursor mirror raced a different canonical cursor");
     const candidate = { ...state.state, stateRevision: nextRevision(state.state.stateRevision), changeCursor: batch.checkpoint.terminalStartToken };
     const saved = await options.stateStore.saveTrusted(candidate, state.state.stateRevision);
     if (saved.status === "saved") return;
