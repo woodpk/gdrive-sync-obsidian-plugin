@@ -11,6 +11,7 @@ import { IndexedDbStateByteStorage } from "../../src/state/indexeddb-state-stora
 import { IndexedDbInventoryAwareStateByteStorage } from "../../src/state/indexeddb-inventory-authority-storage";
 import { IndexedDbInventoryObservationStore } from "../../src/state/indexeddb-inventory-storage";
 import { PersistentSynchronizationStateStore, createInitialAuthorityState } from "../../src/state/persistent-state-store";
+import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import { VerifiedInventoryBaselineCoordinator } from "../../src/state/verified-inventory-integration";
 import type { VerifiedMetadataInventoryReader } from "../../src/drive/verified-metadata-inventory-reader";
 
@@ -615,4 +616,44 @@ test("WS-02 BU-02 production-compatible byte adapter does not silently upgrade a
   assert.equal(authority.status, "trusted");
   assert.deepEqual(await legacy.read(), original,
     "v1 binary remains compatible until an expressly authorized v2 upgrade occurs");
+});
+
+
+test("WS-02 BU-02 shipping state authority adapter mirrors cursor through v2-compatible storage", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("ws02-bu02-product-cursor-mirror"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory
+  ).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const raw = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const product = new SynchronizationStateAuthorityAdapter(raw);
+  const context = {
+    expectation: "existing-pairing" as const,
+    expectedVaultIdentity: fence.vaultIdentity,
+    expectedDeviceIdentity: fence.deviceIdentity,
+  };
+  const original = await product.load(context);
+  assert.equal(original.status, "trusted");
+  if (original.status !== "trusted") return;
+  const saved = await product.saveTrusted({
+    ...original.state,
+    changeCursor: c("changes:product-cursor-mirror"),
+  }, original.state.stateRevision);
+  assert.equal(saved.status, "saved");
+  const canonical = await raw.loadAuthority();
+  assert.equal(canonical.status, "trusted");
+  if (canonical.status !== "trusted") return;
+  assert.equal(canonical.state.changeCursor, c("changes:product-cursor-mirror"));
+  assert.equal(canonical.state.vaultIdentity, fence.vaultIdentity);
+  assert.equal(canonical.state.deviceIdentity, fence.deviceIdentity);
+  assert.equal((await inventory.openRead()).status, "stale");
+  const pointer = await inventory.publicationSnapshot(fence);
+  assert.equal(pointer.status, "trusted-fence");
+  if (pointer.status === "trusted-fence") {
+    assert.equal(pointer.value.activeGeneration, null);
+    assert.equal(pointer.value.canonicalCursor, c("changes:product-cursor-mirror"));
+  }
 });
