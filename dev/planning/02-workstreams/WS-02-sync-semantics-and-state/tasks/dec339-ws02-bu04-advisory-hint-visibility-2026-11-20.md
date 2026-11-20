@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu04-local-hint-visibility-barrier-20261120`  
 **Baseline:** BU-03 independently accepted/Builder closed `c3bfbb8cbb0aa3dbb775e524607275dac4760e1b`.  
-**Status:** BUILDER SOURCE/TEST AUTHORSHIP; NOT PHX-CI QUALIFIED OR INDEPENDENTLY REVIEWED.
+**Status:** **BUILDER-QUALIFIED; independent Reviewer acceptance PENDING.** Full WS-02 and DEC-339 integration remain incomplete.
 
 ## Bounded reason and decision
 
@@ -38,3 +38,11 @@ This Build Unit introduces a **coordinator-mediated advisory read seam** `readAd
 - Execute exact-source software verification **only via pinned PHX-CI** (runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`) using existing `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1`, software-only. Preserve full evidence and all errors. Independent blind-first Reviewer only after R1 PASS.
 - No GitHub Actions, master/PR #157 merge, live schema upgrade or provider/vault operations, inventory activation, physical testing, installation, promotion or release.
 
+
+## Exact-source PHX-CI evidence and Builder→Reviewer handoff (2026-11-20)
+
+- Frozen Builder-qualified source `4c0cc689b9c949969f5fda82a96a14b5394e5fd0`, exact tree `1eb7d975f6504bfcde2cd2130eef02f0413d475a`.
+- PHX-CI R1 original run `76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8`, immutable evidence publication `5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba`, source bound in `dev/test-results/76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8/`. GitHub original `result.json`, `result.md`, full `terminal.log` inspected.
+- Outcome: **13/13 required stages PASS; 634/634 focused; 1323/1323 product; typecheck/build/repository PASS; overall PASS exit 0**. Physical dispatch disabled. Original evidence commit changes only result and log files; no source or test edits after qualification.
+- Builder→Reviewer handoff count 1, source and evidence frozen; independent blind-first source assessment, ten-family review and final verdict required before acceptance. This R1 PASS is not Reviewer acceptance.
+- **Scope remains limited:** coordinator-mediated local hint visibility guard only; all actual runtime scope-owner wiring, remaining cursor/recovery/rollback, real multi-WebView upgrade behavior and DEC-339 activation remain deferred and unauthorized.
