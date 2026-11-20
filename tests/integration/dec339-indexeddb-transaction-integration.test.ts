@@ -4,6 +4,7 @@ import {
   contractId, type ChangeCursor, type DeviceIdentity, type InventoryCoverage,
   type InventoryGeneration, type InventoryGenerationManifest, type InventoryIdentityFence,
   type InventoryOverlayRecord, type PersistenceRevision, type ProtocolVersion,
+  type RecoverableOperationIntentV1_1,
   type RemoteObjectId, type SemanticStateGeneration, type VaultIdentity,
 } from "../../src/contracts";
 import { IndexedDbStateByteStorage } from "../../src/state/indexeddb-state-storage";
@@ -552,7 +553,7 @@ test("WS-02 BU-02 version-aware rollback retains a pending effect across cursor 
   if (first.status !== "trusted") return;
   const target = contractId<"VaultPath">("parent/pending-folder");
   const intentId = contractId<"MutationIntentId">("ws02-bu02-pending-intent");
-  const intent = {
+  const intent: RecoverableOperationIntentV1_1 = {
     logicalKind: "single-effect" as const,
     operationId: contractId<"OperationId">("ws02-bu02-pending-op"),
     intentId,
