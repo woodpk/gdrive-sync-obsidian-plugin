@@ -4,17 +4,17 @@ STATUS: BLOCKED
 
 ## Verification summary
 
-- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited 1.
-- Repository verification: PASS
+- Change-set verification: FAIL; TEST FAILURE; Stage 'test-focused' exited unsuccessfully.
+- Repository verification: FAIL; TEST FAILURE; Stage 'test' exited unsuccessfully.
 - Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: ad1f838c-bca9-4135-a72a-be9b8383da2f
-- Repository: C:/temp/fb5d268657b74f069b1f7591f9929d9f/phx-f1b2362c3bb449b4/w
+- Run ID: f5464803-6b77-4ffd-bf9c-29cde7b4f91d
+- Repository: C:/temp/581f709b045349eea87961730b8faa69/phx-8b2f444463f8429c/w
 - Branch:
-- Verified HEAD: 43c6f5d4ac68e832e5c6d8e6b60a912664a88073
-- Verified tree: 877ebfcebde2a41ea1e9b8c95a95b73d17f67227
-- Expected HEAD: 43c6f5d4ac68e832e5c6d8e6b60a912664a88073
+- Verified HEAD: 2f4cdc9949ffba16465ee73a1c1e83445b4f1d55
+- Verified tree: 1c61b9d374c592b55b544b10acb9c7d8ae2159e9
+- Expected HEAD: 2f4cdc9949ffba16465ee73a1c1e83445b4f1d55
 - Base SHA: f507cbcc669568d1cb480abca469bdb1a7d184b8
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,22 +24,24 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-11-19T18:08:40.2408382Z
-- Ended: 2026-11-19T18:12:07.0153229Z
+- Started: 2026-11-20T11:53:09.6014026Z
+- Ended: 2026-11-20T11:56:26.7662525Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- node-preflight: PASS (exit 0; NONE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- node-project-files: PASS (exit 0; NONE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- install: PASS (exit 0; NONE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- typecheck: PASS (exit 0; NONE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- test-focused: FAIL (exit 1; TEST FAILURE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- test: PASS (exit 0; NONE; run ad1f838c-bca9-4135-a72a-be9b8383da2f)
-- build: MISSING (FRAMEWORK FAILURE)
-- repository-check: MISSING (FRAMEWORK FAILURE)
-- check: MISSING (FRAMEWORK FAILURE)
-- artifacts: MISSING (FRAMEWORK FAILURE)
+- authority-check: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- preflight: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- node-preflight: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- node-project-files: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- install: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- typecheck: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- test-focused: FAIL (exit 1; TEST FAILURE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d; reason: Stage 'test-focused' exited unsuccessfully.)
+- test: FAIL (exit 1; TEST FAILURE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d; reason: Stage 'test' exited unsuccessfully.)
+- artifact-preparation: BLOCKED (exit not executed; DEPENDENCY FAILURE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d; reason: Dependent stage was not executed: test-focused (prerequisite is not an executed PASS with native exit 0); test (prerequisite is not an executed PASS with native exit 0))
+- build: BLOCKED (exit not executed; DEPENDENCY FAILURE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d; reason: Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0))
+- artifacts: BLOCKED (exit not executed; DEPENDENCY FAILURE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d; reason: Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0))
+- check: PASS (exit 0; NONE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d)
+- repository-check: BLOCKED (exit not executed; DEPENDENCY FAILURE; run f5464803-6b77-4ffd-bf9c-29cde7b4f91d; reason: Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0))
 
 ## Artifacts
 
