@@ -3,7 +3,7 @@
 **Date:** 2026-11-20. **Owner authorization:** 2026-11-19 continue approved DEC-339 integration sequence.  
 **Builder:** `build-brain-67`. **Branch:** `build/dec339-ws02-bu02-v2-legacy-cursor-safety-20261120`.  
 **Baseline:** accepted BU-01 closeout `719e9035e3741e485f85c5471915e4039c0c4436`.  
-**Status:** BUILDER IMPLEMENTATION; **NOT YET PHX-CI VERIFIED OR REVIEWER ACCEPTED**.
+**Status:** **BUILDER-QUALIFIED, independent Reviewer final acceptance PENDING.** Whole WS-02/DEC-339 integration remains incomplete.
 
 ## Bounded requirement and architecture
 
@@ -57,3 +57,12 @@ Relevant executable regression tests added to `tests/integration/dec339-indexedd
 3. The unchanged LOG-03 production DiagnosticLogger composition test locates the diagnostic injection within a bounded source-text window of the state constructor. Newly added explanatory comments lengthened the window beyond the original 400-character bound without changing actual wiring. Relocate/shorten the comment outside the constructor, retaining the same `this.host.diagnostics` argument and the unmodified tracing test.
 
 The corrected candidate requires fresh PHX-CI software-only qualification; no source/test or check is accepted merely because it is committed. Full WS-02 and DEC-339 gates remain incomplete; no live vault/Drive, installation or promotion.
+
+## R2 exact-source qualification (2026-11-20)
+
+- Qualified source SHA: `346f087202d76df89411d7e8cd79b8eecd2167b0`; exact source tree: `5bf2072ff7ff719b9fa8caab9c27d298b05548fc`.
+- PHX-CI run: `bec72225-365c-47ae-bb87-f3336cb96fef`; original canonical evidence published at `9f9baae544593719cf606d1023a72ffa848c2def`, under `dev/test-results/bec72225-365c-47ae-bb87-f3336cb96fef/`.
+- Read-back R2 outcome: 13/13 required stages PASS, focused 634/634 PASS, product 1318/1318 PASS, typecheck/build/artifact/repository checks PASS, overall PASS, exit 0. Physical dispatch disabled. No GitHub Actions or replacement script introduced. The R2 evidence commit changes only evidence records, not the qualified source tree.
+- R1 original BLOCKED evidence remains preserved under the earlier run/commit; source defects, test fixture ordering and comment-window failure were corrected without lowering any guard or testing requirement.
+- **Builder-qualified is not independently accepted.** This document preserves requirements-to-test continuity for the Reviewer’s post-blind evidence pass; the Reviewer must first freeze and publish its blind source assessment without reviewing this Builder narrative or test/PHX-CI details.
+- Review scope is strictly BU-02: version-aware legacy `ProductRuntime` state adapter, canonical cursor/BASE and recovery-intent continuity, and fail-closed inventory pointer invalidation. Real browser multi-context IndexedDB upgrade blocking, local hint scope/resume, full WS-02 cursor/recovery gate, all DEC-339 planner activation and live promotion remain unverified/not authorized.
