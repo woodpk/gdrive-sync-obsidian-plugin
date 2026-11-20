@@ -350,3 +350,171 @@ test("WS-02 BU-04 event racing an in-flight hint read cannot expose the old obse
     assert.equal((await pending).status, "stale");
   } finally { unsubscribe(); releaseRead?.(); }
 });
+
+
+test("WS-02 BU-04 F-01 rejected lifecycle invalidation remains latched until fresh verified replacement", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("bu04-f01-rejected-lifecycle"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const note = path("notes/rejected-lifecycle.md");
+  let currentToken = token("lifecycle-before");
+  let partial = false;
+  let failOnce = true;
+  let changed: ((event: import("../../src/contracts").LocalVaultChange) => void) | undefined;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({
+      entries: [{ status: "present" as const, side: "local" as const, path: note,
+        entityKind: "file" as const, stability: "stable" as const, observationToken: currentToken }],
+      completeness: partial ? { status: "partial" as const, reason: "interrupted-recovery" }
+        : { status: "complete" as const },
+    }),
+    onChange: listener => { changed = listener; return () => { changed = undefined; }; },
+    onLifecycle: () => () => undefined,
+  };
+  const proxy = {
+    publicationSnapshot: (...a: Parameters<typeof store.publicationSnapshot>) => store.publicationSnapshot(...a),
+    replaceLocalSnapshot: (...a: Parameters<typeof store.replaceLocalSnapshot>) => store.replaceLocalSnapshot(...a),
+    readLocalHint: (...a: Parameters<typeof store.readLocalHint>) => store.readLocalHint(...a),
+    invalidateLocalSnapshot: async (reason: string) => {
+      if (failOnce) { failOnce = false; throw new Error("injected-indexeddb-abort"); }
+      await store.invalidateLocalSnapshot(reason);
+    },
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, proxy, () => true);
+  const unsubscribe = coordinator.subscribe();
+  try {
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+    currentToken = token("lifecycle-after");
+    changed?.({ kind: "modified", path: note });
+    await new Promise<void>(resolve => setImmediate(resolve));
+    const durableOld = await store.readLocalHint(fence, note);
+    assert.equal(durableOld.status, "advisory", "failed IDB invalidation leaves old durable marker complete");
+    if (durableOld.status === "advisory")
+      assert.equal(durableOld.value.observationToken, token("lifecycle-before"));
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "recovery-required",
+      "rejected invalidation must stay latched after the promise settles");
+    partial = true;
+    assert.equal((await coordinator.refresh(fence)).status, "partial",
+      "incomplete enumeration must not authorize fault recovery");
+    assert.notEqual((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+    partial = false;
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    const recovered = await coordinator.readAdvisoryHint(fence, note);
+    assert.equal(recovered.status, "advisory");
+    if (recovered.status === "advisory")
+      assert.equal(recovered.value.observationToken, token("lifecycle-after"),
+        "recovery must publish the new observation, not the prior cached token");
+    const remote = await store.openRead();
+    assert.equal(remote.status, "verified-observation");
+    if (remote.status === "verified-observation") await remote.value.release();
+  } finally { unsubscribe(); }
+});
+
+test("WS-02 BU-04 F-01 overlapping invalidations cannot hide an earlier failed transaction", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("bu04-f01-overlapping"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const note = path("notes/overlap.md");
+  let lifecycle: ((event: import("../../src/contracts").LocalLifecycleEvent) => void) | undefined;
+  let rejectFirst: ((error: Error) => void) | undefined;
+  let releaseSecond: (() => void) | undefined;
+  let calls = 0;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({ entries: [{ status: "present" as const, side: "local" as const,
+      path: note, entityKind: "file" as const, stability: "stable" as const }],
+      completeness: { status: "complete" as const } }),
+    onChange: () => () => undefined,
+    onLifecycle: listener => { lifecycle = listener; return () => { lifecycle = undefined; }; },
+  };
+  const proxy = {
+    publicationSnapshot: (...a: Parameters<typeof store.publicationSnapshot>) => store.publicationSnapshot(...a),
+    replaceLocalSnapshot: (...a: Parameters<typeof store.replaceLocalSnapshot>) => store.replaceLocalSnapshot(...a),
+    readLocalHint: (...a: Parameters<typeof store.readLocalHint>) => store.readLocalHint(...a),
+    invalidateLocalSnapshot: async (reason: string) => {
+      calls++;
+      if (calls === 1) await new Promise<void>((_resolve, reject) => { rejectFirst = reject; });
+      if (calls === 2) await new Promise<void>(resolve => { releaseSecond = resolve; });
+      await store.invalidateLocalSnapshot(reason);
+    },
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, proxy, () => true);
+  const unsubscribe = coordinator.subscribe();
+  try {
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    const rejected = coordinator.invalidateForScopeChange().then(
+      () => "unexpected-success" as const, () => "rejected" as const);
+    lifecycle?.({ kind: "vault-ready" });
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "stale");
+    assert.ok(releaseSecond);
+    releaseSecond();
+    for (let attempt = 0; attempt < 12; attempt++) {
+      if ((await store.readLocalHint(fence, note)).status === "stale") break;
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    assert.equal((await store.readLocalHint(fence, note)).status, "stale");
+    assert.ok(rejectFirst);
+    rejectFirst(new Error("first-transaction-rejected-after-second-committed"));
+    assert.equal(await rejected, "rejected");
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "recovery-required",
+      "later successful invalidation must not clear the earlier failure latch");
+    await coordinator.invalidateForScopeChange();
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "recovery-required",
+      "successful retry alone is insufficient without full enumeration/replacement");
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+  } finally { unsubscribe(); rejectFirst?.(new Error("cleanup")); releaseSecond?.(); }
+});
+
+test("WS-02 BU-04 F-01 synchronous scope invalidation failure and cold coordinator fail closed", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("bu04-f01-sync-failure"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const note = path("notes/synchronous-failure.md");
+  let failReplacement = false;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({ entries: [{ status: "present" as const, side: "local" as const,
+      path: note, entityKind: "file" as const, stability: "stable" as const }],
+      completeness: { status: "complete" as const } }),
+    onChange: () => () => undefined,
+    onLifecycle: () => () => undefined,
+  };
+  let throwInvalidation = true;
+  const proxy = {
+    publicationSnapshot: (...a: Parameters<typeof store.publicationSnapshot>) => store.publicationSnapshot(...a),
+    replaceLocalSnapshot: async (...a: Parameters<typeof store.replaceLocalSnapshot>) =>
+      failReplacement ? { status: "recovery-required" as const, reason: "injected-local-snapshot-write-failure" }
+        : store.replaceLocalSnapshot(...a),
+    readLocalHint: (...a: Parameters<typeof store.readLocalHint>) => store.readLocalHint(...a),
+    invalidateLocalSnapshot: (reason: string) => {
+      if (throwInvalidation) { throwInvalidation = false; throw new Error("synchronous-open-failure"); }
+      return store.invalidateLocalSnapshot(reason);
+    },
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, proxy, () => true);
+  assert.equal((await coordinator.refresh(fence)).status, "recorded");
+  assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+  await assert.rejects(coordinator.invalidateForScopeChange(), /synchronous-open-failure/);
+  assert.equal((await store.readLocalHint(fence, note)).status, "advisory");
+  assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "recovery-required");
+  failReplacement = true;
+  assert.equal((await coordinator.refresh(fence)).status, "recovery-required");
+  assert.notEqual((await coordinator.readAdvisoryHint(fence, note)).status, "advisory",
+    "failed replacement cannot clear an invalidation fault");
+  failReplacement = false;
+  const coldCoordinator = new VerifiedLocalInventoryCoordinator(local, proxy, () => true);
+  assert.equal((await coldCoordinator.readAdvisoryHint(fence, note)).status, "stale",
+    "new coordinator cannot trust a previous instance's persisted complete marker");
+  assert.equal((await coordinator.refresh(fence)).status, "recorded");
+  assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+});

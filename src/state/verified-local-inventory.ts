@@ -19,6 +19,10 @@ export type LocalInventoryRefreshResult =
 export class VerifiedLocalInventoryCoordinator {
   private localChangeEpoch = 0;
   private invalidationPending = false;
+  private invalidationFailed = false;
+  // A new coordinator cannot attest that previously persisted hints are fresh.
+  // Only its own completed, authority-fenced enumeration may expose them.
+  private advisoryReady = false;
   private invalidationJobs = new Set<Promise<void>>();
   constructor(
     private readonly local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle">,
@@ -28,6 +32,9 @@ export class VerifiedLocalInventoryCoordinator {
   ) {}
 
   async refresh(fence: InventoryIdentityFence): Promise<LocalInventoryRefreshResult> {
+    // Keep failed invalidations latched until an entirely new full scan has
+    // safely replaced the durable local snapshot; retries alone do not heal.
+    this.advisoryReady = false;
     if (this.invalidationPending || this.invalidationJobs.size)
       return { status: "stale", reason: "local-hint-invalidation-pending" };
     const before = await this.inventory.publicationSnapshot(fence);
@@ -40,7 +47,7 @@ export class VerifiedLocalInventoryCoordinator {
     try {
       const enumeration = await this.local.enumerate();
       if (enumeration.completeness.status !== "complete" || enumeration.uncertainties?.length) {
-        await this.inventory.invalidateLocalSnapshot("incomplete-local-enumeration");
+        await this.trackInvalidation("incomplete-local-enumeration");
         return { status: "partial", reason: "fresh-local-enumeration-incomplete" };
       }
       const observed: InventoryLocalObservation[] = [];
@@ -73,18 +80,22 @@ export class VerifiedLocalInventoryCoordinator {
           after.value.canonicalCursor !== before.value.canonicalCursor ||
           after.value.persistenceRevision !== before.value.persistenceRevision ||
           after.value.semanticGeneration !== before.value.semanticGeneration) {
-        await this.inventory.invalidateLocalSnapshot("authority-changed-during-local-scan");
+        await this.trackInvalidation("authority-changed-during-local-scan");
         return { status: "stale", reason: "inventory-or-authority-changed-during-local-scan" };
       }
       const saved = await this.inventory.replaceLocalSnapshot(fence, generation, observed, true);
       if (saved.status !== "verified-observation") return { status: saved.status, reason: saved.reason };
       if (this.localChangeEpoch !== observedEpoch || this.invalidationPending || this.invalidationJobs.size) {
-        await this.inventory.invalidateLocalSnapshot("local-change-during-snapshot-publication");
+        await this.trackInvalidation("local-change-during-snapshot-publication");
         return { status: "stale", reason: "local-observations-changed-during-snapshot-publication" };
       }
+      // The complete current-scope enumeration and replacement are durable,
+      // and no event or invalidation raced publication: re-enable only now.
+      this.invalidationFailed = false;
+      this.advisoryReady = true;
       return { status: "recorded", generation, count: saved.value };
     } catch {
-      await this.inventory.invalidateLocalSnapshot("local-enumeration-or-persistence-failed").catch(() => undefined);
+      await this.trackInvalidation("local-enumeration-or-persistence-failed").catch(() => undefined);
       return { status: "recovery-required", reason: "local-inventory-refresh-failed" };
     }
   }
@@ -96,9 +107,22 @@ export class VerifiedLocalInventoryCoordinator {
    */
   private trackInvalidation(reason: string): Promise<void> {
     this.localChangeEpoch++;
+    this.advisoryReady = false;
     this.invalidationPending = true;
-    const job = this.inventory.invalidateLocalSnapshot(reason);
-    const tracked = job.finally(() => {
+    let job: Promise<void>;
+    try {
+      job = this.inventory.invalidateLocalSnapshot(reason);
+    } catch (cause) {
+      this.invalidationFailed = true;
+      this.invalidationPending = this.invalidationJobs.size > 0;
+      return Promise.reject(cause);
+    }
+    const tracked = job.catch((cause: unknown) => {
+      // Do not assume that a rejected IndexedDB transaction revoked the
+      // durable LOCAL_POINTER. Other successful jobs cannot clear this fault.
+      this.invalidationFailed = true;
+      throw cause;
+    }).finally(() => {
       this.invalidationJobs.delete(tracked);
       this.invalidationPending = this.invalidationJobs.size > 0;
     });
@@ -117,11 +141,16 @@ export class VerifiedLocalInventoryCoordinator {
    */
   async readAdvisoryHint(fence: InventoryIdentityFence, path: VaultPath):
     ReturnType<IndexedDbInventoryObservationStore["readLocalHint"]> {
-    if (this.invalidationPending || this.invalidationJobs.size)
-      return { status: "stale", reason: "local-hint-invalidation-pending" };
+    if (this.invalidationFailed)
+      return { status: "recovery-required", reason: "local-hint-invalidation-not-durable" };
+    if (!this.advisoryReady || this.invalidationPending || this.invalidationJobs.size)
+      return { status: "stale", reason: "local-hint-revalidation-required" };
     const epoch = this.localChangeEpoch;
     const hint = await this.inventory.readLocalHint(fence, path);
-    if (this.localChangeEpoch !== epoch || this.invalidationPending || this.invalidationJobs.size)
+    if (this.invalidationFailed)
+      return { status: "recovery-required", reason: "local-hint-invalidation-raced-read" };
+    if (!this.advisoryReady || this.localChangeEpoch !== epoch ||
+        this.invalidationPending || this.invalidationJobs.size)
       return { status: "stale", reason: "local-hint-invalidation-raced-read" };
     return hint;
   }

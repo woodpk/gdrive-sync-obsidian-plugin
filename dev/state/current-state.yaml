@@ -1973,7 +1973,7 @@ dec339_ws02_bu03_local_hint_2026_11_20:
 
 
 dec339_ws02_bu04_hint_visibility_2026_11_20:
-  status: "INDEPENDENT_REVIEW_CORRECTION_REQUIRED_F01;FULL_WS02_GATE_INCOMPLETE"
+  status: "BUILDER_F01_CORRECTION_AUTHORED;PHXCI_R2_PENDING;REVIEWER_REASSESSMENT_PENDING"
   owner_authorization: "2026-11-19_APPROVED_DEC339_INTEGRATION_SEQUENCE_NEXT_DEPENDENCY_SAFE_WS02_UNIT"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU04_HINT_VISIBILITY_BARRIER"
   handoff-count: 2
@@ -1995,7 +1995,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   inventory_activation_authorized: false
   live_database_migration_authorized: false
   master_merge_authorized: false
-  next_action: "BUILDER_REPAIR_FAILED_INVALIDATION_STICKY_FAIL_CLOSED_REQUALIFY_EXACT_SOURCE_WITH_PHXCI_AND_NEW_REVIEW_HANDOFF"
+  next_action: "QUALIFY_F01_CORRECTIVE_SOURCE_EXACT_SHA_PINNED_PHXCI_NO_REVIEW_HANDOFF_UNTIL_PASS"
   qualified_source_tree: "1eb7d975f6504bfcde2cd2130eef02f0413d475a"
   phxci_r1_run_id: "76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8"
   phxci_r1_evidence_commit: "5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba"
@@ -2009,3 +2009,12 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   reviewer_final_report_path: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-final.md"
   reviewer_final_report_commit: "b365c757ecb25d7e267ad68efacc212b4b819cb8"
   reviewer_blocker: "F01_FAILED_BACKING_LOCAL_HINT_INVALIDATION_CLEARS_COORDINATOR_GATE_AND_REEXPOSES_OLD_ADVISORY_HINTS"
+  f01_correction_scope: "STICKY_INVALIDATION_FAULT_FAIL_CLOSED_UNTIL_FRESH_ATTESTED_ENUMERATION_REPLACEMENT"
+  f01_correction_regressions: "REJECTED_LIFECYCLE;PARTIAL_RECOVERY;OVERLAPPING_INVALIDATIONS;SYNC_SCOPE_FAILURE;FAILED_REPLACEMENT;COLD_INSTANCE"
+  original_r1_qualification_disposition: "HISTORICAL_PASS_ONLY_NOT_CORRECTED_SOURCE_QUALIFICATION"
+  f01_review_state_commit: "b3c602e51e35501a8bc3b5e094dee58761085cd8"
+  f01_original_blind_report_commit: "d58fec39779ade8f45828342253c9dea69e0bd01"
+  f01_original_final_review_commit: "b365c757ecb25d7e267ad68efacc212b4b819cb8"
+  f01_original_accepted: false
+  f01_corrected_phxci_status: "NOT_RUN"
+  f01_corrected_reviewer_verdict: "NOT_REQUESTED"
