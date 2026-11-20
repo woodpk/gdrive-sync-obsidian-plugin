@@ -1888,5 +1888,8 @@ dec339_ws02_bu02_v2_legacy_2026_11_20:
   live_drive_or_vault_operations_authorized: false
   master_or_pr157_merge_authorized: false
   phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+  builder_proposed_source_and_tests_commit: "26713f9bbdb48ad4701e778f6e13991215f6aa63"
+  source_review_status: "BUILDER_DIFF_INSPECTED;PENDING_PHXCI_EXECUTION"
+  regression_scope: "V1_NO_IMPLICIT_UPGRADE;V2_LEGACY_READ_WRITE;BACKUP_PRESERVATION;PENDING_INTENT;STALE_CAS;PRODUCT_CURSOR_MIRROR"
   phxci_status: "NOT_RUN"
   next_action: "EXACT_SOURCE_PHXCI_SOFTWARE_ONLY;QUALIFY_TESTS_AND_SOURCE_BEFORE_REVIEWER_HANDOFF"

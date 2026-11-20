@@ -37,3 +37,11 @@ Relevant executable regression tests added to `tests/integration/dec339-indexedd
 - Freeze an exact BU-02 implementation SHA/tree for PHX-CI; handle any failure via Builder repair and new exact-source rerun. Once fully qualified, hand off **only BU-02** to an independent blind-first Reviewer.
 - Retain Reviewer M-01 (real multi-context IDB scheduling) for a future explicit browser-capable test gate; do not claim the entire WS-02 storage step or DEC-339 activation is complete.
 - No master merge, PR #157 merge, live pairing/database migration, physical testing, Drive/vault activity, installation, activation or release.
+
+## BU-02 authored implementation and verification readiness
+
+- Production diff: `src/product/runtime.ts` selects the existing version-agnostic `IndexedDbInventoryAwareStateByteStorage` instead of the v1-only byte store; all planner, executor, scope, OAuth and activation paths are otherwise unchanged.
+- Regression diff: `tests/integration/dec339-indexeddb-transaction-integration.test.ts` adds v2-aware canonical authority read/advance, preservation of schema-v1 state and backups, stale CAS and pending intent preservation, no implicit schema migration, plus a test of `SynchronizationStateAuthorityAdapter.saveTrusted` mirroring cursor progress into the same v2-aware canonical bytes.
+- Last code/test source commit before this documentation update: `26713f9bbdb48ad4701e778f6e13991215f6aa63`.
+- **Evidence state:** PHX-CI has not been run against BU-02. No tests or correctness checks were executed outside the approved PHX-CI framework, no Reviewer assignment was issued, and no qualification or acceptance is claimed.
+- Pending final requirements include verifying actual test discovery, TypeScript typecheck, full immutable source/test PHX-CI result, and independent blind-first acceptance. Real browser/WebView two-context scheduling remains an explicitly deferred M-01 gate rather than an assumed success.
