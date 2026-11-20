@@ -82,6 +82,16 @@ export class VerifiedLocalInventoryCoordinator {
     }
   }
 
+  /**
+   * The owner must call this when the effective path-scope/exclusion policy
+   * changes. A cache published for an old scope must not be reused as a hint
+   * for newly included or excluded paths. Canonical BASE remains untouched.
+   */
+  async invalidateForScopeChange(): Promise<void> {
+    this.localChangeEpoch++;
+    await this.inventory.invalidateLocalSnapshot("effective-local-scope-changed");
+  }
+
   /** Invalidate hints promptly on file events and on resume, without affecting canonical state. */
   subscribe(): () => void {
     const invalidate = () => {

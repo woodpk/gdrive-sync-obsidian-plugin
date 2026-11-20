@@ -150,3 +150,102 @@ test("D339-08A file changes during fresh enumeration invalidate the local snapsh
   assert.notEqual((await store.readLocalHint(fence, note)).status, "advisory");
   unsubscribe();
 });
+
+
+test("WS-02 BU-03 scope change invalidates published hints without revoking remote inventory authority", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const base = candidate(g("bu03-scope-change"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(base), store)
+    .publishBaseline(fence, base.manifest.generation)).status, "published");
+  const included = path("notes/retained.md"), newlyExcluded = path("notes/excluded.md");
+  let includedPaths = new Set([String(included), String(newlyExcluded)]);
+  const current: LocalObservation[] = [included, newlyExcluded].map(value => ({
+    status: "present", side: "local", path: value, entityKind: "file", stability: "stable",
+  }));
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({ entries: current, completeness: { status: "complete" } }),
+    onChange: () => () => undefined,
+    onLifecycle: () => () => undefined,
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, store, value => includedPaths.has(String(value)));
+  assert.equal((await coordinator.refresh(fence)).status, "recorded");
+  assert.equal((await store.readLocalHint(fence, newlyExcluded)).status, "advisory");
+  includedPaths = new Set([String(included)]);
+  await coordinator.invalidateForScopeChange();
+  assert.equal((await store.readLocalHint(fence, newlyExcluded)).status, "stale",
+    "a scope change must invalidate hints from the old inclusion policy");
+  const remote = await store.openRead();
+  assert.equal(remote.status, "verified-observation", "scope invalidation must not change remote canonical cursor");
+  if (remote.status === "verified-observation") await remote.value.release();
+  assert.equal((await coordinator.refresh(fence)).status, "recorded");
+  assert.equal((await store.readLocalHint(fence, included)).status, "advisory");
+  assert.equal((await store.readLocalHint(fence, newlyExcluded)).status, "unknown");
+});
+
+test("WS-02 BU-03 scope mutation during local enumeration refuses the stale publication", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const base = candidate(g("bu03-racing-scope"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(base), store)
+    .publishBaseline(fence, base.manifest.generation)).status, "published");
+  const retained = path("notes/scoped.md");
+  let coordinator: VerifiedLocalInventoryCoordinator;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => {
+      await coordinator.invalidateForScopeChange();
+      return { entries: [{
+        status: "present" as const, side: "local" as const,
+        path: retained, entityKind: "file" as const, stability: "stable" as const,
+      }], completeness: { status: "complete" as const } };
+    },
+    onChange: () => () => undefined,
+    onLifecycle: () => () => undefined,
+  };
+  coordinator = new VerifiedLocalInventoryCoordinator(local, store, () => true);
+  assert.equal((await coordinator.refresh(fence)).status, "stale");
+  assert.notEqual((await store.readLocalHint(fence, retained)).status, "advisory");
+});
+
+test("WS-02 BU-03 resume and vault-ready invalidate local hints while preserving remote snapshot", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("bu03-resume"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const file = path("notes/resume.md");
+  let lifecycle: ((event: import("../../src/contracts").LocalLifecycleEvent) => void) | undefined;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({ entries: [{
+      status: "present" as const, side: "local" as const, path: file,
+      entityKind: "file" as const, stability: "stable" as const,
+    }], completeness: { status: "complete" as const } }),
+    onChange: () => () => undefined,
+    onLifecycle: listener => { lifecycle = listener; return () => { lifecycle = undefined; }; },
+  };
+  const coord = new VerifiedLocalInventoryCoordinator(local, store, () => true);
+  const unsubscribe = coord.subscribe();
+  try {
+    assert.equal((await coord.refresh(fence)).status, "recorded");
+    assert.equal((await store.readLocalHint(fence, file)).status, "advisory");
+    lifecycle?.({ kind: "resume" });
+    for (let i = 0; i < 6; i++) {
+      if ((await store.readLocalHint(fence, file)).status === "stale") break;
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    assert.equal((await store.readLocalHint(fence, file)).status, "stale");
+    const remote = await store.openRead();
+    assert.equal(remote.status, "verified-observation");
+    if (remote.status === "verified-observation") await remote.value.release();
+    assert.equal((await coord.refresh(fence)).status, "recorded");
+    lifecycle?.({ kind: "vault-ready" });
+    for (let i = 0; i < 6; i++) {
+      if ((await store.readLocalHint(fence, file)).status === "stale") break;
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    assert.equal((await store.readLocalHint(fence, file)).status, "stale");
+  } finally { unsubscribe(); }
+});

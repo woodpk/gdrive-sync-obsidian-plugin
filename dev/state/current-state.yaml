@@ -1923,3 +1923,27 @@ dec339_ws02_bu02_v2_legacy_2026_11_20:
   bu02_deferred_m02: "REMAINING_CURSOR_WRITERS_ROLLBACK_RECOVERY_LOCAL_INVENTORY_INTEGRATION_PENDING"
   bu02_deferred_m03: "BLIND_METADATA_EXPOSURE_NOTED_IN_FROZEN_REVIEW"
   bu02_closeout_document: "dev/state/handoffs/dec339-ws02-bu02-accepted-closeout-2026-11-20.md"
+
+
+dec339_ws02_bu03_local_hint_2026_11_20:
+  status: "BUILDER_IMPLEMENTATION_AUTHORED;PHXCI_NOT_RUN;REVIEW_PENDING"
+  owner_authorization: "2026-11-19_DEC339_WS02_CONTINUE_NEXT_DEPENDENCY_SAFE_BU"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU03_LOCAL_HINT_SCOPE_RESUME"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws02-bu03-local-hint-invalidation-20261120"
+  baseline_bu02_closeout_sha: "b4f764fe7993b944023ef28a7f601e776d6ae13d"
+  accepted_bu02_source: "346f087202d76df89411d7e8cd79b8eecd2167b0"
+  plan: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu03-local-hint-invalidation-2026-11-20.md"
+  scope: "LOCAL_INVENTORY_SCOPE_CHANGE_INVALIDATION_AND_RESUME_VAULT_READY_FAIL_CLOSED_TESTS"
+  phxci_status: "NOT_RUN"
+  qualified_source_sha: null
+  reviewer_verdict: "NOT_REQUESTED"
+  full_ws02_gate_complete: false
+  dec339_integration_complete: false
+  real_multicontext_idb_test_gate: "DEFERRED_AND_REQUIRED_BEFORE_WHOLE_WS02"
+  live_database_migration_authorized: false
+  inventory_activation_authorized: false
+  master_merge_authorized: false
+  next_action: "EXACT_SOURCE_PHXCI_SOFTWARE_ONLY;KEEP_PENDING_CURSOR_WRITER_AND_REAL_BROWSER_GATES_EXPLICIT"
