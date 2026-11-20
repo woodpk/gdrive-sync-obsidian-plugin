@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Source baseline:** accepted BU-02 closeout `b4f764fe7993b944023ef28a7f601e776d6ae13d`  
 **Branch:** `build/dec339-ws02-bu03-local-hint-invalidation-20261120`  
-**Status:** BUILDER SOURCE AND TESTS AUTHORED; **NOT PHX-CI QUALIFIED OR INDEPENDENTLY ACCEPTED**.
+**Status:** **BUILDER-QUALIFIED; independent Reviewer final acceptance PENDING.** Full WS-02/DEC-339 integration gates remain incomplete.
 
 ## Scope and design
 
@@ -36,3 +36,10 @@ Also qualify the already implemented `subscribe()` invalidation behavior for `re
 ## Mandatory next gate
 
 Run the **pinned PHX-CI** exact-source software-only operator `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1`, with frozen SHA, no physical dispatch. Do not run standalone tests, GitHub Actions or separate scripts. Correct failures and preserve evidence; then request an independent blind-first Reviewer assessment only after complete original PHX-CI PASS. No master/PR #157 merge, inventory activation, live DB migration, provider/vault operations, installation, release or physical testing.
+
+## BU-03 original exact-source software qualification (2026-11-20)
+
+- Qualified source `3d9ea7fc7bb2c852aebf944a2b7e80462bc1cae2`, exact source tree `3f3f81b96c36a056f89f8e18acf74d845ea5c47e`.
+- Original pinned PHX-CI run `747e471f-fc04-4669-b69d-b34075c1c66a`, evidence-only publication `288a05c00a0be9ecda8f23fc4945c95ebb436d91`, `dev/test-results/747e471f-fc04-4669-b69d-b34075c1c66a/`.
+- Read-back exact result: **13/13 stages PASS; focused 634/634 PASS; product 1321/1321 PASS; typecheck/build/artifact/repository PASS; exit 0; physical dispatch disabled.** Original evidence commit adds only evidence records, with no changes to source or tests.
+- This completes **Builder software qualification of BU-03 only**. Independent Reviewer blind-first source assessment and final evaluation are mandatory before acceptance. This result does not establish that a live scope owner invokes the new invalidation seam, or complete cross-WebView upgrade blocking, cursor-writer/rollback/recovery integration, or inventory planner activation.
