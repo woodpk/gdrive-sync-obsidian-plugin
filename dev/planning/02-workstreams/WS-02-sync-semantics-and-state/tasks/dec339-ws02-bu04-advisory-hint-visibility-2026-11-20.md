@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu04-local-hint-visibility-barrier-20261120`  
 **Baseline:** BU-03 independently accepted/Builder closed `c3bfbb8cbb0aa3dbb775e524607275dac4760e1b`.  
-**Status:** **BUILDER-QUALIFIED; independent Reviewer acceptance PENDING.** Full WS-02 and DEC-339 integration remain incomplete.
+**Status:** **F-01 corrective source R2 BUILDER-QUALIFIED; independent Reviewer reassessment PENDING.** Previous independent verdict remains CORRECTION REQUIRED until a new accepted verdict. Full WS-02 and DEC-339 integration remain incomplete.
 
 ## Bounded reason and decision
 
@@ -55,3 +55,12 @@ This Build Unit introduces a **coordinator-mediated advisory read seam** `readAd
 - **Test integrity:** three additional adversarial integration cases cover rejected lifecycle invalidation with unchanged persisted marker, partial-scan failure to recover, successful fresh replacement with new token, earlier failing/later successful overlapping jobs, retry insufficient for latch clearance, synchronous scope failure, failed replacement, and cold coordinator. No test or PHX-CI guard was weakened or deleted.
 - **Qualification required:** corrective source MUST pass a fresh full software-only pinned PHX-CI run. The immutable R1 13/13 PASS at `4c0cc689b9c949969f5fda82a96a14b5394e5fd0` (run `76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8`) remains historical but does not qualify repaired code. No new independent review handoff before corrected exact-source PHX-CI PASS.
 - **Boundary:** no live runtime owner wiring, real multi-WebView upgrade proof, or full cursor/rollback/recovery integration; WS-02 and DEC-339 remain incomplete, with no activation, physical tests, deployment or merge authorization.
+
+## R2 corrected-source qualification / independent reassessment boundary (2026-11-20)
+
+- **Corrected immutable source:** `8850dab0970862783f4a7e5beb4f214b83dd4acc`; tree `14e2d7aa2d0507abb60b2aed5e7155fe409795ac`.
+- **Original corrective PHX-CI:** run `f48d6511-ec06-405c-8738-f8b91662b0d1`; evidence commit `7c7c2877ddfb290f3581df414f8759d5edf1d989`; original `result.json`, `result.md` and `terminal.log` under `dev/test-results/f48d6511-ec06-405c-8738-f8b91662b0d1/` independently read back in GitHub.
+- **Exact outcome:** source and tree match; **13/13 stages PASS, 634/634 focused tests PASS, 1,326/1,326 product tests PASS, typecheck/build/repository PASS, native exit 0; physical dispatch disabled.** Evidence commit is evidence-only and not a new qualified source commit.
+- **History preserved:** R1 source `4c0cc689b9c949969f5fda82a96a14b5394e5fd0`, original R1 PASS `76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8` at `5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba`, and frozen F-01 CORRECTION REQUIRED reports at `d58fec39779ade8f45828342253c9dea69e0bd01` / `b365c757ecb25d7e267ad68efacc212b4b819cb8` remain unchanged.
+- **New role boundary:** Builder→Reviewer feature handoff count **3**, for an independent blind-first assessment of exact corrected source, then the mandatory ten-family and original PHX-CI R2 evidence review. This handoff does not waive F-01 or claim independent acceptance.
+- **Remaining barriers:** No active coordinator/runtime integration, live effective-scope owner wiring, multi-WebView IndexedDB proof, full cursor/rollback/recovery integration, master merge or DEC-339 activation.
