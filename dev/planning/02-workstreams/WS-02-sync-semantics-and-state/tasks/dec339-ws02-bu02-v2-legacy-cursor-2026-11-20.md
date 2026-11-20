@@ -3,7 +3,7 @@
 **Date:** 2026-11-20. **Owner authorization:** 2026-11-19 continue approved DEC-339 integration sequence.  
 **Builder:** `build-brain-67`. **Branch:** `build/dec339-ws02-bu02-v2-legacy-cursor-safety-20261120`.  
 **Baseline:** accepted BU-01 closeout `719e9035e3741e485f85c5471915e4039c0c4436`.  
-**Status:** **BUILDER-QUALIFIED, independent Reviewer final acceptance PENDING.** Whole WS-02/DEC-339 integration remains incomplete.
+**Status:** **BU-02 independently ACCEPTED AND BUILDER CLOSED** (PASS WITH MINOR FINDINGS, 2026-11-20). Wider WS-02/DEC-339 gates remain incomplete.
 
 ## Bounded requirement and architecture
 
@@ -66,3 +66,11 @@ The corrected candidate requires fresh PHX-CI software-only qualification; no so
 - R1 original BLOCKED evidence remains preserved under the earlier run/commit; source defects, test fixture ordering and comment-window failure were corrected without lowering any guard or testing requirement.
 - **Builder-qualified is not independently accepted.** This document preserves requirements-to-test continuity for the Reviewer’s post-blind evidence pass; the Reviewer must first freeze and publish its blind source assessment without reviewing this Builder narrative or test/PHX-CI details.
 - Review scope is strictly BU-02: version-aware legacy `ProductRuntime` state adapter, canonical cursor/BASE and recovery-intent continuity, and fail-closed inventory pointer invalidation. Real browser multi-context IndexedDB upgrade blocking, local hint scope/resume, full WS-02 cursor/recovery gate, all DEC-339 planner activation and live promotion remain unverified/not authorized.
+
+## Independent acceptance and Builder closeout (2026-11-20)
+
+- Reviewer `review-brain-10` independently accepted BU-02 with PASS WITH MINOR FINDINGS, frozen report `dev/reviews/dec339-ws02-bu02-20261120-review-brain-10-final.md`, publication commit `84f408a2fb8fea0b5e2df5389369cc5587cd8f4d`; blind report commit `1b7f00cd5c92038e73037d98e21c3067e45f8abc`.
+- Reviewer→Builder handoff count **2**, state commit `55bd8c5004e93bab0c200c0b8f31e749fb02ad32` verified directly in GitHub. No extra handoff count consumed by administrative closeout.
+- Exact accepted source `346f087202d76df89411d7e8cd79b8eecd2167b0`, tree `5bf2072ff7ff719b9fa8caab9c27d298b05548fc`, original R2 PASS PHX-CI `bec72225-365c-47ae-bb87-f3336cb96fef` committed at `9f9baae544593719cf606d1023a72ffa848c2def`. R1 BLOCKED run `f5464803-6b77-4ffd-bf9c-29cde7b4f91d` remains immutable and correctly failed.
+- Carry M-01 real browser/multi-WebView IndexedDB versionchange and upgrade-blocking, M-02 full cursor-writer/recovery/rollback/local inventory interoperability, and M-03 blind-phase metadata provenance observation to later gates. BU-02 closeout requires no new verification, implementation or merge.
+- Next authorized dependency-safe WS-02 work is BU-03. Never infer completion of WS-02 or DEC-339 inventory activation from BU-02 acceptance.
