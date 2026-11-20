@@ -2044,12 +2044,12 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
 
 
 dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
-  status: "BUILDER_SOURCE_AND_TEST_AUTHORSHIP_COMMITTED;PHXCI_NOT_RUN;REVIEW_PENDING"
+  status: "BUILDER_QUALIFIED_R1_PASS;REVIEWER_FINAL_ACCEPTANCE_PENDING;WS02_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU05_CURSOR_RECOVERY_GATES"
-  handoff-count: 0
+  handoff-count: 1
   handoff-owner-role: BUILDER
-  handoff-recipient-role: BUILDER
+  handoff-recipient-role: REVIEWER
   branch: "build/dec339-ws02-bu05-cursor-recovery-gates-20261120"
   baseline_bu04_closeout: "5027e724765fbd915fa88714ba35b4bd97aeea99"
   accepted_bu04_source: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
@@ -2057,9 +2057,9 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   scope: "ADVERSARIAL_PINNED_SOFTWARE_GATE_FOR_STALE_CANONICAL_CURSOR_WRITER_AND_BACKUP_FIRST_CORRUPT_STATE_RECOVERY"
   production_source_modified: false
   existing_production_invariants_under_test: "PERSISTENT_STATE_CAS_AND_V2_AWARE_IDB_ATOMIC_INVALIDATION"
-  phxci_status: "NOT_RUN"
-  source_qualification_status: "NOT_QUALIFIED"
-  independent_reviewer_verdict: "NOT_REQUESTED"
+  phxci_status: "R1_PASS;13_OF_13_STAGES;FOCUSED_634_OF_634;PRODUCT_1328_OF_1328;PHYSICAL_DISABLED"
+  source_qualification_status: "BUILDER_QUALIFIED_ORIGINAL_IMMUTABLE_SOURCE"
+  independent_reviewer_verdict: "PENDING_INDEPENDENT_BLIND_FIRST_REVIEW"
   outstanding_real_browser_webview_upgrade_gate: true
   outstanding_complete_cursor_writer_inventory_gate: true
   outstanding_live_scope_owner_wiring_gate: true
@@ -2067,4 +2067,15 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   dec339_integration_complete: false
   inventory_activation_authorized: false
   master_merge_authorized: false
-  next_action: "RUN_EXACT_SOURCE_SOFTWARE_ONLY_PINNED_PHXCI_THEN_FIX_ANY_FAILURE_BEFORE_REVIEW"
+  next_action: "INDEPENDENT_REVIEW_BU05_BLIND_SOURCE_FIRST_THEN_TEN_FAMILY_AND_CANONICAL_R1_PHXCI"
+  qualified_source_sha: "8d7785aa0e40bfaab3c446183422c64242aee070"
+  qualified_source_tree: "d993895c7e22baaf12f62ae09693017d96a488bc"
+  phxci_r1_run_id: "d8e9b739-6353-44cd-a4b0-5695c4c09228"
+  phxci_r1_evidence_commit: "0508d6fe96d97cf44e18a47f7a407040e529357c"
+  phxci_r1_report_path: "dev/test-results/d8e9b739-6353-44cd-a4b0-5695c4c09228/result.json"
+  phxci_r1_original_exit_code: 0
+  phxci_r1_evidence_readback_verified: true
+  qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+  qualification_classification: "SOFTWARE_ONLY;NO_PHYSICAL_ACTIVATION"
+  qualification_evidence_commit_did_not_change_source: true
+  independent_review_scope: "WS02_BU05_ONLY"

@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu05-cursor-recovery-gates-20261120`  
 **Baseline:** BU-04 independently accepted and closed at `5027e724765fbd915fa88714ba35b4bd97aeea99`  
-**Status:** BUILDER IMPLEMENTATION (test-hardening only), PHX-CI NOT RUN; REVIEWER NOT ENGAGED.
+**Status:** **BUILDER-QUALIFIED; independent Reviewer final acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
 
 ## Purpose and bounded implementation
 
@@ -37,3 +37,12 @@ The requirement to account for **every** canonical cursor writer (including the 
 ## Next mandatory action
 
 Freeze an exact BU-05 source SHA/tree, then qualify the candidate exclusively using existing `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1` in `-SoftwareOnlyBranch` mode and pinned runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`. Preserve full original R1 evidence, fix legitimate tests/source failures, and request a blind-first independent Reviewer only after a conclusive PASS. Previously accepted BU-01 through BU-04 original evidence and review reports must remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
+
+## Original PHX-CI R1 qualification and Builder→Reviewer transition (2026-11-20)
+
+- Frozen exact candidate: `8d7785aa0e40bfaab3c446183422c64242aee070`, Git tree `d993895c7e22baaf12f62ae09693017d96a488bc`.
+- The pinned PHX-CI operator already executed this source successfully: original run `d8e9b739-6353-44cd-a4b0-5695c4c09228`, published evidence-only commit `0508d6fe96d97cf44e18a47f7a407040e529357c`. Original result JSON, result Markdown and complete terminal log under `dev/test-results/d8e9b739-6353-44cd-a4b0-5695c4c09228/` inspected directly in GitHub.
+- **Verified result:** 13/13 mandatory stages PASS, focused 634/634 PASS, product 1328/1328 PASS, typecheck/build/architecture/repository checks PASS, overall PASS/exit 0. Product/fixture code, authoritative state and tests were not changed by the evidence commit; physical dispatch disabled.
+- Owner's subsequent bootstrap rejected the newer evidence-only HEAD `0508d6fe...` due to its exact-source pin. This was an appropriate safety stop, not a failed PHX-CI rerun. No second run is needed for the unchanged candidate.
+- Builder→Independent Reviewer feature-local handoff count **1**. The Reviewer must publish a frozen blind-first source assessment *before* studying the authored tests, Builder narratives, earlier findings or PHX-CI evidence, then assess ten-family adequacy and original R1 evidence and publish a final verdict. This does **not** constitute independent acceptance.
+- The remaining full cursor-writer matrix, genuine browser/WebView IDB upgrade conflicts, local hint/scope owner integration and rollback/recovery gates remain outside the accepted scope and **not satisfied** by BU-05 qualification. No master merge, activation, live migration, physical tests or release.
