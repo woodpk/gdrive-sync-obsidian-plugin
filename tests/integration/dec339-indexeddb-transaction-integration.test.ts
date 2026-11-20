@@ -597,3 +597,22 @@ test("WS-02 BU-02 version-aware rollback retains a pending effect across cursor 
     "cursor advancement cannot drop a previously committed operation intent");
   assert.equal((await inventory.openRead()).status, "stale");
 });
+
+
+test("WS-02 BU-02 production-compatible byte adapter does not silently upgrade a v1 pairing", async () => {
+  const db = new FakeDatabase(), factory = db.openFactory();
+  await seeded(factory);
+  assert.equal(db.version, 1);
+  const legacy = new IndexedDbStateByteStorage("device:idb:test", factory);
+  const original = await legacy.read();
+  assert.ok(original);
+  const compatible = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  assert.deepEqual(await compatible.read(), original);
+  assert.equal(db.version, 1, "legacy mode must not perform an inventory schema migration");
+  assert.equal(db.tables.has("inventory-control"), false,
+    "a compatible open must not create the inventory control store");
+  const authority = await new PersistentSynchronizationStateStore(compatible).loadAuthority();
+  assert.equal(authority.status, "trusted");
+  assert.deepEqual(await legacy.read(), original,
+    "v1 binary remains compatible until an expressly authorized v2 upgrade occurs");
+});
