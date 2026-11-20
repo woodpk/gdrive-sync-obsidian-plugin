@@ -45,3 +45,15 @@ Relevant executable regression tests added to `tests/integration/dec339-indexedd
 - Last code/test source commit before this documentation update: `26713f9bbdb48ad4701e778f6e13991215f6aa63`.
 - **Evidence state:** PHX-CI has not been run against BU-02. No tests or correctness checks were executed outside the approved PHX-CI framework, no Reviewer assignment was issued, and no qualification or acceptance is claimed.
 - Pending final requirements include verifying actual test discovery, TypeScript typecheck, full immutable source/test PHX-CI result, and independent blind-first acceptance. Real browser/WebView two-context scheduling remains an explicitly deferred M-01 gate rather than an assumed success.
+
+## R1 PHX-CI failure and causal corrections (2026-11-20)
+
+**Original immutable failed run:** `f5464803-6b77-4ffd-bf9c-29cde7b4f91d`; frozen source `2f4cdc9949ffba16465ee73a1c1e83445b4f1d55`; GitHub evidence commit `f0484b63cb16c2c6310ad3e52aefe19f88d4058c`. Focused 632/634, product 1316/1318; typecheck PASS, change-set FAIL, repository FAIL, overall BLOCKED. Never relabel it.
+
+**Observed independent defects and repairs:**
+
+1. An unnecessary fifth PowerShell file `dev/scripts/Invoke-PHXCI-DEC339-WS02.ps1` was reintroduced by the BU-01 state publication *after* BU-01's already-accepted software source. It causes both `BVP_POWERSHELL_SCRIPT_COUNT` (5 exceeds 4) and the exact P1 script-inventory mismatch. Delete this script; reuse the pinned existing PHX-CI front door; leave both guard test oracles and the four-script ceiling intact. Preserve original historical commits and Reviewer acceptance.
+2. The new upgraded-pairing test reused the cached legacy IDB connection without a `versionchange` signal. The synthetic `FakeDatabase` cannot autonomously deliver the real browser event. Deliver the test's explicit versionchange to the actual cached connection and assert it closes before opening/upgrading v2; then retain the negative assertion that a subsequent *fresh* explicit v1 open rejects with `VersionError`. The production v1 adapter already implements this necessary close behavior; no oracle weakening.
+3. The unchanged LOG-03 production DiagnosticLogger composition test locates the diagnostic injection within a bounded source-text window of the state constructor. Newly added explanatory comments lengthened the window beyond the original 400-character bound without changing actual wiring. Relocate/shorten the comment outside the constructor, retaining the same `this.host.diagnostics` argument and the unmodified tracing test.
+
+The corrected candidate requires fresh PHX-CI software-only qualification; no source/test or check is accepted merely because it is committed. Full WS-02 and DEC-339 gates remain incomplete; no live vault/Drive, installation or promotion.

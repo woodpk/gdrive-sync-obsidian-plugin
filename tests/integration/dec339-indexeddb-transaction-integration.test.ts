@@ -465,6 +465,14 @@ test("WS-02 BU-02 v2-aware legacy authority reopens upgraded pairing without rea
   const canonicalBytes = await legacy.read();
   assert.ok(canonicalBytes);
   const backupKey = await legacy.backup(canonicalBytes!);
+  // The FakeDatabase does not autonomously deliver browser versionchange
+  // events. Model the old connection receiving the upgrade notification before
+  // upgrading v1 to v2, as production IndexedDB would.
+  const originalConnection = db.lastOpened;
+  assert.ok(originalConnection);
+  assert.equal(typeof originalConnection.onversionchange, "function");
+  originalConnection.onversionchange?.call(originalConnection, {} as IDBVersionChangeEvent);
+  assert.equal(db.closeCount, 1, "legacy connection must release its version-1 handle");
   const inventory = new IndexedDbInventoryObservationStore("device:idb:test", factory);
   const staged = candidate(g("ws02-bu02-legacy-rollback"));
   assert.equal((await new VerifiedInventoryBaselineCoordinator(

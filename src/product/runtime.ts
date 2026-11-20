@@ -253,12 +253,9 @@ export class ProductRuntime {
       expectedVaultIdentity: vaultIdentity,
       expectedDeviceIdentity: deviceIdentity,
     };
+    // Legacy planner stays authoritative. Version-aware canonical bytes
+    // preserve v1/v2 compatibility without enabling inventory or migrating state.
     const durableState = new PersistentSynchronizationStateStore(
-      // Legacy (non-inventory) planning remains authoritative; this
-      // version-agnostic byte adapter supports both v1 and additive v2
-      // databases and atomically invalidates stale inventory control on
-      // unfenced canonical writes. Opening it never upgrades or activates
-      // inventory and never grants an inventory-backed planning path.
       new IndexedDbInventoryAwareStateByteStorage(pairingStorageKey("brain-google-drive-sync", current)),
       1,
       undefined,
