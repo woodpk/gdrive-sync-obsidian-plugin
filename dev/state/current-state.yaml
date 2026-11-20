@@ -2055,13 +2055,13 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   accepted_bu04_source: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
   planning: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-recovery-gates-2026-11-20.md"
   scope: "ADVERSARIAL_PINNED_SOFTWARE_GATE_FOR_STALE_CANONICAL_CURSOR_WRITER_AND_BACKUP_FIRST_CORRUPT_STATE_RECOVERY"
-  production_source_modified: false
-  existing_production_invariants_under_test: "PERSISTENT_STATE_CAS_AND_V2_AWARE_IDB_ATOMIC_INVALIDATION"
+  production_source_modified: true
+  existing_production_invariants_under_test: "PERSISTENT_STATE_CAS;V2_AWARE_IDB_ATOMIC_INVALIDATION;SHIPPING_CURSOR_FENCES;RECOVERY_PAIRING_IDENTITY"
   phxci_status: "EARLIER_PARTIAL_R1_PASS_NOT_CURRENT_SOURCE_QUALIFICATION"
   source_qualification_status: "NEW_SOURCE_NOT_QUALIFIED"
   independent_reviewer_verdict: "PRIOR_HANDOFF_SUPERSEDED_BY_OWNER_COMPLETION_DIRECTION;NO_FINAL_REVIEW"
   outstanding_real_browser_webview_upgrade_gate: true
-  outstanding_complete_cursor_writer_inventory_gate: true
+  outstanding_complete_cursor_writer_inventory_gate: false
   outstanding_live_scope_owner_wiring_gate: true
   full_ws02_complete: false
   dec339_integration_complete: false
@@ -2088,3 +2088,8 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   current_qualified_source_sha: null
   current_qualified_source_tree: null
   no_reviewer_handoff_until_new_pass: true
+  implemented_build_sha: "6e83113dac76828f3ef3e6127c341d7bd9bf36a9"
+  implemented_build_tree: "afcc68771746c4db9f9eb45ee14cb47eb4d50ee8"
+  cursor_writer_audit_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-writer-audit-2026-11-20.md"
+  previous_phxci_pass_not_current_qualification: true
+  complete_bu05_source_and_test_candidate_pending_phxci: true
