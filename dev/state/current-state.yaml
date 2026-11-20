@@ -1973,12 +1973,12 @@ dec339_ws02_bu03_local_hint_2026_11_20:
 
 
 dec339_ws02_bu04_hint_visibility_2026_11_20:
-  status: "F01_CORRECTIVE_R2_PHXCI_PASS;BUILDER_QUALIFIED;INDEPENDENT_REASSESSMENT_PENDING"
+  status: "F01_CORRECTIVE_R2_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;FULL_WS02_GATE_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_INTEGRATION_SEQUENCE_NEXT_DEPENDENCY_SAFE_WS02_UNIT"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU04_HINT_VISIBILITY_BARRIER"
-  handoff-count: 3
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 4
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-ws02-bu04-local-hint-visibility-barrier-20261120"
   baseline_bu03_closed: "c3bfbb8cbb0aa3dbb775e524607275dac4760e1b"
   accepted_bu03_source: "3d9ea7fc7bb2c852aebf944a2b7e80462bc1cae2"
@@ -1986,7 +1986,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   scope: "IMMEDIATE_ADVISORY_CONSUMER_GUARD_DURING_ASYNC_INVALIDATION_WITH_NO_LIVE_RUNTIME_WIRING"
   phxci_status: "R2_PASS_13_OF_13;FOCUSED_634_OF_634;PRODUCT_1326_OF_1326;PHYSICAL_DISABLED"
   qualified_source_sha: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
-  reviewer_verdict: "CORRECTION_REQUIRED_F01_FAILED_INVALIDATION_REEXPOSES_STALE_HINTS"
+  reviewer_verdict: "HISTORICAL_R1_CORRECTION_REQUIRED_SUPERSEDED_BY_R2_ACCEPTANCE"
   actual_product_owner_wiring: "DEFERRED_UNTIL_SEPARATELY_AUTHORIZED_DORMANT_INTEGRATION"
   multi_webview_idb_proof: "REQUIRED_AND_NOT_DONE"
   remaining_cursor_rollback_recovery_gate: "INCOMPLETE"
@@ -1995,7 +1995,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   inventory_activation_authorized: false
   live_database_migration_authorized: false
   master_merge_authorized: false
-  next_action: "INDEPENDENT_REVIEW_F01_CORRECTED_EXACT_SOURCE_BLIND_FIRST_THEN_TEN_FAMILY_AND_R2_EVIDENCE"
+  next_action: "BUILDER_CLOSEOUT_ACCEPTED_BU04_CARRY_MINOR_FINDINGS_TO_NEXT_APPROVED_WS02_UNIT"
   qualified_source_tree: "14e2d7aa2d0507abb60b2aed5e7155fe409795ac"
   phxci_r1_run_id: "76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8"
   phxci_r1_evidence_commit: "5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba"
@@ -2017,7 +2017,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   f01_original_final_review_commit: "b365c757ecb25d7e267ad68efacc212b4b819cb8"
   f01_original_accepted: false
   f01_corrected_phxci_status: "R2_PASS_13_OF_13_FOCUSED_634_OF_634_PRODUCT_1326_OF_1326"
-  f01_corrected_reviewer_verdict: "INDEPENDENT_REASSESSMENT_PENDING"
+  f01_corrected_reviewer_verdict: "PASS_WITH_MINOR_FINDINGS_BU04_CORRECTED_R2_ACCEPTED"
   f01_r2_qualified_source_sha: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
   f01_r2_qualified_source_tree: "14e2d7aa2d0507abb60b2aed5e7155fe409795ac"
   f01_r2_phxci_run_id: "f48d6511-ec06-405c-8738-f8b91662b0d1"
@@ -2026,3 +2026,8 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   f01_r2_phxci_original_exit_code: 0
   f01_r2_phxci_original_evidence_read_back: true
   f01_reviewer_handoff_scope: "BU04_F01_CORRECTION_ONLY;NO_PRODUCT_ACTIVATION"
+  f01_r2_independent_blind_report_path: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-r2-blind-source.md"
+  f01_r2_independent_blind_report_commit: "fe759f3d865517d421718c195f1cbaac55b54d54"
+  f01_r2_independent_final_report_path: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-r2-final.md"
+  f01_r2_independent_final_report_commit: "59e900f0fff01268bcbe916117d670bf4eb63e49"
+  f01_r2_reviewer_minor_findings: "COORDINATOR_ONLY_GATE_FUTURE_ALL_CONSUMER_WIRING_AND_REAL_MULTI_WEBVIEW_WS02_VALIDATION"
