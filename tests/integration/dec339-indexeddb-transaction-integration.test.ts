@@ -665,3 +665,97 @@ test("WS-02 BU-02 shipping state authority adapter mirrors cursor through v2-com
     assert.equal(pointer.value.canonicalCursor, c("changes:product-cursor-mirror"));
   }
 });
+
+
+test("WS-02 BU-05 stale learned-batch cursor writer cannot overwrite newer canonical authority", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("ws02-bu05-stale-writer"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)
+  ).status, "published");
+  const writer = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const stale = await writer.loadAuthority();
+  assert.equal(stale.status, "trusted");
+  if (stale.status !== "trusted") return;
+  const current = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const saved = await current.saveAuthority({
+    ...stale.state, changeCursor: c("changes:ws02-bu05-winner"),
+  }, stale.state.persistenceRevision, stale.state.semanticGeneration);
+  assert.equal(saved.status, "saved");
+  const batch = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("ws02-bu05-stale-batch"),
+      startingToken: cursor1,
+      terminalStartToken: c("changes:ws02-bu05-loser"),
+      persistenceRevision: stale.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [],
+  };
+  const refused = await writer.appendLearnedRemoteBatch(
+    batch, stale.state.persistenceRevision, stale.state.semanticGeneration);
+  assert.equal(refused.status, "stale-persistence");
+  const restarted = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(restarted.status, "trusted");
+  if (restarted.status !== "trusted") return;
+  assert.equal(restarted.state.changeCursor, c("changes:ws02-bu05-winner"));
+  assert.equal(restarted.state.learnedRemoteBatches.length, 0);
+  assert.deepEqual(restarted.state.base, stale.state.base);
+  assert.deepEqual(restarted.state.operationIntents, stale.state.operationIntents);
+  assert.equal((await inventory.openRead()).status, "stale",
+    "stale inventory cannot authorize observations after the winning cursor write");
+  const pointer = await inventory.publicationSnapshot(fence);
+  assert.equal(pointer.status, "trusted-fence");
+  if (pointer.status === "trusted-fence") assert.equal(pointer.value.activeGeneration, null);
+});
+
+test("WS-02 BU-05 recovery of corrupted version-aware canonical state is backup-first and invalidates inventory", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("ws02-bu05-recovery-backup"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)
+  ).status, "published");
+  const bytes = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  const state = new PersistentSynchronizationStateStore(bytes);
+  const before = await state.loadAuthority();
+  assert.equal(before.status, "trusted");
+  if (before.status !== "trusted") return;
+  const oldBytes = await bytes.read();
+  assert.ok(oldBytes);
+  const originalBackup = await state.createRecoveryBackup();
+  assert.deepEqual(db.tables.get("sync-state")?.records.get(JSON.stringify(originalBackup.backupId)), oldBytes);
+  const corrupt = new TextEncoder().encode("ws02-bu05-corrupt-envelope");
+  await bytes.write(corrupt);
+  assert.equal((await inventory.openRead()).status, "stale");
+  assert.equal((await state.loadAuthority()).status, "recovery-required");
+  const restored = await state.replaceRecoveryState(before.state, {
+    expectation: "existing-pairing",
+    expectedVaultIdentity: fence.vaultIdentity,
+    expectedDeviceIdentity: fence.deviceIdentity,
+  });
+  assert.equal(restored.status, "replaced");
+  if (restored.status === "replaced") {
+    assert.deepEqual(db.tables.get("sync-state")?.records.get(JSON.stringify(restored.backup.backupId)), corrupt,
+      "recovery replacement must back up exact bad bytes before writing");
+  }
+  const restarted = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(restarted.status, "trusted");
+  if (restarted.status !== "trusted") return;
+  assert.equal(restarted.state.changeCursor, before.state.changeCursor);
+  assert.deepEqual(restarted.state.base, before.state.base);
+  assert.deepEqual(restarted.state.operationIntents, before.state.operationIntents);
+  assert.equal(restarted.state.deviceIdentity, before.state.deviceIdentity);
+  assert.equal(restarted.state.vaultIdentity, before.state.vaultIdentity);
+  assert.deepEqual(db.tables.get("sync-state")?.records.get(JSON.stringify(originalBackup.backupId)), oldBytes,
+    "pre-recovery canonical backup must remain untouched");
+  assert.equal((await inventory.openRead()).status, "stale",
+    "restoring canonical authority cannot silently reactivate a prior inventory generation");
+});

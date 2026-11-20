@@ -2041,3 +2041,30 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   bu04_review_m03: "REAL_MULTI_WEBVIEW_AND_COMPLETE_CURSOR_ROLLBACK_RECOVERY_REMAIN"
   bu04_review_m04: "BLIND_PHASE_METADATA_DISCLOSURE_LIMITATION_RETAINED"
   bu04_closeout_document: "dev/state/handoffs/dec339-ws02-bu04-accepted-closeout-2026-11-20.md"
+
+
+dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
+  status: "BUILDER_SOURCE_AND_TEST_AUTHORSHIP_COMMITTED;PHXCI_NOT_RUN;REVIEW_PENDING"
+  owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU05_CURSOR_RECOVERY_GATES"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws02-bu05-cursor-recovery-gates-20261120"
+  baseline_bu04_closeout: "5027e724765fbd915fa88714ba35b4bd97aeea99"
+  accepted_bu04_source: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
+  planning: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-recovery-gates-2026-11-20.md"
+  scope: "ADVERSARIAL_PINNED_SOFTWARE_GATE_FOR_STALE_CANONICAL_CURSOR_WRITER_AND_BACKUP_FIRST_CORRUPT_STATE_RECOVERY"
+  production_source_modified: false
+  existing_production_invariants_under_test: "PERSISTENT_STATE_CAS_AND_V2_AWARE_IDB_ATOMIC_INVALIDATION"
+  phxci_status: "NOT_RUN"
+  source_qualification_status: "NOT_QUALIFIED"
+  independent_reviewer_verdict: "NOT_REQUESTED"
+  outstanding_real_browser_webview_upgrade_gate: true
+  outstanding_complete_cursor_writer_inventory_gate: true
+  outstanding_live_scope_owner_wiring_gate: true
+  full_ws02_complete: false
+  dec339_integration_complete: false
+  inventory_activation_authorized: false
+  master_merge_authorized: false
+  next_action: "RUN_EXACT_SOURCE_SOFTWARE_ONLY_PINNED_PHXCI_THEN_FIX_ANY_FAILURE_BEFORE_REVIEW"
