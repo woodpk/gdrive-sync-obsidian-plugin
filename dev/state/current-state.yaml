@@ -1973,12 +1973,12 @@ dec339_ws02_bu03_local_hint_2026_11_20:
 
 
 dec339_ws02_bu04_hint_visibility_2026_11_20:
-  status: "BUILDER_QUALIFIED_R1_PASS;INDEPENDENT_REVIEW_PENDING;FULL_WS02_GATE_INCOMPLETE"
+  status: "INDEPENDENT_REVIEW_CORRECTION_REQUIRED_F01;FULL_WS02_GATE_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_INTEGRATION_SEQUENCE_NEXT_DEPENDENCY_SAFE_WS02_UNIT"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU04_HINT_VISIBILITY_BARRIER"
-  handoff-count: 1
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 2
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-ws02-bu04-local-hint-visibility-barrier-20261120"
   baseline_bu03_closed: "c3bfbb8cbb0aa3dbb775e524607275dac4760e1b"
   accepted_bu03_source: "3d9ea7fc7bb2c852aebf944a2b7e80462bc1cae2"
@@ -1986,7 +1986,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   scope: "IMMEDIATE_ADVISORY_CONSUMER_GUARD_DURING_ASYNC_INVALIDATION_WITH_NO_LIVE_RUNTIME_WIRING"
   phxci_status: "R1_PASS_13_OF_13;FOCUSED_634_OF_634;PRODUCT_1323_OF_1323;PHYSICAL_DISABLED"
   qualified_source_sha: "4c0cc689b9c949969f5fda82a96a14b5394e5fd0"
-  reviewer_verdict: "INDEPENDENT_BLIND_SOURCE_REVIEW_PENDING"
+  reviewer_verdict: "CORRECTION_REQUIRED_F01_FAILED_INVALIDATION_REEXPOSES_STALE_HINTS"
   actual_product_owner_wiring: "DEFERRED_UNTIL_SEPARATELY_AUTHORIZED_DORMANT_INTEGRATION"
   multi_webview_idb_proof: "REQUIRED_AND_NOT_DONE"
   remaining_cursor_rollback_recovery_gate: "INCOMPLETE"
@@ -1995,7 +1995,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   inventory_activation_authorized: false
   live_database_migration_authorized: false
   master_merge_authorized: false
-  next_action: "REVIEWER_BLIND_SOURCE_FIRST_THEN_TEN_FAMILY_AND_ORIGINAL_PHXCI_FINAL_REVIEW"
+  next_action: "BUILDER_REPAIR_FAILED_INVALIDATION_STICKY_FAIL_CLOSED_REQUALIFY_EXACT_SOURCE_WITH_PHXCI_AND_NEW_REVIEW_HANDOFF"
   qualified_source_tree: "1eb7d975f6504bfcde2cd2130eef02f0413d475a"
   phxci_r1_run_id: "76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8"
   phxci_r1_evidence_commit: "5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba"
@@ -2004,3 +2004,8 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   phxci_r1_exit_code: 0
   original_evidence_verified_on_github: true
   bu04_blind_review_scope: "IMMEDIATE_LOCAL_HINT_VISIBILITY_ONLY"
+  reviewer_blind_report_path: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-blind-source.md"
+  reviewer_blind_report_commit: "d58fec39779ade8f45828342253c9dea69e0bd01"
+  reviewer_final_report_path: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-final.md"
+  reviewer_final_report_commit: "b365c757ecb25d7e267ad68efacc212b4b819cb8"
+  reviewer_blocker: "F01_FAILED_BACKING_LOCAL_HINT_INVALIDATION_CLEARS_COORDINATOR_GATE_AND_REEXPOSES_OLD_ADVISORY_HINTS"
