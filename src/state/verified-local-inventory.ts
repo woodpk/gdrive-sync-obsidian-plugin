@@ -32,6 +32,8 @@ export class VerifiedLocalInventoryCoordinator {
       return { status: "stale", reason: "local-hint-invalidation-pending" };
     const before = await this.inventory.publicationSnapshot(fence);
     if (before.status !== "trusted-fence") return { status: before.status, reason: before.reason };
+    if (this.invalidationPending || this.invalidationJobs.size)
+      return { status: "stale", reason: "local-hint-invalidation-raced-initial-authority-read" };
     const generation = before.value.activeGeneration;
     const observedEpoch = this.localChangeEpoch;
     if (!generation) return { status: "unknown", reason: "no-established-remote-inventory-generation" };
@@ -66,6 +68,7 @@ export class VerifiedLocalInventoryCoordinator {
       const after = await this.inventory.publicationSnapshot(fence);
       if (after.status !== "trusted-fence" ||
           this.localChangeEpoch !== observedEpoch ||
+          this.invalidationPending || this.invalidationJobs.size ||
           after.value.activeGeneration !== generation ||
           after.value.canonicalCursor !== before.value.canonicalCursor ||
           after.value.persistenceRevision !== before.value.persistenceRevision ||
@@ -75,7 +78,7 @@ export class VerifiedLocalInventoryCoordinator {
       }
       const saved = await this.inventory.replaceLocalSnapshot(fence, generation, observed, true);
       if (saved.status !== "verified-observation") return { status: saved.status, reason: saved.reason };
-      if (this.localChangeEpoch !== observedEpoch) {
+      if (this.localChangeEpoch !== observedEpoch || this.invalidationPending || this.invalidationJobs.size) {
         await this.inventory.invalidateLocalSnapshot("local-change-during-snapshot-publication");
         return { status: "stale", reason: "local-observations-changed-during-snapshot-publication" };
       }
