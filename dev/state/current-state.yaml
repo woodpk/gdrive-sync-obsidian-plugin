@@ -1869,3 +1869,24 @@ dec339_ws02_storage_upgrade_2026_11_19:
   bu01_minor_finding_m02: "FULL_CURSOR_WRITER_RECOVERY_ROLLBACK_SCOPE_PENDING_IN_LATER_WS02_BU"
   bu01_minor_finding_m03: "BLIND_CONTEXT_PROVENANCE_NOTE_RETAINED_IN_INDEPENDENT_REPORT"
   bu01_continuity_task: "dev/state/handoffs/dec339-ws02-bu01-accepted-closeout-2026-11-19.md"
+
+
+dec339_ws02_bu02_v2_legacy_2026_11_20:
+  status: "BUILDER_IMPLEMENTATION_COMMITTED;PHXCI_VERIFICATION_NOT_RUN;NO_REVIEWER_HANDOFF"
+  owner_authorization: "2026-11-19_CONTINUE_NEXT_APPROVED_WS02_BU"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU02_V2_LEGACY_CURSOR"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws02-bu02-v2-legacy-cursor-safety-20261120"
+  baseline_bu01_closeout: "719e9035e3741e485f85c5471915e4039c0c4436"
+  bu01_accepted_source: "c19b8885007cfd62b954fd6cb60221fb6901e9b2"
+  planning: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu02-v2-legacy-cursor-2026-11-20.md"
+  scope: "LEGACY_RUNTIME_V2_COMPATIBLE_BYTE_STORAGE;UNFENCED_CURSOR_INVALIDATION;DURABLE_BACKUP_AND_PENDING_INTENT_PRESERVATION"
+  storage_v2_schema_upgrade_authorized_live: false
+  inventory_planner_activation_authorized: false
+  live_drive_or_vault_operations_authorized: false
+  master_or_pr157_merge_authorized: false
+  phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+  phxci_status: "NOT_RUN"
+  next_action: "EXACT_SOURCE_PHXCI_SOFTWARE_ONLY;QUALIFY_TESTS_AND_SOURCE_BEFORE_REVIEWER_HANDOFF"

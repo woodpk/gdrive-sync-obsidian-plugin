@@ -448,3 +448,151 @@ test("WS-02 appendLearnedRemoteBatch cursor writer invalidates an active invento
     assert.equal(pointer.value.canonicalCursor, nextCursor);
   }
 });
+
+
+test("WS-02 BU-02 v2-aware legacy authority reopens upgraded pairing without reactivation", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const legacy = new IndexedDbStateByteStorage("device:idb:test", factory);
+  const state = new PersistentSynchronizationStateStore(legacy);
+  const initial = createInitialAuthorityState({
+    persistenceRevision: r0, semanticGeneration: s0,
+    vaultIdentity: fence.vaultIdentity, deviceIdentity: fence.deviceIdentity,
+  });
+  assert.equal((await state.saveTrusted(initial)).status, "saved");
+  const canonicalBytes = await legacy.read();
+  assert.ok(canonicalBytes);
+  const backupKey = await legacy.backup(canonicalBytes!);
+  const inventory = new IndexedDbInventoryObservationStore("device:idb:test", factory);
+  const staged = candidate(g("ws02-bu02-legacy-rollback"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(staged), inventory).publishBaseline(fence, staged.manifest.generation)
+  ).status, "published");
+  assert.equal(db.version, 2);
+  await assert.rejects(legacy.read(), /VersionError/,
+    "v1-only rollback remains unsafe after the additive schema upgrade");
+  assert.deepEqual(db.tables.get("sync-state")?.records.get(JSON.stringify(backupKey)), canonicalBytes,
+    "v2 upgrade must retain pre-upgrade backup records");
+  const byteStorage = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  const canonical = new PersistentSynchronizationStateStore(byteStorage);
+  const loaded = await canonical.loadAuthority();
+  assert.equal(loaded.status, "trusted", "version-aware legacy mode must read the real canonical authority");
+  if (loaded.status !== "trusted") return;
+  assert.equal(loaded.state.vaultIdentity, initial.vaultIdentity);
+  assert.equal(loaded.state.deviceIdentity, initial.deviceIdentity);
+  assert.equal(loaded.state.changeCursor, cursor1);
+  assert.deepEqual(loaded.state.base, initial.base);
+  assert.deepEqual(loaded.state.operationIntents, initial.operationIntents);
+
+  const saved = await canonical.saveAuthority({
+    ...loaded.state, changeCursor: c("changes:legacy-advance"),
+  }, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
+  assert.equal(saved.status, "saved");
+  const restarted = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)
+  ).loadAuthority();
+  assert.equal(restarted.status, "trusted");
+  if (restarted.status !== "trusted") return;
+  assert.equal(restarted.state.changeCursor, c("changes:legacy-advance"));
+  assert.deepEqual(restarted.state.base, loaded.state.base);
+  assert.deepEqual(restarted.state.operationIntents, loaded.state.operationIntents);
+  assert.equal((await inventory.openRead()).status, "stale",
+    "legacy cursor advance cannot retain an actionable stale inventory");
+  const pointer = await inventory.publicationSnapshot(fence);
+  assert.equal(pointer.status, "trusted-fence");
+  if (pointer.status === "trusted-fence") {
+    assert.equal(pointer.value.activeGeneration, null);
+    assert.equal(pointer.value.canonicalCursor, c("changes:legacy-advance"));
+  }
+});
+
+test("WS-02 BU-02 stale legacy CAS does not advance cursor or invalidate an accepted inventory", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("ws02-bu02-stale-cas"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory
+  ).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const canonicalBytes = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  const stale = await canonicalBytes.read();
+  assert.ok(stale);
+  const writer = new PersistentSynchronizationStateStore(canonicalBytes);
+  const first = await writer.loadAuthority();
+  assert.equal(first.status, "trusted");
+  if (first.status !== "trusted") return;
+  assert.equal((await writer.saveAuthority({
+    ...first.state, learnedRemoteReductions: first.state.learnedRemoteReductions,
+  }, first.state.persistenceRevision, first.state.semanticGeneration)).status, "saved");
+  const stalePayload = new TextEncoder().encode("stale-writer-must-not-persist");
+  assert.equal(await canonicalBytes.compareAndSwap(stale, stalePayload), false);
+  const trusted = await writer.loadAuthority();
+  assert.equal(trusted.status, "trusted");
+  if (trusted.status === "trusted") assert.equal(trusted.state.changeCursor, cursor1);
+  const pointer = await inventory.publicationSnapshot(fence);
+  assert.equal(pointer.status, "stale",
+    "the canonical revision change must not preserve a falsely complete inventory proof");
+  assert.equal((await inventory.openRead()).status, "stale");
+  assert.notDeepEqual(await canonicalBytes.read(), stalePayload);
+});
+
+
+test("WS-02 BU-02 version-aware rollback retains a pending effect across cursor advancement", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("ws02-bu02-pending-intent"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory
+  ).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const writer = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const first = await writer.loadAuthority();
+  assert.equal(first.status, "trusted");
+  if (first.status !== "trusted") return;
+  const target = contractId<"VaultPath">("parent/pending-folder");
+  const intentId = contractId<"MutationIntentId">("ws02-bu02-pending-intent");
+  const intent = {
+    logicalKind: "single-effect" as const,
+    operationId: contractId<"OperationId">("ws02-bu02-pending-op"),
+    intentId,
+    semanticAuthority: { generation: first.state.semanticGeneration },
+    effects: [{
+      effectId: "ws02-pending-effect",
+      descriptor: {
+        kind: "local-folder-create" as const,
+        targetSide: "local" as const,
+        mutationKind: "create" as const,
+        intentId,
+        targetPath: target,
+        pathAuthority: {
+          generation: first.state.semanticGeneration,
+          targetPath: target,
+          parentPath: contractId<"VaultPath">("parent"),
+          pathComparisonKey: "parent/pending-folder",
+          expectedTarget: "absent" as const,
+        },
+      },
+      stage: "intent-persisted" as const,
+    }],
+  };
+  const recorded = await writer.persistOperationIntent(
+    intent, first.state.persistenceRevision, first.state.semanticGeneration);
+  assert.equal(recorded.status, "saved");
+  const afterIntent = await writer.loadAuthority();
+  assert.equal(afterIntent.status, "trusted");
+  if (afterIntent.status !== "trusted") return;
+  const nextCursor = c("changes:pending-effect-advance");
+  assert.equal((await writer.saveAuthority({
+    ...afterIntent.state, changeCursor: nextCursor,
+  }, afterIntent.state.persistenceRevision, afterIntent.state.semanticGeneration)).status, "saved");
+  const restart = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const loaded = await restart.loadAuthority();
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status !== "trusted") return;
+  assert.equal(loaded.state.changeCursor, nextCursor);
+  assert.deepEqual(loaded.state.operationIntents, [intent],
+    "cursor advancement cannot drop a previously committed operation intent");
+  assert.equal((await inventory.openRead()).status, "stale");
+});

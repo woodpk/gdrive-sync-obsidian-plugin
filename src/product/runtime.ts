@@ -12,7 +12,7 @@ import { createObsidianGoogleDriveBoundary } from "../drive/runtime";
 import { beginGoogleAuthorization, openAuthorizationInSystemBrowser, type AuthorizationBrowserLauncher } from "../drive/oauth-return";
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
 import { MobileVaultAccessBoundary } from "../local/mobile-vault-access-boundary";
-import { IndexedDbStateByteStorage } from "../state/indexeddb-state-storage";
+import { IndexedDbInventoryAwareStateByteStorage } from "../state/indexeddb-inventory-authority-storage";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { generateDeviceIdentity } from "../state/state-policy";
 import { BoundedAuditHistory } from "./audit-history";
@@ -254,7 +254,12 @@ export class ProductRuntime {
       expectedDeviceIdentity: deviceIdentity,
     };
     const durableState = new PersistentSynchronizationStateStore(
-      new IndexedDbStateByteStorage(pairingStorageKey("brain-google-drive-sync", current)),
+      // Legacy (non-inventory) planning remains authoritative; this
+      // version-agnostic byte adapter supports both v1 and additive v2
+      // databases and atomically invalidates stale inventory control on
+      // unfenced canonical writes. Opening it never upgrades or activates
+      // inventory and never grants an inventory-backed planning path.
+      new IndexedDbInventoryAwareStateByteStorage(pairingStorageKey("brain-google-drive-sync", current)),
       1,
       undefined,
       this.host.diagnostics,
