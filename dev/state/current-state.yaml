@@ -1926,7 +1926,7 @@ dec339_ws02_bu02_v2_legacy_2026_11_20:
 
 
 dec339_ws02_bu03_local_hint_2026_11_20:
-  status: "BU03_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;FULL_WS02_GATE_INCOMPLETE"
+  status: "BU03_INDEPENDENTLY_ACCEPTED_BUILDER_CLOSED;FULL_WS02_GATE_INCOMPLETE"
   owner_authorization: "2026-11-19_DEC339_WS02_CONTINUE_NEXT_DEPENDENCY_SAFE_BU"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU03_LOCAL_HINT_SCOPE_RESUME"
   handoff-count: 2
@@ -1946,7 +1946,7 @@ dec339_ws02_bu03_local_hint_2026_11_20:
   live_database_migration_authorized: false
   inventory_activation_authorized: false
   master_merge_authorized: false
-  next_action: "BUILDER_CLOSEOUT_BU03_CARRY_MINOR_FINDINGS_TO_NEXT_APPROVED_WS02_UNIT"
+  next_action: "WS02_BU04_REVIEW_AND_QUALIFY_REMAINING_CURSOR_ROLLBACK_RECOVERY_AND_LOCAL_HINT_LIFECYCLE_GATES"
   qualified_source_tree: "3f3f81b96c36a056f89f8e18acf74d845ea5c47e"
   phxci_r1_run_id: "747e471f-fc04-4669-b69d-b34075c1c66a"
   phxci_r1_evidence_commit: "288a05c00a0be9ecda8f23fc4945c95ebb436d91"
@@ -1962,3 +1962,11 @@ dec339_ws02_bu03_local_hint_2026_11_20:
   reviewer_final_report_commit: "02c863ad4bfd8325041f79321e8416ce74822ed5"
   reviewer_minor_findings: "LIVE_SCOPE_OWNER_WIRING_LIFECYCLE_ASYNC_INVALIDATION_TIMING_AND_FULL_WS02_RECOVERY_GATES_DEFERRED"
 
+  bu03_builder_closeout: "CLOSED_2026_11_20;NO_SOFTWARE_REQUALIFICATION"
+  bu03_accepted_sha: "3d9ea7fc7bb2c852aebf944a2b7e80462bc1cae2"
+  bu03_handoff_count_closed: 2
+  bu03_review_minor_m01: "FUTURE_SCOPE_OWNER_MUST_BIND_ALL_EFFECTIVE_POLICY_CHANGES"
+  bu03_review_minor_m02: "ASYNCHRONOUS_LIFECYCLE_INVALIDATION_NOT_INSTANTANEOUS_VISIBILITY_BARRIER"
+  bu03_review_minor_m03: "FULL_WS02_CURSOR_RECOVERY_ROLLBACK_BROWSER_TESTS_OUTSTANDING"
+  bu03_review_minor_m04: "INDEPENDENT_BLIND_INFORMATION_ISOLATION_LIMITATION_RETAINED"
+  bu03_closeout_path: "dev/state/handoffs/dec339-ws02-bu03-accepted-closeout-2026-11-20.md"

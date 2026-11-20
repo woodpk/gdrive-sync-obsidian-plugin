@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Source baseline:** accepted BU-02 closeout `b4f764fe7993b944023ef28a7f601e776d6ae13d`  
 **Branch:** `build/dec339-ws02-bu03-local-hint-invalidation-20261120`  
-**Status:** **BUILDER-QUALIFIED; independent Reviewer final acceptance PENDING.** Full WS-02/DEC-339 integration gates remain incomplete.
+**Status:** **BU-03 independently ACCEPTED; Builder closeout COMPLETE** (PASS WITH MINOR FINDINGS). Full WS-02/DEC-339 integration gates remain incomplete.
 
 ## Scope and design
 
@@ -43,3 +43,9 @@ Run the **pinned PHX-CI** exact-source software-only operator `dev/scripts/Invok
 - Original pinned PHX-CI run `747e471f-fc04-4669-b69d-b34075c1c66a`, evidence-only publication `288a05c00a0be9ecda8f23fc4945c95ebb436d91`, `dev/test-results/747e471f-fc04-4669-b69d-b34075c1c66a/`.
 - Read-back exact result: **13/13 stages PASS; focused 634/634 PASS; product 1321/1321 PASS; typecheck/build/artifact/repository PASS; exit 0; physical dispatch disabled.** Original evidence commit adds only evidence records, with no changes to source or tests.
 - This completes **Builder software qualification of BU-03 only**. Independent Reviewer blind-first source assessment and final evaluation are mandatory before acceptance. This result does not establish that a live scope owner invokes the new invalidation seam, or complete cross-WebView upgrade blocking, cursor-writer/rollback/recovery integration, or inventory planner activation.
+
+## Independent Reviewer acceptance / Builder closeout (2026-11-20)
+
+**BU-03 accepted and closed, no code change or verification repetition.** Qualified source `3d9ea7fc7bb2c852aebf944a2b7e80462bc1cae2`, tree `3f3f81b96c36a056f89f8e18acf74d845ea5c47e`; original PHX-CI run `747e471f-fc04-4669-b69d-b34075c1c66a` at evidence commit `288a05c00a0be9ecda8f23fc4945c95ebb436d91` (13/13 stages, 634/634 focused, 1,321/1,321 product PASS). Reviewer `review-brain-10` PASS WITH MINOR FINDINGS final at `02c863ad4bfd8325041f79321e8416ce74822ed5`, blind report at `fb308302f4cc001e0e9c73e93bcac78b947fcf95`. Handoff count 2, recipient BUILDER, state `9efa7e55b39077befc49db9d7fd00c5fb088b409`. Closeout does not increment handoff.
+
+Carry M-01 every effective live scope policy change requires awaited invalidation, M-02 asynchronous resume/vault-ready callback only eventually invalidates (future integrated consumers need a gate), M-03 full WS-02 cursor writer/rollback/recovery and real multi-WebView proof remain, M-04 blind-review metadata provenance caveat unchanged. No live activation, merge, migration, physical activity, install or release authorized.
