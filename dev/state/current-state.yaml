@@ -1872,12 +1872,12 @@ dec339_ws02_storage_upgrade_2026_11_19:
 
 
 dec339_ws02_bu02_v2_legacy_2026_11_20:
-  status: "BUILDER_QUALIFIED_BU02;INDEPENDENT_FINAL_REVIEW_PENDING;LARGER_WS02_GATE_INCOMPLETE"
+  status: "BU02_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;LARGER_WS02_GATE_INCOMPLETE"
   owner_authorization: "2026-11-19_CONTINUE_NEXT_APPROVED_WS02_BU"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU02_V2_LEGACY_CURSOR"
-  handoff-count: 1
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 2
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-ws02-bu02-v2-legacy-cursor-safety-20261120"
   baseline_bu01_closeout: "719e9035e3741e485f85c5471915e4039c0c4436"
   bu01_accepted_source: "c19b8885007cfd62b954fd6cb60221fb6901e9b2"
@@ -1892,7 +1892,7 @@ dec339_ws02_bu02_v2_legacy_2026_11_20:
   source_review_status: "BUILDER_SOURCE_TEST_DIFF_COMPLETE;ORIGINAL_PHXCI_R2_PASS"
   regression_scope: "V1_NO_IMPLICIT_UPGRADE;V2_LEGACY_READ_WRITE;BACKUP_PRESERVATION;PENDING_INTENT;STALE_CAS;PRODUCT_CURSOR_MIRROR"
   phxci_status: "R2_PASS;13_OF_13_STAGES;FOCUSED_634_OF_634;PRODUCT_1318_OF_1318;PHYSICAL_DISABLED"
-  next_action: "INDEPENDENT_REVIEWER_BLIND_FIRST_SOURCE_THEN_TEST_AND_PHXCI_FINAL_ASSESSMENT"
+  next_action: "BUILDER_CLOSEOUT_BU02_PRESERVE_EVIDENCE_CARRY_MINOR_FINDINGS_CONTINUE_NEXT_APPROVED_WS02_UNIT"
   phxci_r1_run_id: "f5464803-6b77-4ffd-bf9c-29cde7b4f91d"
   phxci_r1_source_sha: "2f4cdc9949ffba16465ee73a1c1e83445b4f1d55"
   phxci_r1_evidence_commit: "f0484b63cb16c2c6310ad3e52aefe19f88d4058c"
@@ -1906,7 +1906,13 @@ dec339_ws02_bu02_v2_legacy_2026_11_20:
   phxci_r2_report_path: "dev/test-results/bec72225-365c-47ae-bb87-f3336cb96fef/result.json"
   phxci_r2_original_exit_code: 0
   r2_evidence_verified_in_github: true
-  reviewer_verdict: "PENDING_INDEPENDENT_FINAL_REVIEW"
+  reviewer_verdict: "PASS_WITH_MINOR_FINDINGS_BU02_ACCEPTED"
   reviewer_submission_scope: "WS02_BU02_ONLY"
   full_ws02_gate_complete: false
   dec339_activation_complete: false
+  reviewer_blind_report_path: "dev/reviews/dec339-ws02-bu02-20261120-review-brain-10-blind-source.md"
+  reviewer_blind_report_commit: "1b7f00cd5c92038e73037d98e21c3067e45f8abc"
+  reviewer_final_report_path: "dev/reviews/dec339-ws02-bu02-20261120-review-brain-10-final.md"
+  reviewer_final_report_commit: "84f408a2fb8fea0b5e2df5389369cc5587cd8f4d"
+  reviewer_minor_findings: "REAL_CROSS_WEBVIEW_IDB_UPGRADE_SCHEDULING_AND_BROADER_WS02_CURSOR_ROLLBACK_RECOVERY_TESTS_DEFERRED"
+
