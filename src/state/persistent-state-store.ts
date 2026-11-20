@@ -745,7 +745,18 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     if (state.vaultIdentity !== context.expectedVaultIdentity || state.deviceIdentity !== context.expectedDeviceIdentity)
       return { status: "recovery-required", reason: "recovery candidate does not match the expected pairing identity" };
     if (!this.storage.compareAndSwap) return { status: "recovery-required", reason: "atomic compare-and-swap storage is required for recovery replacement" };
-    const source = await this.storage.read(); const loaded = await this.load(context); if (loaded.status !== "recovery-required") return { status: "not-recovery", reason: "current persisted state is not in a recovery condition" };
+    const source = await this.storage.read();
+    // A readable envelope with a different pairing is not corrupt-state
+    // authority for this device. Never use recovery to take over that pairing.
+    if (source) {
+      const existing = parseEnvelope(source);
+      if (existing.status === "ok" &&
+          (existing.envelope.state.vaultIdentity !== context.expectedVaultIdentity ||
+           existing.envelope.state.deviceIdentity !== context.expectedDeviceIdentity))
+        return { status: "recovery-required", reason: "persisted pairing identity differs from recovery target" };
+    }
+    const loaded = await this.load(context);
+    if (loaded.status !== "recovery-required") return { status: "not-recovery", reason: "current persisted state is not in a recovery condition" };
     const backupId = await this.storage.backup(source ?? new Uint8Array()); let sourceRevision: StateRevision | undefined;
     if (source) { const parsed = parseEnvelope(source); if (parsed.status === "ok") sourceRevision = parsed.envelope.state.stateRevision; }
     const backup: StateBackupReceipt = { backupId, ...(sourceRevision ? { sourceRevision } : {}) };

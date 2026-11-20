@@ -62,3 +62,7 @@ Owner explicitly required finishing **all** BU-05 work before any independent Re
 ### Remaining WS-02/DEC-339 gates outside this BU
 
 Real cross-WebView/browser `versionchange` upgrade blocking, complete pre-/post-migration rollback and live scope-owner/consumer integration are not demonstrated by these synthetic code-path tests. They remain separately required for full WS-02 acceptance. This BU does not waive them or authorize live database migration, activation, provider/vault activity, merge or release.
+
+### Final pre-qualification security correction
+
+The recovery identity fence also rejects a readable **existing foreign pairing** before creating a backup or replacing canonical bytes, preventing a mismatched state from being treated as ordinary corruption. A dedicated test asserts that the original record and backup count remain unchanged. This is an additional fail-closed protection, not authorization for automated recovery. The final revised source **requires new PHX-CI qualification**.

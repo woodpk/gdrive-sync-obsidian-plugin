@@ -2067,7 +2067,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   dec339_integration_complete: false
   inventory_activation_authorized: false
   master_merge_authorized: false
-  next_action: "COMPLETE_SHIPPING_CURSOR_WRITERS_RECOVERY_IDENTITY_TESTS_THEN_EXACT_SOURCE_PINNED_PHXCI_BEFORE_REVIEW"
+  next_action: "BU05_FULL_CANDIDATE_READY;RUN_SOFTWARE_ONLY_PINNED_PHXCI_AND_REPAIR_ANY_FAILURE_BEFORE_REVIEW"
   qualified_source_sha: "8d7785aa0e40bfaab3c446183422c64242aee070"
   qualified_source_tree: "d993895c7e22baaf12f62ae09693017d96a488bc"
   phxci_r1_run_id: "d8e9b739-6353-44cd-a4b0-5695c4c09228"
@@ -2093,3 +2093,4 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   cursor_writer_audit_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-writer-audit-2026-11-20.md"
   previous_phxci_pass_not_current_qualification: true
   complete_bu05_source_and_test_candidate_pending_phxci: true
+  rejected_foreign_pairing_replacement_covered: true

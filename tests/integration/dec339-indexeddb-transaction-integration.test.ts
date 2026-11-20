@@ -874,3 +874,33 @@ test("WS-02 BU-05 recovery replacement refuses wrong pairing before backup or CA
   assert.equal((await store.replaceRecoveryState(original.state, matching)).status, "replaced");
   assert.equal((await store.loadAuthority()).status, "trusted");
 });
+
+
+test("WS-02 BU-05 rejects replacing a readable foreign pairing without backup or overwrite", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  await seeded(factory);
+  const bytes = new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory);
+  const store = new PersistentSynchronizationStateStore(bytes);
+  const originalBytes = await bytes.read();
+  assert.ok(originalBytes);
+  const originalCount = db.tables.get("sync-state")?.records.size;
+  const foreignVault = contractId<"VaultIdentity">("bu05-foreign-vault");
+  const foreignDevice = contractId<"DeviceIdentity">("bu05-foreign-device");
+  const foreignCandidate = createInitialAuthorityState({
+    persistenceRevision: r0,
+    semanticGeneration: s0,
+    vaultIdentity: foreignVault,
+    deviceIdentity: foreignDevice,
+  });
+  const result = await store.replaceRecoveryState(foreignCandidate, {
+    expectation: "existing-pairing",
+    expectedVaultIdentity: foreignVault,
+    expectedDeviceIdentity: foreignDevice,
+  });
+  assert.equal(result.status, "recovery-required");
+  assert.deepEqual(await bytes.read(), originalBytes,
+    "the stored foreign pairing must not be replaced by a candidate for a different device");
+  assert.equal(db.tables.get("sync-state")?.records.size, originalCount,
+    "no backup may be created for an unapproved foreign-pairing takeover");
+});

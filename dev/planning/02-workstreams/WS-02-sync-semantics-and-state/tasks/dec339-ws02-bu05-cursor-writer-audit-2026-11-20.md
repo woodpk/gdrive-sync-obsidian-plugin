@@ -29,6 +29,10 @@
 - **R1 historical PASS is not new qualification.** The prior `d8e9b739-6353-44cd-a4b0-5695c4c09228` tested the smaller two-test candidate only. The expanded code/test candidate requires an entirely new PHX-CI software-only run and independent review *after complete implementation*.
 - **Not completed by BU-05:** genuine multi-tab/WebView blocked IndexedDB upgrade verification, full live rollback/cutover behavior, scope-owner/advisory consumer wiring, remote metadata transport seam, shadow parity and gated planner cutover. These are explicit future WS-02/WS-03/WS-05/WS-07 gates, not implicitly satisfied or waived.
 
+## Additional recovery identity boundary
+- A source envelope whose checksum is valid but whose stored vault/device identity disagrees with the proposed recovery target is **not** permission to overwrite it. The recovery method refuses before backup or CAS, even when the mismatched context would otherwise cause a recovery-required load result.
+- The BU-05 suite includes a direct foreign-pairing takeover refusal test and asserts both canonical bytes and backup record count are unchanged. This complements the corrupt-source candidate identity test and does not allow live recovery.
+
 ## Mandatory gate
 
 Run all required software verification exclusively through existing pinned repository-controlled PHX-CI in software-only mode, publish immutable evidence, repair any failure, and only then return to independent blind-first Reviewer review. No GitHub Actions, PR #157/master merge, activation, live database migration, actual Drive/vault operations, physical testing, installation or release.
