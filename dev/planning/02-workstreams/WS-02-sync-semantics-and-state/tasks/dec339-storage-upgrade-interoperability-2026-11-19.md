@@ -3,7 +3,7 @@
 **Authorized:** Owner, 2026-11-19. **Builder:** `build-brain-67`.
 **Starting SHA:** `d554b58a19f09a17354dee6f9af571ea060c9db1`.
 **Branch:** `build/dec339-ws02-storage-safety-20261119`.
-**Status:** **BUILDER-QUALIFIED (BU-01 bounded increment); independent Reviewer final acceptance PENDING.** Overall WS-02 storage-safety and DEC-339 integration gates are NOT complete.
+**Status:** **BU-01 ACCEPTED/CLOSED** (independent Reviewer PASS WITH MINOR FINDINGS on 2026-11-19). Overall WS-02 storage-safety and DEC-339 integration gates are NOT complete.
 
 ## Bounded first increment
 
@@ -52,3 +52,13 @@ Inspect and, where necessary, repair every canonical cursor writer, safe legacy/
 - **Outcome**: 13/13 stages PASS, 634/634 focused and 1313/1313 product tests PASS, repository PASS, overall PASS, physical activity disabled; no new launcher and no budget/oracle relaxation.
 - **Scope limitation**: this completed increment addresses IndexedDB connection versionchange, blocked/late open, v2 reader interoperability, canonical bytes/backup retention, and inventory invalidation for cursor changes. **It is not the entire WS-02 step-1 storage integration, v2-aware rollback gate or DEC-339 activation.** The explicit remainder above remains scheduled after independent review. The R1 S08E timing failure was not explained; the same test passed unchanged in R2 and is not represented as disproven.
 - **Mandatory independent decision**: Reviewer conducts a blind source-first review followed by ten-family source/test/evidence assessment; Builder PHX-CI PASS alone is not acceptance. Source and tests remain frozen at the SHA above. This Builder continuity record is not appropriate blind-first reading before the independent assessment is published.
+
+## BU-01 independent acceptance and Builder closeout (2026-11-19)
+
+- Independent `review-brain-10` verdict: **PASS WITH MINOR FINDINGS — BOUNDED BUILD UNIT ACCEPTED**, immutable report `dev/reviews/dec339-ws02-bu01-20261119-review-brain-10-final.md` (report commit `1401745ba4311787426c459d25da2e6b378cc01c`).
+- Feature-scoped Reviewer→Builder handoff count **2**, state commit `098bcd4288c65c3957b24da7e93b048d97ee7828`, recipient BUILDER; no new handoff for Builder-only closeout.
+- Accepted source `c19b8885007cfd62b954fd6cb60221fb6901e9b2`, tree `44e4b66a56298d17b70a2f48803728678e21fa4c`, original qualified R2 evidence `9a728c86-4f89-450d-9ef7-5c54c59c9c66` at `d9c7e01cf107d03abefa1c869d33976a75cf3fbe`. Do not rerun solely for closeout.
+- Retained M-01: genuine browser/WebView multi-context blocked-upgrade / versionchange scenarios remain unverified.
+- Retained M-02: all cursor writers, v2-aware live legacy/rollback, BASE/pending effects and recovery, local-hint scope/resume transitions remain for later WS-02 units.
+- Retained M-03: Reviewer blind-pass provenance notice preserved, not waived.
+- BU-01 is closed on its feature branch. No master/PR #157 merge, inventory planner activation, real Drive or vault operation, migration, installation or release follows from this acceptance.

@@ -1826,7 +1826,7 @@ dec339_minimal_integration_planning_2026_11_17:
 
 
 dec339_ws02_storage_upgrade_2026_11_19:
-  status: "BU01_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;DEC339_WS02_LARGER_GATE_INCOMPLETE"
+  status: "BU01_ACCEPTED_AND_BUILDER_CLOSED;DEC339_WS02_LARGER_GATE_INCOMPLETE"
   owner_authorization: "2026-11-19_EXPLICIT_DEC339_INTEGRATION_BUILDER_PROCEED_SOFTWARE_ONLY"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_STORAGE_UPGRADE_INTEROPERABILITY"
   handoff-count: 2
@@ -1856,9 +1856,16 @@ dec339_ws02_storage_upgrade_2026_11_19:
   master_or_pr157_merge_authorized: false
   inventory_activation_authorized: false
   live_provider_or_physical_authorized: false
-  next_action: "BUILDER_CLOSEOUT_BU01_CARRY_FORWARD_MINOR_FINDINGS_AND_CONTINUE_ONLY_NEXT_APPROVED_WS02_BU"
+  next_action: "WS02_BU02_V2_AWARE_LEGACY_RUNTIME_COMPATIBILITY_AND_CURSOR_WRITER_INTEGRITY"
   reviewer_blind_report_path: "dev/reviews/dec339-ws02-bu01-20261119-review-brain-10-blind-source.md"
   reviewer_blind_report_commit: "322b86b71b57b2d0b620b35e51a9aca4174054a0"
   reviewer_final_report_path: "dev/reviews/dec339-ws02-bu01-20261119-review-brain-10-final.md"
   reviewer_final_report_commit: "1401745ba4311787426c459d25da2e6b378cc01c"
   reviewer_minor_findings: "REAL_BROWSER_MULTICONTEXT_UPGRADE_AND_REMAINING_CURSOR_ROLLBACK_INTEGRATION_DEFERRED_TO_FULL_WS02"
+  bu01_builder_closeout: "ACCEPTED_AND_CLOSED_2026_11_19;NO_CODE_CHANGE_NO_REQUALIFICATION"
+  bu01_accepted_source_preserved: "c19b8885007cfd62b954fd6cb60221fb6901e9b2"
+  bu01_accepted_review: "dev/reviews/dec339-ws02-bu01-20261119-review-brain-10-final.md"
+  bu01_minor_finding_m01: "REAL_BROWSER_MULTI_CONTEXT_IDB_BLOCKED_UPGRADE_GATE_STILL_PENDING"
+  bu01_minor_finding_m02: "FULL_CURSOR_WRITER_RECOVERY_ROLLBACK_SCOPE_PENDING_IN_LATER_WS02_BU"
+  bu01_minor_finding_m03: "BLIND_CONTEXT_PROVENANCE_NOTE_RETAINED_IN_INDEPENDENT_REPORT"
+  bu01_continuity_task: "dev/state/handoffs/dec339-ws02-bu01-accepted-closeout-2026-11-19.md"
