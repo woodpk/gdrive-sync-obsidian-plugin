@@ -249,3 +249,104 @@ test("WS-02 BU-03 resume and vault-ready invalidate local hints while preserving
     assert.equal((await store.readLocalHint(fence, file)).status, "stale");
   } finally { unsubscribe(); }
 });
+
+
+test("WS-02 BU-04 resume immediately hides advisory hints while IndexedDB invalidation is pending", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("bu04-async-resume"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const note = path("notes/inflight.md");
+  let resume: ((event: import("../../src/contracts").LocalLifecycleEvent) => void) | undefined;
+  let release: (() => void) | undefined;
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({ entries: [{
+      status: "present" as const, side: "local" as const, path: note,
+      entityKind: "file" as const, stability: "stable" as const,
+    }], completeness: { status: "complete" as const } }),
+    onChange: () => () => undefined,
+    onLifecycle: listener => { resume = listener; return () => { resume = undefined; }; },
+  };
+  let hold = false;
+  const proxy = {
+    publicationSnapshot: (...args: Parameters<typeof store.publicationSnapshot>) => store.publicationSnapshot(...args),
+    replaceLocalSnapshot: (...args: Parameters<typeof store.replaceLocalSnapshot>) => store.replaceLocalSnapshot(...args),
+    readLocalHint: (...args: Parameters<typeof store.readLocalHint>) => store.readLocalHint(...args),
+    invalidateLocalSnapshot: async (reason: string) => {
+      if (hold) await new Promise<void>(resolve => { release = resolve; });
+      await store.invalidateLocalSnapshot(reason);
+    },
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, proxy, () => true);
+  const unsubscribe = coordinator.subscribe();
+  try {
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+    hold = true;
+    resume?.({ kind: "resume" });
+    assert.equal((await store.readLocalHint(fence, note)).status, "advisory",
+      "backing database is intentionally still stale while its invalidation is blocked");
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "stale",
+      "consumer-visible advisory hint must be refused immediately on the event");
+    assert.equal((await coordinator.refresh(fence)).status, "stale",
+      "refresh is barred until the invalidation transaction completes");
+    assert.ok(release);
+    hold = false;
+    release();
+    for (let i = 0; i < 12; i++) {
+      if ((await store.readLocalHint(fence, note)).status === "stale") break;
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "stale");
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    assert.equal((await coordinator.readAdvisoryHint(fence, note)).status, "advisory");
+    const remote = await store.openRead();
+    assert.equal(remote.status, "verified-observation");
+    if (remote.status === "verified-observation") await remote.value.release();
+  } finally { unsubscribe(); release?.(); }
+});
+
+test("WS-02 BU-04 event racing an in-flight hint read cannot expose the old observation", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const store = await seeded(factory);
+  const baseline = candidate(g("bu04-hint-read-race"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(simulatedBaseline(baseline), store)
+    .publishBaseline(fence, baseline.manifest.generation)).status, "published");
+  const note = path("notes/raced.md");
+  let changed: ((event: import("../../src/contracts").LocalVaultChange) => void) | undefined;
+  let releaseRead: (() => void) | undefined;
+  let enteredRead: (() => void) | undefined;
+  const readEntered = new Promise<void>(resolve => { enteredRead = resolve; });
+  const local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle"> = {
+    enumerate: async () => ({ entries: [{
+      status: "present" as const, side: "local" as const, path: note,
+      entityKind: "file" as const, stability: "stable" as const,
+    }], completeness: { status: "complete" as const } }),
+    onChange: listener => { changed = listener; return () => { changed = undefined; }; },
+    onLifecycle: () => () => undefined,
+  };
+  const proxy = {
+    publicationSnapshot: (...args: Parameters<typeof store.publicationSnapshot>) => store.publicationSnapshot(...args),
+    replaceLocalSnapshot: (...args: Parameters<typeof store.replaceLocalSnapshot>) => store.replaceLocalSnapshot(...args),
+    invalidateLocalSnapshot: (reason: string) => store.invalidateLocalSnapshot(reason),
+    readLocalHint: async (...args: Parameters<typeof store.readLocalHint>) => {
+      const previous = await store.readLocalHint(...args);
+      enteredRead?.();
+      await new Promise<void>(resolve => { releaseRead = resolve; });
+      return previous;
+    },
+  };
+  const coordinator = new VerifiedLocalInventoryCoordinator(local, proxy, () => true);
+  const unsubscribe = coordinator.subscribe();
+  try {
+    assert.equal((await coordinator.refresh(fence)).status, "recorded");
+    const pending = coordinator.readAdvisoryHint(fence, note);
+    await readEntered;
+    changed?.({ kind: "modified", path: note });
+    releaseRead?.();
+    assert.equal((await pending).status, "stale");
+  } finally { unsubscribe(); releaseRead?.(); }
+});

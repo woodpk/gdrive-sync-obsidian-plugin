@@ -1970,3 +1970,29 @@ dec339_ws02_bu03_local_hint_2026_11_20:
   bu03_review_minor_m03: "FULL_WS02_CURSOR_RECOVERY_ROLLBACK_BROWSER_TESTS_OUTSTANDING"
   bu03_review_minor_m04: "INDEPENDENT_BLIND_INFORMATION_ISOLATION_LIMITATION_RETAINED"
   bu03_closeout_path: "dev/state/handoffs/dec339-ws02-bu03-accepted-closeout-2026-11-20.md"
+
+
+dec339_ws02_bu04_hint_visibility_2026_11_20:
+  status: "BUILDER_IMPLEMENTATION_AUTHORED;PHXCI_NOT_RUN;INDEPENDENT_REVIEW_NOT_REQUESTED"
+  owner_authorization: "2026-11-19_APPROVED_DEC339_INTEGRATION_SEQUENCE_NEXT_DEPENDENCY_SAFE_WS02_UNIT"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU04_HINT_VISIBILITY_BARRIER"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws02-bu04-local-hint-visibility-barrier-20261120"
+  baseline_bu03_closed: "c3bfbb8cbb0aa3dbb775e524607275dac4760e1b"
+  accepted_bu03_source: "3d9ea7fc7bb2c852aebf944a2b7e80462bc1cae2"
+  plan: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu04-advisory-hint-visibility-2026-11-20.md"
+  scope: "IMMEDIATE_ADVISORY_CONSUMER_GUARD_DURING_ASYNC_INVALIDATION_WITH_NO_LIVE_RUNTIME_WIRING"
+  phxci_status: "NOT_RUN"
+  qualified_source_sha: null
+  reviewer_verdict: "NOT_REQUESTED"
+  actual_product_owner_wiring: "DEFERRED_UNTIL_SEPARATELY_AUTHORIZED_DORMANT_INTEGRATION"
+  multi_webview_idb_proof: "REQUIRED_AND_NOT_DONE"
+  remaining_cursor_rollback_recovery_gate: "INCOMPLETE"
+  full_ws02_gate_complete: false
+  dec339_integration_complete: false
+  inventory_activation_authorized: false
+  live_database_migration_authorized: false
+  master_merge_authorized: false
+  next_action: "PINNED_PHXCI_R1_SOFTWARE_ONLY_THEN_INDEPENDENT_REVIEW_IF_PASS"

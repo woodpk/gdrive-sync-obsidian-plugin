@@ -18,14 +18,18 @@ export type LocalInventoryRefreshResult =
 /** The caller supplies the same effective in-scope path policy as ordinary snapshot assembly. */
 export class VerifiedLocalInventoryCoordinator {
   private localChangeEpoch = 0;
+  private invalidationPending = false;
+  private invalidationJobs = new Set<Promise<void>>();
   constructor(
     private readonly local: Pick<LocalVaultPort, "enumerate" | "onChange" | "onLifecycle">,
     private readonly inventory: Pick<IndexedDbInventoryObservationStore,
-      "publicationSnapshot" | "replaceLocalSnapshot" | "invalidateLocalSnapshot">,
+      "publicationSnapshot" | "replaceLocalSnapshot" | "invalidateLocalSnapshot" | "readLocalHint">,
     private readonly included: (path: VaultPath) => boolean,
   ) {}
 
   async refresh(fence: InventoryIdentityFence): Promise<LocalInventoryRefreshResult> {
+    if (this.invalidationPending || this.invalidationJobs.size)
+      return { status: "stale", reason: "local-hint-invalidation-pending" };
     const before = await this.inventory.publicationSnapshot(fence);
     if (before.status !== "trusted-fence") return { status: before.status, reason: before.reason };
     const generation = before.value.activeGeneration;
@@ -87,17 +91,42 @@ export class VerifiedLocalInventoryCoordinator {
    * changes. A cache published for an old scope must not be reused as a hint
    * for newly included or excluded paths. Canonical BASE remains untouched.
    */
-  async invalidateForScopeChange(): Promise<void> {
+  private trackInvalidation(reason: string): Promise<void> {
     this.localChangeEpoch++;
-    await this.inventory.invalidateLocalSnapshot("effective-local-scope-changed");
+    this.invalidationPending = true;
+    const job = this.inventory.invalidateLocalSnapshot(reason);
+    const tracked = job.finally(() => {
+      this.invalidationJobs.delete(tracked);
+      this.invalidationPending = this.invalidationJobs.size > 0;
+    });
+    this.invalidationJobs.add(tracked);
+    return tracked;
+  }
+
+  async invalidateForScopeChange(): Promise<void> {
+    await this.trackInvalidation("effective-local-scope-changed");
+  }
+
+  /**
+   * Consumer boundary for advisory hints: an event invalidates visibility
+   * synchronously before the IndexedDB transaction finishes. This result
+   * never grants mutation, absence or BASE authority.
+   */
+  async readAdvisoryHint(fence: InventoryIdentityFence, path: VaultPath):
+    ReturnType<IndexedDbInventoryObservationStore["readLocalHint"]> {
+    if (this.invalidationPending || this.invalidationJobs.size)
+      return { status: "stale", reason: "local-hint-invalidation-pending" };
+    const epoch = this.localChangeEpoch;
+    const hint = await this.inventory.readLocalHint(fence, path);
+    if (this.localChangeEpoch !== epoch || this.invalidationPending || this.invalidationJobs.size)
+      return { status: "stale", reason: "local-hint-invalidation-raced-read" };
+    return hint;
   }
 
   /** Invalidate hints promptly on file events and on resume, without affecting canonical state. */
   subscribe(): () => void {
     const invalidate = () => {
-      this.localChangeEpoch++;
-      void this.inventory.invalidateLocalSnapshot("local-observation-may-be-stale")
-        .catch(() => undefined);
+      void this.trackInvalidation("local-observation-may-be-stale").catch(() => undefined);
     };
     const offChange = this.local.onChange(() => invalidate());
     const offLifecycle = this.local.onLifecycle(event => {
