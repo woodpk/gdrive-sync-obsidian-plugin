@@ -1973,7 +1973,7 @@ dec339_ws02_bu03_local_hint_2026_11_20:
 
 
 dec339_ws02_bu04_hint_visibility_2026_11_20:
-  status: "F01_CORRECTIVE_R2_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;FULL_WS02_GATE_INCOMPLETE"
+  status: "BU04_F01_RESOLVED_INDEPENDENTLY_ACCEPTED_BUILDER_CLOSED;FULL_WS02_GATE_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_INTEGRATION_SEQUENCE_NEXT_DEPENDENCY_SAFE_WS02_UNIT"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU04_HINT_VISIBILITY_BARRIER"
   handoff-count: 4
@@ -1995,7 +1995,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   inventory_activation_authorized: false
   live_database_migration_authorized: false
   master_merge_authorized: false
-  next_action: "BUILDER_CLOSEOUT_ACCEPTED_BU04_CARRY_MINOR_FINDINGS_TO_NEXT_APPROVED_WS02_UNIT"
+  next_action: "WS02_BU05_CURSOR_WRITER_AND_RECOVERY_INVARIANT_AUDIT_AND_QUALIFICATION"
   qualified_source_tree: "14e2d7aa2d0507abb60b2aed5e7155fe409795ac"
   phxci_r1_run_id: "76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8"
   phxci_r1_evidence_commit: "5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba"
@@ -2031,3 +2031,13 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
   f01_r2_independent_final_report_path: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-r2-final.md"
   f01_r2_independent_final_report_commit: "59e900f0fff01268bcbe916117d670bf4eb63e49"
   f01_r2_reviewer_minor_findings: "COORDINATOR_ONLY_GATE_FUTURE_ALL_CONSUMER_WIRING_AND_REAL_MULTI_WEBVIEW_WS02_VALIDATION"
+  bu04_builder_closeout: "COMPLETE_2026_11_20;NO_SOFTWARE_REQUALIFICATION"
+  bu04_accepted_source_sha: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
+  bu04_accepted_source_tree: "14e2d7aa2d0507abb60b2aed5e7155fe409795ac"
+  bu04_accepted_review: "dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-r2-final.md"
+  bu04_f01_disposition: "RESOLVED_AT_ACCEPTED_R2_SOURCE"
+  bu04_review_m01: "ALL_FUTURE_CONSUMERS_MUST_ROUTE_VIA_COORDINATOR_OR_EQUIVALENT_CROSS_CONTEXT_GUARD"
+  bu04_review_m02: "ALL_EFFECTIVE_SCOPE_CHANGES_MUST_BE_NOTIFIED_AND_AWAITED_BEFORE_HINT_USE"
+  bu04_review_m03: "REAL_MULTI_WEBVIEW_AND_COMPLETE_CURSOR_ROLLBACK_RECOVERY_REMAIN"
+  bu04_review_m04: "BLIND_PHASE_METADATA_DISCLOSURE_LIMITATION_RETAINED"
+  bu04_closeout_document: "dev/state/handoffs/dec339-ws02-bu04-accepted-closeout-2026-11-20.md"

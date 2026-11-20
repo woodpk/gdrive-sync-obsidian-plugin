@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu04-local-hint-visibility-barrier-20261120`  
 **Baseline:** BU-03 independently accepted/Builder closed `c3bfbb8cbb0aa3dbb775e524607275dac4760e1b`.  
-**Status:** **F-01 corrective source R2 BUILDER-QUALIFIED; independent Reviewer reassessment PENDING.** Previous independent verdict remains CORRECTION REQUIRED until a new accepted verdict. Full WS-02 and DEC-339 integration remain incomplete.
+**Status:** **CORRECTED BU-04 ACCEPTED AND BUILDER CLOSED** — F-01 RESOLVED; independent PASS WITH MINOR FINDINGS on corrected R2. Full WS-02 and DEC-339 integration remain incomplete.
 
 ## Bounded reason and decision
 
@@ -64,3 +64,12 @@ This Build Unit introduces a **coordinator-mediated advisory read seam** `readAd
 - **History preserved:** R1 source `4c0cc689b9c949969f5fda82a96a14b5394e5fd0`, original R1 PASS `76cc9c7b-23f4-4c5e-925b-ea08e6b2d1f8` at `5e4ea101cc3e3b7f3bdafc4346fd5a587f11acba`, and frozen F-01 CORRECTION REQUIRED reports at `d58fec39779ade8f45828342253c9dea69e0bd01` / `b365c757ecb25d7e267ad68efacc212b4b819cb8` remain unchanged.
 - **New role boundary:** Builder→Reviewer feature handoff count **3**, for an independent blind-first assessment of exact corrected source, then the mandatory ten-family and original PHX-CI R2 evidence review. This handoff does not waive F-01 or claim independent acceptance.
 - **Remaining barriers:** No active coordinator/runtime integration, live effective-scope owner wiring, multi-WebView IndexedDB proof, full cursor/rollback/recovery integration, master merge or DEC-339 activation.
+
+## Corrected BU-04 accepted Builder closeout (2026-11-20)
+
+- Reviewer independent R2 **PASS WITH MINOR FINDINGS; F-01 RESOLVED**, exact source `8850dab0970862783f4a7e5beb4f214b83dd4acc`, tree `14e2d7aa2d0507abb60b2aed5e7155fe409795ac`.
+- Independent blind report `dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-r2-blind-source.md` at `fe759f3d865517d421718c195f1cbaac55b54d54`; final at `dev/reviews/dec339-ws02-bu04-20261120-review-brain-10-r2-final.md` at `59e900f0fff01268bcbe916117d670bf4eb63e49`. Reviewer→Builder handoff **count 4** state `588922089c1e9f4b6108ad04b809e7503f0ffdf0`.
+- Original accepted R2 PHX-CI `f48d6511-ec06-405c-8738-f8b91662b0d1` evidence at `7c7c2877ddfb290f3581df414f8759d5edf1d989`: 13/13 stages, 634/634 focused, 1326/1326 product PASS. No unnecessary rerun.
+- Historical R1 source/PHX-CI PASS, earlier Reviewer CORRECTION REQUIRED F-01, and all independent reports/evidence remain immutable and preserved. The R1 PASS did not override the historical rejection.
+- Deferred: all advisory-hint readers must use the coordinator (or equivalent cross-context gate), all effective scope policy changes must notify/await invalidation, genuine multi-WebView IndexedDB versionchange/blocking and remaining canonical cursor/rollback/recovery integration remain. Blind-phase metadata limitation remains recorded.
+- **No master/PR #157 merge, activation, schema upgrade on devices, Drive/vault operation, physical verification, installation, release or promotion authorized.**
