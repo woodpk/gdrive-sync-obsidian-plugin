@@ -6,6 +6,26 @@ This artifact gives canonical requirement-family traceability from the accepted 
 
 The BRAIN product target specification contains **190 normative requirement/invariant IDs** across the families listed below. References to `DEC-###` inside that specification are decision citations, not additional target requirements. The BVP subsystem specification contains **77 BVP requirement/invariant IDs**.
 
+## DEC-339 integration traceability (2026-11-17)
+
+[Target Specification §7.9](target-system-specification.md) adds **no new numbered requirement family**. WS-02 owns the **per-device LOCAL file/folder inventory hints**, remote-observation storage, atomic cursor and rollback; WS-03 owns Drive observation/provenance; WS-05 owns phased shadow, observation-only and default-off product integration; WS-07 owns direct BVP operational scenarios while PHX-CI qualifies changed software (DEC-338/350), with WS-06 resource evidence where required. D339-06 targeted executor proof remains a separately gated future objective. See the [single integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). The 190 existing product requirement IDs and accepted historical phase scopes are unchanged.
+
+## DEC-362 stable-ID content-update correction traceability (2026-11-18)
+
+DEC-362 adds **no new product requirement ID**; it corrects implementation back into conformity with existing authority. Primary requirements are:
+
+- `REM-006` persistent stable Google Drive identity;
+- `PLAN-005`/`PLAN-006` stale-plan and remote-change revalidation;
+- `CHANGE-002` stable identity + revision/content evidence for change truth;
+- `STATE-004`, `STATE-009`, `STATE-010`, `STATE-013` remote identity, verified durability, uncertain-operation classification and conservative reconstruction;
+- `XFER-001` and `XFER-004` verify-before-commit and safe/idempotent update semantics;
+- `CONFLICT-001`, `CONFLICT-002`, `CONFLICT-011` three-way merge, clean merge and normal propagation;
+- `MOVE-001`/`MOVE-002` reinforce the system-wide stable-identity model;
+- Target Specification §4.3 expressly requires updating the **existing remote object where appropriate**.
+
+**Ownership:** WS-03 owns the same-ID Drive update primitive and provider verification; WS-05 owns authoritative executor/durable-intent/recovery/merge integration and cross-device convergence. Exact-source PHX-CI and independent review are required before DEC-339 planner cutover. Canonical task: [stable Drive-ID content-update correction](../02-workstreams/WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md).
+
+
 ## Product requirement families
 
 - `SYS-*`: 8

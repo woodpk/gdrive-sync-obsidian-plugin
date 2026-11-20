@@ -16,7 +16,7 @@ The frozen shared contracts established by WS-01 are inherited. This workstream 
 - `INV-002`, `INV-010`, `INV-011`, and `INV-014` at the Drive/auth boundary.
 
 
-## Approved Drive metadata-inventory boundary (planning only)
+## Approved Drive metadata-inventory boundary (dormant software; cutover pending)
 
 WS-03 provides exact managed-root/domain-scoped Google Drive file/folder ID, parent, revision, provenance, completeness and Changes API evidence for Target Specification §7.9. Drive permits same-name siblings; `files.generateIds` and creation with a reserved ID protect retry identity, **not** name/parent uniqueness. The existing managed-root, `drive.file` scope, duplicate-path detection, uncertain-outcome recovery and full reconciliation remain mandatory. Reuse proven mappings and narrow ID reads instead of repeated broad traversal only where completeness, uniqueness, current authority and convergence are preserved; record request attribution and validate equivalence through PHX-CI before optimization.
 
@@ -26,10 +26,16 @@ Phase 1 only. Phase 3 may execute in parallel with Phases 2 and 4.
 
 Repository-specific implementation mechanics remain engineering discretion only within these fixed ownership and invariant boundaries.
 
-## DEC-339 detailed design — pending independent architecture review
+## DEC-362 stable remote identity correction (2026-11-18)
 
-See `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. WS-03 owns managed-root/account/domain-verified two-domain baseline capture with pre-scan Changes token and post-scan catch-up; remote ID/parent/name/revision/provenance reads; paginated Changes classification with identity continuity; duplicate-sibling-aware targeted occupancy and convergence observations; and explicit partial/inaccessible/out-of-domain outcomes. It does not own the IndexedDB authority/CAS implementation or declare BASE/deletions. A reserved Drive ID is **not** a path-occupancy proof. Shared typed boundary is supplied first by WS-02 D339-01.
+For an already-established managed file, the Drive boundary MUST use a same-object content update and preserve the established Google Drive file ID/`remoteObjectId`. Pre-generated/reserved IDs are for genuinely new object creation and retry identity, not routine replacement of an existing logical file. Before mutation, revalidate exact object identity and applicable revision/content preconditions; after mutation, verify the **same ID** with the intended resulting revision/content before authoritative state commit. Stale revision/identity, access loss, concurrent modification or ambiguous network outcome remains fail-closed and recovery-owned. Path/name equality is never authority to adopt a different ID.
 
+The historical `immutable-candidate-preservation` replacement protocol is therefore nonconforming for ordinary existing-file content updates. This WS-03 correction is a hard prerequisite to DEC-339 planner cutover. Canonical corrective task: [stable Drive-ID content-update correction](../WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md).
+
+
+## DEC-339 implementation boundary (2026-11-17)
+
+The read-only `inventory-metadata-source.ts` and `verified-metadata-inventory-reader.ts` already exist dormant. WS-03's remaining contribution is a **narrow interface to the existing production-authenticated Drive transport** and equivalence evidence for baseline, Changes pagination, stable ID/parent identity, root-wide provenance and explicit inaccessible/unknown outcomes. No new OAuth client, permission or mutation authority. Follow the [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md).
 
 ## Boundary clarification: DEC-357 Windows BVP OAuth is WS-07-only (2026-10-28)
 

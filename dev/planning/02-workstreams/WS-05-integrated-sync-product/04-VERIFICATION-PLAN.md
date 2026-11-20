@@ -12,8 +12,28 @@
 
 ## Verification authority
 
-Authoritative executable acceptance is through PHX-CI under DEC-334. Workstream-specific tests, repository checks, architecture checks, build checks, and artifacts are evidence consumed by PHX-CI rather than independent validation authorities.
+Authoritative software-change acceptance is through the pinned PHX-CI under **DEC-338**. Workstream-specific tests, repository checks, architecture checks, build checks, and artifacts are evidence consumed by PHX-CI rather than independent validation authorities.
 
 ## Whole-project evidence relationship
 
 See `../../03-verification/verification-plan.md` and `../requirement-workstream-coverage.md` for cross-workstream evidence ownership and target requirement coverage.
+
+## DEC-362 integrated regression evidence (2026-11-18)
+
+Before DEC-339 planner cutover, integration evidence must prove all of the following with production planner/executor/state semantics:
+
+- Windows-originated ordinary update retains the established remote ID and the receiving device converges to the new content;
+- opposite-direction ordinary update likewise preserves the same ID;
+- representative concurrent non-overlapping text edits clean-merge and converge while preserving the established remote ID;
+- stale plan/revision, remote replacement by an unrecognized ID, same-name sibling ambiguity and concurrent provider mutation fail closed or replan;
+- interruption/ambiguous network outcome plus restart recovers against the exact established ID without creating/adopting a replacement;
+- post-effect state/BASE/remoteMappings retain the same logical remote identity while revision/content evidence advances;
+- Changes/inventory observation sees a content/revision transition on the same ID, not a manufactured remove/create identity transition;
+- no regression to true creates, rename/move identity preservation, trash/delete recovery, first-sync union, conflicts, or D339 fallback behavior.
+
+Use the mandatory Builder test families where materially applicable: nominal; negative/boundary; legal/forbidden state transitions; retry/recovery/idempotency; concurrency/order/races; persistence/restart/data integrity; identity/auth/security/trust; contracts/integration/backward compatibility; architecture/ownership/invariants; end-to-end/fail-closed/destructive safety. Changed software must pass exact-source PHX-CI and independent review before the DEC-339 integration sequence proceeds.
+
+
+## DEC-339 integration-specific evidence (2026-11-17)
+
+Verify **two distinct preactivation stages**: (1) storage-only shadow/local-hint capture with no behavioral authority and (2) observation-only baseline plus Changes comparison without inventory-based dispatch. Compare legacy versus inventory-backed LOCAL/REMOTE/BASE snapshots, planner operations and destructive safety on identical inputs: **exact equivalence** for complete/unambiguous cases and **never more permissive** for ambiguous/partial cases. Verify fresh local enumeration remains authoritative despite persisted hints; cover cursor drift, provenance, incomplete scopes, restart/recovery, rollback-aware fallback and full reconciliation. Measure actual request counts/latency against the **existing incremental** path and relevant resource budgets. Qualify software through PHX-CI (DEC-338); conduct BVP operational scenarios **directly** (DEC-350) using Windows-first simulation (DEC-347). Physical iOS remains unverified without Owner authorization. D339-06 executor targeted reads remain a separate future proof gate. See [the integration plan](tasks/dec339-inventory-production-integration-2026-11-17.md).

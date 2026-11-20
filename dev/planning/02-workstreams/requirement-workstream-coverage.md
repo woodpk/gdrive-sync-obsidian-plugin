@@ -4,6 +4,17 @@
 
 This is the canonical whole-system coverage artifact required by the workstream standard. It preserves the accepted product requirement-to-phase matrix by mapping Phase 1–6 directly to WS-01–WS-06 and preserves the accepted BVP requirement-to-phase matrix inside WS-07.
 
+## DEC-339 cross-workstream ownership (2026-11-17)
+
+Target Specification §7.9 is covered by **WS-02** local and remote inventory/storage/cursor safety, **WS-03** authenticated Drive metadata and Changes, **WS-05** existing product assembler/controller integration through isolated shadow, observation-only and default-off planner cutover, **WS-07** direct BVP operational scenarios plus PHX-CI changed-software qualification (DEC-338/350), and relevant **WS-06** resource hardening. Deferred D339-06 targeted executor read verification remains in the original future scope. Use the [single WS-05 integration task](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). No new workstream, second execution engine or normative requirement ID.
+
+## DEC-362 stable-ID correction ownership (2026-11-18)
+
+DEC-362 is a corrective implementation of existing requirements, not a new workstream or requirement family. **WS-03** owns existing-object Google Drive mutation with persistent `remoteObjectId`, exact pre-/post-provider verification and retry-safe uncertain-outcome handling. **WS-05** owns authoritative executor, durable-intent/recovery, clean-merge propagation and cross-device convergence over that corrected primitive. **WS-02** remains owner of state/BASE semantics consumed by the correction; **WS-07/PHX-CI** provide their existing operational/software qualification roles without a new verification architecture.
+
+The [stable Drive-ID corrective task](WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md) is a hard prerequisite to the [DEC-339 production inventory integration](WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) planner-cutover/activation stages.
+
+
 ## Product Requirement-to-Workstream Coverage
 
 The table assigns every normative target-system requirement family to the phase or phases responsible for implementing it. WS-06 provides final construction verification for all families.

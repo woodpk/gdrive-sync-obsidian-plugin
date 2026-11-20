@@ -15,8 +15,12 @@
 
 ## Verification authority
 
-Authoritative executable acceptance is through PHX-CI under DEC-334. Workstream-specific tests, repository checks, architecture checks, build checks, and artifacts are evidence consumed by PHX-CI rather than independent validation authorities.
+Authoritative software-change acceptance is through the pinned PHX-CI under **DEC-338**. Workstream-specific tests, repository checks, architecture checks, build checks, and artifacts are evidence consumed by PHX-CI rather than independent validation authorities.
 
 ## Whole-project evidence relationship
 
 See `../../03-verification/verification-plan.md` and `../requirement-workstream-coverage.md` for cross-workstream evidence ownership and target requirement coverage.
+
+## DEC-339 integration-specific evidence (2026-11-17)
+
+Through existing PHX-CI, prove v1/v2 upgrade, blocked/version-mismatched opens, backup and tested rollback-aware legacy mode, cursor CAS/writer races, interrupted publication, preserved BASE/intents and safe invalidation. Also verify `VerifiedLocalInventoryCoordinator` captures **all in-scope local file/folder hints** from fresh enumeration, invalidates on file change/resume/scope or generation drift, and **never** treats unreadable/absent hints as authoritative deletion or stability evidence. The [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) defines the dependent cutover gates. This documentation update does not execute tests or authorize activation.

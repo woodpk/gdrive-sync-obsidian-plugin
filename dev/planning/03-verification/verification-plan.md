@@ -2,7 +2,7 @@
 
 ## Authority and execution model
 
-PHX-CI is the exclusive authoritative executable verification system under DEC-334. Repository-controlled checks may be consumed by PHX-CI, but they do not become independent acceptance authorities. GitHub Actions are prohibited for BVP acceptance.
+The pinned PHX-CI is the exclusive **software-change qualification** system under DEC-338. Separate BVP **operational** test execution follows DEC-350 and runs BVP directly, not through PHX-CI. Repository-controlled checks may be consumed by PHX-CI, but they do not become independent acceptance authorities. GitHub Actions are prohibited for BVP acceptance.
 
 Verification must preserve exact source identity, run identity, PHX-CI runtime/framework identity, stage results, repository checks, build/artifact results, and final classification. Historical finalized run evidence belongs under `dev/test-results/<runId>/`.
 
@@ -80,9 +80,12 @@ The BVP is complete only when objective evidence proves all of the following.
 
 WS-06 and WS-07 prepare construction evidence and Stage-3 readiness. Stage 3 remains an independent product/system validation activity and is not satisfied merely by Stage-2A construction verification.
 
-## Future metadata-inventory architecture verification (DEC-339)
+## DEC-339 dormant-software integration verification (2026-11-17)
 
-Target Specification §7.9 is owned by WS-02 (durable inventory/BASE separation, restart and migration), WS-03 (Drive ID/parent/provenance and complete/incremental observations), WS-05 (safe production planning/execution integration), and WS-07 (PHX-CI-consumed deterministic and appropriate physical evidence). Require exact safety parity for duplicate identities, invalid/stale change cursors, partial enumeration, multi-device moves/deletions, uncertain outcomes and crashes, plus bounded iOS memory/storage. Quantify per-operation request count/latency before and after; targeted reads may replace full-tree passes only with proven equivalent authority, uniqueness and convergence. No live-run authorization follows from this planning update.
+The [single WS-05 integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) assigns WS-02 v1/v2 compatibility, local file/folder hints, rollback and atomic inventory+cursor enforcement; WS-03 unchanged authenticated `drive.file` metadata/Changes and provenance; WS-05 **isolated storage-only shadow → observation-only comparison → default-off planner cutover**, preserving the existing planner/executor, full fallback and recovery.
+
+**Changed-software qualification** uses exact-source PHX-CI (DEC-338), followed by independent blind-first Reviewer acceptance; source-bound evidence belongs in `dev/test-results/<runId>/`. **Operational BVP scenarios** run the existing BVP interface directly (DEC-350), with Windows-first virtual iPhone/iPad simulation (DEC-347), and do **not** count as real iOS/physical evidence. Compare equivalent inventory-on/off safety and actual request/latency measurements **against the active incremental Changes path**, not only full-tree enumeration. Resource/physical behavior not demonstrated remains explicitly unverified. D339-06 targeted executor reads are **deferred, not cancelled**, and require a separate proof/activation gate. DEC-340-01 verification-integrity, S09/`data.json`, exact-artifact promotion and any physical/live migration/release approvals remain independent unresolved-or-separately-verified gates; recheck current authoritative status before activation. This plan grants no execution authority.
+
 
 ## WS-07 DEC-357 Windows OAuth controller — current software-only verification gate
 
