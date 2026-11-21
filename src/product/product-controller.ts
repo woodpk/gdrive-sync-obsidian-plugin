@@ -47,12 +47,17 @@ export async function persistLearnedRemoteBatch(
   if (existing && (existing.checkpoint.startingToken !== batch.checkpoint.startingToken ||
       existing.checkpoint.terminalStartToken !== batch.checkpoint.terminalStartToken))
     throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch ID was replayed with incompatible cursor tokens");
+  // The v1.1 authority metadata read model does not expose the canonical
+  // change cursor. Only the trusted state store can authorize that comparison.
+  const canonical = await options.stateStore.load(options.stateContext);
+  if (canonical.status !== "trusted")
+    throw new SnapshotAssemblyError("recovery-required", "trusted canonical cursor state is unavailable during REMOTE batch learning");
   const latestLearnedToken = loaded.state.learnedRemoteBatches.at(-1)?.checkpoint.terminalStartToken;
-  const validPredecessor = latestLearnedToken ?? loaded.state.changeCursor;
+  const validPredecessor = latestLearnedToken ?? canonical.state.changeCursor;
   if (!existing && validPredecessor !== batch.checkpoint.startingToken)
     throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch starts from an unrelated durable cursor");
-  if (existing && loaded.state.changeCursor !== batch.checkpoint.startingToken &&
-      loaded.state.changeCursor !== batch.checkpoint.terminalStartToken)
+  if (existing && canonical.state.changeCursor !== batch.checkpoint.startingToken &&
+      canonical.state.changeCursor !== batch.checkpoint.terminalStartToken)
     throw new SnapshotAssemblyError("recovery-required", "replayed REMOTE batch conflicts with canonical cursor");
   if (!existing) {
     const candidate = {

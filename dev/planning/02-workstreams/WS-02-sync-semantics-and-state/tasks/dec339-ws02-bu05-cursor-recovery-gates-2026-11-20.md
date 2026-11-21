@@ -66,3 +66,10 @@ Real cross-WebView/browser `versionchange` upgrade blocking, complete pre-/post-
 ### Final pre-qualification security correction
 
 The recovery identity fence also rejects a readable **existing foreign pairing** before creating a backup or replacing canonical bytes, preventing a mismatched state from being treated as ordinary corruption. A dedicated test asserts that the original record and backup count remain unchanged. This is an additional fail-closed protection, not authorization for automated recovery. The final revised source **requires new PHX-CI qualification**.
+
+## R2 BLOCKED and corrective R3 candidate (2026-11-20)
+
+- Original full PHX-CI R2 run `d0260a16-e6f9-470d-a39c-bc0225e1e1a3` on source `d32e0219b2002ea054e48eea073ce2563d2cbde3` (tree `87f092cb4267c96869be9678a3d45dce4622bcc2`), evidence-only commit `e25b5aedf753250dc2f358e935ee28da13e6f705`. **BLOCKED, exit 201**; typecheck **FAIL, exit 2** from three TS2339 errors in `src/product/product-controller.ts` lines 51, 54, 55. Focused/product tests and build were not executed. Original PHX-CI JSON, Markdown and full terminal log preserved without modification.
+- Cause: `SynchronizationAuthorityMetadataV1_1` is a limited remote-learning metadata model that has no canonical `changeCursor` property. The R2 implementation incorrectly used it for the cursor predecessor guard.
+- R3 correction: retrieve trusted current canonical state through existing `options.stateStore.load(options.stateContext)`, fail closed unless trusted, compare its `changeCursor` to the learned batch predecessor or accepted terminal token, while preserving metadata-store learned-batch listing and CAS revision checks. No test assertions or frozen PHX-CI guard changed.
+- R3 qualification **NOT YET RUN**. R1 was only for earlier partial BU-05; R2 was BLOCKED. Neither qualifies R3. The Builder retains ownership; independent review is prohibited until entire corrected BU-05 candidate passes full pinned PHX-CI.
