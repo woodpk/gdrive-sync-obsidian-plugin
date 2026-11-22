@@ -1371,6 +1371,155 @@ test("WS-02 BU-05 direct learned-batch API rejects logical staleness even with c
 });
 
 
+test("WS-02 BU-05 saveTrusted enforces durable batch immutability and authorized retirement", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("bu05-savetrusted-baseline"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+
+  const raw = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const before = await raw.loadAuthority();
+  assert.equal(before.status, "trusted");
+  if (before.status !== "trusted") return;
+  assert.ok(before.state.changeCursor);
+
+  const terminal = c("changes:bu05-savetrusted-terminal");
+  const change: RemoteChange = {
+    kind: "removed",
+    remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-savetrusted-original"),
+    lastKnownPath: contractId<"VaultPath">("savetrusted-original.md") as VaultPath,
+  };
+  const batch = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-savetrusted-batch"),
+      startingToken: before.state.changeCursor!,
+      terminalStartToken: terminal,
+      persistenceRevision: before.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [change] as readonly RemoteChange[],
+  };
+
+  const learned = await raw.appendLearnedRemoteBatch(
+    batch,
+    before.state.persistenceRevision,
+    before.state.semanticGeneration,
+  );
+  assert.equal(learned.status, "saved");
+
+  const durable = await raw.loadAuthority();
+  assert.equal(durable.status, "trusted");
+  if (durable.status !== "trusted") return;
+  assert.equal(durable.state.changeCursor, terminal);
+  assert.equal(durable.state.learnedRemoteBatches.length, 1);
+  const originalBatch = durable.state.learnedRemoteBatches[0];
+  const originalBase = durable.state.base;
+  const originalMappings = durable.state.remoteMappings;
+  const originalIntents = durable.state.operationIntents;
+  const originalVault = durable.state.vaultIdentity;
+  const originalDevice = durable.state.deviceIdentity;
+
+  const tampered = {
+    ...durable.state,
+    learnedRemoteBatches: [{
+      ...originalBatch,
+      changes: [{
+        kind: "removed" as const,
+        remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-savetrusted-tampered"),
+        lastKnownPath: contractId<"VaultPath">("savetrusted-tampered.md") as VaultPath,
+      }],
+    }],
+  };
+  const tamperResult = await raw.saveTrusted(tampered, durable.state.stateRevision);
+  assert.equal(tamperResult.status, "recovery-required",
+    "saveTrusted must reject changed Changes contents under an existing durable batch ID");
+
+  const afterTamper = await raw.loadAuthority();
+  assert.equal(afterTamper.status, "trusted");
+  if (afterTamper.status !== "trusted") return;
+  assert.deepEqual(afterTamper.state.learnedRemoteBatches, durable.state.learnedRemoteBatches);
+  assert.equal(afterTamper.state.changeCursor, terminal);
+  assert.deepEqual(afterTamper.state.base, originalBase);
+  assert.deepEqual(afterTamper.state.remoteMappings, originalMappings);
+  assert.deepEqual(afterTamper.state.operationIntents, originalIntents);
+  assert.equal(afterTamper.state.vaultIdentity, originalVault);
+  assert.equal(afterTamper.state.deviceIdentity, originalDevice);
+
+  const removalResult = await raw.saveTrusted({
+    ...afterTamper.state,
+    learnedRemoteBatches: [],
+  }, afterTamper.state.stateRevision);
+  assert.equal(removalResult.status, "recovery-required",
+    "saveTrusted must reject unproven learned-batch removal");
+
+  const restartedAfterRejection = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(restartedAfterRejection.status, "trusted");
+  if (restartedAfterRejection.status !== "trusted") return;
+  assert.deepEqual(restartedAfterRejection.state.learnedRemoteBatches, durable.state.learnedRemoteBatches);
+  assert.equal(restartedAfterRejection.state.changeCursor, terminal);
+  assert.deepEqual(restartedAfterRejection.state.base, originalBase);
+  assert.deepEqual(restartedAfterRejection.state.remoteMappings, originalMappings);
+  assert.deepEqual(restartedAfterRejection.state.operationIntents, originalIntents);
+  assert.equal(restartedAfterRejection.state.vaultIdentity, originalVault);
+  assert.equal(restartedAfterRejection.state.deviceIdentity, originalDevice);
+
+  const cursorOnly = c("changes:bu05-savetrusted-cursor-only");
+  const cursorResult = await raw.saveTrusted({
+    ...restartedAfterRejection.state,
+    changeCursor: cursorOnly,
+    stateRevision: rev(9001),
+    persistenceRevision: rev(9001),
+  }, restartedAfterRejection.state.stateRevision);
+  assert.equal(cursorResult.status, "saved",
+    "valid cursor-only saveTrusted transition must remain allowed");
+
+  const afterCursor = await raw.loadAuthority();
+  assert.equal(afterCursor.status, "trusted");
+  if (afterCursor.status !== "trusted") return;
+  assert.equal(afterCursor.state.changeCursor, cursorOnly);
+  assert.deepEqual(afterCursor.state.learnedRemoteBatches, durable.state.learnedRemoteBatches);
+
+  const reduced = await raw.recordRemoteBatchReduction(
+    batch.checkpoint.batchId,
+    ["fact:bu05-savetrusted"],
+    true,
+    afterCursor.state.persistenceRevision,
+    afterCursor.state.semanticGeneration,
+  );
+  assert.equal(reduced.status, "saved");
+  if (reduced.status !== "saved") return;
+
+  const retirementBase = await raw.loadAuthority();
+  assert.equal(retirementBase.status, "trusted");
+  if (retirementBase.status !== "trusted") return;
+  const retired = await raw.retireLearnedRemoteBatch(
+    batch.checkpoint.batchId,
+    retirementBase.state.persistenceRevision,
+    retirementBase.state.semanticGeneration,
+  );
+  assert.equal(retired.status, "saved",
+    "designated reduction/retirement pathway must remain legal");
+
+  const restartedRetired = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(restartedRetired.status, "trusted");
+  if (restartedRetired.status !== "trusted") return;
+  assert.equal(restartedRetired.state.learnedRemoteBatches.some(
+    item => item.checkpoint.batchId === batch.checkpoint.batchId), false);
+  assert.equal(restartedRetired.state.changeCursor, cursorOnly);
+  assert.deepEqual(restartedRetired.state.base, originalBase);
+  assert.deepEqual(restartedRetired.state.remoteMappings, originalMappings);
+  assert.deepEqual(restartedRetired.state.operationIntents, originalIntents);
+  assert.equal(restartedRetired.state.vaultIdentity, originalVault);
+  assert.equal(restartedRetired.state.deviceIdentity, originalDevice);
+  assert.equal((await inventory.openRead()).status, "stale",
+    "canonical trusted-state writes must continue invalidating stale inventory");
+});
+
 test("WS-02 BU-05 recovery replacement refuses wrong pairing before backup or CAS", async () => {
   withRangeOnly();
   const db = new FakeDatabase(), factory = db.openFactory();
