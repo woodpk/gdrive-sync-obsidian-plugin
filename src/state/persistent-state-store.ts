@@ -598,6 +598,37 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     if (current.persistenceRevision !== expectedPersistenceRevision) return { status: "stale-persistence", actualPersistenceRevision: current.persistenceRevision };
     if (expectedSemanticGeneration && current.semanticGeneration !== expectedSemanticGeneration) return { status: "stale-semantic-authority", actualSemanticGeneration: current.semanticGeneration };
     if (state.authoritySchemaVersion !== 2 || state.vaultIdentity !== current.vaultIdentity || state.deviceIdentity !== current.deviceIdentity) return { status: "recovery-required", issues: [issue("other-semantic-inconsistency", "authority save cannot change schema/vault/device identity", undefined, "identity-authority")] };
+
+    // Existing durable remote observations are immutable. A broad authority
+    // save may preserve them or retire them after durable reduction, but it
+    // cannot rewrite an existing batch ID's checkpoint/payload in place.
+    for (const durable of current.learnedRemoteBatches) {
+      const candidate = state.learnedRemoteBatches.find(
+        item => item.checkpoint.batchId === durable.checkpoint.batchId);
+      if (candidate) {
+        if (!durableRemoteChangeBatchSemanticallyEquivalent(durable, candidate)
+            || candidate.checkpoint.persistenceRevision !== durable.checkpoint.persistenceRevision) {
+          return { status: "recovery-required", issues: [issue(
+            "ingestion-checkpoint-inconsistent",
+            "authority save cannot rewrite an existing durable remote batch",
+            undefined,
+            "remote-ingestion-immutability",
+          )] };
+        }
+        continue;
+      }
+      const reduction = current.learnedRemoteReductions.find(
+        item => item.batchId === durable.checkpoint.batchId);
+      if (!reduction?.complete || (durable.changes.length > 0 && reduction.durableFactRefs.length === 0)) {
+        return { status: "recovery-required", issues: [issue(
+          "ingestion-checkpoint-inconsistent",
+          "authority save cannot remove an unreduced durable remote batch",
+          undefined,
+          "remote-ingestion-retirement",
+        )] };
+      }
+    }
+
     const semanticChanged = !sameSemanticAuthority(current, state);
     const persistenceRevision = nextPersistenceRevision(current.persistenceRevision);
     const semanticGeneration = semanticChanged ? nextSemanticGeneration(current.semanticGeneration) : current.semanticGeneration;
