@@ -357,9 +357,15 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
     }
     const batchIds = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.batchId));
     if (!unique(batchIds)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains duplicate batch IDs", undefined, "remote-ingestion"));
-    const batchStarts = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.startingToken));
+    const advancingBatches = state.learnedRemoteBatches.filter(batch =>
+      batch.checkpoint.startingToken !== batch.checkpoint.terminalStartToken);
+    for (const batch of state.learnedRemoteBatches) {
+      if (batch.checkpoint.startingToken === batch.checkpoint.terminalStartToken && batch.changes.length !== 0)
+        issues.push(issue("ingestion-checkpoint-inconsistent", "zero-advance learned batch must not contain remote changes", undefined, "remote-ingestion"));
+    }
+    const batchStarts = advancingBatches.map(batch => String(batch.checkpoint.startingToken));
     if (!unique(batchStarts)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains multiple outgoing edges for one starting cursor", undefined, "remote-ingestion"));
-    const cursorEdges = new Map(state.learnedRemoteBatches.map(batch => [
+    const cursorEdges = new Map(advancingBatches.map(batch => [
       String(batch.checkpoint.startingToken),
       String(batch.checkpoint.terminalStartToken),
     ]));
@@ -372,12 +378,7 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
           break;
         }
         visited.add(cursor);
-        const next = cursorEdges.get(cursor)!;
-        if (next === cursor) {
-          issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains a self-loop cursor edge", undefined, "remote-ingestion"));
-          break;
-        }
-        cursor = next;
+        cursor = cursorEdges.get(cursor)!;
       }
     }
     const reductionIds = state.learnedRemoteReductions.map(reduction => String(reduction.batchId));
