@@ -118,8 +118,12 @@ export async function persistLearnedRemoteBatch(
       state.state.changeCursor,
       batch.checkpoint.terminalStartToken,
     )) {
-      if (existing) return;
-      throw new SnapshotAssemblyError("recovery-required", "durable REMOTE cursor mirror raced a different canonical cursor");
+      if (existing && durableCursorCanAdvance(
+        durableBatches,
+        batch.checkpoint.terminalStartToken,
+        state.state.changeCursor,
+      )) return;
+      throw new SnapshotAssemblyError("recovery-required", "durable REMOTE cursor mirror or replay is unrelated to the canonical cursor");
     }
 
     const candidate = {
