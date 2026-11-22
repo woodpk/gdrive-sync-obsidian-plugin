@@ -2044,12 +2044,12 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
 
 
 dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
-  status: "R7_BUILDER_QUALIFIED_PASS_PENDING_INDEPENDENT_REVIEW;WS02_INCOMPLETE"
+  status: "R7_INDEPENDENT_REVIEW_CORRECTION_REQUIRED_F03;WS02_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-21_OWNER_APPROVED_DIRECT_REVIEW_HANDOFF_AFTER_R4_PASS"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU05_CURSOR_RECOVERY_GATES"
-  handoff-count: 4
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 5
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-ws02-bu05-cursor-recovery-gates-20261120"
   baseline_bu04_closeout: "5027e724765fbd915fa88714ba35b4bd97aeea99"
   accepted_bu04_source: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
@@ -2061,7 +2061,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   existing_production_invariants_under_test: "PERSISTENT_STATE_CAS;V2_AWARE_IDB_ATOMIC_INVALIDATION;SHIPPING_CURSOR_FENCES;RECOVERY_PAIRING_IDENTITY;DURABLE_LEARNED_BATCH_CHAIN"
   phxci_status: "R7_PASS_13_OF_13;FOCUSED_634_OF_634;PRODUCT_1336_OF_1336;PHYSICAL_DISABLED"
   source_qualification_status: "BUILDER_QUALIFIED_EXACT_SOURCE_R7_PENDING_REVIEW"
-  independent_reviewer_verdict: "PENDING_R7_CORRECTION_REVIEW;PRIOR_R4_CORRECTION_REQUIRED_F01_F02_RETAINED_HISTORICALLY"
+  independent_reviewer_verdict: "R7_CORRECTION_REQUIRED_F03_GENERIC_SAVE_TRUSTED_BATCH_IMMUTABILITY_BYPASS"
   outstanding_real_browser_webview_upgrade_gate: true
   outstanding_complete_cursor_writer_inventory_gate: false
   outstanding_live_scope_owner_wiring_gate: true
@@ -2069,7 +2069,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   dec339_integration_complete: false
   inventory_activation_authorized: false
   master_merge_authorized: false
-  next_action: "INDEPENDENT_REVIEW_R7_BLIND_FIRST_THEN_TEST_EVIDENCE_REVIEW;NO_BU05_ACCEPTANCE_UNTIL_VERDICT"
+  next_action: "BUILDER_NARROW_FIX_F03_SAVE_TRUSTED_DURABLE_BATCH_IMMUTABILITY;FRESH_PHXCI_AND_NEW_REVIEW_HANDOFF"
   current_qualified_source_sha: "c47c88cde35dc827263e3ff7b1366a47bc41acb6"
   current_qualified_source_tree: "12d35229a727377583a134522f34d59a3acdac7c"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
@@ -2124,4 +2124,10 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   r7_evidence_publication_evidence_only: true
   r7_review_handoff_count: 4
   r7_reviewer_target: "review-brain-10_OR_AUTHORIZED_INDEPENDENT_SUCCESSOR"
+  r7_independent_blind_report_path: "dev/reviews/dec339-ws02-bu05-r7-20261122-review-brain-10-blind-source.md"
+  r7_independent_blind_report_commit: "bb9db11319079ab9dbab429aaf295032a9c9291e"
+  r7_independent_final_report_path: "dev/reviews/dec339-ws02-bu05-r7-20261122-review-brain-10-final.md"
+  r7_independent_final_report_commit: "f2e2ce5329e0585b603b8e9109010c56ebb7e024"
+  r7_independent_blocker: "F03_GENERIC_SAVE_TRUSTED_ALLOWS_EXISTING_LEARNED_BATCH_PAYLOAD_REWRITE_AND_UNPROVEN_REMOVAL"
+  r7_prior_r4_findings: "F01_F02_RESOLVED_IN_AUTHORITY_PATHS;R7_F03_REMAINS_BLOCKING"
   bu05_independent_acceptance: false
