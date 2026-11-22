@@ -258,11 +258,15 @@ test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rol
     browser.stderr.on("data", chunk => { stderr += String(chunk); });
     browser.once("error", error => rejectResult(error));
     browser.once("exit", code => {
-      if (code !== null && code !== 0) rejectResult(new Error(
-        `Edge exited before result with code ${code}\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`));
+      rejectResult(new Error(
+        `Edge exited before result with code ${String(code)}\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`));
     });
 
-    const result = await resultPromise;
+    const result = await Promise.race([
+      resultPromise,
+      new Promise<BrowserResult>((_, reject) => setTimeout(() => reject(new Error(
+        `Timed out waiting for real-browser IndexedDB result\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`)), 60000)),
+    ]);
     assert.equal(result.ok, true, result.error ?? `browser gate failed\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`);
     assert.ok(result.cooperative);
     assert.ok(result.blocked);
