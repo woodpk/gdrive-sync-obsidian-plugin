@@ -1063,6 +1063,75 @@ test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observa
   }
 });
 
+test("WS-02 BU-05 empty zero-advance learned poll remains valid after rebaseline", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  await seeded(factory);
+  const stateStore = new SynchronizationStateAuthorityAdapter(
+    new PersistentSynchronizationStateStore(
+      new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)));
+  const context = {
+    expectation: "existing-pairing" as const,
+    expectedVaultIdentity: fence.vaultIdentity,
+    expectedDeviceIdentity: fence.deviceIdentity,
+  };
+  const before = await stateStore.loadAuthority();
+  assert.equal(before.status, "trusted");
+  if (before.status !== "trusted") return;
+  const cursor = before.state.changeCursor;
+  assert.ok(cursor);
+
+  const noAdvance = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-empty"),
+      startingToken: cursor!,
+      terminalStartToken: cursor!,
+      persistenceRevision: before.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as RemoteChange[],
+  };
+  await persistLearnedRemoteBatch(({ remoteChangeBatch: noAdvance } as never), stateStore, {
+    stateStore,
+    stateContext: context,
+  });
+
+  const after = await stateStore.loadAuthority();
+  assert.equal(after.status, "trusted");
+  if (after.status !== "trusted") return;
+  assert.equal(after.state.changeCursor, cursor);
+  assert.equal(after.state.learnedRemoteBatches.some(
+    batch => batch.checkpoint.batchId === noAdvance.checkpoint.batchId), true);
+
+  const invalidZeroAdvance = {
+    ...noAdvance,
+    checkpoint: {
+      ...noAdvance.checkpoint,
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-with-change"),
+      persistenceRevision: after.state.persistenceRevision,
+    },
+    changes: [{
+      kind: "removed" as const,
+      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-zero-advance-invalid"),
+      lastKnownPath: contractId<"VaultPath">("zero-advance-invalid.md") as VaultPath,
+    }],
+  };
+  await assert.rejects(
+    persistLearnedRemoteBatch(({ remoteChangeBatch: invalidZeroAdvance } as never), stateStore, {
+      stateStore,
+      stateContext: context,
+    }),
+    /ambiguous, cyclic, or disconnected durable cursor history/,
+  );
+
+  const unchanged = await stateStore.loadAuthority();
+  assert.equal(unchanged.status, "trusted");
+  if (unchanged.status === "trusted") {
+    assert.equal(unchanged.state.changeCursor, cursor);
+    assert.equal(unchanged.state.learnedRemoteBatches.length, after.state.learnedRemoteBatches.length);
+  }
+});
+
 test("WS-02 BU-05 recovery replacement refuses wrong pairing before backup or CAS", async () => {
   withRangeOnly();
   const db = new FakeDatabase(), factory = db.openFactory();
