@@ -215,24 +215,31 @@ export function durableRemoteChangeBatchSemanticallyEquivalent(
 
 export type DurableCursorHistoryInspection =
   | { readonly status: "valid"; readonly frontier: ChangeCursor }
-  | { readonly status: "invalid"; readonly reason: "duplicate-successor" | "cycle" };
+  | {
+      readonly status: "invalid";
+      readonly reason: "duplicate-successor" | "duplicate-predecessor" | "cycle" | "disconnected-edge";
+    };
 
 /**
- * Inspect only cursor-advancing edges. A batch whose terminal token equals its
- * starting token is still a durable observation, but it does not advance the
- * cursor graph and therefore is not a self-loop.
+ * Cursor-advancing learned batches must form one acyclic linear history with
+ * the canonical cursor somewhere on that line. Retained edges behind the
+ * canonical cursor are historical evidence; edges ahead are pending durable
+ * progress. A start===terminal batch is a durable observation, not an edge.
  */
 export function inspectDurableCursorHistory(
   batches: readonly DurableRemoteChangeBatch[],
   canonicalCursor: ChangeCursor,
 ): DurableCursorHistoryInspection {
   const outgoing = new Map<string, ChangeCursor>();
+  const incoming = new Map<string, ChangeCursor>();
   for (const batch of batches) {
     const start = String(batch.checkpoint.startingToken);
-    const end = batch.checkpoint.terminalStartToken;
-    if (start === String(end)) continue;
+    const end = String(batch.checkpoint.terminalStartToken);
+    if (start === end) continue;
     if (outgoing.has(start)) return { status: "invalid", reason: "duplicate-successor" };
-    outgoing.set(start, end);
+    if (incoming.has(end)) return { status: "invalid", reason: "duplicate-predecessor" };
+    outgoing.set(start, batch.checkpoint.terminalStartToken);
+    incoming.set(end, batch.checkpoint.startingToken);
   }
 
   for (const start of outgoing.keys()) {
@@ -245,13 +252,32 @@ export function inspectDurableCursorHistory(
     }
   }
 
+  // Walk backward from canonical to the beginning of its retained chain.
+  const connected = new Set<string>([String(canonicalCursor)]);
+  let backward = String(canonicalCursor);
+  while (incoming.has(backward)) {
+    const prior = String(incoming.get(backward)!);
+    if (connected.has(prior)) return { status: "invalid", reason: "cycle" };
+    connected.add(prior);
+    backward = prior;
+  }
+
+  // Walk forward from canonical to the durable frontier.
   let frontier = canonicalCursor;
-  const visited = new Set<string>();
   while (outgoing.has(String(frontier))) {
-    const key = String(frontier);
-    if (visited.has(key)) return { status: "invalid", reason: "cycle" };
-    visited.add(key);
-    frontier = outgoing.get(key)!;
+    const next = outgoing.get(String(frontier))!;
+    const key = String(next);
+    if (connected.has(key)) return { status: "invalid", reason: "cycle" };
+    connected.add(key);
+    frontier = next;
+  }
+
+  // Every advancing edge must belong to the same linear component. This
+  // rejects unrelated durable cursor histories while retaining old edges
+  // behind an already-mirrored canonical cursor.
+  for (const [startToken, endToken] of outgoing) {
+    if (!connected.has(startToken) || !connected.has(String(endToken)))
+      return { status: "invalid", reason: "disconnected-edge" };
   }
   return { status: "valid", frontier };
 }
