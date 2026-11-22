@@ -25,7 +25,7 @@ import type {
   TrustedSynchronizationState,
   VaultPath,
 } from "../contracts";
-import { contractId } from "../contracts";
+import { contractId, durableRemoteChangeBatchSemanticPayload } from "../contracts";
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import { sha256Text } from "../util/sha256";
 import { CONFIG_REMOTE_NAMESPACE } from "./path-scope";
@@ -58,17 +58,16 @@ function applyChanges(target: Map<string, RemoteEntry>, changes: readonly Remote
     } else target.delete(String(change.remoteObjectId));
   }
 }
-function batchIdentity(startingToken: ChangeCursor, terminalStartToken: ChangeCursor, changes: readonly RemoteChange[]): RemoteIngestionBatchId {
-  const normalized = changes.map(change => change.kind === "removed"
-    ? { kind: change.kind, remoteObjectId: String(change.remoteObjectId), lastKnownPath: change.lastKnownPath ? String(change.lastKnownPath) : undefined }
-    : {
-        kind: change.kind,
-        entry: {
-          path: String(change.entry.path), entityKind: change.entry.entityKind, remoteObjectId: String(change.entry.remoteObjectId), trashed: change.entry.trashed,
-          content: change.entry.content ? { hash: change.entry.content.hash ? String(change.entry.content.hash) : undefined, sizeBytes: change.entry.content.sizeBytes, revision: change.entry.content.revision } : undefined,
-        },
-      });
-  return contractId<"RemoteIngestionBatchId">(`remote-batch:${String(sha256Text(JSON.stringify({ startingToken: String(startingToken), terminalStartToken: String(terminalStartToken), changes: normalized })))}`) as RemoteIngestionBatchId;
+function batchIdentity(
+  startingToken: ChangeCursor,
+  terminalStartToken: ChangeCursor,
+  changes: readonly RemoteChange[],
+): RemoteIngestionBatchId {
+  return contractId<"RemoteIngestionBatchId">(
+    `remote-batch:${String(sha256Text(
+      durableRemoteChangeBatchSemanticPayload(startingToken, terminalStartToken, changes),
+    ))}`,
+  ) as RemoteIngestionBatchId;
 }
 
 export class SnapshotAssemblyError extends Error {
