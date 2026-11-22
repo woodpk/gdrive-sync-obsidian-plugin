@@ -1544,12 +1544,12 @@ test("WS-02 BU-05 saveTrusted preserves valid cursor-only catch-up through durab
   assert.equal(lagged.state.learnedRemoteBatches.some(
     item => item.checkpoint.batchId === batch.checkpoint.batchId), true);
 
-  const nextRevision = rev(9101);
+  const nextRevision = contractId<"StateRevision">("state:bu05-savetrusted-catchup") as typeof lagged.state.stateRevision;
   const caughtUp = await raw.saveTrusted({
     ...lagged.state,
     changeCursor: terminal,
     stateRevision: nextRevision,
-    persistenceRevision: nextRevision,
+    persistenceRevision: nextRevision as unknown as PersistenceRevision,
   }, lagged.state.stateRevision);
   assert.equal(caughtUp.status, "saved",
     "saveTrusted must preserve legitimate cursor-only catch-up through already durable C→D history");
