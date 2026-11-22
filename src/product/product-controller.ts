@@ -52,11 +52,11 @@ function hasUnambiguousDurableCursorChain(
     if (visited.has(key)) return false;
     visited.add(key);
 
-    const successors = batches.filter(value => value.checkpoint.startingToken === cursor);
+    const successors = batches.filter(value =>
+      value.checkpoint.startingToken === cursor
+      && value.checkpoint.terminalStartToken !== cursor);
     if (successors.length !== 1) return false;
-    const next = successors[0].checkpoint.terminalStartToken;
-    if (next === cursor) return false;
-    cursor = next;
+    cursor = successors[0].checkpoint.terminalStartToken;
   }
   return true;
 }
@@ -100,7 +100,11 @@ function proposedDurableCursorHistoryIsUnambiguous(
   for (const batch of batches) {
     const start = String(batch.checkpoint.startingToken);
     const end = String(batch.checkpoint.terminalStartToken);
-    if (start === end || outgoing.has(start)) return false;
+    if (start === end) {
+      if (batch.changes.length !== 0) return false;
+      continue;
+    }
+    if (outgoing.has(start)) return false;
     outgoing.set(start, batch);
   }
 
