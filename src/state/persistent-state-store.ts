@@ -688,7 +688,9 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       };
     }
 
-    if (!loaded.state.changeCursor || loaded.state.changeCursor !== batch.checkpoint.startingToken)
+    const bootstrapCursor = loaded.state.changeCursor === undefined
+      && loaded.state.learnedRemoteBatches.length === 0;
+    if (!bootstrapCursor && loaded.state.changeCursor !== batch.checkpoint.startingToken)
       return { status: "recovery-required", issues: [issue(
         "ingestion-checkpoint-inconsistent",
         "new learned batch does not begin at the canonical cursor",
@@ -700,7 +702,10 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       ...batch,
       checkpoint: { ...batch.checkpoint, persistenceRevision: loaded.state.persistenceRevision },
     });
-    const history = inspectDurableCursorHistory(proposed, loaded.state.changeCursor);
+    const history = inspectDurableCursorHistory(
+      proposed,
+      loaded.state.changeCursor ?? batch.checkpoint.startingToken,
+    );
     if (history.status !== "valid")
       return { status: "recovery-required", issues: [issue(
         "ingestion-checkpoint-inconsistent",
