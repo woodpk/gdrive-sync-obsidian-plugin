@@ -35,6 +35,8 @@ import { emitStateRecoveryDiagnostic } from "../diagnostics/authority-state-reco
 import {
   appendDurableRemoteChangeBatch,
   contractId,
+  durableRemoteChangeBatchSemanticallyEquivalent,
+  inspectDurableCursorHistory,
   exactBaseAuthorityMatches,
   folderCreateDescriptorIsSelfConsistent,
   recoverableOperationV1_1IsComplete,
@@ -357,28 +359,17 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
     }
     const batchIds = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.batchId));
     if (!unique(batchIds)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains duplicate batch IDs", undefined, "remote-ingestion"));
-    const advancingBatches = state.learnedRemoteBatches.filter(batch =>
-      batch.checkpoint.startingToken !== batch.checkpoint.terminalStartToken);
-    for (const batch of state.learnedRemoteBatches) {
-      if (batch.checkpoint.startingToken === batch.checkpoint.terminalStartToken && batch.changes.length !== 0)
-        issues.push(issue("ingestion-checkpoint-inconsistent", "zero-advance learned batch must not contain remote changes", undefined, "remote-ingestion"));
-    }
-    const batchStarts = advancingBatches.map(batch => String(batch.checkpoint.startingToken));
-    if (!unique(batchStarts)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains multiple outgoing edges for one starting cursor", undefined, "remote-ingestion"));
-    const cursorEdges = new Map(advancingBatches.map(batch => [
-      String(batch.checkpoint.startingToken),
-      String(batch.checkpoint.terminalStartToken),
-    ]));
-    for (const start of cursorEdges.keys()) {
-      const visited = new Set<string>();
-      let cursor = start;
-      while (cursorEdges.has(cursor)) {
-        if (visited.has(cursor)) {
-          issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains a cursor cycle", undefined, "remote-ingestion"));
-          break;
-        }
-        visited.add(cursor);
-        cursor = cursorEdges.get(cursor)!;
+    if (state.changeCursor) {
+      const history = inspectDurableCursorHistory(state.learnedRemoteBatches, state.changeCursor);
+      if (history.status === "invalid") {
+        issues.push(issue(
+          "ingestion-checkpoint-inconsistent",
+          history.reason === "duplicate-successor"
+            ? "learned remote backlog contains multiple outgoing advancing edges for one starting cursor"
+            : "learned remote backlog contains a cursor cycle",
+          undefined,
+          "remote-ingestion",
+        ));
       }
     }
     const reductionIds = state.learnedRemoteReductions.map(reduction => String(reduction.batchId));
@@ -662,14 +653,76 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       expectedRevision: String(expectedPersistenceRevision),
       semanticGeneration: String(expectedSemanticGeneration),
     });
-    const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
-    const result = await this.saveAuthority({ ...loaded.state, learnedRemoteBatches: appendDurableRemoteChangeBatch(loaded.state.learnedRemoteBatches, batch), changeCursor: batch.checkpoint.terminalStartToken }, expectedPersistenceRevision, expectedSemanticGeneration);
+    const loaded = await this.loadAuthority();
+    if (loaded.status !== "trusted")
+      return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
+    if (loaded.state.persistenceRevision !== expectedPersistenceRevision)
+      return { status: "stale-persistence", actualPersistenceRevision: loaded.state.persistenceRevision };
+    if (loaded.state.semanticGeneration !== expectedSemanticGeneration)
+      return { status: "stale-semantic-authority", actualSemanticGeneration: loaded.state.semanticGeneration };
+
+    const existing = loaded.state.learnedRemoteBatches.find(
+      item => item.checkpoint.batchId === batch.checkpoint.batchId);
+    if (existing && !durableRemoteChangeBatchSemanticallyEquivalent(existing, batch))
+      return { status: "recovery-required", issues: [issue(
+        "ingestion-checkpoint-inconsistent",
+        "duplicate remote batch ID has incompatible checkpoint or change contents",
+        undefined,
+        "remote-ingestion",
+      )] };
+
+    if (existing) {
+      if (loaded.state.changeCursor !== existing.checkpoint.terminalStartToken)
+        return { status: "recovery-required", issues: [issue(
+          "ingestion-checkpoint-inconsistent",
+          "idempotent learned-batch replay does not match the canonical cursor",
+          undefined,
+          "remote-ingestion",
+        )] };
+      return this.saveAuthority(loaded.state, expectedPersistenceRevision, expectedSemanticGeneration);
+    }
+
+    if (!loaded.state.changeCursor || loaded.state.changeCursor !== batch.checkpoint.startingToken)
+      return { status: "recovery-required", issues: [issue(
+        "ingestion-checkpoint-inconsistent",
+        "new learned batch does not begin at the canonical cursor",
+        undefined,
+        "remote-ingestion",
+      )] };
+
+    const proposed = appendDurableRemoteChangeBatch(loaded.state.learnedRemoteBatches, {
+      ...batch,
+      checkpoint: { ...batch.checkpoint, persistenceRevision: loaded.state.persistenceRevision },
+    });
+    const history = inspectDurableCursorHistory(proposed, loaded.state.changeCursor);
+    if (history.status !== "valid")
+      return { status: "recovery-required", issues: [issue(
+        "ingestion-checkpoint-inconsistent",
+        `new learned batch would create invalid cursor history (${history.reason})`,
+        undefined,
+        "remote-ingestion",
+      )] };
+
+    const nextCursor = batch.checkpoint.terminalStartToken;
+    const result = await this.saveAuthority({
+      ...loaded.state,
+      learnedRemoteBatches: proposed,
+      changeCursor: nextCursor,
+    }, expectedPersistenceRevision, expectedSemanticGeneration);
     emitStateRecoveryDiagnostic(this.diagnostics, result.status === "saved" ? "info" : "warn", "state.authority", "remote-batch-learn-result", {
-      batchId: String(batch.checkpoint.batchId), changeCount: batch.changes.length, cursorPresent: true, result: result.status,
-      ...(result.status === "saved" ? { persistenceRevision: String(result.persistenceRevision), semanticGeneration: String(result.semanticGeneration), semanticChanged: String(result.semanticGeneration) !== String(expectedSemanticGeneration) } : {}),
+      batchId: String(batch.checkpoint.batchId),
+      changeCount: batch.changes.length,
+      cursorPresent: true,
+      result: result.status,
+      ...(result.status === "saved" ? {
+        persistenceRevision: String(result.persistenceRevision),
+        semanticGeneration: String(result.semanticGeneration),
+        semanticChanged: String(result.semanticGeneration) !== String(expectedSemanticGeneration),
+      } : {}),
     });
     return result;
   }
+
   async recordRemoteBatchReduction(batchId: RemoteIngestionBatchId, durableFactRefs: readonly string[], complete: boolean, expectedPersistenceRevision: PersistenceRevision, expectedSemanticGeneration: SemanticStateGeneration): Promise<SynchronizationAuthoritySaveResult> {
     emitStateRecoveryDiagnostic(this.diagnostics, "debug", "state.authority", "remote-batch-reduction-start", { batchId: String(batchId), count: durableFactRefs.length, classification: complete ? "complete" : "partial", expectedRevision: String(expectedPersistenceRevision), semanticGeneration: String(expectedSemanticGeneration) });
     const loaded = await this.loadAuthority(); if (loaded.status !== "trusted") return loaded.status === "uninitialized" ? { status: "stale-persistence" } : { status: "recovery-required", issues: loaded.issues };
