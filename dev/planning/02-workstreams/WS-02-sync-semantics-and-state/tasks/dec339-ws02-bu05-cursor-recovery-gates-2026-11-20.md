@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu05-cursor-recovery-gates-20261120`  
 **Baseline:** BU-04 independently accepted and closed at `5027e724765fbd915fa88714ba35b4bd97aeea99`  
-**Status:** **BUILDER IN PROGRESS — prior Reviewer handoff superseded by Owner before independent review; expanded BU-05 source NOT YET PHX-CI-QUALIFIED.** Whole WS-02 and DEC-339 integration gates remain open.
+**Status:** **BUILDER-QUALIFIED R4 PASS; independent Reviewer acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
 
 ## Purpose and bounded implementation
 
@@ -32,11 +32,11 @@ The accepted earlier WS-02 BUs provide a v2-aware production canonical byte-stor
 
 ## Deferred work — expressly NOT accepted by this BU
 
-The requirement to account for **every** canonical cursor writer (including the actual shipping `commitCursor` path), v2 schema upgrade behavior with genuine concurrent browser/WebView contexts, full recovery/rollback state-machine transitions, scope owner wiring, local hint consumers and shadow mode end-to-end remain separate WS-02/WS-05 gate items. This BU only adds negative/recovery tests for already-shipping implementations; it does **not** close those broader requirements. No real vault, Drive account or database will be accessed. The current legacy planner/executor remains authoritative, and inventory activation is prohibited.
+The expanded BU-05 now covers the shipping `commitCursor` path, durable Changes-learning cursor continuity, stale writer refusal, and backup-first recovery identity fencing. Genuine concurrent browser/WebView `versionchange` upgrade behavior, complete live pre-/post-migration rollback behavior, scope-owner wiring, local hint consumers, and shadow-mode end-to-end activation remain separate WS-02/WS-05 gate items. No real vault, Drive account or database is authorized by this BU. The current legacy planner/executor remains authoritative, and inventory activation is prohibited.
 
 ## Next mandatory action
 
-Freeze an exact BU-05 source SHA/tree, then qualify the candidate exclusively using existing `dev/scripts/Invoke-PHXCI-S09-WindowsRelayCorrection.ps1` in `-SoftwareOnlyBranch` mode and pinned runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`. Preserve full original R1 evidence, fix legitimate tests/source failures, and request a blind-first independent Reviewer only after a conclusive PASS. Previously accepted BU-01 through BU-04 original evidence and review reports must remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
+Dispatch BU-05 to an independent Reviewer for a blind-first source assessment of frozen source `9319472e7b3a075c1ddfccad87c1913d6d3758dc` / tree `4f9d90d7a899937114ee714fb4a0715efe78cb61`, then review authored tests and canonical R4 PHX-CI evidence only after the blind source assessment is frozen. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
 
 ## Original PHX-CI R1 qualification and Builder→Reviewer transition (2026-11-20)
 
@@ -72,4 +72,13 @@ The recovery identity fence also rejects a readable **existing foreign pairing**
 - Original full PHX-CI R2 run `d0260a16-e6f9-470d-a39c-bc0225e1e1a3` on source `d32e0219b2002ea054e48eea073ce2563d2cbde3` (tree `87f092cb4267c96869be9678a3d45dce4622bcc2`), evidence-only commit `e25b5aedf753250dc2f358e935ee28da13e6f705`. **BLOCKED, exit 201**; typecheck **FAIL, exit 2** from three TS2339 errors in `src/product/product-controller.ts` lines 51, 54, 55. Focused/product tests and build were not executed. Original PHX-CI JSON, Markdown and full terminal log preserved without modification.
 - Cause: `SynchronizationAuthorityMetadataV1_1` is a limited remote-learning metadata model that has no canonical `changeCursor` property. The R2 implementation incorrectly used it for the cursor predecessor guard.
 - R3 correction: retrieve trusted current canonical state through existing `options.stateStore.load(options.stateContext)`, fail closed unless trusted, compare its `changeCursor` to the learned batch predecessor or accepted terminal token, while preserving metadata-store learned-batch listing and CAS revision checks. No test assertions or frozen PHX-CI guard changed.
-- R3 qualification **NOT YET RUN**. R1 was only for earlier partial BU-05; R2 was BLOCKED. Neither qualifies R3. The Builder retains ownership; independent review is prohibited until entire corrected BU-05 candidate passes full pinned PHX-CI.
+- R3 qualification ran on source `241e2659e7a56188be6565971dcdb542b5e51e4e` / tree `2ca31085b3c529a0df083444e94bbf07b3b4c3f3`, run `fa4c0e0f-7ae1-4581-8f57-0a936e0dd0ea`, evidence-only commit `279066e06404d695ab599e4d49629b10dd958923`. It was **BLOCKED, exit 201**: focused tests 634/634 PASS; full product suite 1330 PASS / 2 FAIL. Both failures were the same H-I6 restart-consumption regression: after durable Changes learning and a failed cursor mirror, restart resumed from the durable terminal token but the cursor-mirror gate rejected a canonical cursor that legitimately lagged behind an unambiguous durable learned-batch chain.
+
+## R4 corrective qualification PASS and Reviewer handoff readiness (2026-11-21)
+
+- R4 production correction commit: `9319472e7b3a075c1ddfccad87c1913d6d3758dc`; Git tree `4f9d90d7a899937114ee714fb4a0715efe78cb61`.
+- Correction: `persistLearnedRemoteBatch` now permits cursor catch-up only through a complete, unique, non-cyclic durable learned-batch token chain. Missing links, forks, cycles, unrelated cursors and incompatible duplicate batch IDs remain fail-closed. No test oracle was weakened.
+- Pinned PHX-CI runtime: `4cf0c865c7b189641e2acebc0a6ad757b6f01992`. Canonical R4 run: `99a90abf-16fd-4e31-a5ca-0d05589de610`; direct evidence-only publication commit: `8b9baeeb15e9ae57772e3e4fd43e1f3ad8d50689`.
+- **Verified R4 result:** all 13 mandatory stages PASS; focused 634/634 PASS; full product suite 1332/1332 PASS; typecheck, build, artifact, repository and change-set checks PASS; overall PASS/exit 0. Built artifact `main.js` SHA-256 `a6bfcff1955e97022309c7c0a778a9ae8f043f7a62d0a2bfb8793b77b6d30d6e`.
+- The evidence publication commit changes only `dev/_ca-output.md` and the immutable `dev/test-results/99a90abf-16fd-4e31-a5ca-0d05589de610/` evidence set. Frozen implementation identity remains `9319472e...`; do not substitute the later evidence/documentation HEAD as the reviewed implementation source.
+- Builder→Independent Reviewer handoff is now permitted. The previously superseded handoff count **1** remains historical; the next outbound handoff is count **2**. Reviewer must freeze a blind source assessment before reading Builder narratives, authored tests, or PHX-CI evidence.
