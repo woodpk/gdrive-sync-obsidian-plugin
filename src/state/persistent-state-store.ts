@@ -523,8 +523,12 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       const current = parseEnvelope(currentBytes);
       if (current.status !== "ok") return { status: "recovery-required", reason: `existing state is ${current.status}` };
       if (expectedRevision && current.envelope.state.stateRevision !== expectedRevision) return { status: "stale-revision", actualRevision: current.envelope.state.stateRevision };
-      if (isDurableSynchronizationAuthorityState(current.envelope.state)
-          && isDurableSynchronizationAuthorityState(state)) {
+      if (isDurableSynchronizationAuthorityState(current.envelope.state)) {
+        if (!isDurableSynchronizationAuthorityState(state))
+          return { status: "recovery-required", reason: "refusing to downgrade trusted v1.1 authority through generic state persistence" };
+        if (state.vaultIdentity !== current.envelope.state.vaultIdentity
+            || state.deviceIdentity !== current.envelope.state.deviceIdentity)
+          return { status: "recovery-required", reason: "refusing to change durable authority pairing identity through generic state persistence" };
         const transitionIssues = durableRemoteBatchTransitionIssues(current.envelope.state, state);
         if (transitionIssues.length > 0)
           return { status: "recovery-required", reason: transitionIssues.map(item => `${item.code}:${item.invariantCategory ?? "state"}:${item.detail}`).join(",") };
