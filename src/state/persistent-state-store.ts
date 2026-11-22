@@ -357,6 +357,29 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
     }
     const batchIds = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.batchId));
     if (!unique(batchIds)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains duplicate batch IDs", undefined, "remote-ingestion"));
+    const batchStarts = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.startingToken));
+    if (!unique(batchStarts)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains multiple outgoing edges for one starting cursor", undefined, "remote-ingestion"));
+    const cursorEdges = new Map(state.learnedRemoteBatches.map(batch => [
+      String(batch.checkpoint.startingToken),
+      String(batch.checkpoint.terminalStartToken),
+    ]));
+    for (const start of cursorEdges.keys()) {
+      const visited = new Set<string>();
+      let cursor = start;
+      while (cursorEdges.has(cursor)) {
+        if (visited.has(cursor)) {
+          issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains a cursor cycle", undefined, "remote-ingestion"));
+          break;
+        }
+        visited.add(cursor);
+        const next = cursorEdges.get(cursor)!;
+        if (next === cursor) {
+          issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains a self-loop cursor edge", undefined, "remote-ingestion"));
+          break;
+        }
+        cursor = next;
+      }
+    }
     const reductionIds = state.learnedRemoteReductions.map(reduction => String(reduction.batchId));
     if (!unique(reductionIds)) issues.push(issue("ingestion-checkpoint-inconsistent", "remote-batch reductions contain duplicate batch IDs", undefined, "remote-ingestion"));
     for (const reduction of state.learnedRemoteReductions) {
