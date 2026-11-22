@@ -217,7 +217,7 @@ export type DurableCursorHistoryInspection =
   | { readonly status: "valid"; readonly frontier: ChangeCursor }
   | {
       readonly status: "invalid";
-      readonly reason: "duplicate-successor" | "duplicate-predecessor" | "cycle" | "disconnected-edge";
+      readonly reason: "duplicate-successor" | "duplicate-predecessor" | "cycle" | "disconnected-edge" | "out-of-order";
     };
 
 /**
@@ -279,6 +279,24 @@ export function inspectDurableCursorHistory(
     if (!connected.has(startToken) || !connected.has(String(endToken)))
       return { status: "invalid", reason: "disconnected-edge" };
   }
+
+  // The backlog array is also the durable observation order used to replay
+  // RemoteChange payloads. Validate that order against the same opaque-token
+  // chain instead of assuming array order is trustworthy. Start from the
+  // earliest retained advancing predecessor of canonical (or canonical itself
+  // when no earlier edge remains), then require every retained observation to
+  // begin at the current sequence cursor. Zero-advance observations preserve
+  // that cursor; advancing observations move it.
+  let sequenceCursor = backward;
+  for (const batch of batches) {
+    if (String(batch.checkpoint.startingToken) !== sequenceCursor)
+      return { status: "invalid", reason: "out-of-order" };
+    if (batch.checkpoint.startingToken !== batch.checkpoint.terminalStartToken)
+      sequenceCursor = String(batch.checkpoint.terminalStartToken);
+  }
+  if (sequenceCursor !== String(frontier))
+    return { status: "invalid", reason: "out-of-order" };
+
   return { status: "valid", frontier };
 }
 
