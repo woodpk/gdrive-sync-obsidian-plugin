@@ -1467,28 +1467,12 @@ test("WS-02 BU-05 saveTrusted enforces durable batch immutability and authorized
   assert.equal(restartedAfterRejection.state.vaultIdentity, originalVault);
   assert.equal(restartedAfterRejection.state.deviceIdentity, originalDevice);
 
-  const cursorOnly = c("changes:bu05-savetrusted-cursor-only");
-  const cursorResult = await raw.saveTrusted({
-    ...restartedAfterRejection.state,
-    changeCursor: cursorOnly,
-    stateRevision: rev(9001),
-    persistenceRevision: rev(9001),
-  }, restartedAfterRejection.state.stateRevision);
-  assert.equal(cursorResult.status, "saved",
-    "valid cursor-only saveTrusted transition must remain allowed");
-
-  const afterCursor = await raw.loadAuthority();
-  assert.equal(afterCursor.status, "trusted");
-  if (afterCursor.status !== "trusted") return;
-  assert.equal(afterCursor.state.changeCursor, cursorOnly);
-  assert.deepEqual(afterCursor.state.learnedRemoteBatches, durable.state.learnedRemoteBatches);
-
   const reduced = await raw.recordRemoteBatchReduction(
     batch.checkpoint.batchId,
     ["fact:bu05-savetrusted"],
     true,
-    afterCursor.state.persistenceRevision,
-    afterCursor.state.semanticGeneration,
+    restartedAfterRejection.state.persistenceRevision,
+    restartedAfterRejection.state.semanticGeneration,
   );
   assert.equal(reduced.status, "saved");
   if (reduced.status !== "saved") return;
@@ -1510,7 +1494,7 @@ test("WS-02 BU-05 saveTrusted enforces durable batch immutability and authorized
   if (restartedRetired.status !== "trusted") return;
   assert.equal(restartedRetired.state.learnedRemoteBatches.some(
     item => item.checkpoint.batchId === batch.checkpoint.batchId), false);
-  assert.equal(restartedRetired.state.changeCursor, cursorOnly);
+  assert.equal(restartedRetired.state.changeCursor, terminal);
   assert.deepEqual(restartedRetired.state.base, originalBase);
   assert.deepEqual(restartedRetired.state.remoteMappings, originalMappings);
   assert.deepEqual(restartedRetired.state.operationIntents, originalIntents);
@@ -1518,6 +1502,70 @@ test("WS-02 BU-05 saveTrusted enforces durable batch immutability and authorized
   assert.equal(restartedRetired.state.deviceIdentity, originalDevice);
   assert.equal((await inventory.openRead()).status, "stale",
     "canonical trusted-state writes must continue invalidating stale inventory");
+});
+
+test("WS-02 BU-05 saveTrusted preserves valid cursor-only catch-up through durable history", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("bu05-savetrusted-cursor-catchup"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+
+  const raw = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const before = await raw.loadAuthority();
+  assert.equal(before.status, "trusted");
+  if (before.status !== "trusted") return;
+  const start = before.state.changeCursor;
+  assert.ok(start);
+  const terminal = c("changes:bu05-savetrusted-catchup-terminal");
+  const batch = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-savetrusted-catchup-batch"),
+      startingToken: start!,
+      terminalStartToken: terminal,
+      persistenceRevision: before.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as readonly RemoteChange[],
+  };
+
+  const staged = await raw.saveAuthority({
+    ...before.state,
+    learnedRemoteBatches: [...before.state.learnedRemoteBatches, batch],
+  }, before.state.persistenceRevision, before.state.semanticGeneration);
+  assert.equal(staged.status, "saved");
+
+  const lagged = await raw.loadAuthority();
+  assert.equal(lagged.status, "trusted");
+  if (lagged.status !== "trusted") return;
+  assert.equal(lagged.state.changeCursor, start);
+  assert.equal(lagged.state.learnedRemoteBatches.some(
+    item => item.checkpoint.batchId === batch.checkpoint.batchId), true);
+
+  const nextRevision = rev(9101);
+  const caughtUp = await raw.saveTrusted({
+    ...lagged.state,
+    changeCursor: terminal,
+    stateRevision: nextRevision,
+    persistenceRevision: nextRevision,
+  }, lagged.state.stateRevision);
+  assert.equal(caughtUp.status, "saved",
+    "saveTrusted must preserve legitimate cursor-only catch-up through already durable C→D history");
+
+  const restarted = await new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
+  assert.equal(restarted.status, "trusted");
+  if (restarted.status !== "trusted") return;
+  assert.equal(restarted.state.changeCursor, terminal);
+  assert.deepEqual(restarted.state.learnedRemoteBatches, lagged.state.learnedRemoteBatches);
+  assert.deepEqual(restarted.state.base, lagged.state.base);
+  assert.deepEqual(restarted.state.remoteMappings, lagged.state.remoteMappings);
+  assert.deepEqual(restarted.state.operationIntents, lagged.state.operationIntents);
+  assert.equal(restarted.state.vaultIdentity, lagged.state.vaultIdentity);
+  assert.equal(restarted.state.deviceIdentity, lagged.state.deviceIdentity);
+  assert.equal((await inventory.openRead()).status, "stale");
 });
 
 test("WS-02 BU-05 recovery replacement refuses wrong pairing before backup or CAS", async () => {
