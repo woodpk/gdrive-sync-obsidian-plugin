@@ -25,7 +25,11 @@ import type {
   TrustedSynchronizationState,
   VaultPath,
 } from "../contracts";
-import { contractId, durableRemoteChangeBatchSemanticPayload } from "../contracts";
+import {
+  contractId,
+  durableRemoteChangeBatchSemanticPayload,
+  inspectDurableCursorHistory,
+} from "../contracts";
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import { sha256Text } from "../util/sha256";
 import { CONFIG_REMOTE_NAMESPACE } from "./path-scope";
@@ -190,7 +194,13 @@ export class ProductSnapshotAssembler {
 
     const reconstructed = this.remoteBaseline(loadedState.state);
     for (const durable of learnedBatches) applyChanges(reconstructed, durable.changes, this.pathIncluded);
-    const effectiveCursor = learnedBatches.length ? learnedBatches[learnedBatches.length - 1]!.checkpoint.terminalStartToken : canonicalCursor;
+    const durableHistory = inspectDurableCursorHistory(learnedBatches, canonicalCursor);
+    if (durableHistory.status !== "valid")
+      throw new SnapshotAssemblyError(
+        "recovery-required",
+        `durable REMOTE cursor history is invalid before incremental observation (${durableHistory.reason})`,
+      );
+    const effectiveCursor = durableHistory.frontier;
 
     const changes: RemoteChange[] = [];
     let requestedToken = effectiveCursor;
