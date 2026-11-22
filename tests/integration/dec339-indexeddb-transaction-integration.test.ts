@@ -998,10 +998,13 @@ test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observa
     },
   };
   const changeSameCoreDifferentAdvisory: RemoteChange = {
-    ...changeA,
+    kind: "upsert",
     entry: {
-      ...changeA.entry,
-      content: { ...changeA.entry.content, advisoryModifiedTimeMs: 123456 },
+      path: contractId<"VaultPath">("replay/a.md") as VaultPath,
+      entityKind: "file",
+      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-replay-a"),
+      content: { revision: "rev-a", sizeBytes: 10, advisoryModifiedTimeMs: 123456 },
+      trashed: false,
     },
   };
   const makeBatch = (changes: readonly RemoteChange[]) => ({
