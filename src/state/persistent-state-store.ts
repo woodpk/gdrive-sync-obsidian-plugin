@@ -280,6 +280,40 @@ function semanticProjection(state: DurableSynchronizationAuthorityState): string
 function sameSemanticAuthority(a: DurableSynchronizationAuthorityState, b: DurableSynchronizationAuthorityState): boolean { return semanticProjection(a) === semanticProjection(b); }
 function issue(code: SemanticStateValidationIssue["code"], detail: string, path?: VaultPath, invariantCategory?: string): SemanticStateValidationIssue { return { code, detail, ...(path ? { path } : {}), ...(invariantCategory ? { invariantCategory } : {}) }; }
 
+function durableRemoteBatchTransitionIssues(
+  current: DurableSynchronizationAuthorityState,
+  candidate: DurableSynchronizationAuthorityState,
+): SemanticStateValidationIssue[] {
+  const issues: SemanticStateValidationIssue[] = [];
+  for (const durable of current.learnedRemoteBatches) {
+    const replacement = candidate.learnedRemoteBatches.find(
+      item => item.checkpoint.batchId === durable.checkpoint.batchId);
+    if (replacement) {
+      if (!durableRemoteChangeBatchSemanticallyEquivalent(durable, replacement)
+          || replacement.checkpoint.persistenceRevision !== durable.checkpoint.persistenceRevision) {
+        issues.push(issue(
+          "ingestion-checkpoint-inconsistent",
+          "canonical state save cannot rewrite an existing durable remote batch",
+          undefined,
+          "remote-ingestion-immutability",
+        ));
+      }
+      continue;
+    }
+    const reduction = current.learnedRemoteReductions.find(
+      item => item.batchId === durable.checkpoint.batchId);
+    if (!reduction?.complete || (durable.changes.length > 0 && reduction.durableFactRefs.length === 0)) {
+      issues.push(issue(
+        "ingestion-checkpoint-inconsistent",
+        "canonical state save cannot remove an unreduced durable remote batch",
+        undefined,
+        "remote-ingestion-retirement",
+      ));
+    }
+  }
+  return issues;
+}
+
 function folderJournalIssues(intent: RecoverableOperationIntentV1_1, effect: RecoverableMutationEffectV1_1): SemanticStateValidationIssue[] {
   const descriptor = effect.descriptor;
   if (descriptor.kind !== "local-folder-create" && descriptor.kind !== "remote-folder-create") return [];
@@ -489,6 +523,12 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       const current = parseEnvelope(currentBytes);
       if (current.status !== "ok") return { status: "recovery-required", reason: `existing state is ${current.status}` };
       if (expectedRevision && current.envelope.state.stateRevision !== expectedRevision) return { status: "stale-revision", actualRevision: current.envelope.state.stateRevision };
+      if (isDurableSynchronizationAuthorityState(current.envelope.state)
+          && isDurableSynchronizationAuthorityState(state)) {
+        const transitionIssues = durableRemoteBatchTransitionIssues(current.envelope.state, state);
+        if (transitionIssues.length > 0)
+          return { status: "recovery-required", reason: transitionIssues.map(item => `${item.code}:${item.invariantCategory ?? "state"}:${item.detail}`).join(",") };
+      }
     } else if (expectedRevision) return { status: "stale-revision" };
     const replacement = serialize(state as PersistedState);
     if (this.storage.compareAndSwap) {
@@ -599,35 +639,8 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
     if (expectedSemanticGeneration && current.semanticGeneration !== expectedSemanticGeneration) return { status: "stale-semantic-authority", actualSemanticGeneration: current.semanticGeneration };
     if (state.authoritySchemaVersion !== 2 || state.vaultIdentity !== current.vaultIdentity || state.deviceIdentity !== current.deviceIdentity) return { status: "recovery-required", issues: [issue("other-semantic-inconsistency", "authority save cannot change schema/vault/device identity", undefined, "identity-authority")] };
 
-    // Existing durable remote observations are immutable. A broad authority
-    // save may preserve them or retire them after durable reduction, but it
-    // cannot rewrite an existing batch ID's checkpoint/payload in place.
-    for (const durable of current.learnedRemoteBatches) {
-      const candidate = state.learnedRemoteBatches.find(
-        item => item.checkpoint.batchId === durable.checkpoint.batchId);
-      if (candidate) {
-        if (!durableRemoteChangeBatchSemanticallyEquivalent(durable, candidate)
-            || candidate.checkpoint.persistenceRevision !== durable.checkpoint.persistenceRevision) {
-          return { status: "recovery-required", issues: [issue(
-            "ingestion-checkpoint-inconsistent",
-            "authority save cannot rewrite an existing durable remote batch",
-            undefined,
-            "remote-ingestion-immutability",
-          )] };
-        }
-        continue;
-      }
-      const reduction = current.learnedRemoteReductions.find(
-        item => item.batchId === durable.checkpoint.batchId);
-      if (!reduction?.complete || (durable.changes.length > 0 && reduction.durableFactRefs.length === 0)) {
-        return { status: "recovery-required", issues: [issue(
-          "ingestion-checkpoint-inconsistent",
-          "authority save cannot remove an unreduced durable remote batch",
-          undefined,
-          "remote-ingestion-retirement",
-        )] };
-      }
-    }
+    const transitionIssues = durableRemoteBatchTransitionIssues(current, state);
+    if (transitionIssues.length > 0) return { status: "recovery-required", issues: transitionIssues };
 
     const semanticChanged = !sameSemanticAuthority(current, state);
     const persistenceRevision = nextPersistenceRevision(current.persistenceRevision);
