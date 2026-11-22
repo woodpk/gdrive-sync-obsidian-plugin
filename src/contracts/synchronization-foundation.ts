@@ -156,6 +156,132 @@ export interface DurableRemoteChangeBatch {
   readonly changes: readonly RemoteChange[];
 }
 
+/**
+ * Canonical semantic serialization for durable Drive Changes observations.
+ * Persistence revision is deliberately excluded: it is CAS context, not part
+ * of the provider observation identity. Ordered Changes are preserved exactly.
+ */
+export function durableRemoteChangeBatchSemanticPayload(
+  startingToken: ChangeCursor,
+  terminalStartToken: ChangeCursor,
+  changes: readonly RemoteChange[],
+): string {
+  const normalized = changes.map(change => change.kind === "removed"
+    ? {
+        kind: change.kind,
+        remoteObjectId: String(change.remoteObjectId),
+        lastKnownPath: change.lastKnownPath === undefined ? undefined : String(change.lastKnownPath),
+      }
+    : {
+        kind: change.kind,
+        entry: {
+          path: String(change.entry.path),
+          entityKind: change.entry.entityKind,
+          remoteObjectId: String(change.entry.remoteObjectId),
+          trashed: change.entry.trashed,
+          content: change.entry.content ? {
+            hash: change.entry.content.hash === undefined ? undefined : String(change.entry.content.hash),
+            sizeBytes: change.entry.content.sizeBytes,
+            revision: change.entry.content.revision,
+            advisoryModifiedTimeMs: change.entry.content.advisoryModifiedTimeMs,
+          } : undefined,
+        },
+      });
+  return JSON.stringify({
+    startingToken: String(startingToken),
+    terminalStartToken: String(terminalStartToken),
+    changes: normalized,
+  });
+}
+
+export function durableRemoteChangeBatchSemanticallyEquivalent(
+  left: DurableRemoteChangeBatch,
+  right: DurableRemoteChangeBatch,
+): boolean {
+  return left.checkpoint.batchId === right.checkpoint.batchId
+    && left.checkpoint.startingToken === right.checkpoint.startingToken
+    && left.checkpoint.terminalStartToken === right.checkpoint.terminalStartToken
+    && left.checkpoint.status === right.checkpoint.status
+    && durableRemoteChangeBatchSemanticPayload(
+      left.checkpoint.startingToken,
+      left.checkpoint.terminalStartToken,
+      left.changes,
+    ) === durableRemoteChangeBatchSemanticPayload(
+      right.checkpoint.startingToken,
+      right.checkpoint.terminalStartToken,
+      right.changes,
+    );
+}
+
+export type DurableCursorHistoryInspection =
+  | { readonly status: "valid"; readonly frontier: ChangeCursor }
+  | { readonly status: "invalid"; readonly reason: "duplicate-successor" | "cycle" };
+
+/**
+ * Inspect only cursor-advancing edges. A batch whose terminal token equals its
+ * starting token is still a durable observation, but it does not advance the
+ * cursor graph and therefore is not a self-loop.
+ */
+export function inspectDurableCursorHistory(
+  batches: readonly DurableRemoteChangeBatch[],
+  canonicalCursor: ChangeCursor,
+): DurableCursorHistoryInspection {
+  const outgoing = new Map<string, ChangeCursor>();
+  for (const batch of batches) {
+    const start = String(batch.checkpoint.startingToken);
+    const end = batch.checkpoint.terminalStartToken;
+    if (start === String(end)) continue;
+    if (outgoing.has(start)) return { status: "invalid", reason: "duplicate-successor" };
+    outgoing.set(start, end);
+  }
+
+  for (const start of outgoing.keys()) {
+    const visited = new Set<string>();
+    let cursor = start;
+    while (outgoing.has(cursor)) {
+      if (visited.has(cursor)) return { status: "invalid", reason: "cycle" };
+      visited.add(cursor);
+      cursor = String(outgoing.get(cursor)!);
+    }
+  }
+
+  let frontier = canonicalCursor;
+  const visited = new Set<string>();
+  while (outgoing.has(String(frontier))) {
+    const key = String(frontier);
+    if (visited.has(key)) return { status: "invalid", reason: "cycle" };
+    visited.add(key);
+    frontier = outgoing.get(key)!;
+  }
+  return { status: "valid", frontier };
+}
+
+export function durableCursorCanAdvance(
+  batches: readonly DurableRemoteChangeBatch[],
+  from: ChangeCursor,
+  to: ChangeCursor,
+): boolean {
+  if (from === to) return true;
+  const outgoing = new Map<string, ChangeCursor>();
+  for (const batch of batches) {
+    if (batch.checkpoint.startingToken === batch.checkpoint.terminalStartToken) continue;
+    const start = String(batch.checkpoint.startingToken);
+    if (outgoing.has(start)) return false;
+    outgoing.set(start, batch.checkpoint.terminalStartToken);
+  }
+  const visited = new Set<string>();
+  let cursor = from;
+  while (cursor !== to) {
+    const key = String(cursor);
+    if (visited.has(key)) return false;
+    visited.add(key);
+    const next = outgoing.get(key);
+    if (!next) return false;
+    cursor = next;
+  }
+  return true;
+}
+
 export function appendDurableRemoteChangeBatch(backlog: readonly DurableRemoteChangeBatch[], batch: DurableRemoteChangeBatch): readonly DurableRemoteChangeBatch[] {
   if (backlog.some(existing => existing.checkpoint.batchId === batch.checkpoint.batchId)) return backlog;
   return [...backlog, batch];
