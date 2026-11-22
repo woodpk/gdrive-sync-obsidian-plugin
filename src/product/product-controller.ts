@@ -1,6 +1,8 @@
 import {
   appendDurableRemoteChangeBatch,
   contractId,
+  type ChangeCursor,
+  type DurableRemoteChangeBatch,
   type LocalTransactionalMutationPort,
   type RemoteFileCreateRecoveryReadPort,
   type RemoteFolderCreateRecoveryReadPort,
@@ -34,6 +36,30 @@ function nextRevision(current: StateRevision): StateRevision {
   return contractId<"StateRevision">(match ? `${match[1]}${Number(match[2]) + 1}` : `${raw}:1`) as StateRevision;
 }
 
+function hasUnambiguousDurableCursorChain(
+  batches: readonly DurableRemoteChangeBatch[],
+  startingToken: ChangeCursor | null | undefined,
+  terminalToken: ChangeCursor,
+): boolean {
+  if (startingToken === terminalToken) return true;
+  if (startingToken === null || startingToken === undefined) return false;
+
+  let cursor = startingToken;
+  const visited = new Set<string>();
+  while (cursor !== terminalToken) {
+    const key = String(cursor);
+    if (visited.has(key)) return false;
+    visited.add(key);
+
+    const successors = batches.filter(value => value.checkpoint.startingToken === cursor);
+    if (successors.length !== 1) return false;
+    const next = successors[0].checkpoint.terminalStartToken;
+    if (next === cursor) return false;
+    cursor = next;
+  }
+  return true;
+}
+
 export async function persistLearnedRemoteBatch(
   assembly: AssembledPlanningInput,
   authorityStore: SynchronizationAuthorityStoreV1_1,
@@ -47,18 +73,30 @@ export async function persistLearnedRemoteBatch(
   if (existing && (existing.checkpoint.startingToken !== batch.checkpoint.startingToken ||
       existing.checkpoint.terminalStartToken !== batch.checkpoint.terminalStartToken))
     throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch ID was replayed with incompatible cursor tokens");
+
   // The v1.1 authority metadata read model does not expose the canonical
   // change cursor. Only the trusted state store can authorize that comparison.
   const canonical = await options.stateStore.load(options.stateContext);
   if (canonical.status !== "trusted")
     throw new SnapshotAssemblyError("recovery-required", "trusted canonical cursor state is unavailable during REMOTE batch learning");
-  const latestLearnedToken = loaded.state.learnedRemoteBatches.at(-1)?.checkpoint.terminalStartToken;
-  const validPredecessor = latestLearnedToken ?? canonical.state.changeCursor;
-  if (!existing && validPredecessor !== batch.checkpoint.startingToken)
+
+  const durableBefore = loaded.state.learnedRemoteBatches;
+  if (!existing && !hasUnambiguousDurableCursorChain(
+    durableBefore,
+    canonical.state.changeCursor,
+    batch.checkpoint.startingToken,
+  )) {
     throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch starts from an unrelated durable cursor");
-  if (existing && canonical.state.changeCursor !== batch.checkpoint.startingToken &&
-      canonical.state.changeCursor !== batch.checkpoint.terminalStartToken)
+  }
+  if (existing && !hasUnambiguousDurableCursorChain(
+    durableBefore,
+    canonical.state.changeCursor,
+    batch.checkpoint.terminalStartToken,
+  )) {
     throw new SnapshotAssemblyError("recovery-required", "replayed REMOTE batch conflicts with canonical cursor");
+  }
+
+  let durableBatches = durableBefore;
   if (!existing) {
     const candidate = {
       ...loaded.state,
@@ -69,13 +107,20 @@ export async function persistLearnedRemoteBatch(
     };
     const saved = await authorityStore.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
     if (saved.status !== "saved") throw new SnapshotAssemblyError("recovery-required", `terminal REMOTE Changes batch was fully read but could not be durably learned (${saved.status})`);
+    durableBatches = candidate.learnedRemoteBatches;
   }
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const state = await options.stateStore.load(options.stateContext);
     if (state.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but trusted canonical cursor state is unavailable");
     if (state.state.changeCursor === batch.checkpoint.terminalStartToken) return;
-    if (state.state.changeCursor !== batch.checkpoint.startingToken)
+    if (!hasUnambiguousDurableCursorChain(
+      durableBatches,
+      state.state.changeCursor,
+      batch.checkpoint.terminalStartToken,
+    )) {
       throw new SnapshotAssemblyError("recovery-required", "durable REMOTE cursor mirror raced a different canonical cursor");
+    }
     const candidate = { ...state.state, stateRevision: nextRevision(state.state.stateRevision), changeCursor: batch.checkpoint.terminalStartToken };
     const saved = await options.stateStore.saveTrusted(candidate, state.state.stateRevision);
     if (saved.status === "saved") return;
