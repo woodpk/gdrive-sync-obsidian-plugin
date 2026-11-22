@@ -2044,7 +2044,7 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
 
 
 dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
-  status: "R9_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;WS02_INCOMPLETE"
+  status: "BU05_INDEPENDENTLY_ACCEPTED_BUILDER_CLOSED;WS02_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-21_OWNER_APPROVED_DIRECT_REVIEW_HANDOFF_AFTER_R4_PASS"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU05_CURSOR_RECOVERY_GATES"
   handoff-count: 7
@@ -2060,7 +2060,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   production_source_modified: true
   existing_production_invariants_under_test: "PERSISTENT_STATE_CAS;V2_AWARE_IDB_ATOMIC_INVALIDATION;SHIPPING_CURSOR_FENCES;RECOVERY_PAIRING_IDENTITY;DURABLE_LEARNED_BATCH_CHAIN"
   phxci_status: "R9_PASS_13_OF_13;FOCUSED_634_OF_634;PRODUCT_1338_OF_1338;PHYSICAL_DISABLED"
-  source_qualification_status: "BUILDER_QUALIFIED_EXACT_SOURCE_R9_PENDING_REVIEW"
+  source_qualification_status: "INDEPENDENTLY_ACCEPTED_EXACT_SOURCE_R9"
   independent_reviewer_verdict: "PASS_WITH_MINOR_FINDINGS_R9_BU05_ACCEPTED;R7_F03_CLOSED"
   outstanding_real_browser_webview_upgrade_gate: true
   outstanding_complete_cursor_writer_inventory_gate: false
@@ -2069,7 +2069,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   dec339_integration_complete: false
   inventory_activation_authorized: false
   master_merge_authorized: false
-  next_action: "BUILDER_CLOSEOUT_ACCEPTED_BU05_PRESERVE_R9_EVIDENCE_CARRY_MINOR_FINDINGS_TO_FULL_WS02_GATE"
+  next_action: "WS02_BU06_REAL_MULTICONTEXT_IDB_UPGRADE_AND_MIGRATION_ROLLBACK_GATE"
   current_qualified_source_sha: "0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b"
   current_qualified_source_tree: "702e8e5d875b31f0f1d9cfb099a06c75b1f9b779"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
@@ -2154,4 +2154,11 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   r9_independent_final_report_path: "dev/reviews/dec339-ws02-bu05-r9-20261122-review-brain-10-final.md"
   r9_independent_final_report_commit: "1640a5a81eae1225acb747c4f6cac888c957ebcd"
   r9_reviewer_minor_findings: "LEGACY_GENERIC_CURSOR_WRITER_PREDECESSOR_AUDIT;FULL_WS02_REAL_WEBVIEW_MIGRATION_AND_SCOPE_OWNER_INTEGRATION_GATES"
+  bu05_builder_closeout: "CLOSED_2026_11_22;NO_REQUALIFICATION;NO_CODE_CHANGE"
+  bu05_closeout_document: "dev/state/handoffs/dec339-ws02-bu05-accepted-closeout-2026-11-22.md"
+  bu05_handoff_count_closed: 7
+  bu05_accepted_source_sha: "0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b"
+  bu05_accepted_source_tree: "702e8e5d875b31f0f1d9cfb099a06c75b1f9b779"
+  bu05_minor_finding_m01: "AUDIT_BROADER_LEGACY_GENERIC_CURSOR_WRITER_PREDECESSOR_BEHAVIOR_DURING_FULL_WS02_INTEGRATION"
+  bu05_minor_finding_m02: "REAL_MULTI_WEBVIEW_IDB_MIGRATION_ROLLBACK_SCOPE_OWNER_LOCAL_HINT_GATES_REMAIN"
   bu05_independent_acceptance: true
