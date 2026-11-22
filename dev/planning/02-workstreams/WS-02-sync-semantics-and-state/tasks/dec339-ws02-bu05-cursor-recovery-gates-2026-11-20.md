@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu05-cursor-recovery-gates-20261120`  
 **Baseline:** BU-04 independently accepted and closed at `5027e724765fbd915fa88714ba35b4bd97aeea99`  
-**Status:** **BUILDER-QUALIFIED R4 PASS; independent Reviewer acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
+**Status:** **BUILDER-QUALIFIED R7 PASS after R4 independent CORRECTION REQUIRED; independent Reviewer acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
 
 ## Purpose and bounded implementation
 
@@ -36,7 +36,7 @@ The expanded BU-05 now covers the shipping `commitCursor` path, durable Changes-
 
 ## Next mandatory action
 
-Dispatch BU-05 to an independent Reviewer for a blind-first source assessment of frozen source `9319472e7b3a075c1ddfccad87c1913d6d3758dc` / tree `4f9d90d7a899937114ee714fb4a0715efe78cb61`, then review authored tests and canonical R4 PHX-CI evidence only after the blind source assessment is frozen. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
+Dispatch BU-05 to an independent Reviewer for a blind-first source assessment of frozen corrected R7 source `c47c88cde35dc827263e3ff7b1366a47bc41acb6` / tree `12d35229a727377583a134522f34d59a3acdac7c`, then review authored tests, prior R4 findings, correction history, and canonical R7 PHX-CI evidence only after the blind source assessment is frozen. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
 
 ## Original PHX-CI R1 qualification and Builder→Reviewer transition (2026-11-20)
 
@@ -82,3 +82,19 @@ The recovery identity fence also rejects a readable **existing foreign pairing**
 - **Verified R4 result:** all 13 mandatory stages PASS; focused 634/634 PASS; full product suite 1332/1332 PASS; typecheck, build, artifact, repository and change-set checks PASS; overall PASS/exit 0. Built artifact `main.js` SHA-256 `a6bfcff1955e97022309c7c0a778a9ae8f043f7a62d0a2bfb8793b77b6d30d6e`.
 - The evidence publication commit changes only `dev/_ca-output.md` and the immutable `dev/test-results/99a90abf-16fd-4e31-a5ca-0d05589de610/` evidence set. Frozen implementation identity remains `9319472e...`; do not substitute the later evidence/documentation HEAD as the reviewed implementation source.
 - Builder→Independent Reviewer handoff is now permitted. The previously superseded handoff count **1** remains historical; the next outbound handoff is count **2**. Reviewer must freeze a blind source assessment before reading Builder narratives, authored tests, or PHX-CI evidence.
+
+
+## R4 independent correction required → R7 corrected qualification PASS (2026-11-21 through 2026-11-22)
+
+- Independent R4 review of source `9319472e7b3a075c1ddfccad87c1913d6d3758dc` returned **CORRECTION REQUIRED** with two blocking findings: F-01 allowed a conflicting learned-batch cursor edge to become durable before later cursor-mirror rejection; F-02 allowed same-ID/same-endpoint replay with changed observations to be treated as compatible.
+- R5 first qualification attempt was blocked before SUT execution by a transient GitHub fetch reset. The later genuine R5 PHX-CI run on source `88fdb7ae26a63047817c5861191960a845c1af62` / tree `1d49e613e2b190e8bea0914f4237639958c15e34` reached the SUT and exposed a focused BVP recovery regression: the proposed history validator incorrectly treated legitimate non-advancing Changes observations as cursor cycles.
+- R6 corrected that recovery regression, but its full product run exposed a Builder-authored fixture error: the new test incorrectly assumed `seeded()` established a non-null canonical cursor. That failure was not treated as an implementation acceptance signal; the Builder stopped iterative qualification and performed a complete cursor/history/writer audit before another run.
+- The R7 correction replaces ad hoc token-graph reasoning with one durable-frontier model over opaque Drive tokens. Cursor-advancing learned batches form one ordered, unique, acyclic component around the canonical cursor; zero-advance batches remain durable observations without being modeled as cursor edges. New batches must begin at the durable frontier; stale predecessors, detached histories, forks, merges, cycles, and out-of-order retained observations fail closed.
+- F-02 is closed through one canonical semantic batch normalization/equivalence contract covering ordered complete `RemoteChange` observations, including advisory metadata, while deliberately excluding persistence revision from semantic observation identity. Snapshot batch ID generation and replay comparison now use the same normalization.
+- The correction also closes bypasses discovered during the full audit: the low-level `appendLearnedRemoteBatch` writer enforces logical predecessor continuity in addition to CAS; the generic `saveAuthority` CAS boundary makes already-durable batch content immutable and refuses unreduced batch deletion; snapshot incremental reads derive their cursor from the validated durable frontier rather than the last array element; exact replay is accepted only when related to the same retained cursor history.
+- Adversarial coverage now includes: prewrite fork refusal, detached-history refusal, observation-order refusal, zero-advance observations carrying real changes, stale zero-advance writes behind a pending frontier, exact direct replay, incompatible direct replay, same-ID payload/advisory tampering, generic CAS payload rewrite, unreduced-batch deletion, direct-writer logical staleness with a current persistence revision, restart catch-up, BASE/intent preservation, and existing recovery/rebaseline scenarios.
+- Frozen R7 implementation source: `c47c88cde35dc827263e3ff7b1366a47bc41acb6`; Git tree: `12d35229a727377583a134522f34d59a3acdac7c`.
+- Canonical software-only PHX-CI R7 run: `ba32978e-3536-43bf-8b0a-4ffb4e456c22`, runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`, evidence-only child commit `aa773cf65c5724182273c28cd603b97ef4a358a1`.
+- **Verified R7 result:** 13/13 required stages PASS; focused BVP **634/634 PASS**; full product **1336/1336 PASS**; typecheck/build/artifacts/check/change-set/repository PASS; overall PASS/exit 0. Built `main.js`: 926008 bytes, SHA-256 `6825b343e8dfc38bdceda66b86dddeacc59f2fce6b773db349074036ff64531b`. Physical dispatch remained disabled.
+- Evidence publication is exactly one child of the frozen source and changes only `dev/_ca-output.md` plus `dev/test-results/ba32978e-3536-43bf-8b0a-4ffb4e456c22/{result.json,result.md,terminal.log}`; it is not the implementation source.
+- **Current gate:** new independent blind-first correction review. Builder qualification does not accept BU-05. Whole WS-02/DEC-339 remain incomplete; genuine multi-WebView/browser upgrade behavior and live scope-owner/integration gates remain open. No master merge, activation, live migration, real Drive/vault/device operations, physical testing, installation, promotion, or release.
