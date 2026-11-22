@@ -50,8 +50,11 @@ async function seedLegacy(databaseName: string): Promise<unknown> {
   });
   const saved = await authority.saveTrusted(state);
   if (saved.status !== "saved") throw new Error(`legacy-seed-failed:${saved.status}`);
+  const canonical = await legacy.read();
+  if (!canonical) throw new Error("legacy-seed-canonical-bytes-missing");
+  const backupId = await legacy.backup(canonical);
   legacyStores.set(databaseName, legacy);
-  return { status: "saved", canonicalBytes: bytes(await legacy.read()) };
+  return { status: "saved", canonicalBytes: bytes(canonical), backupId };
 }
 
 async function upgradeSnapshot(databaseName: string): Promise<unknown> {
@@ -105,6 +108,29 @@ async function closeBlocker(databaseName: string): Promise<unknown> {
   return { status: "closed" };
 }
 
+
+async function readBackup(databaseName: string, backupId: string): Promise<unknown> {
+  const value = await new Promise<Uint8Array | undefined>((resolve, reject) => {
+    const request = indexedDB.open(databaseName);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction("sync-state", "readonly");
+      const read = transaction.objectStore("sync-state").get(backupId);
+      read.onsuccess = () => {
+        const result = read.result as Uint8Array | undefined;
+        db.close();
+        resolve(result);
+      };
+      read.onerror = () => {
+        db.close();
+        reject(read.error ?? new Error("backup-read-failed"));
+      };
+    };
+    request.onerror = () => reject(request.error ?? new Error("backup-database-open-failed"));
+  });
+  return { status: value ? "read" : "missing", canonicalBytes: bytes(value) };
+}
+
 async function databaseVersion(databaseName: string): Promise<unknown> {
   const version = await new Promise<number>((resolve, reject) => {
     const request = indexedDB.open(databaseName);
@@ -121,13 +147,14 @@ async function databaseVersion(databaseName: string): Promise<unknown> {
 
 export async function run(
   command: string,
-  args: { readonly databaseName: string },
+  args: { readonly databaseName: string; readonly backupId?: string },
 ): Promise<unknown> {
   switch (command) {
     case "seedLegacy": return seedLegacy(args.databaseName);
     case "upgradeSnapshot": return upgradeSnapshot(args.databaseName);
     case "readLegacy": return readLegacy(args.databaseName);
     case "readCompatible": return readCompatible(args.databaseName);
+    case "readBackup": return readBackup(args.databaseName, (args as { databaseName: string; backupId: string }).backupId);
     case "openBlocker": return openBlocker(args.databaseName);
     case "closeBlocker": return closeBlocker(args.databaseName);
     case "databaseVersion": return databaseVersion(args.databaseName);
