@@ -10,7 +10,7 @@ import {
 import { IndexedDbStateByteStorage } from "../../src/state/indexeddb-state-storage";
 import { IndexedDbInventoryAwareStateByteStorage } from "../../src/state/indexeddb-inventory-authority-storage";
 import { IndexedDbInventoryObservationStore } from "../../src/state/indexeddb-inventory-storage";
-import { PersistentSynchronizationStateStore, createInitialAuthorityState } from "../../src/state/persistent-state-store";
+import { PersistentSynchronizationStateStore, createInitialAuthorityState, type DurableSynchronizationAuthorityState } from "../../src/state/persistent-state-store";
 import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import { commitTrustedCursorWithCas } from "../../src/product/product-controller-base";
 import { persistLearnedRemoteBatch } from "../../src/product/product-controller";
@@ -1448,10 +1448,14 @@ test("WS-02 BU-05 saveTrusted enforces durable batch immutability and authorized
   assert.equal(afterTamper.state.vaultIdentity, originalVault);
   assert.equal(afterTamper.state.deviceIdentity, originalDevice);
 
-  const removalResult = await raw.saveTrusted({
+  const removalCandidate: DurableSynchronizationAuthorityState = {
     ...afterTamper.state,
     learnedRemoteBatches: [],
-  }, afterTamper.state.stateRevision);
+  };
+  const removalResult = await raw.saveTrusted(
+    removalCandidate,
+    afterTamper.state.stateRevision,
+  );
   assert.equal(removalResult.status, "recovery-required",
     "saveTrusted must reject unproven learned-batch removal");
 
@@ -1545,12 +1549,16 @@ test("WS-02 BU-05 saveTrusted preserves valid cursor-only catch-up through durab
     item => item.checkpoint.batchId === batch.checkpoint.batchId), true);
 
   const nextRevision = contractId<"StateRevision">("state:bu05-savetrusted-catchup") as typeof lagged.state.stateRevision;
-  const caughtUp = await raw.saveTrusted({
+  const catchUpCandidate: DurableSynchronizationAuthorityState = {
     ...lagged.state,
     changeCursor: terminal,
     stateRevision: nextRevision,
     persistenceRevision: nextRevision as unknown as PersistenceRevision,
-  }, lagged.state.stateRevision);
+  };
+  const caughtUp = await raw.saveTrusted(
+    catchUpCandidate,
+    lagged.state.stateRevision,
+  );
   assert.equal(caughtUp.status, "saved",
     "saveTrusted must preserve legitimate cursor-only catch-up through already durable C→D history");
 
