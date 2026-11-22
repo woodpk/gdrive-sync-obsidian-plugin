@@ -2162,3 +2162,29 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   bu05_minor_finding_m01: "AUDIT_BROADER_LEGACY_GENERIC_CURSOR_WRITER_PREDECESSOR_BEHAVIOR_DURING_FULL_WS02_INTEGRATION"
   bu05_minor_finding_m02: "REAL_MULTI_WEBVIEW_IDB_MIGRATION_ROLLBACK_SCOPE_OWNER_LOCAL_HINT_GATES_REMAIN"
   bu05_independent_acceptance: true
+
+
+dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
+  status: "ACTIVE_BUILDER_SOFTWARE_ONLY;WS02_INCOMPLETE"
+  owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-22_BU05_ACCEPTED_CONTINUE_NEXT_APPROVED_WS02_WORK"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU06_REAL_MULTICONTEXT_IDB_UPGRADE_ROLLBACK"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws02-bu06-real-multicontext-upgrade-rollback-20261122"
+  baseline_bu05_closeout: "38b9eb88057d338e78425677f8742f5af6560015"
+  accepted_bu05_source: "0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b"
+  accepted_bu05_tree: "702e8e5d875b31f0f1d9cfb099a06c75b1f9b779"
+  planning: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu06-real-multicontext-upgrade-rollback-2026-11-22.md"
+  scope: "REAL_WINDOWS_EDGE_MULTICONTEXT_INDEXEDDB_V1_TO_V2_VERSIONCHANGE_BLOCKED_UPGRADE_LATE_COMPLETION_RETRY_V2_AWARE_ROLLBACK"
+  implementation_mode: "SOFTWARE_ONLY_BROWSER_BACKED_TEST_WITH_EXISTING_ESBUILD_AND_EDGE;NO_NEW_DEPENDENCY_OR_POWERSHELL"
+  phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+  prior_fake_idb_coverage_retained: true
+  inventory_activation_authorized: false
+  live_database_migration_authorized: false
+  master_merge_authorized: false
+  live_drive_or_vault_operations_authorized: false
+  physical_testing_authorized: false
+  full_ws02_complete: false
+  dec339_integration_complete: false
+  next_action: "IMPLEMENT_REAL_BROWSER_MULTICONTEXT_IDB_TEST_AND_QUALIFY_EXACT_SOURCE"
