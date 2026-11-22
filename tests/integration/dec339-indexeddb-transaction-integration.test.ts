@@ -4,8 +4,8 @@ import {
   contractId, type ChangeCursor, type DeviceIdentity, type InventoryCoverage,
   type InventoryGeneration, type InventoryGenerationManifest, type InventoryIdentityFence,
   type InventoryOverlayRecord, type PersistenceRevision, type ProtocolVersion,
-  type RecoverableOperationIntentV1_1,
-  type RemoteObjectId, type SemanticStateGeneration, type VaultIdentity,
+  type RecoverableOperationIntentV1_1, type RemoteChange,
+  type RemoteObjectId, type SemanticStateGeneration, type VaultIdentity, type VaultPath,
 } from "../../src/contracts";
 import { IndexedDbStateByteStorage } from "../../src/state/indexeddb-state-storage";
 import { IndexedDbInventoryAwareStateByteStorage } from "../../src/state/indexeddb-inventory-authority-storage";
@@ -844,6 +844,216 @@ test("WS-02 BU-05 shipping Changes-learning writer refuses unrelated cursor and 
     assert.equal(restored.state.learnedRemoteBatches.length, 1);
   }
   assert.equal((await inventory.openRead()).status, "stale");
+});
+
+test("WS-02 BU-05 rejects a forked learned-batch edge before durable persistence and preserves recoverability", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("bu05-fork-prewrite"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+
+  const source = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const stateStore = new SynchronizationStateAuthorityAdapter(source);
+  const context = {
+    expectation: "existing-pairing" as const,
+    expectedVaultIdentity: fence.vaultIdentity,
+    expectedDeviceIdentity: fence.deviceIdentity,
+  };
+  const loaded = await stateStore.loadAuthority();
+  assert.equal(loaded.status, "trusted");
+  if (loaded.status !== "trusted") return;
+
+  const canonicalStart = loaded.state.changeCursor;
+  assert.ok(canonicalStart);
+  const originalTerminal = c("changes:bu05-fork-original-terminal");
+  const originalBatch = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-fork-original"),
+      startingToken: canonicalStart!,
+      terminalStartToken: originalTerminal,
+      persistenceRevision: loaded.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as RemoteChange[],
+  };
+
+  const staged = await stateStore.saveAuthority({
+    ...loaded.state,
+    learnedRemoteBatches: [...loaded.state.learnedRemoteBatches, originalBatch],
+  }, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
+  assert.equal(staged.status, "saved", "fixture must model a learned batch whose cursor mirror was interrupted");
+
+  const beforeConflict = await stateStore.loadAuthority();
+  assert.equal(beforeConflict.status, "trusted");
+  if (beforeConflict.status !== "trusted") return;
+  assert.equal(beforeConflict.state.changeCursor, canonicalStart);
+  assert.equal(beforeConflict.state.learnedRemoteBatches.length, 1);
+  const beforeBase = beforeConflict.state.base;
+  const beforeIntents = beforeConflict.state.operationIntents;
+
+  const fork = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-fork-conflict"),
+      startingToken: canonicalStart!,
+      terminalStartToken: c("changes:bu05-fork-conflicting-terminal"),
+      persistenceRevision: beforeConflict.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as RemoteChange[],
+  };
+  const assembly = (remoteChangeBatch: typeof originalBatch | typeof fork) => ({ remoteChangeBatch } as never);
+
+  await assert.rejects(
+    persistLearnedRemoteBatch(assembly(fork), stateStore, { stateStore, stateContext: context }),
+    /ambiguous, cyclic, or disconnected durable cursor history/,
+  );
+
+  const afterConflict = await stateStore.loadAuthority();
+  assert.equal(afterConflict.status, "trusted");
+  if (afterConflict.status !== "trusted") return;
+  assert.equal(afterConflict.state.changeCursor, canonicalStart,
+    "refused fork must not advance the canonical cursor");
+  assert.equal(afterConflict.state.learnedRemoteBatches.length, 1,
+    "refused fork must not contaminate the durable learned backlog");
+  assert.equal(afterConflict.state.learnedRemoteBatches[0].checkpoint.batchId, originalBatch.checkpoint.batchId);
+  assert.deepEqual(afterConflict.state.base, beforeBase);
+  assert.deepEqual(afterConflict.state.operationIntents, beforeIntents);
+
+  const restartedAdapter = new SynchronizationStateAuthorityAdapter(
+    new PersistentSynchronizationStateStore(
+      new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)));
+  const restartedBefore = await restartedAdapter.loadAuthority();
+  assert.equal(restartedBefore.status, "trusted");
+  if (restartedBefore.status !== "trusted") return;
+  assert.equal(restartedBefore.state.changeCursor, canonicalStart);
+  assert.equal(restartedBefore.state.learnedRemoteBatches.length, 1);
+
+  await persistLearnedRemoteBatch(assembly(originalBatch), restartedAdapter, {
+    stateStore: restartedAdapter,
+    stateContext: context,
+  });
+  const recovered = await restartedAdapter.loadAuthority();
+  assert.equal(recovered.status, "trusted");
+  if (recovered.status !== "trusted") return;
+  assert.equal(recovered.state.changeCursor, originalTerminal,
+    "the original unambiguous learned batch must remain safely recoverable after restart");
+  assert.equal(recovered.state.learnedRemoteBatches.length, 1);
+  assert.deepEqual(recovered.state.base, beforeBase);
+  assert.deepEqual(recovered.state.operationIntents, beforeIntents);
+  assert.equal((await inventory.openRead()).status, "stale");
+});
+
+test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observations", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("bu05-replay-content"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+
+  const stateStore = new SynchronizationStateAuthorityAdapter(
+    new PersistentSynchronizationStateStore(
+      new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)));
+  const context = {
+    expectation: "existing-pairing" as const,
+    expectedVaultIdentity: fence.vaultIdentity,
+    expectedDeviceIdentity: fence.deviceIdentity,
+  };
+  const before = await stateStore.loadAuthority();
+  assert.equal(before.status, "trusted");
+  if (before.status !== "trusted") return;
+  const start = before.state.changeCursor;
+  assert.ok(start);
+  const terminal = c("changes:bu05-replay-terminal");
+  const batchId = contractId<"RemoteIngestionBatchId">("bu05-replay-content-id");
+
+  const changeA: RemoteChange = {
+    kind: "upsert",
+    entry: {
+      path: contractId<"VaultPath">("replay/a.md") as VaultPath,
+      entityKind: "file",
+      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-replay-a"),
+      content: { revision: "rev-a", sizeBytes: 10 },
+      trashed: false,
+    },
+  };
+  const changeB: RemoteChange = {
+    kind: "upsert",
+    entry: {
+      path: contractId<"VaultPath">("replay/b.md") as VaultPath,
+      entityKind: "file",
+      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-replay-b"),
+      content: { revision: "rev-b", sizeBytes: 11 },
+      trashed: false,
+    },
+  };
+  const makeBatch = (changes: readonly RemoteChange[]) => ({
+    checkpoint: {
+      batchId,
+      startingToken: start!,
+      terminalStartToken: terminal,
+      persistenceRevision: before.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes,
+  });
+  const original = makeBatch([changeA]);
+  const assembly = (remoteChangeBatch: ReturnType<typeof makeBatch>) => ({ remoteChangeBatch } as never);
+
+  await persistLearnedRemoteBatch(assembly(original), stateStore, { stateStore, stateContext: context });
+  const learned = await stateStore.loadAuthority();
+  assert.equal(learned.status, "trusted");
+  if (learned.status !== "trusted") return;
+  assert.equal(learned.state.changeCursor, terminal);
+  assert.equal(learned.state.learnedRemoteBatches.length, 1);
+  const learnedBase = learned.state.base;
+  const learnedIntents = learned.state.operationIntents;
+
+  await persistLearnedRemoteBatch(assembly(makeBatch([changeA])), stateStore, {
+    stateStore,
+    stateContext: context,
+  });
+  const afterIdenticalReplay = await stateStore.loadAuthority();
+  assert.equal(afterIdenticalReplay.status, "trusted");
+  if (afterIdenticalReplay.status !== "trusted") return;
+  assert.equal(afterIdenticalReplay.state.learnedRemoteBatches.length, 1,
+    "genuinely identical retry must remain idempotent");
+
+  await assert.rejects(
+    persistLearnedRemoteBatch(assembly(makeBatch([changeB])), stateStore, {
+      stateStore,
+      stateContext: context,
+    }),
+    /incompatible checkpoint or change contents/,
+  );
+
+  const afterTamper = await stateStore.loadAuthority();
+  assert.equal(afterTamper.status, "trusted");
+  if (afterTamper.status !== "trusted") return;
+  assert.equal(afterTamper.state.changeCursor, terminal);
+  assert.equal(afterTamper.state.learnedRemoteBatches.length, 1);
+  assert.deepEqual(afterTamper.state.learnedRemoteBatches[0].changes, [changeA],
+    "incompatible same-ID replay must not replace durable observations");
+  assert.deepEqual(afterTamper.state.base, learnedBase);
+  assert.deepEqual(afterTamper.state.operationIntents, learnedIntents);
+
+  const restarted = new SynchronizationStateAuthorityAdapter(
+    new PersistentSynchronizationStateStore(
+      new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)));
+  await persistLearnedRemoteBatch(assembly(makeBatch([changeA])), restarted, {
+    stateStore: restarted,
+    stateContext: context,
+  });
+  const recovered = await restarted.loadAuthority();
+  assert.equal(recovered.status, "trusted");
+  if (recovered.status === "trusted") {
+    assert.equal(recovered.state.changeCursor, terminal);
+    assert.equal(recovered.state.learnedRemoteBatches.length, 1);
+    assert.deepEqual(recovered.state.learnedRemoteBatches[0].changes, [changeA]);
+  }
 });
 
 test("WS-02 BU-05 recovery replacement refuses wrong pairing before backup or CAS", async () => {
