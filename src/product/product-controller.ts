@@ -1,13 +1,14 @@
 import {
   appendDurableRemoteChangeBatch,
   contractId,
-  type ChangeCursor,
+  durableCursorCanAdvance,
+  durableRemoteChangeBatchSemanticallyEquivalent,
+  inspectDurableCursorHistory,
   type DurableRemoteChangeBatch,
   type LocalTransactionalMutationPort,
   type RemoteFileCreateRecoveryReadPort,
   type RemoteFolderCreateRecoveryReadPort,
   type ReliableRemoteMutationPort,
-  type RemoteChange,
   type StateRevision,
   type SynchronizationAuthorityStoreV1_1,
 } from "../contracts";
@@ -37,90 +38,6 @@ function nextRevision(current: StateRevision): StateRevision {
   return contractId<"StateRevision">(match ? `${match[1]}${Number(match[2]) + 1}` : `${raw}:1`) as StateRevision;
 }
 
-function hasUnambiguousDurableCursorChain(
-  batches: readonly DurableRemoteChangeBatch[],
-  startingToken: ChangeCursor | null | undefined,
-  terminalToken: ChangeCursor,
-): boolean {
-  if (startingToken === terminalToken) return true;
-  if (startingToken === null || startingToken === undefined) return false;
-
-  let cursor = startingToken;
-  const visited = new Set<string>();
-  while (cursor !== terminalToken) {
-    const key = String(cursor);
-    if (visited.has(key)) return false;
-    visited.add(key);
-
-    const successors = batches.filter(value =>
-      value.checkpoint.startingToken === cursor
-      && value.checkpoint.terminalStartToken !== cursor);
-    if (successors.length !== 1) return false;
-    cursor = successors[0].checkpoint.terminalStartToken;
-  }
-  return true;
-}
-
-function remoteChangeEquivalent(left: RemoteChange, right: RemoteChange): boolean {
-  if (left.kind !== right.kind) return false;
-  if (left.kind === "removed" && right.kind === "removed") {
-    return left.remoteObjectId === right.remoteObjectId
-      && left.lastKnownPath === right.lastKnownPath;
-  }
-  if (left.kind !== "upsert" || right.kind !== "upsert") return false;
-  const a = left.entry, b = right.entry;
-  if (a.path !== b.path
-    || a.entityKind !== b.entityKind
-    || a.remoteObjectId !== b.remoteObjectId
-    || a.trashed !== b.trashed) return false;
-  if (!a.content || !b.content) return a.content === b.content;
-  return a.content.hash === b.content.hash
-    && a.content.sizeBytes === b.content.sizeBytes
-    && a.content.revision === b.content.revision
-    && a.content.advisoryModifiedTimeMs === b.content.advisoryModifiedTimeMs;
-}
-
-function durableBatchReplayEquivalent(left: DurableRemoteChangeBatch, right: DurableRemoteChangeBatch): boolean {
-  if (left.checkpoint.batchId !== right.checkpoint.batchId
-    || left.checkpoint.startingToken !== right.checkpoint.startingToken
-    || left.checkpoint.terminalStartToken !== right.checkpoint.terminalStartToken
-    || left.checkpoint.status !== right.checkpoint.status
-    || left.changes.length !== right.changes.length) return false;
-  return left.changes.every((change, index) => remoteChangeEquivalent(change, right.changes[index]!));
-}
-
-function proposedDurableCursorHistoryIsUnambiguous(
-  batches: readonly DurableRemoteChangeBatch[],
-  canonicalCursor: ChangeCursor | null | undefined,
-  terminalToken: ChangeCursor,
-): boolean {
-  if (canonicalCursor === null || canonicalCursor === undefined) return false;
-
-  const outgoing = new Map<string, DurableRemoteChangeBatch>();
-  for (const batch of batches) {
-    const start = String(batch.checkpoint.startingToken);
-    const end = String(batch.checkpoint.terminalStartToken);
-    if (start === end) {
-      if (batch.changes.length !== 0) return false;
-      continue;
-    }
-    if (outgoing.has(start)) return false;
-    outgoing.set(start, batch);
-  }
-
-  for (const start of outgoing.keys()) {
-    const visited = new Set<string>();
-    let cursor = start;
-    while (outgoing.has(cursor)) {
-      if (visited.has(cursor)) return false;
-      visited.add(cursor);
-      cursor = String(outgoing.get(cursor)!.checkpoint.terminalStartToken);
-    }
-  }
-
-  return hasUnambiguousDurableCursorChain(batches, canonicalCursor, terminalToken);
-}
-
 export async function persistLearnedRemoteBatch(
   assembly: AssembledPlanningInput,
   authorityStore: SynchronizationAuthorityStoreV1_1,
@@ -128,72 +45,95 @@ export async function persistLearnedRemoteBatch(
 ): Promise<void> {
   const batch = assembly.remoteChangeBatch;
   if (!batch) return;
+
   const loaded = await authorityStore.loadAuthority();
-  if (loaded.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch cannot be learned without trusted writable synchronization authority");
-  const existing = loaded.state.learnedRemoteBatches.find(value => value.checkpoint.batchId === batch.checkpoint.batchId);
-  if (existing && !durableBatchReplayEquivalent(existing, batch))
+  if (loaded.status !== "trusted")
+    throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch cannot be learned without trusted writable synchronization authority");
+
+  const existing = loaded.state.learnedRemoteBatches.find(
+    value => value.checkpoint.batchId === batch.checkpoint.batchId);
+  if (existing && !durableRemoteChangeBatchSemanticallyEquivalent(existing, batch))
     throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch ID was replayed with incompatible checkpoint or change contents");
 
-  // The v1.1 authority metadata read model does not expose the canonical
-  // change cursor. Only the trusted state store can authorize that comparison.
+  // Canonical cursor and durable learned history are independent crash-consistent
+  // facts. The durable frontier is the terminal token reached by following only
+  // unique cursor-advancing learned batches from the currently canonical cursor.
   const canonical = await options.stateStore.load(options.stateContext);
-  if (canonical.status !== "trusted")
+  if (canonical.status !== "trusted" || !canonical.state.changeCursor)
     throw new SnapshotAssemblyError("recovery-required", "trusted canonical cursor state is unavailable during REMOTE batch learning");
 
   const durableBefore = loaded.state.learnedRemoteBatches;
-  if (!existing && !hasUnambiguousDurableCursorChain(
-    durableBefore,
-    canonical.state.changeCursor,
-    batch.checkpoint.startingToken,
-  )) {
-    throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch starts from an unrelated durable cursor");
-  }
-  if (existing && !proposedDurableCursorHistoryIsUnambiguous(
-    durableBefore,
-    canonical.state.changeCursor,
-    batch.checkpoint.terminalStartToken,
-  )) {
-    throw new SnapshotAssemblyError("recovery-required", "replayed REMOTE batch conflicts with canonical cursor or durable cursor history");
-  }
+  const historyBefore = inspectDurableCursorHistory(durableBefore, canonical.state.changeCursor);
+  if (historyBefore.status !== "valid")
+    throw new SnapshotAssemblyError("recovery-required", `durable REMOTE cursor history is invalid (${historyBefore.reason})`);
 
   let durableBatches = durableBefore;
   if (!existing) {
+    // A newly observed batch must begin at the durable frontier, not merely at
+    // any historical token reachable from the canonical cursor. This prevents a
+    // stale writer from persisting C→X after C→D→E is already durable.
+    if (batch.checkpoint.startingToken !== historyBefore.frontier)
+      throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch starts behind or outside the durable cursor frontier");
+
     const durableBatch: DurableRemoteChangeBatch = {
       ...batch,
       checkpoint: { ...batch.checkpoint, persistenceRevision: loaded.state.persistenceRevision },
     };
     const proposedBatches = appendDurableRemoteChangeBatch(durableBefore, durableBatch);
-    if (!proposedDurableCursorHistoryIsUnambiguous(
-      proposedBatches,
-      canonical.state.changeCursor,
-      batch.checkpoint.terminalStartToken,
-    )) {
-      throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch would create an ambiguous, cyclic, or disconnected durable cursor history");
-    }
-    const candidate = {
-      ...loaded.state,
-      learnedRemoteBatches: proposedBatches,
-    };
-    const saved = await authorityStore.saveAuthority(candidate, loaded.state.persistenceRevision, loaded.state.semanticGeneration);
-    if (saved.status !== "saved") throw new SnapshotAssemblyError("recovery-required", `terminal REMOTE Changes batch was fully read but could not be durably learned (${saved.status})`);
+    const proposed = inspectDurableCursorHistory(proposedBatches, canonical.state.changeCursor);
+    if (proposed.status !== "valid")
+      throw new SnapshotAssemblyError("recovery-required", `terminal REMOTE Changes batch would create invalid durable cursor history (${proposed.reason})`);
+
+    const expectedFrontier =
+      batch.checkpoint.startingToken === batch.checkpoint.terminalStartToken
+        ? historyBefore.frontier
+        : batch.checkpoint.terminalStartToken;
+    if (proposed.frontier !== expectedFrontier)
+      throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch does not extend the durable frontier deterministically");
+
+    const candidate = { ...loaded.state, learnedRemoteBatches: proposedBatches };
+    const saved = await authorityStore.saveAuthority(
+      candidate,
+      loaded.state.persistenceRevision,
+      loaded.state.semanticGeneration,
+    );
+    if (saved.status !== "saved")
+      throw new SnapshotAssemblyError("recovery-required", `terminal REMOTE Changes batch was fully read but could not be durably learned (${saved.status})`);
     durableBatches = candidate.learnedRemoteBatches;
   }
 
+  // Exact duplicate replay is already durably learned. If the canonical cursor
+  // still lags this batch, catch it up only through the unique advancing chain.
+  // If canonical authority has moved elsewhere, do not rewrite it from stale
+  // replay evidence; the replay is idempotently satisfied by the durable batch.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const state = await options.stateStore.load(options.stateContext);
-    if (state.status !== "trusted") throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but trusted canonical cursor state is unavailable");
+    if (state.status !== "trusted" || !state.state.changeCursor)
+      throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but trusted canonical cursor state is unavailable");
+
     if (state.state.changeCursor === batch.checkpoint.terminalStartToken) return;
-    if (!hasUnambiguousDurableCursorChain(
+
+    if (!durableCursorCanAdvance(
       durableBatches,
       state.state.changeCursor,
       batch.checkpoint.terminalStartToken,
     )) {
+      if (existing) return;
       throw new SnapshotAssemblyError("recovery-required", "durable REMOTE cursor mirror raced a different canonical cursor");
     }
-    const candidate = { ...state.state, stateRevision: nextRevision(state.state.stateRevision), changeCursor: batch.checkpoint.terminalStartToken };
-    const saved = await options.stateStore.saveTrusted(candidate, state.state.stateRevision);
+
+    const candidate = {
+      ...state.state,
+      stateRevision: nextRevision(state.state.stateRevision),
+      changeCursor: batch.checkpoint.terminalStartToken,
+    };
+    const saved = await options.stateStore.saveTrusted(
+      candidate,
+      state.state.stateRevision,
+    );
     if (saved.status === "saved") return;
-    if (saved.status !== "stale-revision") throw new SnapshotAssemblyError("recovery-required", `durable REMOTE batch exists but cursor mirror could not advance: ${saved.reason}`);
+    if (saved.status !== "stale-revision")
+      throw new SnapshotAssemblyError("recovery-required", `durable REMOTE batch exists but cursor mirror could not advance: ${saved.reason}`);
   }
   throw new SnapshotAssemblyError("recovery-required", "durable REMOTE batch exists but cursor mirror repeatedly raced with trusted-state persistence");
 }
