@@ -66,6 +66,19 @@ Phase 1 only. Phase 3 may execute in parallel with Phases 2 and 4.
 - Do not implement final sync orchestration, preview UI, or conflict/recovery UI.
 - Do not broaden Drive scope, add Shared Drive support, or add multiple sync targets.
 
-## Prospective DEC-339 unit — design only, not executable
+## DEC-362 corrective prerequisite (2026-11-18)
 
-Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After independent design review, capacity-size and SHA-bind **D339-03** for verified baseline/Changes observation, stable ID+parent provenance, duplicate-aware targeted proof and explicit unknown/incomplete failure classifications. It depends on WS-02 D339-01 frozen contracts; may overlap WS-02 D339-02 only with distinct writable surfaces. It does not alter `src/state/**`, `src/product/**` orchestration, or any PHX-CI/BVP frozen governance surface. Exact affected paths, tests, and predecessor identity are rebound at dispatch.
+Before DEC-339 production planner cutover, WS-03 owns the remote-mutation portion of [stable Drive-ID content-update correction](../WS-05-integrated-sync-product/tasks/stable-drive-id-content-update-correction-2026-11-18.md):
+
+- ordinary upload/update and clean-merge propagation against an established file use that file's existing Drive ID;
+- remove routine candidate-object creation/predecessor-retirement semantics from existing-file content mutation;
+- preserve safe retry/idempotency through exact identity, revision/content preconditions, durable intent and provider-backed outcome verification;
+- new/reserved IDs remain available for genuine creates;
+- ambiguous/stale/uncertain provider outcomes remain blocked/recovery-required rather than path/name remapping.
+
+This correction does not broaden OAuth scope or change synchronization conflict policy. WS-05 owns executor/recovery integration over the corrected Drive primitive.
+
+
+## DEC-339 remaining integration (2026-11-17)
+
+D339-03's metadata source/reader exists dormant; **do not rebuild it**. Under the [single WS-05 task](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md), WS-03 provides the narrow existing-OAuth metadata transport seam and provider/Changes/provenance equivalence. Preserve `drive.file`, explicit incomplete/unknown results and full-reconciliation fallback. Accepted Phase-3 scope stays unchanged.

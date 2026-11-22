@@ -15,7 +15,7 @@ The frozen shared contracts established by WS-01 are inherited. This workstream 
 - All `INV-001` through `INV-020` must remain true in the integrated system.
 
 
-## Approved inventory-backed integration direction (planning only)
+## Approved inventory-backed integration direction (dormant software; activation pending)
 
 WS-05 integrates WS-02's local authoritative-state/inventory boundary with WS-03's incremental and targeted Drive observations (Target Specification §7.9), reducing redundant metadata requests without adding a second planner or execution engine. Every mutation still requires exact precondition/parent/occupancy evidence, durable intent, verified physical result before committed state, and fail-closed uncertainty handling. Stale data or cursor coverage triggers re-observation or conservative full reconciliation. This direction does **not** change the current S09A one-canary mutation authorization.
 
@@ -25,6 +25,17 @@ Phases 2, 3, and 4, all completed against Phase 1 shared contracts.
 
 Repository-specific implementation mechanics remain engineering discretion only within these fixed ownership and invariant boundaries.
 
-## DEC-339 detailed design — pending independent architecture review
+## DEC-362 stable remote identity prerequisite (2026-11-18)
 
-See `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. WS-05 alone consumes the coherent inventory/Changes evidence in the existing `ProductSnapshotAssembler`/controller and optionally in the existing executor's *remote verification-read* boundary. It must preserve the one planner/executor, fresh LOCAL observation, trustworthy BASE, identical ambiguity/global gates, current semantic-CAS and durable-intent recovery; missing/partial/stale inventory falls back to full reconciliation or recovery. No targeted proof may bypass independent current ID/parent/occupancy/precondition/convergence checks, nor authorize a destructive or uncertain mutation by itself. Existing S09A historical status is unchanged.
+The integrated executor must preserve an established managed file's Google Drive ID across ordinary content update and clean-text-merge propagation. The accepted execution lifecycle remains: reviewed plan → exact precondition revalidation → durable intent → provider mutation → independent convergence/content verification → authoritative BASE/state commit. **What changes is the remote mutation primitive:** an update to an existing logical file must target the existing `remoteObjectId`, not manufacture a replacement object and retire its predecessor.
+
+Recovery must resolve uncertain outcomes against the exact established ID and durable intent. It may not infer identity succession from name/path equality. A newly generated Drive ID is valid for a true create, not as the normal next identity of an existing file. DEC-339 planner cutover/activation remains blocked until this correction is PHX-CI-qualified and independently accepted.
+
+Canonical task: [stable Drive-ID content-update correction](tasks/stable-drive-id-content-update-correction-2026-11-18.md).
+
+
+## DEC-339 minimal integration boundary (2026-11-17)
+
+Dormant `InventoryBackedSnapshotAssembler` and the verified projection preserve the **same** planner and executor. WS-05 owns one default-off runtime assembly/refresh choice **after isolated storage-only shadow and observation-only equivalence stages**. Integrate WS-02's local metadata hints through the existing `VerifiedLocalInventoryCoordinator`, without treating them as absence/stability authority. Preserve the original full/recovery assembler, fresh LOCAL observations, BASE/history, durable-intent recovery and independent executor preconditions. WS-02 storage/cursor safety and WS-03 metadata transport must be qualified first; cached inventory never authorizes mutation or deletion.
+
+Follow the [single integration plan](tasks/dec339-inventory-production-integration-2026-11-17.md). Keep D339-06 targeted executor reads disabled in the initial cutover, **but retain their future separately gated DEC-339 objective**; activation requires new exact-source verification, independent review and Owner approval.

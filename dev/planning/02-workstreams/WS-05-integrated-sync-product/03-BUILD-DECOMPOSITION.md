@@ -66,6 +66,21 @@ Phases 2, 3, and 4, all completed against Phase 1 shared contracts.
 - Do not perform final large-scale mobile/performance/fault hardening that requires the complete integrated system; that belongs in Phase 6.
 - Do not perform Stage 3 independent validation within the construction phase.
 
-## Prospective DEC-339 units — design only, not executable
+## DEC-362 corrective prerequisite (2026-11-18)
 
-Ground in `dev/research/verified-remote-metadata-inventory/dec339-detailed-architecture-2026-10-10.md`. After independent design review, capacity-size and SHA-bind **D339-05** for snapshot assembly, safe fallback and current planner observations, then **D339-06** for optional targeted convergence read substitution by the authoritative executor. Both depend on integrated WS-02/03 D339-04; D339-06 also requires D339-05. One shared orchestration/lifecycle owner at a time; independently changing remote mutation/recovery authority is prohibited. Require PHX-CI semantic equivalence before enabling the optimization. Existing accepted Phase-5 work is not reopened.
+[Stable Drive-ID Content-Update Correction](tasks/stable-drive-id-content-update-correction-2026-11-18.md) is the immediate prerequisite to DEC-339 planner cutover. WS-05 owns integration of WS-03's corrected same-ID Drive update into the existing authoritative executor, durable-intent/recovery lifecycle, BASE commit, clean-merge propagation and cross-device convergence.
+
+Required end state:
+
+- existing-file upload/update and clean merge retain the same established `remoteObjectId`;
+- authoritative state cannot commit a successor/replacement ID for an ordinary content revision;
+- ambiguous update outcome resolves against the exact original ID and intended revision/content evidence;
+- sequential second-device pull, concurrent clean merge, restart/recovery and Changes ingestion converge without an artificial identity transition;
+- existing planner/conflict/deletion/move semantics remain unchanged except where the defective replacement-ID assumption is removed.
+
+Do not begin DEC-339 planner activation until this corrective unit has exact-source PHX-CI PASS and independent acceptance.
+
+
+## DEC-339 remaining integration (2026-11-17)
+
+**Canonical plan:** [Minimal Production Inventory Integration](tasks/dec339-inventory-production-integration-2026-11-17.md). D339-05/06 modules already exist dormant. After WS-02 storage/cursor **and local-hint** qualification and WS-03 authenticated metadata transport, complete **isolated storage-only shadow** and **observation-only parity** stages before wiring **default-off** inventory-backed assembly with safe physical fallback; measure safety and usefulness before independent review and separately Owner-authorized cutover. **Defer, do not cancel, D339-06 executor targeted reads** to their separate proof/activation gate. Keep the accepted planner, executor and Phase-5 behavior.

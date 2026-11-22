@@ -694,7 +694,7 @@ Prefer reuse of trustworthy, scope-bound folder/file ID and parent mappings and 
 
 Google Drive permits same-name sibling folders/files. Pre-generated Drive IDs and durable intents protect retry identity but do not mean another same-name object is the same object: verify logical-path occupancy and managed-root/domain provenance, handle duplicates/unknown outcomes conservatively, and never adopt an object based solely on display name.
 
-This architecture is **approved for future planning, not yet implemented**. First finish the active S09A safety/attribution investigation; then require measured per-operation request attribution, precise local-state/schema/migration design, bounded mobile storage/memory evidence, and PHX-CI-owned safety-equivalence and performance tests before implementation or performance claims. No physical S09A mutation is authorized by this section.
+**Implementation-status update (2026-11-17):** DEC-339 inventory modules exist as **dormant software** on master, but runtime wiring, migration qualification and activation remain incomplete. All requirements above remain unchanged. Before activation require safe v1/v2 migration and rollback, measured requests/latency/resources, existing PHX-CI-owned safety-equivalence tests, independent review, and separate Owner authority for live or physical use. The [single WS-05 integration plan](../02-workstreams/WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) records remaining steps. No live Drive/vault actions or S09A physical mutation are authorized.
 
 ## 8. System Invariants
 
