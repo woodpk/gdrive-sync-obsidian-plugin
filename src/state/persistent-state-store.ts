@@ -357,6 +357,8 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
         issues.push(...physicalDescriptorIssues(intent, effect));
       }
     }
+    if (state.learnedRemoteBatches.length > 0 && !state.changeCursor)
+      issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog requires a canonical change cursor", undefined, "remote-ingestion"));
     const batchIds = state.learnedRemoteBatches.map(batch => String(batch.checkpoint.batchId));
     if (!unique(batchIds)) issues.push(issue("ingestion-checkpoint-inconsistent", "learned remote backlog contains duplicate batch IDs", undefined, "remote-ingestion"));
     if (state.changeCursor) {
@@ -677,14 +679,13 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       )] };
 
     if (existing) {
-      if (loaded.state.changeCursor !== existing.checkpoint.terminalStartToken)
-        return { status: "recovery-required", issues: [issue(
-          "ingestion-checkpoint-inconsistent",
-          "idempotent learned-batch replay does not match the canonical cursor",
-          undefined,
-          "remote-ingestion",
-        )] };
-      return this.saveAuthority(loaded.state, expectedPersistenceRevision, expectedSemanticGeneration);
+      // Exact semantic replay is already durable. Do not rewrite authority or
+      // move a cursor that may legitimately have advanced since this batch.
+      return {
+        status: "saved",
+        persistenceRevision: loaded.state.persistenceRevision,
+        semanticGeneration: loaded.state.semanticGeneration,
+      };
     }
 
     if (!loaded.state.changeCursor || loaded.state.changeCursor !== batch.checkpoint.startingToken)
