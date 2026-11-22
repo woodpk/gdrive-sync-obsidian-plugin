@@ -144,12 +144,12 @@ export async function persistLearnedRemoteBatch(
   )) {
     throw new SnapshotAssemblyError("recovery-required", "terminal REMOTE Changes batch starts from an unrelated durable cursor");
   }
-  if (existing && !hasUnambiguousDurableCursorChain(
+  if (existing && !proposedDurableCursorHistoryIsUnambiguous(
     durableBefore,
     canonical.state.changeCursor,
     batch.checkpoint.terminalStartToken,
   )) {
-    throw new SnapshotAssemblyError("recovery-required", "replayed REMOTE batch conflicts with canonical cursor");
+    throw new SnapshotAssemblyError("recovery-required", "replayed REMOTE batch conflicts with canonical cursor or durable cursor history");
   }
 
   let durableBatches = durableBefore;
