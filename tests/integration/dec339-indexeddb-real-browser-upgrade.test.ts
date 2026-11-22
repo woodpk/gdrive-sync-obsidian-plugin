@@ -12,19 +12,21 @@ interface BrowserResult {
   readonly ok: boolean;
   readonly error?: string;
   readonly cooperative?: {
-    readonly seed: { readonly status: string; readonly canonicalBytes: readonly number[] | null };
+    readonly seed: { readonly status: string; readonly canonicalBytes: readonly number[] | null; readonly backupId: string };
     readonly upgrade: { readonly status: string; readonly reason: string | null };
     readonly legacyAfter: { readonly status: string; readonly name?: string; readonly message?: string };
     readonly compatible: { readonly status: string; readonly canonicalBytes: readonly number[] | null };
+    readonly backup: { readonly status: string; readonly canonicalBytes: readonly number[] | null };
     readonly version: { readonly status: string; readonly version: number };
   };
   readonly blocked?: {
-    readonly seed: { readonly status: string; readonly canonicalBytes: readonly number[] | null };
+    readonly seed: { readonly status: string; readonly canonicalBytes: readonly number[] | null; readonly backupId: string };
     readonly blocker: { readonly status: string; readonly version: number };
     readonly blockedUpgrade: { readonly status: string; readonly reason: string | null };
     readonly close: { readonly status: string };
     readonly retry: { readonly status: string; readonly reason: string | null };
     readonly compatible: { readonly status: string; readonly canonicalBytes: readonly number[] | null };
+    readonly backup: { readonly status: string; readonly canonicalBytes: readonly number[] | null };
     readonly version: { readonly status: string; readonly version: number };
   };
 }
@@ -92,7 +94,7 @@ function loaded(frame) {
     else frame.addEventListener("load", resolve, { once: true });
   });
 }
-function command(frame, name, databaseName) {
+function command(frame, name, databaseName, extra = {}) {
   return new Promise((resolve, reject) => {
     const id = "cmd-" + (++sequence);
     const timer = setTimeout(() => {
@@ -100,7 +102,7 @@ function command(frame, name, databaseName) {
       reject(new Error("frame-command-timeout:" + name));
     }, 15000);
     pending.set(id, { resolve, reject, timer });
-    frame.contentWindow.postMessage({ id, command: name, args: { databaseName } }, location.origin);
+    frame.contentWindow.postMessage({ id, command: name, args: { databaseName, ...extra } }, location.origin);
   });
 }
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -119,6 +121,7 @@ async function postResult(value) {
     const cooperativeUpgrade = await command(b, "upgradeSnapshot", cooperativeDb);
     const cooperativeLegacyAfter = await command(a, "readLegacy", cooperativeDb);
     const cooperativeCompatible = await command(b, "readCompatible", cooperativeDb);
+    const cooperativeBackup = await command(b, "readBackup", cooperativeDb, { backupId: cooperativeSeed.backupId });
     const cooperativeVersion = await command(b, "databaseVersion", cooperativeDb);
 
     const blockedSeed = await command(a, "seedLegacy", blockedDb);
@@ -128,6 +131,7 @@ async function postResult(value) {
     await delay(500);
     const retry = await command(b, "upgradeSnapshot", blockedDb);
     const blockedCompatible = await command(b, "readCompatible", blockedDb);
+    const blockedBackup = await command(b, "readBackup", blockedDb, { backupId: blockedSeed.backupId });
     const blockedVersion = await command(b, "databaseVersion", blockedDb);
 
     await postResult({
@@ -137,6 +141,7 @@ async function postResult(value) {
         upgrade: cooperativeUpgrade,
         legacyAfter: cooperativeLegacyAfter,
         compatible: cooperativeCompatible,
+        backup: cooperativeBackup,
         version: cooperativeVersion,
       },
       blocked: {
@@ -146,6 +151,7 @@ async function postResult(value) {
         close,
         retry,
         compatible: blockedCompatible,
+        backup: blockedBackup,
         version: blockedVersion,
       },
     });
@@ -281,6 +287,12 @@ test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rol
       result.cooperative.seed.canonicalBytes,
       "v2-aware rollback reader must preserve exact canonical authority bytes after real upgrade",
     );
+    assert.equal(result.cooperative.backup.status, "read");
+    assert.deepEqual(
+      result.cooperative.backup.canonicalBytes,
+      result.cooperative.seed.canonicalBytes,
+      "pre-upgrade backup must survive the real additive v2 upgrade byte-for-byte",
+    );
 
     assert.equal(result.blocked.seed.status, "saved");
     assert.equal(result.blocked.blocker.status, "open");
@@ -295,6 +307,12 @@ test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rol
       result.blocked.compatible.canonicalBytes,
       result.blocked.seed.canonicalBytes,
       "blocked/late upgrade completion must not change canonical authority bytes",
+    );
+    assert.equal(result.blocked.backup.status, "read");
+    assert.deepEqual(
+      result.blocked.backup.canonicalBytes,
+      result.blocked.seed.canonicalBytes,
+      "blocked/late upgrade completion must preserve the pre-upgrade backup byte-for-byte",
     );
   } finally {
     if (browser && browser.exitCode === null) browser.kill();
