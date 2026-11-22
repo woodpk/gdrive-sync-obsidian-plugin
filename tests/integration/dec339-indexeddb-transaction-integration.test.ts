@@ -935,6 +935,24 @@ test("WS-02 BU-05 rejects a forked learned-batch edge before durable persistence
   assert.equal(detachedDirectSave.status, "recovery-required",
     "semantic validator must reject advancing history disconnected from the canonical cursor component");
 
+  const secondTerminal = c("changes:bu05-ordered-second-terminal");
+  const secondEdge = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-ordered-second"),
+      startingToken: originalTerminal,
+      terminalStartToken: secondTerminal,
+      persistenceRevision: beforeConflict.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as readonly RemoteChange[],
+  };
+  const reorderedDirectSave = await stateStore.saveAuthority({
+    ...beforeConflict.state,
+    learnedRemoteBatches: [secondEdge, originalBatch],
+  }, beforeConflict.state.persistenceRevision, beforeConflict.state.semanticGeneration);
+  assert.equal(reorderedDirectSave.status, "recovery-required",
+    "durable observation array order must agree with the opaque-token cursor chain");
+
   const afterConflict = await stateStore.loadAuthority();
   assert.equal(afterConflict.status, "trusted");
   if (afterConflict.status !== "trusted") return;
@@ -1258,6 +1276,26 @@ test("WS-02 BU-05 direct learned-batch API rejects logical staleness even with c
   assert.equal(afterFirst.status, "trusted");
   if (afterFirst.status !== "trusted") return;
   assert.equal(afterFirst.state.changeCursor, firstTerminal);
+
+  const exactReplay = {
+    ...first,
+    checkpoint: {
+      ...first.checkpoint,
+      persistenceRevision: afterFirst.state.persistenceRevision,
+    },
+  };
+  const exactReplayResult = await store.appendLearnedRemoteBatch(
+    exactReplay,
+    afterFirst.state.persistenceRevision,
+    afterFirst.state.semanticGeneration,
+  );
+  assert.equal(exactReplayResult.status, "saved",
+    "exact direct replay remains idempotently satisfied at a later persistence revision");
+  if (exactReplayResult.status === "saved") {
+    assert.equal(exactReplayResult.persistenceRevision, afterFirst.state.persistenceRevision,
+      "exact replay must not create another durable authority write");
+    assert.equal(exactReplayResult.semanticGeneration, afterFirst.state.semanticGeneration);
+  }
 
   const incompatibleReplay = {
     ...first,
