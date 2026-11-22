@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu05-cursor-recovery-gates-20261120`  
 **Baseline:** BU-04 independently accepted and closed at `5027e724765fbd915fa88714ba35b4bd97aeea99`  
-**Status:** **BUILDER-QUALIFIED R7 PASS after R4 independent CORRECTION REQUIRED; independent Reviewer acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
+**Status:** **BUILDER-QUALIFIED R9 PASS after R7 independent CORRECTION REQUIRED (F-03); independent Reviewer acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
 
 ## Purpose and bounded implementation
 
@@ -36,7 +36,7 @@ The expanded BU-05 now covers the shipping `commitCursor` path, durable Changes-
 
 ## Next mandatory action
 
-Dispatch BU-05 to an independent Reviewer for a blind-first source assessment of frozen corrected R7 source `c47c88cde35dc827263e3ff7b1366a47bc41acb6` / tree `12d35229a727377583a134522f34d59a3acdac7c`, then review authored tests, prior R4 findings, correction history, and canonical R7 PHX-CI evidence only after the blind source assessment is frozen. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
+Dispatch BU-05 to an independent Reviewer for a blind-first source assessment of frozen corrected R9 source `0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b` / tree `702e8e5d875b31f0f1d9cfb099a06c75b1f9b779`, then review authored tests, prior R4/R7 findings, correction history, R8 blocked evidence, and canonical R9 PHX-CI evidence only after the blind source assessment is frozen. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
 
 ## Original PHX-CI R1 qualification and Builder→Reviewer transition (2026-11-20)
 
@@ -98,3 +98,18 @@ The recovery identity fence also rejects a readable **existing foreign pairing**
 - **Verified R7 result:** 13/13 required stages PASS; focused BVP **634/634 PASS**; full product **1336/1336 PASS**; typecheck/build/artifacts/check/change-set/repository PASS; overall PASS/exit 0. Built `main.js`: 926008 bytes, SHA-256 `6825b343e8dfc38bdceda66b86dddeacc59f2fce6b773db349074036ff64531b`. Physical dispatch remained disabled.
 - Evidence publication is exactly one child of the frozen source and changes only `dev/_ca-output.md` plus `dev/test-results/ba32978e-3536-43bf-8b0a-4ffb4e456c22/{result.json,result.md,terminal.log}`; it is not the implementation source.
 - **Current gate:** new independent blind-first correction review. Builder qualification does not accept BU-05. Whole WS-02/DEC-339 remain incomplete; genuine multi-WebView/browser upgrade behavior and live scope-owner/integration gates remain open. No master merge, activation, live migration, real Drive/vault/device operations, physical testing, installation, promotion, or release.
+
+
+## R7 independent correction required F-03 → R9 corrected qualification PASS (2026-11-22)
+
+- Independent R7 review of source `c47c88cde35dc827263e3ff7b1366a47bc41acb6` returned **CORRECTION REQUIRED** on F-03: `PersistentSynchronizationStateStore.saveTrusted()` could accept a full durable v1.1 authority state without enforcing the durable learned-batch immutability and authorized-retirement protections already enforced by `saveAuthorityCore()`.
+- R7 prior findings F-01 and F-02 remain resolved; the R9 correction is narrowly scoped to the generic trusted-state persistence bypass and related tests.
+- Production correction: one shared `durableRemoteBatchTransitionIssues()` invariant now protects both `saveAuthorityCore()` and `saveTrustedCore()`. Existing durable batches cannot have checkpoint/payload identity rewritten in place, and unreduced batches cannot be removed through generic canonical persistence. The generic path also refuses authority downgrade or pairing-identity change when current persisted state is v1.1 authority.
+- Legitimate behavior is preserved: valid cursor-only `saveTrusted()` catch-up through already-durable cursor history remains legal; designated reduction followed by `retireLearnedRemoteBatch()` remains legal; canonical CAS, BASE, mappings, pending intents, pairing identities, backup-first recovery, and inventory invalidation remain intact.
+- Direct focused tests now exercise `saveTrusted()` for changed Changes contents under the same durable batch ID, unproven batch removal, restart with unchanged durable state after rejection, valid cursor-only catch-up, legitimate authorized reduction/retirement, and inventory invalidation.
+- R8 candidate `e31fd3ec4ce190c7945697c49ab2bb44161aad19` / tree `ce325814e9c38cefa2436c5809347133a65cecbc` ran PHX-CI `a1f6f798-e02a-4c3d-8f9e-7c49ee13446f` and was **BLOCKED** solely by two Builder-authored TypeScript excess-property errors in the new tests. No additional production failure was revealed. Evidence remains preserved at evidence-only commit `cdb66c13cc884db8faeb20ff1e3c97a5d5b57b7c`.
+- The test typing was corrected without changing the production F-03 implementation. Frozen R9 implementation source: `0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b`; Git tree: `702e8e5d875b31f0f1d9cfb099a06c75b1f9b779`.
+- Canonical software-only PHX-CI R9 run: `f7af01fb-f687-44b0-9e61-e1a0b5bab6d9`, runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`, evidence-only child commit `7aed3813d3bb94c0738aad337a53a77104f26335`.
+- **Verified R9 result:** 13/13 required stages PASS; focused BVP **634/634 PASS**; full product **1338/1338 PASS**; typecheck/build/artifacts/check/change-set/repository PASS; overall **COMPLETE/PASS**, operator exit 0. Built `main.js`: **927076 bytes**, SHA-256 `4bde1bad5045ba8f732d6e072b63110aadcb9ab8265d1454bb2a7dd9c860d828`. Physical dispatch remained disabled.
+- R9 evidence publication is exactly one child of the frozen R9 source and changes only `dev/_ca-output.md` plus `dev/test-results/f7af01fb-f687-44b0-9e61-e1a0b5bab6d9/{result.json,result.md,terminal.log}`; it is not the implementation source.
+- **Current gate:** new independent blind-first review of R9. Builder qualification does not accept BU-05. Whole WS-02/DEC-339 remain incomplete; no master/PR merge, inventory activation, live migration, real Drive/vault/device operations, physical testing, installation, promotion, or release.
