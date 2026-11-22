@@ -362,11 +362,16 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
     if (state.changeCursor) {
       const history = inspectDurableCursorHistory(state.learnedRemoteBatches, state.changeCursor);
       if (history.status === "invalid") {
+        const detail = history.reason === "duplicate-successor"
+          ? "learned remote backlog contains multiple outgoing advancing edges for one starting cursor"
+          : history.reason === "duplicate-predecessor"
+            ? "learned remote backlog contains multiple advancing predecessors for one terminal cursor"
+            : history.reason === "disconnected-edge"
+              ? "learned remote backlog contains advancing history disconnected from the canonical cursor"
+              : "learned remote backlog contains a cursor cycle";
         issues.push(issue(
           "ingestion-checkpoint-inconsistent",
-          history.reason === "duplicate-successor"
-            ? "learned remote backlog contains multiple outgoing advancing edges for one starting cursor"
-            : "learned remote backlog contains a cursor cycle",
+          detail,
           undefined,
           "remote-ingestion",
         ));
