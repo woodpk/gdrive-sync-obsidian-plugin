@@ -918,6 +918,23 @@ test("WS-02 BU-05 rejects a forked learned-batch edge before durable persistence
   assert.equal(poisonedDirectSave.status, "recovery-required",
     "semantic validator must reject the same fork even if a caller bypasses controller preflight");
 
+  const detached = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-detached-history"),
+      startingToken: c("changes:bu05-detached-start"),
+      terminalStartToken: c("changes:bu05-detached-end"),
+      persistenceRevision: beforeConflict.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as readonly RemoteChange[],
+  };
+  const detachedDirectSave = await stateStore.saveAuthority({
+    ...beforeConflict.state,
+    learnedRemoteBatches: [...beforeConflict.state.learnedRemoteBatches, detached],
+  }, beforeConflict.state.persistenceRevision, beforeConflict.state.semanticGeneration);
+  assert.equal(detachedDirectSave.status, "recovery-required",
+    "semantic validator must reject advancing history disconnected from the canonical cursor component");
+
   const afterConflict = await stateStore.loadAuthority();
   assert.equal(afterConflict.status, "trusted");
   if (afterConflict.status !== "trusted") return;
@@ -1242,20 +1259,46 @@ test("WS-02 BU-05 direct learned-batch API rejects logical staleness even with c
   if (afterFirst.status !== "trusted") return;
   assert.equal(afterFirst.state.changeCursor, firstTerminal);
 
+  const incompatibleReplay = {
+    ...first,
+    checkpoint: {
+      ...first.checkpoint,
+      persistenceRevision: afterFirst.state.persistenceRevision,
+    },
+    changes: [{
+      kind: "removed" as const,
+      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-direct-replay-tamper"),
+      lastKnownPath: contractId<"VaultPath">("direct-replay-tamper.md") as VaultPath,
+    }],
+  };
+  const incompatibleReplayResult = await store.appendLearnedRemoteBatch(
+    incompatibleReplay,
+    afterFirst.state.persistenceRevision,
+    afterFirst.state.semanticGeneration,
+  );
+  assert.equal(incompatibleReplayResult.status, "recovery-required",
+    "direct writer must reject same-ID replay with changed observations");
+
+  const afterReplayRefusal = await store.loadAuthority();
+  assert.equal(afterReplayRefusal.status, "trusted");
+  if (afterReplayRefusal.status !== "trusted") return;
+  assert.equal(afterReplayRefusal.state.changeCursor, firstTerminal);
+  assert.deepEqual(afterReplayRefusal.state.learnedRemoteBatches[0].changes, first.changes);
+
   const stale = {
     checkpoint: {
       batchId: contractId<"RemoteIngestionBatchId">("bu05-direct-stale"),
       startingToken: start!,
       terminalStartToken: c("changes:bu05-direct-stale-terminal"),
-      persistenceRevision: afterFirst.state.persistenceRevision,
+      persistenceRevision: afterReplayRefusal.state.persistenceRevision,
       status: "learned" as const,
     },
     changes: [] as readonly RemoteChange[],
   };
   const staleResult = await store.appendLearnedRemoteBatch(
     stale,
-    afterFirst.state.persistenceRevision,
-    afterFirst.state.semanticGeneration,
+    afterReplayRefusal.state.persistenceRevision,
+    afterReplayRefusal.state.semanticGeneration,
   );
   assert.equal(staleResult.status, "recovery-required",
     "current CAS revision is insufficient when the batch predecessor is logically stale");
