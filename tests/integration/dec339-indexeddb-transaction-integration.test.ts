@@ -834,7 +834,7 @@ test("WS-02 BU-05 shipping Changes-learning writer refuses unrelated cursor and 
   await assert.rejects(
     persistLearnedRemoteBatch(assembly(makeBatch("bu05-learning-first", cursor1, c("changes:bu05-tampered"))),
       stateStore, { stateStore, stateContext: context }),
-    /incompatible cursor tokens/,
+    /incompatible checkpoint or change contents/,
   );
   const restored = await new PersistentSynchronizationStateStore(
     new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)).loadAuthority();
@@ -910,6 +910,13 @@ test("WS-02 BU-05 rejects a forked learned-batch edge before durable persistence
     persistLearnedRemoteBatch(assembly(fork), stateStore, { stateStore, stateContext: context }),
     /ambiguous, cyclic, or disconnected durable cursor history/,
   );
+
+  const poisonedDirectSave = await stateStore.saveAuthority({
+    ...beforeConflict.state,
+    learnedRemoteBatches: [...beforeConflict.state.learnedRemoteBatches, fork],
+  }, beforeConflict.state.persistenceRevision, beforeConflict.state.semanticGeneration);
+  assert.equal(poisonedDirectSave.status, "recovery-required",
+    "semantic validator must reject the same fork even if a caller bypasses controller preflight");
 
   const afterConflict = await stateStore.loadAuthority();
   assert.equal(afterConflict.status, "trusted");
