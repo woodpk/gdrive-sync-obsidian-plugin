@@ -35,6 +35,7 @@ import { emitStateRecoveryDiagnostic } from "../diagnostics/authority-state-reco
 import {
   appendDurableRemoteChangeBatch,
   contractId,
+  durableCursorCanAdvance,
   durableRemoteChangeBatchSemanticallyEquivalent,
   inspectDurableCursorHistory,
   exactBaseAuthorityMatches,
@@ -370,7 +371,9 @@ export class DurableSemanticStateValidator implements SemanticStateValidator<Dur
             ? "learned remote backlog contains multiple advancing predecessors for one terminal cursor"
             : history.reason === "disconnected-edge"
               ? "learned remote backlog contains advancing history disconnected from the canonical cursor"
-              : "learned remote backlog contains a cursor cycle";
+              : history.reason === "out-of-order"
+                ? "learned remote backlog observation order disagrees with its cursor history"
+                : "learned remote backlog contains a cursor cycle";
         issues.push(issue(
           "ingestion-checkpoint-inconsistent",
           detail,
@@ -679,8 +682,30 @@ export class PersistentSynchronizationStateStore implements SynchronizationState
       )] };
 
     if (existing) {
-      // Exact semantic replay is already durable. Do not rewrite authority or
-      // move a cursor that may legitimately have advanced since this batch.
+      // Exact semantic replay is already durable, but it is idempotent only
+      // when its terminal token is current or provably lies on the same
+      // retained cursor chain. Never accept an unrelated canonical cursor.
+      const canonicalCursor = loaded.state.changeCursor;
+      if (!canonicalCursor)
+        return { status: "recovery-required", issues: [issue(
+          "ingestion-checkpoint-inconsistent",
+          "idempotent learned-batch replay requires a canonical cursor",
+          undefined,
+          "remote-ingestion",
+        )] };
+      const history = inspectDurableCursorHistory(loaded.state.learnedRemoteBatches, canonicalCursor);
+      const related = canonicalCursor === existing.checkpoint.terminalStartToken
+        || (history.status === "valid" && (
+          durableCursorCanAdvance(loaded.state.learnedRemoteBatches, canonicalCursor, existing.checkpoint.terminalStartToken)
+          || durableCursorCanAdvance(loaded.state.learnedRemoteBatches, existing.checkpoint.terminalStartToken, canonicalCursor)
+        ));
+      if (!related)
+        return { status: "recovery-required", issues: [issue(
+          "ingestion-checkpoint-inconsistent",
+          "idempotent learned-batch replay is unrelated to the canonical cursor",
+          undefined,
+          "remote-ingestion",
+        )] };
       return {
         status: "saved",
         persistenceRevision: loaded.state.persistenceRevision,
