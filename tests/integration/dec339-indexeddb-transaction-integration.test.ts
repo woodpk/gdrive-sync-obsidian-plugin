@@ -1091,6 +1091,27 @@ test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observa
     "advisory metadata is part of deterministic complete batch identity",
   );
 
+  const beforeGenericTamper = await stateStore.loadAuthority();
+  assert.equal(beforeGenericTamper.status, "trusted");
+  if (beforeGenericTamper.status !== "trusted") return;
+  const genericTamperedBatch = {
+    ...beforeGenericTamper.state.learnedRemoteBatches[0],
+    changes: [changeB] as readonly RemoteChange[],
+  };
+  const genericTamper = await stateStore.saveAuthority({
+    ...beforeGenericTamper.state,
+    learnedRemoteBatches: [genericTamperedBatch],
+  }, beforeGenericTamper.state.persistenceRevision, beforeGenericTamper.state.semanticGeneration);
+  assert.equal(genericTamper.status, "recovery-required",
+    "generic authority CAS must not rewrite payload under an existing durable batch ID");
+
+  const genericRemoval = await stateStore.saveAuthority({
+    ...beforeGenericTamper.state,
+    learnedRemoteBatches: [],
+  }, beforeGenericTamper.state.persistenceRevision, beforeGenericTamper.state.semanticGeneration);
+  assert.equal(genericRemoval.status, "recovery-required",
+    "generic authority CAS must not remove an unreduced durable remote batch");
+
   const afterTamper = await stateStore.loadAuthority();
   assert.equal(afterTamper.status, "trusted");
   if (afterTamper.status !== "trusted") return;
