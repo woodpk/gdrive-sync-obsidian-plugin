@@ -2044,22 +2044,24 @@ dec339_ws02_bu04_hint_visibility_2026_11_20:
 
 
 dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
-  status: "BUILDER_CORRECTIVE_SOURCE_COMMITTED;PHXCI_R2_TYPECHECK_FAILED;NEW_R3_QUALIFICATION_REQUIRED"
-  owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE"
+  status: "BUILDER_QUALIFIED_R4_PASS;INDEPENDENT_REVIEW_PENDING;WS02_INCOMPLETE"
+  owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-21_OWNER_APPROVED_DIRECT_REVIEW_HANDOFF_AFTER_R4_PASS"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU05_CURSOR_RECOVERY_GATES"
-  handoff-count: 1
+  handoff-count: 2
   handoff-owner-role: BUILDER
-  handoff-recipient-role: BUILDER
+  handoff-recipient-role: REVIEWER
   branch: "build/dec339-ws02-bu05-cursor-recovery-gates-20261120"
   baseline_bu04_closeout: "5027e724765fbd915fa88714ba35b4bd97aeea99"
   accepted_bu04_source: "8850dab0970862783f4a7e5beb4f214b83dd4acc"
   planning: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-recovery-gates-2026-11-20.md"
-  scope: "ADVERSARIAL_PINNED_SOFTWARE_GATE_FOR_STALE_CANONICAL_CURSOR_WRITER_AND_BACKUP_FIRST_CORRUPT_STATE_RECOVERY"
+  review_assignment: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-r4-independent-review-2026-11-21.md"
+  handoff_artifact: "dev/state/handoffs/dec339-ws02-bu05-builder-to-reviewer-r4-2026-11-21.md"
+  scope: "SHIPPING_COMMIT_CURSOR_PREDECESSOR_FENCE;DURABLE_CHANGES_CURSOR_CONTINUITY;RECOVERY_PAIRING_IDENTITY_FENCE;ADVERSARIAL_END_TO_END_TESTS"
   production_source_modified: true
-  existing_production_invariants_under_test: "PERSISTENT_STATE_CAS;V2_AWARE_IDB_ATOMIC_INVALIDATION;SHIPPING_CURSOR_FENCES;RECOVERY_PAIRING_IDENTITY"
-  phxci_status: "R2_BLOCKED_EXIT_201_TYPECHECK_TS2339_3_ERRORS;CORRECTIVE_R3_NOT_RUN"
-  source_qualification_status: "NEW_SOURCE_NOT_QUALIFIED"
-  independent_reviewer_verdict: "PRIOR_HANDOFF_SUPERSEDED_BY_OWNER_COMPLETION_DIRECTION;NO_FINAL_REVIEW"
+  existing_production_invariants_under_test: "PERSISTENT_STATE_CAS;V2_AWARE_IDB_ATOMIC_INVALIDATION;SHIPPING_CURSOR_FENCES;RECOVERY_PAIRING_IDENTITY;DURABLE_LEARNED_BATCH_CHAIN"
+  phxci_status: "R4_PASS_13_OF_13;FOCUSED_634_OF_634;PRODUCT_1332_OF_1332;PHYSICAL_DISABLED"
+  source_qualification_status: "BUILDER_QUALIFIED_EXACT_SOURCE_R4"
+  independent_reviewer_verdict: "PENDING_INDEPENDENT_BLIND_FIRST_REVIEW"
   outstanding_real_browser_webview_upgrade_gate: true
   outstanding_complete_cursor_writer_inventory_gate: false
   outstanding_live_scope_owner_wiring_gate: true
@@ -2067,43 +2069,39 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   dec339_integration_complete: false
   inventory_activation_authorized: false
   master_merge_authorized: false
-  next_action: "RUN_PINNED_PHXCI_R3_ON_EXACT_CORRECTED_SOURCE_THEN_FIX_TEST_FAILURES_IF_PRESENT;NO_REVIEW"
-  qualified_source_sha: "8d7785aa0e40bfaab3c446183422c64242aee070"
-  qualified_source_tree: "d993895c7e22baaf12f62ae09693017d96a488bc"
-  phxci_r1_run_id: "d8e9b739-6353-44cd-a4b0-5695c4c09228"
-  phxci_r1_evidence_commit: "0508d6fe96d97cf44e18a47f7a407040e529357c"
-  phxci_r1_report_path: "dev/test-results/d8e9b739-6353-44cd-a4b0-5695c4c09228/result.json"
-  phxci_r1_original_exit_code: 0
-  phxci_r1_evidence_readback_verified: true
+  next_action: "INDEPENDENT_REVIEW_BU05_R4_BLIND_SOURCE_FIRST_THEN_TESTS_AND_CANONICAL_PHXCI_EVIDENCE"
+  current_qualified_source_sha: "9319472e7b3a075c1ddfccad87c1913d6d3758dc"
+  current_qualified_source_tree: "4f9d90d7a899937114ee714fb4a0715efe78cb61"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   qualification_classification: "SOFTWARE_ONLY;NO_PHYSICAL_ACTIVATION"
   qualification_evidence_commit_did_not_change_source: true
-  independent_review_scope: "WS02_BU05_ONLY"
-  owner_scope_intervention: "2026-11-20_FINISH_ALL_BU05_BEFORE_INDEPENDENT_REVIEW"
+  phxci_r4_run_id: "99a90abf-16fd-4e31-a5ca-0d05589de610"
+  phxci_r4_evidence_commit: "8b9baeeb15e9ae57772e3e4fd43e1f3ad8d50689"
+  phxci_r4_report_path: "dev/test-results/99a90abf-16fd-4e31-a5ca-0d05589de610/result.json"
+  phxci_r4_original_exit_code: 0
+  phxci_r4_focused: "634_OF_634_PASS"
+  phxci_r4_product: "1332_OF_1332_PASS"
+  phxci_r4_all_required_stages: "13_OF_13_PASS"
+  phxci_r4_artifact_sha256: "a6bfcff1955e97022309c7c0a778a9ae8f043f7a62d0a2bfb8793b77b6d30d6e"
+  phxci_r4_evidence_readback_verified: true
   prior_handoff_count_retained: 1
   prior_reviewer_handoff_commit: "f0c2bc38319ec934c6c3bfcaf3d0bd15b7a49984"
   prior_review_handoff_superseded: true
-  prior_phxci_pass_remains_immutable: true
-  new_scope: "SHIPPING_COMMIT_CURSOR_PREDECESSOR_FENCE;LEARNED_CHANGES_CURSOR_CONTINUITY;RECOVERY_PAIRING_IDENTITY_FENCE;ADVERSARIAL_END_TO_END_TESTS"
-  current_qualified_source_sha: null
-  current_qualified_source_tree: null
-  no_reviewer_handoff_until_new_pass: true
-  implemented_build_sha: "6e83113dac76828f3ef3e6127c341d7bd9bf36a9"
-  implemented_build_tree: "afcc68771746c4db9f9eb45ee14cb47eb4d50ee8"
-  cursor_writer_audit_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-writer-audit-2026-11-20.md"
-  previous_phxci_pass_not_current_qualification: true
-  complete_bu05_source_and_test_candidate_pending_phxci: true
-  rejected_foreign_pairing_replacement_covered: true
+  prior_partial_scope_qualified_source_sha: "8d7785aa0e40bfaab3c446183422c64242aee070"
+  prior_partial_scope_phxci_run_id: "d8e9b739-6353-44cd-a4b0-5695c4c09228"
   phxci_r2_blocked_run_id: "d0260a16-e6f9-470d-a39c-bc0225e1e1a3"
   phxci_r2_blocked_source_sha: "d32e0219b2002ea054e48eea073ce2563d2cbde3"
-  phxci_r2_blocked_source_tree: "87f092cb4267c96869be9678a3d45dce4622bcc2"
   phxci_r2_blocked_evidence_commit: "e25b5aedf753250dc2f358e935ee28da13e6f705"
-  phxci_r2_blocked_evidence_path: "dev/test-results/d0260a16-e6f9-470d-a39c-bc0225e1e1a3/"
-  phxci_r2_typecheck_failure: "TS2339_CONTROLLER_METADATA_READ_MODEL_HAS_NO_CHANGECURSOR_THREE_OCCURRENCES"
-  phxci_r2_typecheck_exit_code: 2
-  phxci_r2_task_exit_code: 201
-  phxci_r2_focused_and_product_tests: "NOT_EXECUTED_DEPENDENCY_BLOCKED"
-  phxci_r2_preserved: true
-  r3_fix: "READ_CANONICAL_CURSOR_FROM_TRUSTED_STATE_STORE;KEEP_AUTHORITY_METADATA_FOR_LEARNED_BATCHES_AND_CAS"
-  r3_qualification_status: "NOT_RUN"
+  phxci_r2_failure: "TYPECHECK_TS2339_CONTROLLER_METADATA_READ_MODEL_HAS_NO_CHANGECURSOR"
+  phxci_r3_blocked_run_id: "fa4c0e0f-7ae1-4581-8f57-0a936e0dd0ea"
+  phxci_r3_blocked_source_sha: "241e2659e7a56188be6565971dcdb542b5e51e4e"
+  phxci_r3_blocked_source_tree: "2ca31085b3c529a0df083444e94bbf07b3b4c3f3"
+  phxci_r3_blocked_evidence_commit: "279066e06404d695ab599e4d49629b10dd958923"
+  phxci_r3_failure: "H_I6_DURABLE_CHANGE_CHAIN_RESTART_CURSOR_MIRROR_REGRESSION_TWO_PRODUCT_TEST_FAILURES"
+  phxci_r3_focused: "634_OF_634_PASS"
+  phxci_r3_product: "1330_PASS_2_FAIL"
+  r4_fix: "CURSOR_CATCHUP_REQUIRES_COMPLETE_UNIQUE_NONCYCLIC_DURABLE_LEARNED_BATCH_TOKEN_CHAIN;MISSING_LINK_FORK_CYCLE_UNRELATED_CURSOR_FAIL_CLOSED"
+  no_test_oracle_relaxation: true
+  rejected_foreign_pairing_replacement_covered: true
+  cursor_writer_audit_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu05-cursor-writer-audit-2026-11-20.md"
   bu05_independent_acceptance: false
