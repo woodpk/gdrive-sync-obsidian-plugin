@@ -4,7 +4,7 @@
 **Builder:** `build-brain-67`  
 **Branch:** `build/dec339-ws02-bu05-cursor-recovery-gates-20261120`  
 **Baseline:** BU-04 independently accepted and closed at `5027e724765fbd915fa88714ba35b4bd97aeea99`  
-**Status:** **BUILDER-QUALIFIED R9 PASS after R7 independent CORRECTION REQUIRED (F-03); independent Reviewer acceptance PENDING.** Whole WS-02 and DEC-339 integration gates remain open.
+**Status:** **BU-05 INDEPENDENTLY ACCEPTED / BUILDER CLOSED — R9 PASS WITH MINOR FINDINGS.** Whole WS-02 and DEC-339 integration gates remain open.
 
 ## Purpose and bounded implementation
 
@@ -36,7 +36,7 @@ The expanded BU-05 now covers the shipping `commitCursor` path, durable Changes-
 
 ## Next mandatory action
 
-Dispatch BU-05 to an independent Reviewer for a blind-first source assessment of frozen corrected R9 source `0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b` / tree `702e8e5d875b31f0f1d9cfb099a06c75b1f9b779`, then review authored tests, prior R4/R7 findings, correction history, R8 blocked evidence, and canonical R9 PHX-CI evidence only after the blind source assessment is frozen. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
+BU-05 is closed at accepted R9 source `0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b` / tree `702e8e5d875b31f0f1d9cfb099a06c75b1f9b779`. Continue the next approved WS-02 integration unit for the retained realistic multi-context IndexedDB upgrade, migration/rollback, and live scope-owner/local-hint gates. Do not rerun accepted R9 solely for closeout. Previously accepted BU-01 through BU-04 evidence and review reports remain unchanged. No master merge, PR #157 merge, live schema migration, inventory activation, physical testing, installation, release or promotion.
 
 ## Original PHX-CI R1 qualification and Builder→Reviewer transition (2026-11-20)
 
@@ -113,3 +113,16 @@ The recovery identity fence also rejects a readable **existing foreign pairing**
 - **Verified R9 result:** 13/13 required stages PASS; focused BVP **634/634 PASS**; full product **1338/1338 PASS**; typecheck/build/artifacts/check/change-set/repository PASS; overall **COMPLETE/PASS**, operator exit 0. Built `main.js`: **927076 bytes**, SHA-256 `4bde1bad5045ba8f732d6e072b63110aadcb9ab8265d1454bb2a7dd9c860d828`. Physical dispatch remained disabled.
 - R9 evidence publication is exactly one child of the frozen R9 source and changes only `dev/_ca-output.md` plus `dev/test-results/f7af01fb-f687-44b0-9e61-e1a0b5bab6d9/{result.json,result.md,terminal.log}`; it is not the implementation source.
 - **Current gate:** new independent blind-first review of R9. Builder qualification does not accept BU-05. Whole WS-02/DEC-339 remain incomplete; no master/PR merge, inventory activation, live migration, real Drive/vault/device operations, physical testing, installation, promotion, or release.
+
+
+## R9 independent acceptance and Builder closeout (2026-11-22)
+
+- Independent Reviewer verdict: **PASS WITH MINOR FINDINGS — BOUNDED BU-05 ACCEPTED**.
+- Accepted exact source: `0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b`; tree `702e8e5d875b31f0f1d9cfb099a06c75b1f9b779`.
+- Frozen blind report: `dev/reviews/dec339-ws02-bu05-r9-20261122-review-brain-10-blind-source.md`, commit `e36a4765b505fd761178db3fd0cd2417f06c751b`.
+- Final accepted report: `dev/reviews/dec339-ws02-bu05-r9-20261122-review-brain-10-final.md`, commit `1640a5a81eae1225acb747c4f6cac888c957ebcd`.
+- Original R9 PHX-CI evidence remains authoritative and is not rerun: run `f7af01fb-f687-44b0-9e61-e1a0b5bab6d9`, evidence commit `7aed3813d3bb94c0738aad337a53a77104f26335`, 13/13 stages PASS, focused 634/634, product 1338/1338, physical dispatch disabled.
+- Finding disposition: R4 F-01 resolved; R4 F-02 resolved; R7 F-03 resolved; no R9 acceptance-blocking defect.
+- Reviewer→Builder handoff count **7** is preserved for closeout; Builder closeout does not consume a new handoff count.
+- Carry-forward nonblocking findings: audit broader legacy generic cursor-writer predecessor behavior during full WS-02 integration; complete real multi-WebView IndexedDB, migration/rollback, scope-owner and local-hint consumer integration gates.
+- BU-05 is closed. Full WS-02 and DEC-339 remain incomplete. No GitHub Actions, master/PR #157 merge, inventory activation, live database migration, real Drive/vault/device operations, physical testing, installation, promotion, or release is authorized.
