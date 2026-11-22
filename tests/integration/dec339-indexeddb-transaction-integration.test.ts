@@ -829,7 +829,7 @@ test("WS-02 BU-05 shipping Changes-learning writer refuses unrelated cursor and 
   await assert.rejects(
     persistLearnedRemoteBatch(assembly(makeBatch("bu05-learning-stale", cursor1, c("changes:bu05-stale"))),
       stateStore, { stateStore, stateContext: context }),
-    /unrelated durable cursor/,
+    /behind or outside the durable cursor frontier/,
   );
   await assert.rejects(
     persistLearnedRemoteBatch(assembly(makeBatch("bu05-learning-first", cursor1, c("changes:bu05-tampered"))),
@@ -908,7 +908,7 @@ test("WS-02 BU-05 rejects a forked learned-batch edge before durable persistence
 
   await assert.rejects(
     persistLearnedRemoteBatch(assembly(fork), stateStore, { stateStore, stateContext: context }),
-    /ambiguous, cyclic, or disconnected durable cursor history/,
+    /behind or outside the durable cursor frontier/,
   );
 
   const poisonedDirectSave = await stateStore.saveAuthority({
@@ -997,6 +997,13 @@ test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observa
       trashed: false,
     },
   };
+  const changeSameCoreDifferentAdvisory: RemoteChange = {
+    ...changeA,
+    entry: {
+      ...changeA.entry,
+      content: { ...changeA.entry.content, advisoryModifiedTimeMs: 123456 },
+    },
+  };
   const makeBatch = (changes: readonly RemoteChange[]) => ({
     checkpoint: {
       batchId,
@@ -1037,6 +1044,15 @@ test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observa
     /incompatible checkpoint or change contents/,
   );
 
+  await assert.rejects(
+    persistLearnedRemoteBatch(assembly(makeBatch([changeSameCoreDifferentAdvisory])), stateStore, {
+      stateStore,
+      stateContext: context,
+    }),
+    /incompatible checkpoint or change contents/,
+    "advisory metadata is part of deterministic complete batch identity",
+  );
+
   const afterTamper = await stateStore.loadAuthority();
   assert.equal(afterTamper.status, "trusted");
   if (afterTamper.status !== "trusted") return;
@@ -1063,10 +1079,14 @@ test("WS-02 BU-05 same-ID same-endpoint replay requires identical change observa
   }
 });
 
-test("WS-02 BU-05 empty zero-advance learned poll remains valid after rebaseline", async () => {
+test("WS-02 BU-05 zero-advance observations remain durable without becoming cursor edges", async () => {
   withRangeOnly();
   const db = new FakeDatabase(), factory = db.openFactory();
-  await seeded(factory);
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("bu05-zero-advance-baseline"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+
   const stateStore = new SynchronizationStateAuthorityAdapter(
     new PersistentSynchronizationStateStore(
       new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory)));
@@ -1081,15 +1101,20 @@ test("WS-02 BU-05 empty zero-advance learned poll remains valid after rebaseline
   const cursor = before.state.changeCursor;
   assert.ok(cursor);
 
+  const zeroAdvanceChange: RemoteChange = {
+    kind: "removed",
+    remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-zero-advance-observation"),
+    lastKnownPath: contractId<"VaultPath">("zero-advance-observation.md") as VaultPath,
+  };
   const noAdvance = {
     checkpoint: {
-      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-empty"),
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-with-change"),
       startingToken: cursor!,
       terminalStartToken: cursor!,
       persistenceRevision: before.state.persistenceRevision,
       status: "learned" as const,
     },
-    changes: [] as RemoteChange[],
+    changes: [zeroAdvanceChange] as readonly RemoteChange[],
   };
   await persistLearnedRemoteBatch(({ remoteChangeBatch: noAdvance } as never), stateStore, {
     stateStore,
@@ -1099,38 +1124,147 @@ test("WS-02 BU-05 empty zero-advance learned poll remains valid after rebaseline
   const after = await stateStore.loadAuthority();
   assert.equal(after.status, "trusted");
   if (after.status !== "trusted") return;
-  assert.equal(after.state.changeCursor, cursor);
-  assert.equal(after.state.learnedRemoteBatches.some(
-    batch => batch.checkpoint.batchId === noAdvance.checkpoint.batchId), true);
+  assert.equal(after.state.changeCursor, cursor,
+    "a zero-advance observation must not move the canonical cursor");
+  assert.deepEqual(
+    after.state.learnedRemoteBatches.find(batch => batch.checkpoint.batchId === noAdvance.checkpoint.batchId)?.changes,
+    [zeroAdvanceChange],
+    "zero-advance observations remain durable even when they contain Changes events",
+  );
 
-  const invalidZeroAdvance = {
-    ...noAdvance,
+  // Model an interrupted mirror: C→D is durable while canonical cursor remains C.
+  const pendingTerminal = c("changes:bu05-zero-advance-frontier");
+  const pending = {
     checkpoint: {
-      ...noAdvance.checkpoint,
-      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-with-change"),
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-pending-edge"),
+      startingToken: cursor!,
+      terminalStartToken: pendingTerminal,
       persistenceRevision: after.state.persistenceRevision,
+      status: "learned" as const,
     },
-    changes: [{
-      kind: "removed" as const,
-      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-zero-advance-invalid"),
-      lastKnownPath: contractId<"VaultPath">("zero-advance-invalid.md") as VaultPath,
-    }],
+    changes: [] as readonly RemoteChange[],
+  };
+  const staged = await stateStore.saveAuthority({
+    ...after.state,
+    learnedRemoteBatches: [...after.state.learnedRemoteBatches, pending],
+  }, after.state.persistenceRevision, after.state.semanticGeneration);
+  assert.equal(staged.status, "saved");
+
+  const stagedState = await stateStore.loadAuthority();
+  assert.equal(stagedState.status, "trusted");
+  if (stagedState.status !== "trusted") return;
+  assert.equal(stagedState.state.changeCursor, cursor);
+
+  const staleNoAdvance = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-stale"),
+      startingToken: cursor!,
+      terminalStartToken: cursor!,
+      persistenceRevision: stagedState.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as readonly RemoteChange[],
   };
   await assert.rejects(
-    persistLearnedRemoteBatch(({ remoteChangeBatch: invalidZeroAdvance } as never), stateStore, {
+    persistLearnedRemoteBatch(({ remoteChangeBatch: staleNoAdvance } as never), stateStore, {
       stateStore,
       stateContext: context,
     }),
-    /ambiguous, cyclic, or disconnected durable cursor history/,
+    /behind or outside the durable cursor frontier/,
+    "a stale zero-advance poll at canonical C must not bypass durable frontier D",
   );
 
-  const unchanged = await stateStore.loadAuthority();
-  assert.equal(unchanged.status, "trusted");
-  if (unchanged.status === "trusted") {
-    assert.equal(unchanged.state.changeCursor, cursor);
-    assert.equal(unchanged.state.learnedRemoteBatches.length, after.state.learnedRemoteBatches.length);
-  }
+  const frontierNoAdvance = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-zero-advance-at-frontier"),
+      startingToken: pendingTerminal,
+      terminalStartToken: pendingTerminal,
+      persistenceRevision: stagedState.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [{
+      kind: "removed" as const,
+      remoteObjectId: contractId<"RemoteObjectId">("remote:bu05-frontier-observation"),
+      lastKnownPath: contractId<"VaultPath">("frontier-observation.md") as VaultPath,
+    }],
+  };
+  await persistLearnedRemoteBatch(({ remoteChangeBatch: frontierNoAdvance } as never), stateStore, {
+    stateStore,
+    stateContext: context,
+  });
+  const recovered = await stateStore.loadAuthority();
+  assert.equal(recovered.status, "trusted");
+  if (recovered.status !== "trusted") return;
+  assert.equal(recovered.state.changeCursor, pendingTerminal,
+    "frontier observation may safely trigger catch-up through the already durable C→D edge");
+  assert.equal(recovered.state.learnedRemoteBatches.some(
+    batch => batch.checkpoint.batchId === frontierNoAdvance.checkpoint.batchId), true);
 });
+
+test("WS-02 BU-05 direct learned-batch API rejects logical staleness even with current CAS revision", async () => {
+  withRangeOnly();
+  const db = new FakeDatabase(), factory = db.openFactory();
+  const inventory = await seeded(factory);
+  const baseline = candidate(g("bu05-direct-writer-baseline"));
+  assert.equal((await new VerifiedInventoryBaselineCoordinator(
+    simulatedBaseline(baseline), inventory).publishBaseline(fence, baseline.manifest.generation)).status, "published");
+
+  const store = new PersistentSynchronizationStateStore(
+    new IndexedDbInventoryAwareStateByteStorage("device:idb:test", factory));
+  const before = await store.loadAuthority();
+  assert.equal(before.status, "trusted");
+  if (before.status !== "trusted") return;
+  const start = before.state.changeCursor;
+  assert.ok(start);
+  const firstTerminal = c("changes:bu05-direct-first");
+  const first = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-direct-first"),
+      startingToken: start!,
+      terminalStartToken: firstTerminal,
+      persistenceRevision: before.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as readonly RemoteChange[],
+  };
+  const firstResult = await store.appendLearnedRemoteBatch(
+    first,
+    before.state.persistenceRevision,
+    before.state.semanticGeneration,
+  );
+  assert.equal(firstResult.status, "saved");
+
+  const afterFirst = await store.loadAuthority();
+  assert.equal(afterFirst.status, "trusted");
+  if (afterFirst.status !== "trusted") return;
+  assert.equal(afterFirst.state.changeCursor, firstTerminal);
+
+  const stale = {
+    checkpoint: {
+      batchId: contractId<"RemoteIngestionBatchId">("bu05-direct-stale"),
+      startingToken: start!,
+      terminalStartToken: c("changes:bu05-direct-stale-terminal"),
+      persistenceRevision: afterFirst.state.persistenceRevision,
+      status: "learned" as const,
+    },
+    changes: [] as readonly RemoteChange[],
+  };
+  const staleResult = await store.appendLearnedRemoteBatch(
+    stale,
+    afterFirst.state.persistenceRevision,
+    afterFirst.state.semanticGeneration,
+  );
+  assert.equal(staleResult.status, "recovery-required",
+    "current CAS revision is insufficient when the batch predecessor is logically stale");
+
+  const unchanged = await store.loadAuthority();
+  assert.equal(unchanged.status, "trusted");
+  if (unchanged.status !== "trusted") return;
+  assert.equal(unchanged.state.changeCursor, firstTerminal);
+  assert.equal(unchanged.state.learnedRemoteBatches.some(
+    batch => batch.checkpoint.batchId === stale.checkpoint.batchId), false);
+});
+
 
 test("WS-02 BU-05 recovery replacement refuses wrong pairing before backup or CAS", async () => {
   withRangeOnly();
