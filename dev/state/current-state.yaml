@@ -2354,11 +2354,11 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step3_storage_shadow_2026_11_23:
-  status: "REVIEWER_ACCEPTED_PENDING_BUILDER_CLOSEOUT"
+  status: "ACCEPTED_CLOSED"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_PLANNING_RECONCILIATION_AND_IMMEDIATE_EXECUTION"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02-05/DEC339_STEP3_STORAGE_SHADOW"
   handoff-count: 2
-  handoff-owner-role: REVIEWER
+  handoff-owner-role: BUILDER
   handoff-recipient-role: BUILDER
   branch: "build/dec339-step3-storage-shadow-20261123"
   starting_source_sha: "7e830d74188d14db7f5ceb35d710a6b894cc2b73"
@@ -2383,7 +2383,7 @@ dec339_step3_storage_shadow_2026_11_23:
   live_drive_vault_device_operations_authorized: false
   physical_testing_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "BUILDER_CLOSEOUT_ACCEPTED_STEP3_AND_PRESERVE_INTEGRATION_FINDINGS"
+  next_action: "STEP4_OBSERVATION_ONLY_COMPARISON_REQUIRES_APPLICABLE_OWNER_AUTHORIZATION"
 
   qualification_source_sha: "b2b8029aeb99c706a8ca8a94b24e201cfb6fa56a"
   qualification_verified_tree: "2b728ca2df3ac2a4d8cfa98e82b1bf0bede5e8d8"
@@ -2405,3 +2405,17 @@ dec339_step3_storage_shadow_2026_11_23:
   accepted_minor_finding_m02: "NEXT_ASSEMBLY_GATE_MUST_COVER_PRODUCTION_ACCOUNT_KEY_DERIVATION_STEP2_BOUNDARY_PROVIDER_BASELINE_CHANGES_TO_STORAGE"
   accepted_minor_finding_m03: "LOCAL_HINT_INTEGRATION_REMAINS_SPLIT_ACROSS_EXISTING_SUITES_AND_MUST_REMAIN_INTEGRATED_VERIFICATION_SCOPE"
   reviewer_to_builder_handoff_direction: "REVIEWER_TO_BUILDER"
+  builder_closeout: "COMPLETE_NO_REQUALIFICATION"
+  builder_closeout_basis: "REVIEWER_PASS_WITH_MINOR_FINDINGS_ACCEPTED"
+  builder_closeout_preserved_phxci_run: "a52972e4-ae0d-4a38-9c27-b1d1780d0a90"
+  builder_closeout_preserved_evidence_commit: "56f40acfaa30bd8151deb52135bee67009bfc259"
+  carry_forward_m01: "SOFTWARE_ONLY_PROOF_DOES_NOT_SUBSTITUTE_FOR_LATER_REAL_PROVIDER_BROWSER_OR_DEVICE_GATES"
+  carry_forward_m02: "STEP4_OR_NEXT_ASSEMBLY_GATE_MUST_USE_PRODUCTION_ACCOUNT_KEY_DERIVATION_AND_STEP2_BOUNDARY_THROUGH_PROVIDER_BASELINE_CHANGES_TO_STORAGE"
+  carry_forward_m03: "LOCAL_HINT_REFRESH_INVALIDATION_MUST_REMAIN_IN_INTEGRATED_VERIFICATION_SCOPE"
+  full_dec339_integration_complete: false
+  step4_authorized: false
+  planner_cutover_authorized: false
+  master_merge_authorized: false
+  live_migration_authorized: false
+  live_drive_vault_device_operations_authorized: false
+  installation_promotion_release_authorized: false
