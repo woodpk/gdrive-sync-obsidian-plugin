@@ -224,6 +224,23 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     const result = await this.validateByExpected(identity.rootId, identity.vaultIdentity); if (!result.ok || result.value.status !== "valid") return result;
     if (String(result.value.identity.protocolVersion) !== String(identity.protocolVersion)) return { ok: true, value: { status: "incompatible-protocol", observedVersion: result.value.identity.protocolVersion } }; return result;
   }
+
+  /** Read-only DEC-339 fence observation; validates account/root before exposing exact domain IDs. */
+  async observeManagedDomainRootIds(identity: ManagedRemoteIdentity): Promise<DriveResult<{
+    readonly contentRootId: RemoteObjectId;
+    readonly configRootId: RemoteObjectId;
+  }>> {
+    const valid = await this.validateManagedRoot(identity);
+    if (!valid.ok) return valid;
+    if (valid.value.status !== "valid")
+      return { ok: false, signal: { kind: "recovery-required", detail: `managed-root-${valid.value.status}` } };
+    const roots = await this.domainRoots(identity.rootId);
+    if (!roots.ok) return roots;
+    return {
+      ok: true,
+      value: { contentRootId: rid(roots.value.content.id), configRootId: rid(roots.value.config.id) },
+    };
+  }
   async protocolInfo(rootId: RemoteObjectId): Promise<DriveResult<RemoteProtocolInfo>> {
     const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const file = await this.getFile(rootId); if (!file.ok) return file; const observed = file.value.appProperties?.[APP_PROTOCOL];
     if (!observed) return { ok: false, signal: { kind: "recovery-required", detail: "remote-protocol-metadata-missing" } };
