@@ -1,5 +1,5 @@
 import { Notice, Platform, requestUrl, type App, type Plugin } from "obsidian";
-import type { DeviceIdentity, DriveSignal, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
+import type { DeviceIdentity, DriveSignal, InventoryIdentityFence, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
 import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
@@ -13,6 +13,8 @@ import { beginGoogleAuthorization, openAuthorizationInSystemBrowser, type Author
 import { ObsidianLocalVaultAdapter } from "../local/obsidian-local-vault";
 import { MobileVaultAccessBoundary } from "../local/mobile-vault-access-boundary";
 import { IndexedDbInventoryAwareStateByteStorage } from "../state/indexeddb-inventory-authority-storage";
+import { IndexedDbInventoryObservationStore } from "../state/indexeddb-inventory-storage";
+import { VerifiedLocalInventoryCoordinator } from "../state/verified-local-inventory";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { generateDeviceIdentity } from "../state/state-policy";
 import { BoundedAuditHistory } from "./audit-history";
@@ -22,6 +24,7 @@ import { ProductPathScope, ScopedLocalVault } from "./path-scope";
 import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdapter } from "./synchronization-adapters";
 import { ProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
+import { InventoryBackedSnapshotAssembler } from "./inventory-backed-snapshot-assembler";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
@@ -67,6 +70,8 @@ export class ProductRuntime {
   private attentionPersistence?: SyncPlanErrorsCsvPersistence;
   private readonly operationalExclusions = new Set<string>();
   private unsubscribeSurface?: () => void;
+  private localInventory?: VerifiedLocalInventoryCoordinator;
+  private unsubscribeLocalInventory?: () => void;
   private readonly notifications = new MeaningfulNotificationFilter();
   // Invalidates every suspended initialization after deauthorization/disposal.
   private runtimeGeneration = 0;
@@ -253,10 +258,12 @@ export class ProductRuntime {
       expectedVaultIdentity: vaultIdentity,
       expectedDeviceIdentity: deviceIdentity,
     };
-    // Legacy planner stays authoritative. Version-aware canonical bytes
-    // preserve v1/v2 compatibility without enabling inventory or migrating state.
+    // The canonical state database remains the one authority owner. Step 5 may
+    // consume an already-established v2 inventory but must never upgrade a live
+    // v1 pairing merely because the opt-in planning gate is enabled.
+    const stateDatabaseName = pairingStorageKey("brain-google-drive-sync", current);
     const durableState = new PersistentSynchronizationStateStore(
-      new IndexedDbInventoryAwareStateByteStorage(pairingStorageKey("brain-google-drive-sync", current)),
+      new IndexedDbInventoryAwareStateByteStorage(stateDatabaseName),
       1,
       undefined,
       this.host.diagnostics,
@@ -264,18 +271,76 @@ export class ProductRuntime {
     this.state = new SynchronizationStateAuthorityAdapter(durableState);
     diagnostics.trace("runtime", "state-store-ready", { stage: "state-store", storeReady: true });
     const remoteIdentity = async (): Promise<ManagedRemoteIdentity> => ({ rootId: remoteRootId, vaultIdentity, protocolVersion: PROTOCOL_VERSION });
-    const snapshots = new ProductSnapshotAssembler(
-      this.local,
-      this.boundary.drive,
-      this.state,
+    const legacySnapshots = () => new ProductSnapshotAssembler(
+      this.local!,
+      this.boundary!.drive,
+      this.state!,
       stateContext,
       remoteIdentity,
       path => scope.isManagedLogical(path),
       () => this.host.settings().scopeReconcileRequired,
       this.host.diagnostics,
-      this.boundary.drive,
-      this.state,
+      this.boundary!.drive,
+      this.state!,
     );
+    let snapshots: ProductSnapshotAssembler;
+    if (current.verifiedInventoryPlanningEnabled) {
+      const inventory = new IndexedDbInventoryObservationStore(
+        stateDatabaseName,
+        globalThis.indexedDB,
+        { allowSchemaUpgrade: false },
+      );
+      const currentFence = async (): Promise<InventoryIdentityFence> => {
+        const live = this.host.settings();
+        this.assertBoundPairing(live, boundPairing);
+        if (!live.verifiedInventoryPlanningEnabled)
+          throw new Error("verified-inventory-planning-disabled");
+        const identity = await remoteIdentity();
+        const accountKey = await this.boundary!.drive.pairedInventoryAccountKey();
+        if (!accountKey) throw new Error("paired-inventory-account-unavailable");
+        const roots = await this.boundary!.drive.observeManagedDomainRootIds(identity);
+        if (!roots.ok) throw new Error(driveSignalMessage(roots.signal));
+        return {
+          vaultIdentity,
+          deviceIdentity,
+          pairedAccountKey: accountKey,
+          managedRootId: remoteRootId,
+          protocolVersion: PROTOCOL_VERSION,
+          contentDomainRootId: roots.value.contentRootId,
+          configDomainRootId: roots.value.configRootId,
+          scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
+          inventorySchemaVersion: 1,
+        };
+      };
+      this.localInventory = new VerifiedLocalInventoryCoordinator(
+        this.local,
+        inventory,
+        path => scope.isManagedLogical(path),
+      );
+      this.unsubscribeLocalInventory = this.localInventory.subscribe();
+      // Advisory LOCAL metadata is opportunistic only. Failure or absent v2
+      // inventory never blocks the canonical planner and never triggers migration.
+      void currentFence()
+        .then(fence => this.localInventory?.refresh(fence))
+        .catch(() => undefined);
+      snapshots = new InventoryBackedSnapshotAssembler({
+        local: this.local,
+        drive: this.boundary.drive,
+        state: this.state,
+        stateContext,
+        remoteIdentity,
+        inventory,
+        provenanceReader: this.boundary.metadataReader,
+        currentFence,
+        pathIncluded: path => scope.isManagedLogical(path),
+        fullReconcileRequired: () => this.host.settings().scopeReconcileRequired,
+        diagnostics: this.host.diagnostics,
+        reliableChanges: this.boundary.drive,
+        authorityStore: this.state,
+      });
+    } else {
+      snapshots = legacySnapshots();
+    }
     const textVersions = new ProductTextVersionStore(
       new IndexedDbTextVersionPersistence(pairingStorageKey("brain-google-drive-sync-text", current)),
       this.local,
@@ -446,6 +511,12 @@ export class ProductRuntime {
     }
     if (!exclusionsEqual(userExclusionsWithoutManaged(previous), userExclusionsWithoutManaged(next))) {
       await this.host.mutateSettings(latest => ({ ...latest, scopeReconcileRequired: true }));
+      try { await this.localInventory?.invalidateForScopeChange(); }
+      catch {
+        this.host.diagnostics?.error("runtime", "local-inventory-scope-invalidation-failed", {
+          stage: "inventory-local-hints", classification: "advisory-inventory-invalidation-failure", result: "failed",
+        });
+      }
       this.controller?.noteChangeDuringRun();
     }
   }
@@ -705,6 +776,8 @@ export class ProductRuntime {
     // cleared when an older controller's asynchronous disposal finally resolves.
     this.controller = undefined;
     this.unsubscribeSurface?.(); this.unsubscribeSurface = undefined;
+    this.unsubscribeLocalInventory?.(); this.unsubscribeLocalInventory = undefined;
+    this.localInventory = undefined;
     const attentionPersistence = this.attentionPersistence;
     this.attentionPersistence = undefined;
     const disposeRawLocal = this.rawLocalDisposable;
