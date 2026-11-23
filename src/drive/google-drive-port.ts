@@ -5,7 +5,7 @@ import type { RemoteObservation } from "../contracts/snapshot";
 import { classifyRemoteChangePage, type CanonicalFileContentProof, type CoherentRemoteReadPort, type ReliableRemoteChangePort, type ReliableRemoteMutationPort, type RemoteMutationIdentity, type RemoteMutationOutcome, type SynchronizationCancellationSignal } from "../contracts/synchronization-foundation";
 import type { RemoteFileCreateObservation, RemoteFileCreatePhysicalMutationDescriptor, RemoteFileCreateRecoveryReadPort, RemoteFolderCreateObservation, RemoteFolderCreatePhysicalMutationDescriptor, RemoteFolderCreateRecoveryReadPort } from "../contracts/synchronization-folder-create-foundation";
 import { diagnosticPathKey, renderDiagnosticOccupantIds, type DiagnosticLogger, type SafeDiagnosticFields } from "../diagnostics/diagnostic-logger";
-import { Sha256 } from "../util/sha256";
+import { Sha256, sha256Text } from "../util/sha256";
 import { GoogleOAuthSession, ObsidianSecretStore } from "./auth";
 import { GoogleHttpTransport, withRemoteId, type PortableRequestInit } from "./transport";
 import { requestAttributionMonitorFor, type RequestAttributionScope, type RequestPurpose } from "../diagnostics/request-attribution";
@@ -165,6 +165,15 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
       convergenceStatus: status,
       ...(identity ? this.updateDiagnosticFields(identity) : {}),
     });
+  }
+
+  /**
+   * Device-local opaque binding for dormant DEC-339 observation inventory.
+   * This never exposes the stored Google permission ID/email fallback itself.
+   */
+  async pairedInventoryAccountKey(): Promise<string | undefined> {
+    const paired = this.secrets.get(ACCOUNT_SECRET);
+    return paired ? String(sha256Text(`brain-drive-paired-account:\0${paired}`)) : undefined;
   }
 
   async authenticationState(): Promise<DriveAuthenticationState> {
