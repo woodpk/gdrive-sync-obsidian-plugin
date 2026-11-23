@@ -1,0 +1,262 @@
+{
+  "schemaVersion": "2",
+  "frameworkVersion": "0.2.0-dev.2",
+  "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+  "status": "BLOCKED",
+  "verification": {
+    "changeSet": {
+      "label": "Change-set verification",
+      "stage": "test-focused",
+      "status": "BLOCKED",
+      "command": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)"
+    },
+    "repository": {
+      "label": "Repository verification",
+      "stage": "test",
+      "status": "BLOCKED",
+      "command": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)"
+    },
+    "overall": {
+      "label": "Overall verification",
+      "status": "BLOCKED",
+      "classification": "PRODUCT FAILURE",
+      "reason": "Promotion requires PASS for both change-set and repository verification."
+    }
+  },
+  "repository": {
+    "path": "C:/temp/43cdeb9dcb9946a19ac25f16be2fdfdd/phx-0505656f93bc43d7/w",
+    "name": "gdrive-sync-obsidian-plugin",
+    "branch": "",
+    "verifiedHead": "f19e395d742243f1c33b8daa7d80db48865c2b1c",
+    "verifiedTree": "58bfd812fbc34a2109759851df6b2fa1839804b7",
+    "expectedHead": "f19e395d742243f1c33b8daa7d80db48865c2b1c",
+    "baseSha": "7e830d74188d14db7f5ceb35d710a6b894cc2b73"
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "taskVersion": "3.53.1",
+    "powerShellVersion": "7.6.10",
+    "nativeToolVersions": {
+      "git": "git version 2.52.0.windows.1",
+      "node": "v22.23.2",
+      "npm": "10.9.8",
+      "nodeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "npmExecutable": "C:\\Program Files\\nodejs\\npm.cmd"
+    }
+  },
+  "startedAt": "2026-11-23T17:51:40.4213024Z",
+  "endedAt": "2026-11-23T17:52:20.6010266Z",
+  "stages": [
+    {
+      "name": "authority-check",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "phx-ci git gate",
+      "stdout": "repository=C:/temp/43cdeb9dcb9946a19ac25f16be2fdfdd/phx-0505656f93bc43d7/w\r\nbranch=\r\nhead=f19e395d742243f1c33b8daa7d80db48865c2b1c\r\ntree=58bfd812fbc34a2109759851df6b2fa1839804b7",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:51:41",
+      "endedAt": "11/23/2026 17:51:42"
+    },
+    {
+      "name": "preflight",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "& 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992/scripts/windows/Test-WindowsPreflight.ps1' -FrameworkRoot 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992' -ExpectedFrameworkVersion '0.2.0-dev.2' -TempRoot 'C:\\temp\\43cdeb9dcb9946a19ac25f16be2fdfdd'",
+      "stdout": "os=Microsoft Windows NT 10.0.26200.0\r\npowershell=7.6.10\r\ntask=3.53.1\r\ntaskExecutable=C:\\Users\\woodpk\\.dotnet\\tools\\task.exe\r\npathWithSpaces=PASS\r\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:51:43",
+      "endedAt": "11/23/2026 17:51:44"
+    },
+    {
+      "name": "node-preflight",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "& 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992/scripts/node/Test-NodePreflight.ps1' -Mode toolchain -ProjectRoot 'C:\\temp\\43cdeb9dcb9946a19ac25f16be2fdfdd\\phx-0505656f93bc43d7\\w' -OutputPath 'C:\\temp\\43cdeb9dcb9946a19ac25f16be2fdfdd\\phx-0505656f93bc43d7\\w/.phx-ci/tool-versions.json'",
+      "stdout": "node=v22.23.2\r\nnpm=10.9.8\r\nnodeExecutable=C:\\Program Files\\nodejs\\node.exe\r\nnpmExecutable=C:\\Program Files\\nodejs\\npm.cmd\r\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:51:45",
+      "endedAt": "11/23/2026 17:51:47"
+    },
+    {
+      "name": "node-project-files",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "& 'C:\\Users\\woodpk\\AppData\\Local\\PHX-CI\\runtimes\\4cf0c865c7b189641e2acebc0a6ad757b6f01992/scripts/node/Test-NodePreflight.ps1' -Mode project-files -ProjectRoot 'C:\\temp\\43cdeb9dcb9946a19ac25f16be2fdfdd\\phx-0505656f93bc43d7\\w'",
+      "stdout": "package.json=present\r\npackage-lock.json=present\r\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:51:48",
+      "endedAt": "11/23/2026 17:51:49"
+    },
+    {
+      "name": "install",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "npm ci",
+      "stdout": "\nadded 16 packages, and audited 17 packages in 7s\n\nfound 0 vulnerabilities\n",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:51:50",
+      "endedAt": "11/23/2026 17:51:59"
+    },
+    {
+      "name": "typecheck",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "npm run typecheck",
+      "stdout": "\n> brain-google-drive-sync@0.1.19 typecheck\n> tsc --noEmit\n\ntests/integration/dec339-step3-shadow-continuity.test.ts(262,18): error TS18048: 'before.value' is possibly 'undefined'.\r\ntests/integration/dec339-step3-shadow-continuity.test.ts(263,18): error TS18048: 'before.value' is possibly 'undefined'.\r\ntests/integration/dec339-step3-shadow-continuity.test.ts(264,18): error TS18048: 'before.value' is possibly 'undefined'.\r\ntests/integration/dec339-step3-shadow-continuity.test.ts(288,18): error TS18048: 'after.value' is possibly 'undefined'.\r\ntests/integration/dec339-step3-shadow-continuity.test.ts(290,18): error TS18048: 'after.value' is possibly 'undefined'.\r\ntests/integration/dec339-step3-shadow-continuity.test.ts(291,18): error TS18048: 'after.value' is possibly 'undefined'.\r\ntests/integration/dec339-step3-shadow-continuity.test.ts(292,18): error TS18048: 'after.value' is possibly 'undefined'.\r\n",
+      "stderr": "",
+      "exitCode": 2,
+      "classification": "PRODUCT FAILURE",
+      "result": "FAIL",
+      "reason": "Stage 'typecheck' exited unsuccessfully.",
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:51:59",
+      "endedAt": "11/23/2026 17:52:09"
+    },
+    {
+      "name": "test-focused",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "typecheck"
+      ],
+      "startedAt": "11/23/2026 17:52:10",
+      "endedAt": "11/23/2026 17:52:10"
+    },
+    {
+      "name": "test",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "typecheck"
+      ],
+      "startedAt": "11/23/2026 17:52:11",
+      "endedAt": "11/23/2026 17:52:11"
+    },
+    {
+      "name": "artifact-preparation",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: typecheck (prerequisite is not an executed PASS with native exit 0); test-focused (prerequisite is not an executed PASS with native exit 0); test (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "typecheck",
+        "test-focused",
+        "test"
+      ],
+      "startedAt": "11/23/2026 17:52:12",
+      "endedAt": "11/23/2026 17:52:12"
+    },
+    {
+      "name": "build",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "artifact-preparation"
+      ],
+      "startedAt": "11/23/2026 17:52:13",
+      "endedAt": "11/23/2026 17:52:13"
+    },
+    {
+      "name": "artifacts",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "build"
+      ],
+      "startedAt": "11/23/2026 17:52:14",
+      "endedAt": "11/23/2026 17:52:14"
+    },
+    {
+      "name": "check",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "phx-ci git gate",
+      "stdout": "repository=C:/temp/43cdeb9dcb9946a19ac25f16be2fdfdd/phx-0505656f93bc43d7/w\r\nbranch=\r\nhead=f19e395d742243f1c33b8daa7d80db48865c2b1c\r\ntree=58bfd812fbc34a2109759851df6b2fa1839804b7",
+      "stderr": "",
+      "exitCode": 0,
+      "classification": "NONE",
+      "result": "PASS",
+      "reason": null,
+      "blockedBy": [],
+      "startedAt": "11/23/2026 17:52:15",
+      "endedAt": "11/23/2026 17:52:16"
+    },
+    {
+      "name": "repository-check",
+      "runId": "03f86b04-600f-4e89-92ad-3b1767fea073",
+      "command": "",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": null,
+      "classification": "DEPENDENCY FAILURE",
+      "result": "BLOCKED",
+      "reason": "Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0)",
+      "blockedBy": [
+        "artifacts"
+      ],
+      "startedAt": "11/23/2026 17:52:17",
+      "endedAt": "11/23/2026 17:52:17"
+    }
+  ],
+  "focusedTestResult": "BLOCKED",
+  "fullTestResult": "BLOCKED",
+  "overallVerificationResult": "BLOCKED",
+  "buildResult": "BLOCKED",
+  "repositoryGateResult": "PASS",
+  "artifacts": [],
+  "knownPlatformExceptions": [],
+  "finalVerdict": "BLOCKED",
+  "failureClassification": "PRODUCT FAILURE"
+}
