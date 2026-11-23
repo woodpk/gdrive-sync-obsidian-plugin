@@ -166,9 +166,9 @@ test("DEC339 Step 5 existing-only inventory access refuses v1 schema without upg
     factory,
     { allowSchemaUpgrade: false },
   );
-  await assert.rejects(
-    () => inventory.openRead(),
-    /inventory-schema-not-established/,
-  );
+  const result = await inventory.openRead();
+  assert.equal(result.status, "recovery-required");
+  if (result.status === "recovery-required")
+    assert.equal(result.reason, "inventory-schema-not-established");
   assert.equal(database.version, 1, "opt-in planning must never migrate a live v1 database");
 });
