@@ -2268,7 +2268,7 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
 
 
 dec339_ws03_remote_metadata_transport_2026_11_23:
-  status: "BUILDER_CANDIDATE_FROZEN_PENDING_EXACT_SOURCE_PHXCI"
+  status: "BUILDER_READY_PENDING_EXACT_SOURCE_PHXCI"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_NEXT_CANONICAL_DEC339_STEP"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-03/DEC339_REMOTE_METADATA_TRANSPORT"
   handoff-count: 0
@@ -2292,8 +2292,9 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   dec339_integration_complete: false
-  next_action: "RUN_FULL_SOFTWARE_ONLY_PHXCI_AGAINST_FROZEN_SOURCE"
+  next_action: "RUN_FULL_SOFTWARE_ONLY_PHXCI_AGAINST_CURRENT_REMOTE_CANDIDATE"
 
-  frozen_source_sha: "4ad8d062d3b32501669845440dec9d915adb0d8c"
-  frozen_source_tree: "15fd37dc664e5e80e06caed04f6a04c2f83200d1"
+  pre_compatibility_source_sha: "2c46aa4a4be76f85ebba51d35e5ac4aef7a413d7"
+  phxci_compatibility_test_command_commit: "7d7c9f3853b61602b0b9c2afa4d9b59cf9bbc572"
+  exact_qualification_source: "RESOLVE_REMOTE_BRANCH_HEAD_AT_DISPATCH"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
