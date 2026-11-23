@@ -113,3 +113,19 @@ Exact-source PHX-CI PASS followed by blind-first independent Reviewer acceptance
 - Full/recovery reconciliation and the authoritative executor remain unchanged.
 - Focused PHX-CI includes Step-5 cutover tests, Step-4 parity, inventory fallback, local invalidation, plugin-data integrity and runtime authority interleavings.
 - No `phx-ci.json`, PHX runtime, GitHub Actions, BVP operator, master/PR #157, live pairing, installation, physical-test or release change is part of this candidate.
+
+
+## Reviewer F-01 correction
+
+Independent review of source `85eef2acaab0244bb8a03b95598e5d2b3434b556` found that `ProductRuntime.applySettingsChange()` reinitialized and returned immediately when the inventory-planning gate changed, bypassing co-occurring scope and sync-plan-errors transitions.
+
+Correction:
+- normalize gate transition once at method entry;
+- execute existing audit/scheduler, sync-plan-errors relocation/journaling and exclusion/scope handlers before any gate-triggered reinitialization;
+- preserve the requested gate value through relocation-owned persistence when gate and directory change together;
+- reinitialize exactly once at method end if and only if the gate changed;
+- retain scope reconciliation, local-hint invalidation and controller change notification;
+- retain existing relocation journal/path protection/finalization semantics;
+- add direct `ProductRuntime.applySettingsChange()` adversarial coverage for gate enable and disable combined with exclusions and with sync-plan-errors-directory relocation.
+
+No planner/controller/executor ownership, inventory publication, cursor ownership, default-off behavior, database migration rule, live operation or release authority changes are introduced by this correction.
