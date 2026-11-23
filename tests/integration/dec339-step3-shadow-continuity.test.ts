@@ -266,7 +266,7 @@ test("DEC362-14 / DEC339 Step 3 proves real same-ID update -> Changes -> persist
   const mutation = await assembled.drive.updateExisting(stableUpdateIdentity(), updateBytes);
   assert.equal(mutation.status, "verified-effect");
   if (mutation.status === "verified-effect")
-    assert.equal(mutation.receipt.remoteObjectId, STABLE_ID);
+    assert.equal(mutation.applicationProof.remoteObjectId, STABLE_ID);
 
   const generation = g("step3-real-after-update");
   const batchId = contractId<"RemoteIngestionBatchId">(
