@@ -36,7 +36,7 @@ export interface BrainSyncSettings {
   diagnosticConsoleMirror: boolean;
   diagnosticRetention: number;
   /** DEC-339 Step 5: explicit opt-in to verified inventory-backed planning observations. */
-  verifiedInventoryPlanningEnabled: boolean;
+  verifiedInventoryPlanningEnabled?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BrainSyncSettings = {
