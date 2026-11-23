@@ -285,7 +285,7 @@ export class ProductRuntime {
       this.state!,
     );
     const snapshots = selectPlanningAssembler(
-      current.verifiedInventoryPlanningEnabled,
+      current.verifiedInventoryPlanningEnabled === true,
       legacySnapshots,
       () => {
         const inventory = new IndexedDbInventoryObservationStore(
