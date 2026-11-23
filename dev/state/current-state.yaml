@@ -2165,7 +2165,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
 
 
 dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
-  status: "R3_INDEPENDENT_REVIEW_CORRECTION_REQUIRED_B01;WS02_INCOMPLETE"
+  status: "R3_REVIEW_CORRECTION_REQUIRED_B01;R4_CANDIDATE_FROZEN_PENDING_PHXCI;WS02_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-22_BU05_ACCEPTED_CONTINUE_NEXT_APPROVED_WS02_WORK"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU06_REAL_MULTICONTEXT_IDB_UPGRADE_ROLLBACK"
   handoff-count: 2
@@ -2187,8 +2187,8 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   physical_testing_authorized: false
   full_ws02_complete: false
   dec339_integration_complete: false
-  candidate_source_sha: "9ff52fd316cbb23ca7cc8e9d5730221a85b04d5c"
-  candidate_source_tree: "82400e34216d682a516dfe694a19f2528c546e48"
+  candidate_source_sha: "4f0cddc3800210948154c26ac810e902a914ccb1"
+  candidate_source_tree: "22ab2f7a23c6c0ea36b454cf675ae17c5632ae3c"
   r1_blocked_source_sha: "b17a2c803090f718fbaa7a31438a153d980613ec"
   r1_blocked_source_tree: "e9fc839c1bf760b219c0df30c42ad70464ffc963"
   r1_phxci_run_id: "7b9ad4ec-d23e-433e-99ea-475e17399c90"
@@ -2221,9 +2221,11 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   review_assignment: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu06-r3-independent-review-2026-11-22.md"
   handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r3-2026-11-22.md"
   r3_reviewer_verdict: "CORRECTION_REQUIRED_B01_NONCOOPERATING_BLOCKER_IN_SAME_CONTEXT_AS_UPGRADER"
+  r4_fix: "CROSS_CONTEXT_BLOCKER_FRAME_A;PRODUCTION_V2_UPGRADER_FRAME_B;RELEASE_FROM_FRAME_A;RESPONSE_SOURCE_AND_FRAME_ID_ENFORCEMENT;BLOCKED_COMPLETION_BEFORE_RELEASE_ASSERTION"
+  r4_change_scope: "BROWSER_INTEGRATION_TEST_ONLY;NO_PRODUCTION_SOURCE_CHANGE"
   r3_reviewer_blind_report_path: "dev/reviews/dec339-ws02-bu06-r3-20261122-review-brain-10-blind-source.md"
   r3_reviewer_blind_report_commit: "a2359cc35d4876b68bb813b95dfa3edd4a395f32"
   r3_reviewer_final_report_path: "dev/reviews/dec339-ws02-bu06-r3-20261122-review-brain-10-final.md"
   r3_reviewer_final_report_commit: "724b9b4df6d4497684493b8e680c15bd7f9884aa"
   bu06_independent_acceptance: false
-  next_action: "BUILDER_FIX_CROSS_CONTEXT_BLOCKER_TOPOLOGY_FRESH_PHXCI_NEW_REVIEW_HANDOFF"
+  next_action: "RUN_FULL_SOFTWARE_ONLY_PHXCI_R4_AGAINST_EXACT_FROZEN_CANDIDATE"
