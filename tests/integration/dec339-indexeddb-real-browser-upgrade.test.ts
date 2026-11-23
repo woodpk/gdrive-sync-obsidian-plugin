@@ -20,6 +20,13 @@ interface BrowserResult {
     readonly version: { readonly status: string; readonly version: number };
   };
   readonly blocked?: {
+    readonly topology: {
+      readonly blockerFrame: string;
+      readonly upgraderFrame: string;
+      readonly releaseFrame: string;
+      readonly blockedCompletionSequence: number;
+      readonly releaseCompletionSequence: number;
+    };
     readonly seed: { readonly status: string; readonly canonicalBytes: readonly number[] | null; readonly backupId: string };
     readonly blocker: { readonly status: string; readonly version: number };
     readonly blockedUpgrade: { readonly status: string; readonly reason: string | null };
@@ -52,11 +59,18 @@ window.addEventListener("message", async event => {
   if (!message.id || !message.command) return;
   try {
     const value = await BU06Harness.run(message.command, message.args);
-    parent.postMessage({ kind: "response", id: message.id, ok: true, value }, location.origin);
+    parent.postMessage({
+      kind: "response",
+      id: message.id,
+      frameId: new URLSearchParams(location.search).get("id"),
+      ok: true,
+      value,
+    }, location.origin);
   } catch (error) {
     parent.postMessage({
       kind: "response",
       id: message.id,
+      frameId: new URLSearchParams(location.search).get("id"),
       ok: false,
       error: error && error.stack ? String(error.stack) : String(error),
     }, location.origin);
@@ -102,7 +116,16 @@ window.addEventListener("message", event => {
   if (!waiter) return;
   pending.delete(event.data.id);
   clearTimeout(waiter.timer);
-  if (event.data.ok) waiter.resolve(event.data.value);
+  if (event.source !== waiter.expectedSource || event.data.frameId !== waiter.expectedFrameId) {
+    waiter.reject(new Error(
+      "frame-identity-mismatch:" + waiter.expectedFrameId + ":" + String(event.data.frameId)));
+    return;
+  }
+  if (event.data.ok) waiter.resolve({
+    value: event.data.value,
+    frameId: event.data.frameId,
+    completedSequence: ++sequence,
+  });
   else waiter.reject(new Error(event.data.error || "frame-command-failed"));
 });
 function ready(frameId) {
@@ -115,14 +138,20 @@ function ready(frameId) {
     readyWaiters.set(frameId, { resolve, reject, timer });
   });
 }
-function command(frame, name, databaseName, extra = {}) {
+function command(frame, frameId, name, databaseName, extra = {}) {
   return new Promise((resolve, reject) => {
     const id = "cmd-" + (++sequence);
     const timer = setTimeout(() => {
       pending.delete(id);
-      reject(new Error("frame-command-timeout:" + name));
+      reject(new Error("frame-command-timeout:" + frameId + ":" + name));
     }, 30000);
-    pending.set(id, { resolve, reject, timer });
+    pending.set(id, {
+      resolve,
+      reject,
+      timer,
+      expectedSource: frame.contentWindow,
+      expectedFrameId: frameId,
+    });
     frame.contentWindow.postMessage({ id, command: name, args: { databaseName, ...extra } }, location.origin);
   });
 }
@@ -138,42 +167,51 @@ async function postResult(value) {
   try {
     await Promise.all([ready("a"), ready("b")]);
 
-    const cooperativeSeed = await command(a, "seedLegacy", cooperativeDb);
-    const cooperativeUpgrade = await command(b, "upgradeSnapshot", cooperativeDb);
-    const cooperativeLegacyAfter = await command(a, "readLegacy", cooperativeDb);
-    const cooperativeCompatible = await command(b, "readCompatible", cooperativeDb);
-    const cooperativeBackup = await command(b, "readBackup", cooperativeDb, { backupId: cooperativeSeed.backupId });
-    const cooperativeVersion = await command(b, "databaseVersion", cooperativeDb);
+    const cooperativeSeedResult = await command(a, "a", "seedLegacy", cooperativeDb);
+    const cooperativeUpgradeResult = await command(b, "b", "upgradeSnapshot", cooperativeDb);
+    const cooperativeLegacyAfterResult = await command(a, "a", "readLegacy", cooperativeDb);
+    const cooperativeCompatibleResult = await command(b, "b", "readCompatible", cooperativeDb);
+    const cooperativeBackupResult = await command(
+      b, "b", "readBackup", cooperativeDb, { backupId: cooperativeSeedResult.value.backupId });
+    const cooperativeVersionResult = await command(b, "b", "databaseVersion", cooperativeDb);
 
-    const blockedSeed = await command(a, "seedLegacy", blockedDb);
-    const blocker = await command(b, "openBlocker", blockedDb);
-    const blockedUpgrade = await command(b, "upgradeSnapshot", blockedDb);
-    const close = await command(b, "closeBlocker", blockedDb);
+    const blockedSeedResult = await command(a, "a", "seedLegacy", blockedDb);
+    const blockerResult = await command(a, "a", "openBlocker", blockedDb);
+    const blockedUpgradeResult = await command(b, "b", "upgradeSnapshot", blockedDb);
+    const closeResult = await command(a, "a", "closeBlocker", blockedDb);
     await delay(500);
-    const retry = await command(b, "upgradeSnapshot", blockedDb);
-    const blockedCompatible = await command(b, "readCompatible", blockedDb);
-    const blockedBackup = await command(b, "readBackup", blockedDb, { backupId: blockedSeed.backupId });
-    const blockedVersion = await command(b, "databaseVersion", blockedDb);
+    const retryResult = await command(b, "b", "upgradeSnapshot", blockedDb);
+    const blockedCompatibleResult = await command(b, "b", "readCompatible", blockedDb);
+    const blockedBackupResult = await command(
+      b, "b", "readBackup", blockedDb, { backupId: blockedSeedResult.value.backupId });
+    const blockedVersionResult = await command(b, "b", "databaseVersion", blockedDb);
 
     await postResult({
       ok: true,
       cooperative: {
-        seed: cooperativeSeed,
-        upgrade: cooperativeUpgrade,
-        legacyAfter: cooperativeLegacyAfter,
-        compatible: cooperativeCompatible,
-        backup: cooperativeBackup,
-        version: cooperativeVersion,
+        seed: cooperativeSeedResult.value,
+        upgrade: cooperativeUpgradeResult.value,
+        legacyAfter: cooperativeLegacyAfterResult.value,
+        compatible: cooperativeCompatibleResult.value,
+        backup: cooperativeBackupResult.value,
+        version: cooperativeVersionResult.value,
       },
       blocked: {
-        seed: blockedSeed,
-        blocker,
-        blockedUpgrade,
-        close,
-        retry,
-        compatible: blockedCompatible,
-        backup: blockedBackup,
-        version: blockedVersion,
+        topology: {
+          blockerFrame: blockerResult.frameId,
+          upgraderFrame: blockedUpgradeResult.frameId,
+          releaseFrame: closeResult.frameId,
+          blockedCompletionSequence: blockedUpgradeResult.completedSequence,
+          releaseCompletionSequence: closeResult.completedSequence,
+        },
+        seed: blockedSeedResult.value,
+        blocker: blockerResult.value,
+        blockedUpgrade: blockedUpgradeResult.value,
+        close: closeResult.value,
+        retry: retryResult.value,
+        compatible: blockedCompatibleResult.value,
+        backup: blockedBackupResult.value,
+        version: blockedVersionResult.value,
       },
     });
   } catch (error) {
@@ -330,6 +368,18 @@ test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rol
       "pre-upgrade backup must survive the real additive v2 upgrade byte-for-byte",
     );
 
+    assert.equal(result.blocked.topology.blockerFrame, "a",
+      "the deliberately noncooperating v1 blocker must originate in frame A");
+    assert.equal(result.blocked.topology.upgraderFrame, "b",
+      "the production v2 upgrade must execute in independent frame B");
+    assert.equal(result.blocked.topology.releaseFrame, "a",
+      "the blocker must be released from its originating frame A");
+    assert.notEqual(result.blocked.topology.blockerFrame, result.blocked.topology.upgraderFrame,
+      "blocked-upgrade evidence must use different browsing contexts");
+    assert.ok(
+      result.blocked.topology.blockedCompletionSequence < result.blocked.topology.releaseCompletionSequence,
+      "the cross-context blocked result must be observed before frame A releases its blocker",
+    );
     assert.equal(result.blocked.seed.status, "saved");
     assert.equal(result.blocked.blocker.status, "open");
     assert.equal(result.blocked.blocker.version, 1);
