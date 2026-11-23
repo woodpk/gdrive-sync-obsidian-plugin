@@ -205,6 +205,15 @@ async function environment() {
   assert.match(accountKey, /^sha256:[0-9a-f]{64}$/);
   assert.notEqual(accountKey, "permission-step4");
 
+  const observedRoots = await boundary.drive.observeManagedDomainRootIds({
+    rootId: root, vaultIdentity: vault, protocolVersion: protocol,
+  });
+  assert.equal(observedRoots.ok, true);
+  if (observedRoots.ok) {
+    assert.equal(observedRoots.value.contentRootId, contentRoot);
+    assert.equal(observedRoots.value.configRootId, configRoot);
+  }
+
   const fence: InventoryIdentityFence = {
     vaultIdentity: vault,
     deviceIdentity: device,
