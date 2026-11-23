@@ -2,6 +2,8 @@ import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 import type { ManagedRemoteIdentity } from "../contracts/google-drive";
 import { GoogleOAuthSession, ObsidianSecretStore, type OAuthClientConfiguration, type SecretStorageLike } from "./auth";
 import { GoogleDriveAdapter } from "./google-drive-port";
+import { GoogleDriveInventoryMetadataSource } from "./inventory-metadata-source";
+import { VerifiedMetadataInventoryReader } from "./verified-metadata-inventory-reader";
 import { createObsidianRequestUrlFetcher, type ObsidianRequestUrlLike } from "./obsidian-http";
 import { GoogleHttpTransport, type RetryPolicy } from "./transport";
 
@@ -25,10 +27,18 @@ export interface ObsidianGoogleDriveBoundaryOptions {
 export function createObsidianGoogleDriveBoundary(options: ObsidianGoogleDriveBoundaryOptions): {
   readonly oauth: GoogleOAuthSession;
   readonly drive: GoogleDriveAdapter;
+  /** Dormant DEC-339 read-only metadata observer; not wired to planning or state publication. */
+  readonly metadataReader: VerifiedMetadataInventoryReader;
 } {
   const secrets = new ObsidianSecretStore(options.secretStorage);
   const fetcher = createObsidianRequestUrlFetcher(options.requestUrl);
   const oauth = new GoogleOAuthSession(options.oauth, secrets, fetcher);
   const transport = new GoogleHttpTransport(oauth, fetcher, options.retryPolicy, undefined, undefined, undefined, options.diagnostics);
-  return { oauth, drive: new GoogleDriveAdapter(oauth, transport, secrets, options.diagnostics, options.managedRemoteIdentity) };
+  const drive = new GoogleDriveAdapter(oauth, transport, secrets, options.diagnostics, options.managedRemoteIdentity);
+  const metadataSource = new GoogleDriveInventoryMetadataSource(
+    drive,
+    transport,
+    () => drive.pairedInventoryAccountKey(),
+  );
+  return { oauth, drive, metadataReader: new VerifiedMetadataInventoryReader(metadataSource) };
 }
