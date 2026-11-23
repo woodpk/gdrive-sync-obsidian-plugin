@@ -457,10 +457,9 @@ export class ProductRuntime {
   }
 
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
-    if (previous.verifiedInventoryPlanningEnabled !== next.verifiedInventoryPlanningEnabled) {
-      await this.initialize();
-      return;
-    }
+    const previousInventoryPlanningEnabled = previous.verifiedInventoryPlanningEnabled === true;
+    const nextInventoryPlanningEnabled = next.verifiedInventoryPlanningEnabled === true;
+    const inventoryPlanningGateChanged = previousInventoryPlanningEnabled !== nextInventoryPlanningEnabled;
     if (previous.auditRetention !== next.auditRetention) await this.audit?.setLimit(next.auditRetention);
     if (previous.periodicEnabled !== next.periodicEnabled || previous.periodicIntervalMinutes !== next.periodicIntervalMinutes || previous.firstSyncCompleted !== next.firstSyncCompleted || previous.recoveryInProgress !== next.recoveryInProgress) this.scheduler?.refresh();
     if (previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory) {
@@ -480,6 +479,9 @@ export class ProductRuntime {
           }
           return withManagedSyncPlanErrorsExclusion({
             ...latest,
+            ...(inventoryPlanningGateChanged
+              ? { verifiedInventoryPlanningEnabled: nextInventoryPlanningEnabled }
+              : {}),
             syncPlanErrorsDirectory: previous.syncPlanErrorsDirectory,
             managedSyncPlanErrorsExclusion: priorPath,
             syncPlanErrorsRelocation: relocation,
@@ -516,6 +518,10 @@ export class ProductRuntime {
       }
       this.controller?.noteChangeDuringRun();
     }
+    // Reinitialize only after every co-occurring settings transition has
+    // completed. This preserves scope/relocation safety and publishes the gate
+    // change to runtime composition exactly once.
+    if (inventoryPlanningGateChanged) await this.initialize();
   }
 
   async exportDiagnosticStateText(): Promise<string> {
