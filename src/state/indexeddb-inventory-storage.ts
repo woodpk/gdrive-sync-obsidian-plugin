@@ -203,6 +203,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   constructor(
     private readonly databaseName: string,
     private readonly indexedDb: IDBFactory = globalThis.indexedDB,
+    private readonly options: { readonly allowSchemaUpgrade?: boolean } = {},
   ) {
     if (!indexedDb) throw new Error("indexeddb-unavailable");
     this.activity = activityFor(indexedDb, databaseName);
@@ -211,12 +212,26 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   private open(): Promise<IDBDatabase> {
     if (!this.database) {
       const promise = new Promise<IDBDatabase>((resolve, reject) => {
-        const action = this.indexedDb.open(this.databaseName, DB_VERSION);
+        const allowSchemaUpgrade = this.options.allowSchemaUpgrade !== false;
+        const action = allowSchemaUpgrade
+          ? this.indexedDb.open(this.databaseName, DB_VERSION)
+          : this.indexedDb.open(this.databaseName);
         let failed = false;
-        action.onupgradeneeded = () => createSchema(action.result);
+        action.onupgradeneeded = () => {
+          if (allowSchemaUpgrade) createSchema(action.result);
+        };
         action.onsuccess = () => {
           const db = action.result;
           if (failed) { db.close(); return; }
+          if (!allowSchemaUpgrade) {
+            const required = [AUTHORITY, CONTROL, MANIFESTS, STAGES, LOCAL, COVERAGE, ENTITIES];
+            if (db.version < DB_VERSION || required.some(name => !db.objectStoreNames.contains(name))) {
+              failed = true;
+              db.close();
+              reject(new Error("inventory-schema-not-established"));
+              return;
+            }
+          }
           db.onversionchange = () => { db.close(); this.database = undefined; };
           resolve(db);
         };
