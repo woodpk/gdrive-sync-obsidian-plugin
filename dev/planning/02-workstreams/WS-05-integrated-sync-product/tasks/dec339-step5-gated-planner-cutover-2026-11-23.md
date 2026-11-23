@@ -88,3 +88,28 @@ All executable verification runs exclusively through pinned PHX-CI.
 ## Acceptance boundary
 
 Exact-source PHX-CI PASS followed by blind-first independent Reviewer acceptance. Step 5 acceptance does not authorize Step 6 operational activation, physical testing, master/PR #157 merge, installation, promotion or release.
+
+
+## Builder ten-family adequacy
+
+1. **Nominal/success** — explicit opt-in selects exactly one inventory-backed assembler; complete verified inventory semantics remain those accepted in Step 4.
+2. **Negative/boundary/malformed/unsupported** — absent account binding, wrong vault/fence, absent or non-v2 inventory and stale/partial inventory fail closed or fall back through the existing assembler.
+3. **Legal/forbidden transitions** — disabled selector never constructs inventory dependencies; Step 5 introduces no inventory publication, cursor writer, executor proof or mutation authorization.
+4. **Repetition/idempotency/retry/recovery** — runtime gate changes reinitialize through the existing serialized lifecycle; full/recovery assembly remains physical and existing controller recovery ordering is unchanged.
+5. **Concurrency/races/order/stale state** — existing authority-interleaving suite remains focused; inventory-aware state storage invalidates active inventory on unfenced canonical cursor/identity changes.
+6. **Persistence/restart/data integrity** — persisted gate normalizes to false for legacy settings; existing-only inventory mode refuses v1 schema without upgrading it.
+7. **Identity/authorization/security/trust** — fence construction binds current vault/device/root/protocol, opaque paired-account key, exact managed domain roots and effective scope fingerprint.
+8. **Contracts/integration/backward compatibility** — optional settings field preserves old typed fixtures/data; production Drive accessor is read-only; Step-4 production-boundary fixture exercises it.
+9. **Architecture/ownership/invariants** — one existing planner/controller/executor remains; inventory path is a subclass/delegate of the existing snapshot assembler; no second OAuth client or alternate state authority exists.
+10. **End-to-end/fail-closed/destructive safety** — Step-4 parity/fallback and Step-3 stable-ID continuity remain in the focused chain; Step 5 adds no physical dispatch and leaves targeted executor reads disabled.
+
+## Source-readiness record
+
+- Accepted Step-4 closeout `f936961a4b9dbcb8b23e887771d27bbba7e7ac55` is the direct Step-5 base.
+- Runtime gate is persisted but default false; no settings UI was added.
+- Runtime inventory access uses `allowSchemaUpgrade: false`; an existing v1 pairing is not migrated by Step 5.
+- No automatic inventory baseline/Changes publication exists in ProductRuntime, so Step 5 does not create a second canonical cursor owner.
+- The existing ProductController authority-learning/recovery/reassembly lifecycle is unchanged.
+- Full/recovery reconciliation and the authoritative executor remain unchanged.
+- Focused PHX-CI includes Step-5 cutover tests, Step-4 parity, inventory fallback, local invalidation, plugin-data integrity and runtime authority interleavings.
+- No `phx-ci.json`, PHX runtime, GitHub Actions, BVP operator, master/PR #157, live pairing, installation, physical-test or release change is part of this candidate.
