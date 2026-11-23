@@ -2165,7 +2165,7 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
 
 
 dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
-  status: "R4_INDEPENDENTLY_ACCEPTED_WITH_MINOR_FINDINGS;WS02_INCOMPLETE"
+  status: "BU06_INDEPENDENTLY_ACCEPTED_BUILDER_CLOSED;WS02_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-22_BU05_ACCEPTED_CONTINUE_NEXT_APPROVED_WS02_WORK"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU06_REAL_MULTICONTEXT_IDB_UPGRADE_ROLLBACK"
   handoff-count: 4
@@ -2245,10 +2245,19 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   r4_b01_disposition: "INDEPENDENTLY_RESOLVED_AND_ACCEPTED"
   handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r4-2026-11-23.md"
   handoff_governance: "NEUTRAL_BUILDER_TO_REVIEWER_TRANSFER_ONLY;HANDOFF_COUNT_REMAINS_3;NO_NEW_TRANSFER"
-  next_action: "BUILDER_CLOSEOUT_ACCEPTED_BU06_CARRY_MINOR_FINDINGS_TO_FULL_WS02_GATE"
+  next_action: "WS02_BU07_SCOPE_OWNER_LOCAL_HINT_CONSUMER_INTEGRATION_AND_WHOLE_WS02_AUDIT"
   r4_independent_review_verdict: "PASS_WITH_MINOR_FINDINGS_BU06_ACCEPTED"
   r4_independent_blind_report: "dev/reviews/dec339-ws02-bu06-r4-20261123-review-brain-10-blind-source.md"
   r4_independent_blind_report_commit: "9b8a2c2ffa949cc98b6892f1dac60181fd3db58f"
   r4_independent_final_report: "dev/reviews/dec339-ws02-bu06-r4-20261123-review-brain-10-final.md"
   r4_independent_final_report_commit: "b83ad3df0b0f22378a5135e5b83573f457b507d8"
   r4_reviewer_minor_findings: "IFRAME_VS_WEBVIEW_PROCESS_SCOPE;LATE_HANDLE_CLOSURE_NOT_DIRECTLY_INSTRUMENTED;FULL_WS02_SCOPE_OWNER_AND_CURSOR_AUDIT_PENDING"
+
+  bu06_builder_closeout: "CLOSED_2026_11_23;NO_REQUALIFICATION;NO_CODE_CHANGE"
+  bu06_closeout_document: "dev/state/handoffs/dec339-ws02-bu06-accepted-closeout-2026-11-23.md"
+  bu06_handoff_count_closed: 4
+  bu06_accepted_source_sha: "621d324511d33d2b429a9b57968b8c1019159c6a"
+  bu06_accepted_source_tree: "88cb5f915c03bf50a64d79ba7554fd6b8b853ffb"
+  bu06_minor_finding_m01: "REAL_IFRAME_CONTEXTS_NOT_SEPARATE_OBSIDIAN_WEBVIEW_PROCESSES_OR_PHYSICAL_DEVICES"
+  bu06_minor_finding_m02: "LATE_BLOCKED_REQUEST_CLOSURE_PROVEN_INDIRECTLY_NOT_DIRECTLY_INSTRUMENTED"
+  bu06_minor_finding_m03: "WHOLE_WS02_SCOPE_OWNER_LOCAL_HINT_AND_GENERIC_CURSOR_PREDECESSOR_AUDIT_REMAIN"
