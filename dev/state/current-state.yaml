@@ -2421,7 +2421,7 @@ dec339_step3_storage_shadow_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step4_observation_comparison_2026_11_23:
-  status: "BUILDER_ACTIVE"
+  status: "BUILDER_CANDIDATE_READY_PENDING_PHXCI"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP4_OBSERVATION_ONLY_COMPARISON"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP4_OBSERVATION_COMPARISON"
   handoff-count: 0
@@ -2433,6 +2433,9 @@ dec339_step4_observation_comparison_2026_11_23:
   predecessor_step3_closeout: "d8fdf66db0aeb7c44fafb42ccd5cbee706682425"
   comparison_mode: "OBSERVATION_ONLY_NO_DISPATCH"
   production_code_change_expected: false
+  step4_parity_test_commit: "111e40f3c27cc1a5170e2bc188427b2f2cb90f7e"
+  step4_focused_selector_commit: "aabfdc35775a94ffa8dce2bdf87b8ac791779f99"
+  step4_source_readiness_commit: "b2b689a2519cd1f21d39e7b90962ae129bc39c34"
   carry_forward_m01: "SOFTWARE_ONLY_FIXTURES_NOT_LIVE_PROVIDER_BROWSER_DEVICE_PROOF"
   carry_forward_m02: "PRODUCTION_ACCOUNT_KEY_AND_STEP2_BOUNDARY_MUST_BE_INCLUDED"
   carry_forward_m03: "LOCAL_HINT_REFRESH_INVALIDATION_REMAINS_INTEGRATED_SCOPE"
@@ -2443,4 +2446,4 @@ dec339_step4_observation_comparison_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "AUTHOR_TEST_FIRST_STEP4_OBSERVATION_AND_PLAN_PARITY_COVERAGE"
+  next_action: "RUN_EXACT_SOURCE_PHXCI_STEP4_QUALIFICATION"
