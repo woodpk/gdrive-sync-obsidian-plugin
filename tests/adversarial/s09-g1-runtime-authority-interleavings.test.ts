@@ -319,3 +319,93 @@ test("LIFE-002: failed controller quiescence still releases raw adapter and atte
   await h.runtime.disposeProduct();
   assert.deepEqual(events, ["stop", "quiesce", "raw-local-dispose", "attention-dispose"], "retry may not dispose retired resources again");
 });
+
+
+for (const transition of [
+  { label: "enable", previousGate: false, nextGate: true },
+  { label: "disable", previousGate: true, nextGate: false },
+] as const) {
+  test(`DEC339 Step 5 F-01 gate ${transition.label} plus exclusions preserves reconciliation and invalidation before reinitialize`, async () => {
+    const h = await harness();
+    const previous: BrainSyncSettings = {
+      ...h.current(),
+      verifiedInventoryPlanningEnabled: transition.previousGate,
+      userExclusionPatterns: [...h.current().userExclusionPatterns],
+      scopeReconcileRequired: false,
+    };
+    const next: BrainSyncSettings = {
+      ...previous,
+      verifiedInventoryPlanningEnabled: transition.nextGate,
+      userExclusionPatterns: [...previous.userExclusionPatterns, "combined-scope/**"],
+    };
+    await h.host.mutateSettings(() => next);
+
+    const events: string[] = [];
+    Object.assign(h.runtime as unknown as RuntimeInternals, {
+      controller: { noteChangeDuringRun: () => events.push("controller-change") },
+      localInventory: { invalidateForScopeChange: async () => { events.push("local-invalidate"); } },
+      initialize: async () => { events.push("initialize"); },
+    });
+
+    await h.runtime.applySettingsChange(previous, next);
+
+    assert.equal(h.current().verifiedInventoryPlanningEnabled, transition.nextGate);
+    assert.equal(h.current().scopeReconcileRequired, true);
+    assert.ok(h.current().userExclusionPatterns.includes("combined-scope/**"));
+    assert.deepEqual(events, ["local-invalidate", "controller-change", "initialize"]);
+  });
+}
+
+for (const transition of [
+  { label: "enable", previousGate: false, nextGate: true },
+  { label: "disable", previousGate: true, nextGate: false },
+] as const) {
+  test(`DEC339 Step 5 F-01 gate ${transition.label} plus sync-plan-errors relocation journals and commits before reinitialize`, async () => {
+    const h = await harness();
+    const previous: BrainSyncSettings = {
+      ...h.current(),
+      verifiedInventoryPlanningEnabled: transition.previousGate,
+      syncPlanErrorsDirectory: "",
+      managedSyncPlanErrorsExclusion: "sync-plan-errors.csv",
+      syncPlanErrorsRelocation: null,
+      userExclusionPatterns: [
+        ...h.current().userExclusionPatterns.filter(value => value !== "sync-plan-errors.csv"),
+        "sync-plan-errors.csv",
+      ],
+    };
+    await h.host.mutateSettings(() => previous);
+    const next: BrainSyncSettings = {
+      ...previous,
+      verifiedInventoryPlanningEnabled: transition.nextGate,
+      syncPlanErrorsDirectory: "ops",
+    };
+
+    const events: string[] = [];
+    Object.assign(h.runtime as unknown as RuntimeInternals, {
+      attentionPersistence: {
+        relocate: async (nextPath: string, commitActiveLocation: () => Promise<void>) => {
+          events.push("relocate:" + nextPath);
+          const duringJournal = h.current();
+          assert.equal(duringJournal.verifiedInventoryPlanningEnabled, transition.nextGate);
+          assert.deepEqual(duringJournal.syncPlanErrorsRelocation, {
+            sourcePath: "sync-plan-errors.csv",
+            destinationPath: "ops/sync-plan-errors.csv",
+          });
+          await commitActiveLocation();
+          events.push("relocate-committed");
+        },
+      },
+      initialize: async () => { events.push("initialize"); },
+    });
+
+    await h.runtime.applySettingsChange(previous, next);
+
+    assert.equal(h.current().verifiedInventoryPlanningEnabled, transition.nextGate);
+    assert.equal(h.current().syncPlanErrorsDirectory, "ops");
+    assert.equal(h.current().managedSyncPlanErrorsExclusion, "ops/sync-plan-errors.csv");
+    assert.equal(h.current().syncPlanErrorsRelocation, null);
+    assert.ok(h.current().userExclusionPatterns.includes("ops/sync-plan-errors.csv"));
+    assert.ok(!h.current().userExclusionPatterns.includes("sync-plan-errors.csv"));
+    assert.deepEqual(events, ["relocate:ops/sync-plan-errors.csv", "relocate-committed", "initialize"]);
+  });
+}
