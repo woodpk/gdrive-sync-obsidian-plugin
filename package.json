@@ -14,9 +14,10 @@
     "build": "node scripts/build.mjs && node scripts/verify-build.mjs",
     "verify:build": "node scripts/verify-build.mjs",
     "check": "npm run typecheck && npm test && npm run build",
-    "test:focused": "npm run test:focused:dec339-step3",
+    "test:focused": "npm run test:focused:dec339-step4",
     "test:focused:ws03": "tsc -p tsconfig.test.json && node --test \".test-build/tests/unit/phase3-drive.test.js\" \".test-build/tests/unit/dec339-remote-reader.test.js\" \".test-build/tests/adversarial/dec339-provider-changes-adversarial.test.js\" \".test-build/tests/contracts/dec339-inventory-contracts.test.js\"",
-    "test:focused:dec339-step3": "tsc -p tsconfig.test.json && node --test \".test-build/tests/integration/dec339-step3-shadow-continuity.test.js\" \".test-build/tests/integration/dec339-indexeddb-transaction-integration.test.js\" \".test-build/tests/integration/dec339-local-observation-integration.test.js\" \".test-build/tests/unit/dec339-remote-reader.test.js\""
+    "test:focused:dec339-step3": "tsc -p tsconfig.test.json && node --test \".test-build/tests/integration/dec339-step3-shadow-continuity.test.js\" \".test-build/tests/integration/dec339-indexeddb-transaction-integration.test.js\" \".test-build/tests/integration/dec339-local-observation-integration.test.js\" \".test-build/tests/unit/dec339-remote-reader.test.js\"",
+    "test:focused:dec339-step4": "tsc -p tsconfig.test.json && node --test \".test-build/tests/integration/dec339-step4-observation-comparison.test.js\" \".test-build/tests/unit/dec339-snapshot-assembly.test.js\" \".test-build/tests/unit/dec339-planning-projection.test.js\" \".test-build/tests/integration/dec339-local-observation-integration.test.js\" \".test-build/tests/integration/dec339-step3-shadow-continuity.test.js\""
   },
   "keywords": [
     "obsidian",
