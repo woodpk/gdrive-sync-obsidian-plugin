@@ -2245,13 +2245,17 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   r4_b01_disposition: "INDEPENDENTLY_RESOLVED_AND_ACCEPTED"
   handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r4-2026-11-23.md"
   handoff_governance: "NEUTRAL_BUILDER_TO_REVIEWER_TRANSFER_ONLY;HANDOFF_COUNT_REMAINS_3;NO_NEW_TRANSFER"
-  next_action: "WS02_BU07_SCOPE_OWNER_LOCAL_HINT_CONSUMER_INTEGRATION_AND_WHOLE_WS02_AUDIT"
+  next_action: "AWAIT_EXPLICIT_OWNER_AUTHORIZATION_FOR_NEXT_CANONICAL_DEC339_SEQUENCE_STEP_WS03_METADATA_TRANSPORT"
   r4_independent_review_verdict: "PASS_WITH_MINOR_FINDINGS_BU06_ACCEPTED"
   r4_independent_blind_report: "dev/reviews/dec339-ws02-bu06-r4-20261123-review-brain-10-blind-source.md"
   r4_independent_blind_report_commit: "9b8a2c2ffa949cc98b6892f1dac60181fd3db58f"
   r4_independent_final_report: "dev/reviews/dec339-ws02-bu06-r4-20261123-review-brain-10-final.md"
   r4_independent_final_report_commit: "b83ad3df0b0f22378a5135e5b83573f457b507d8"
   r4_reviewer_minor_findings: "IFRAME_VS_WEBVIEW_PROCESS_SCOPE;LATE_HANDLE_CLOSURE_NOT_DIRECTLY_INSTRUMENTED;FULL_WS02_SCOPE_OWNER_AND_CURSOR_AUDIT_PENDING"
+  next_sequence_authorized: false
+  next_sequence_plan_step: "WS03_REMOTE_METADATA_TRANSPORT"
+  next_sequence_governance: "DO_NOT_DISPATCH_WITHOUT_EXPLICIT_OWNER_AUTHORIZATION"
+
 
   bu06_builder_closeout: "CLOSED_2026_11_23;NO_REQUALIFICATION;NO_CODE_CHANGE"
   bu06_closeout_document: "dev/state/handoffs/dec339-ws02-bu06-accepted-closeout-2026-11-23.md"
