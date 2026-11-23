@@ -192,9 +192,10 @@ function contentDomainRoot(f: InventoryIdentityFence, domain: InventoryDomain): 
 }
 
 /**
- * This store performs an additive v1->v2 IndexedDB upgrade; it never edits the
- * canonical envelope on opening, staging, or schema upgrade. Older v1 readers
- * require a version-aware rollback build; reinstalling one is not a safe rollback.
+ * Builder/storage paths may perform the additive v1->v2 upgrade. Step-5 runtime
+ * consumption uses allowSchemaUpgrade=false and therefore requires an already
+ * established v2 schema; it never migrates a live pairing merely by opting in.
+ * Neither mode edits the canonical envelope merely by opening the database.
  */
 export class IndexedDbInventoryObservationStore implements InventoryObservationStore {
   private database?: Promise<IDBDatabase>;
