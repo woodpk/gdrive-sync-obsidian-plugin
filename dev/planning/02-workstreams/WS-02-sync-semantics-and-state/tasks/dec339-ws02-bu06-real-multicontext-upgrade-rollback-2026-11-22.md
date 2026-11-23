@@ -1,7 +1,7 @@
 # DEC-339 / WS-02 / BU-06 — Real Multi-Context IndexedDB Upgrade and Rollback Gate
 
 **Date:** 2026-11-22  
-**Status:** BUILDER-QUALIFIED R3 PASS — independent Reviewer acceptance PENDING.  
+**Status:** BUILDER-QUALIFIED R4 PASS after R3 independent CORRECTION REQUIRED (B-01); independent Reviewer acceptance PENDING.  
 **Branch:** `build/dec339-ws02-bu06-real-multicontext-upgrade-rollback-20261122`  
 **Baseline:** BU-05 independently accepted/closed at `38b9eb88057d338e78425677f8742f5af6560015`; accepted source `0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b`.
 
@@ -63,3 +63,19 @@ Using the real Chromium/Edge IndexedDB implementation on Windows, not the determ
 - **Verified R3 result:** 13/13 required stages PASS; focused **634/634 PASS**; full product **1339/1339 PASS**; real Windows Edge multi-context test PASS in ~9.8s; build/check/repository PASS; `main.js` 927076 bytes, SHA-256 `4bde1bad5045ba8f732d6e072b63110aadcb9ab8265d1454bb2a7dd9c860d828`; physical dispatch disabled.
 - Evidence publication is exactly one child of the frozen R3 source and changes only `dev/_ca-output.md` and the new `dev/test-results/6b7e7ed4-4f2a-423f-b43e-bf9b797035a5/` bundle.
 - **Current gate:** independent blind-first review of BU-06 R3. Builder qualification does not accept BU-06. Full WS-02/DEC-339 remain incomplete.
+
+
+## R3 independent correction required B-01 → R4 corrected qualification PASS
+
+- Independent R3 review returned **CORRECTION REQUIRED** on B-01: the deliberately noncooperating v1 blocker and production v2 upgrader both executed in frame B, so the test established same-context multiple-handle blocking rather than the required independent-context topology.
+- R4 corrects only the browser integration test. Production source remains unchanged.
+- The blocked scenario now explicitly executes: v1 seed in frame A; stubborn raw-v1 blocker in frame A; production v2 `upgradeSnapshot` in frame B; blocker release from frame A; retry and v2-aware reads in frame B.
+- Every command response now carries its frame ID and is accepted only if both `event.source` and frame ID match the expected originating iframe. The browser result records blocker/upgrader/release frame identities plus completion sequence numbers.
+- Node assertions require blocker=A, upgrader=B, release=A, blocker and upgrader to differ, and the `recovery-required` blocked result to complete before frame A releases its blocker.
+- Cooperative A→B upgrade, explicit stale-v1 `VersionError`, schema-v2 checks, exact canonical byte preservation, historical backup byte preservation, R1 shutdown hardening, R2 ready handshake, and bounded timeouts remain intact.
+- Authored R4 test correction commit: `4f0cddc3800210948154c26ac810e902a914ccb1` / tree `22ab2f7a23c6c0ea36b454cf675ae17c5632ae3c`.
+- Exact frozen PHX-CI R4 source, including the state-only freeze record: `621d324511d33d2b429a9b57968b8c1019159c6a` / tree `88cb5f915c03bf50a64d79ba7554fd6b8b853ffb`.
+- Canonical R4 PHX-CI run: `492c25a7-21d9-41fa-9eed-34d19ae4db93`; evidence-only child `f693c0b170d76c3062d57d097ab6aa57f26abcfd`; runtime `4cf0c865c7b189641e2acebc0a6ad757b6f01992`.
+- **Verified R4 result:** 13/13 required stages PASS; focused **634/634 PASS**; full product **1339/1339 PASS**; real Windows Edge cross-context IndexedDB test **PASS** (~5280.9 ms); typecheck/build/artifacts/check/repository PASS; overall COMPLETE/PASS; `main.js` 927076 bytes, SHA-256 `4bde1bad5045ba8f732d6e072b63110aadcb9ab8265d1454bb2a7dd9c860d828`; physical dispatch disabled.
+- The R4 evidence commit is exactly one child of the frozen R4 source and changes only `dev/_ca-output.md` plus `dev/test-results/492c25a7-21d9-41fa-9eed-34d19ae4db93/{result.json,result.md,terminal.log}`.
+- **Current gate:** new independent blind-first review of R4. Builder qualification does not accept BU-06. Full WS-02/DEC-339 remain incomplete.
