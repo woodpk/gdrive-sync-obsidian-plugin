@@ -258,11 +258,11 @@ test("DEC362-14 / DEC339 Step 3 proves real same-ID update -> Changes -> persist
   if (read.status !== "verified-observation") return;
   const before = await read.value.getById(STABLE_ID);
   assert.equal(before.status, "verified-observation");
-  if (before.status === "verified-observation") {
-    assert.equal(before.value.remoteObjectId, STABLE_ID);
-    assert.equal(before.value.revision, "1");
-    assert.equal(before.value.content?.hash, "sha256:" + HASH1);
-  }
+  const beforeValue = before.value;
+  assert.ok(beforeValue, "baseline stable-ID inventory row must be present");
+  assert.equal(beforeValue.remoteObjectId, STABLE_ID);
+  assert.equal(beforeValue.revision, "1");
+  assert.equal(beforeValue.content?.hash, "sha256:" + HASH1);
   await read.value.release();
 
   const mutation = await assembled.drive.updateExisting(stableUpdateIdentity(), updateBytes);
@@ -284,13 +284,13 @@ test("DEC362-14 / DEC339 Step 3 proves real same-ID update -> Changes -> persist
   if (read.status !== "verified-observation") return;
   const after = await read.value.getById(STABLE_ID);
   assert.equal(after.status, "verified-observation");
-  if (after.status === "verified-observation") {
-    assert.equal(after.value.remoteObjectId, STABLE_ID,
-      "ordinary content update must not synthesize remote identity succession");
-    assert.equal(after.value.revision, "2");
-    assert.equal(after.value.content?.hash, "sha256:" + HASH2);
-    assert.equal(after.value.content?.sizeBytes, 9);
-  }
+  const afterValue = after.value;
+  assert.ok(afterValue, "updated stable-ID inventory row must be present after restart");
+  assert.equal(afterValue.remoteObjectId, STABLE_ID,
+    "ordinary content update must not synthesize remote identity succession");
+  assert.equal(afterValue.revision, "2");
+  assert.equal(afterValue.content?.hash, "sha256:" + HASH2);
+  assert.equal(afterValue.content?.sizeBytes, 9);
   await read.value.release();
 
   const authority = await new PersistentSynchronizationStateStore(
