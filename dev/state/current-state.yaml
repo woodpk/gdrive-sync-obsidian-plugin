@@ -2265,3 +2265,31 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   bu06_minor_finding_m01: "REAL_IFRAME_CONTEXTS_NOT_SEPARATE_OBSIDIAN_WEBVIEW_PROCESSES_OR_PHYSICAL_DEVICES"
   bu06_minor_finding_m02: "LATE_BLOCKED_REQUEST_CLOSURE_PROVEN_INDIRECTLY_NOT_DIRECTLY_INSTRUMENTED"
   bu06_minor_finding_m03: "WHOLE_WS02_SCOPE_OWNER_LOCAL_HINT_AND_GENERIC_CURSOR_PREDECESSOR_AUDIT_REMAIN"
+
+
+dec339_ws03_remote_metadata_transport_2026_11_23:
+  status: "BUILDER_IMPLEMENTED_PENDING_EXACT_SOURCE_PHXCI"
+  owner_authorization: "2026-11-23_OWNER_AUTHORIZED_NEXT_CANONICAL_DEC339_STEP"
+  feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-03/DEC339_REMOTE_METADATA_TRANSPORT"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  branch: "build/dec339-ws03-remote-metadata-transport-20261123"
+  predecessor_ws02_bu06_closeout: "8bbc67db3bb34137ac4be8188b5b50de34855180"
+  planning: "dev/planning/02-workstreams/WS-03-google-drive-and-oauth/tasks/dec339-ws03-remote-metadata-transport-2026-11-23.md"
+  scope: "EXISTING_AUTHENTICATED_DRIVE_FILE_TRANSPORT_TO_DORMANT_VERIFIED_METADATA_READER"
+  test_first_commit: "ebab0f6d8318ab551e53d889fca9a0dd424d4b18"
+  opaque_account_binding_commit: "af13f9f86e904d84009255feede93b5331ff29d0"
+  runtime_transport_seam_commit: "5e8ddc97be31d32b5c749a6ac6757da1d0759619"
+  negative_pairing_test_commit: "41bd5f3510ae41136cad16787bab6a643e320cc8"
+  implementation_mode: "SOFTWARE_ONLY_DORMANT_READ_ONLY_COMPOSITION"
+  oauth_scope_change: false
+  second_oauth_client_added: false
+  remote_write_added: false
+  inventory_planner_activation_authorized: false
+  live_database_migration_authorized: false
+  live_drive_or_vault_operations_authorized: false
+  physical_testing_authorized: false
+  master_merge_authorized: false
+  dec339_integration_complete: false
+  next_action: "FREEZE_EXACT_SOURCE_AND_RUN_FULL_SOFTWARE_ONLY_PHXCI"
