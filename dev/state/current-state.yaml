@@ -2268,11 +2268,11 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
 
 
 dec339_ws03_remote_metadata_transport_2026_11_23:
-  status: "REVIEWER_ACCEPTED_PENDING_BUILDER_CLOSEOUT"
+  status: "ACCEPTED_CLOSED"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_NEXT_CANONICAL_DEC339_STEP"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-03/DEC339_REMOTE_METADATA_TRANSPORT"
   handoff-count: 2
-  handoff-owner-role: REVIEWER
+  handoff-owner-role: BUILDER
   handoff-recipient-role: BUILDER
   branch: "build/dec339-ws03-remote-metadata-transport-20261123"
   predecessor_ws02_bu06_closeout: "8bbc67db3bb34137ac4be8188b5b50de34855180"
@@ -2292,7 +2292,7 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   dec339_integration_complete: false
-  next_action: "BUILDER_CLOSEOUT_ACCEPTED_WS03_TRANSPORT_SEAM"
+  next_action: "AWAIT_OR_EXECUTE_ONLY_SEPARATELY_APPROVED_DEC339_INTEGRATION_UNIT"
 
   pre_compatibility_source_sha: "2c46aa4a4be76f85ebba51d35e5ac4aef7a413d7"
   phxci_compatibility_test_command_commit: "7d7c9f3853b61602b0b9c2afa4d9b59cf9bbc572"
@@ -2339,3 +2339,16 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   accepted_minor_finding_m02: "FUTURE_INTEGRATED_INVENTORY_ACTIVATION_MUST_VERIFY_COMBINED_BOUNDARY_BASELINE_CHANGES_AND_STORAGE_PUBLICATION"
   accepted_minor_finding_m03: "BLIND_REVIEW_NEUTRAL_STATE_CONTAINED_INCIDENTAL_BUILDER_CLAIMS_NOT_USED_AS_PROOF"
   reviewer_to_builder_handoff_direction: "REVIEWER_TO_BUILDER"
+  builder_closeout: "COMPLETE_NO_REQUALIFICATION"
+  builder_closeout_basis: "REVIEWER_PASS_WITH_MINOR_FINDINGS_ACCEPTED"
+  builder_closeout_preserved_phxci_run: "ba4606cb-cab1-462e-a572-1b87302414f0"
+  builder_closeout_preserved_evidence_commit: "e77f1f2eaaca742075cec6c67ffa78a0bc422c2d"
+  carry_forward_privacy: "ACCOUNT_BINDING_IS_PSEUDONYMOUS_CONSIDER_KEYED_DEVICE_LOCAL_BINDING_IF_FUTURE_EXPOSURE_REQUIRES_STRONGER_PRIVACY"
+  carry_forward_integration_verification: "FUTURE_ACTIVATION_REQUIRES_COMBINED_BOUNDARY_BASELINE_CHANGES_AND_STORAGE_PUBLICATION_TESTS_ON_EXACT_ASSEMBLED_SOURCE"
+  full_dec339_integration_complete: false
+  ws03_transport_seam_accepted: true
+  master_merge_authorized: false
+  inventory_activation_authorized: false
+  live_migration_authorized: false
+  live_drive_vault_device_operations_authorized: false
+  installation_promotion_release_authorized: false
