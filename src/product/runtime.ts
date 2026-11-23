@@ -1,5 +1,5 @@
 import { Notice, Platform, requestUrl, type App, type Plugin } from "obsidian";
-import type { DeviceIdentity, DriveSignal, InventoryIdentityFence, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
+import type { DeviceIdentity, DriveSignal, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
 import { contractId } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
@@ -25,6 +25,7 @@ import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdap
 import { ProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
 import { InventoryBackedSnapshotAssembler } from "./inventory-backed-snapshot-assembler";
+import { buildInventoryPlanningFence, selectPlanningAssembler } from "./inventory-planning-cutover";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
@@ -283,64 +284,56 @@ export class ProductRuntime {
       this.boundary!.drive,
       this.state!,
     );
-    let snapshots: ProductSnapshotAssembler;
-    if (current.verifiedInventoryPlanningEnabled) {
-      const inventory = new IndexedDbInventoryObservationStore(
-        stateDatabaseName,
-        globalThis.indexedDB,
-        { allowSchemaUpgrade: false },
-      );
-      const currentFence = async (): Promise<InventoryIdentityFence> => {
-        const live = this.host.settings();
-        this.assertBoundPairing(live, boundPairing);
-        if (!live.verifiedInventoryPlanningEnabled)
-          throw new Error("verified-inventory-planning-disabled");
-        const identity = await remoteIdentity();
-        const accountKey = await this.boundary!.drive.pairedInventoryAccountKey();
-        if (!accountKey) throw new Error("paired-inventory-account-unavailable");
-        const roots = await this.boundary!.drive.observeManagedDomainRootIds(identity);
-        if (!roots.ok) throw new Error(driveSignalMessage(roots.signal));
-        return {
-          vaultIdentity,
-          deviceIdentity,
-          pairedAccountKey: accountKey,
-          managedRootId: remoteRootId,
-          protocolVersion: PROTOCOL_VERSION,
-          contentDomainRootId: roots.value.contentRootId,
-          configDomainRootId: roots.value.configRootId,
-          scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
-          inventorySchemaVersion: 1,
+    const snapshots = selectPlanningAssembler(
+      current.verifiedInventoryPlanningEnabled,
+      legacySnapshots,
+      () => {
+        const inventory = new IndexedDbInventoryObservationStore(
+          stateDatabaseName,
+          globalThis.indexedDB,
+          { allowSchemaUpgrade: false },
+        );
+        const currentFence = async () => {
+          const live = this.host.settings();
+          this.assertBoundPairing(live, boundPairing);
+          if (!live.verifiedInventoryPlanningEnabled)
+            throw new Error("verified-inventory-planning-disabled");
+          return buildInventoryPlanningFence({
+            drive: this.boundary!.drive,
+            remoteIdentity: await remoteIdentity(),
+            deviceIdentity,
+            vaultIdentity,
+            scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
+          });
         };
-      };
-      this.localInventory = new VerifiedLocalInventoryCoordinator(
-        this.local,
-        inventory,
-        path => scope.isManagedLogical(path),
-      );
-      this.unsubscribeLocalInventory = this.localInventory.subscribe();
-      // Advisory LOCAL metadata is opportunistic only. Failure or absent v2
-      // inventory never blocks the canonical planner and never triggers migration.
-      void currentFence()
-        .then(fence => this.localInventory?.refresh(fence))
-        .catch(() => undefined);
-      snapshots = new InventoryBackedSnapshotAssembler({
-        local: this.local,
-        drive: this.boundary.drive,
-        state: this.state,
-        stateContext,
-        remoteIdentity,
-        inventory,
-        provenanceReader: this.boundary.metadataReader,
-        currentFence,
-        pathIncluded: path => scope.isManagedLogical(path),
-        fullReconcileRequired: () => this.host.settings().scopeReconcileRequired,
-        diagnostics: this.host.diagnostics,
-        reliableChanges: this.boundary.drive,
-        authorityStore: this.state,
-      });
-    } else {
-      snapshots = legacySnapshots();
-    }
+        this.localInventory = new VerifiedLocalInventoryCoordinator(
+          this.local!,
+          inventory,
+          path => scope.isManagedLogical(path),
+        );
+        this.unsubscribeLocalInventory = this.localInventory.subscribe();
+        // Advisory LOCAL metadata is opportunistic only. Failure or absent v2
+        // inventory never blocks the canonical planner and never triggers migration.
+        void currentFence()
+          .then(fence => this.localInventory?.refresh(fence))
+          .catch(() => undefined);
+        return new InventoryBackedSnapshotAssembler({
+          local: this.local!,
+          drive: this.boundary!.drive,
+          state: this.state!,
+          stateContext,
+          remoteIdentity,
+          inventory,
+          provenanceReader: this.boundary!.metadataReader,
+          currentFence,
+          pathIncluded: path => scope.isManagedLogical(path),
+          fullReconcileRequired: () => this.host.settings().scopeReconcileRequired,
+          diagnostics: this.host.diagnostics,
+          reliableChanges: this.boundary!.drive,
+          authorityStore: this.state!,
+        });
+      },
+    );
     const textVersions = new ProductTextVersionStore(
       new IndexedDbTextVersionPersistence(pairingStorageKey("brain-google-drive-sync-text", current)),
       this.local,
@@ -464,6 +457,10 @@ export class ProductRuntime {
   }
 
   async applySettingsChange(previous: BrainSyncSettings, next: BrainSyncSettings): Promise<void> {
+    if (previous.verifiedInventoryPlanningEnabled !== next.verifiedInventoryPlanningEnabled) {
+      await this.initialize();
+      return;
+    }
     if (previous.auditRetention !== next.auditRetention) await this.audit?.setLimit(next.auditRetention);
     if (previous.periodicEnabled !== next.periodicEnabled || previous.periodicIntervalMinutes !== next.periodicIntervalMinutes || previous.firstSyncCompleted !== next.firstSyncCompleted || previous.recoveryInProgress !== next.recoveryInProgress) this.scheduler?.refresh();
     if (previous.syncPlanErrorsDirectory !== next.syncPlanErrorsDirectory) {
