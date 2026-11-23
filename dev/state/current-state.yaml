@@ -2421,7 +2421,7 @@ dec339_step3_storage_shadow_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step4_observation_comparison_2026_11_23:
-  status: "BUILDER_CANDIDATE_READY_PENDING_PHXCI"
+  status: "BUILDER_REPAIR_COMPLETE_PENDING_PHXCI_RERUN"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP4_OBSERVATION_ONLY_COMPARISON"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP4_OBSERVATION_COMPARISON"
   handoff-count: 0
@@ -2446,4 +2446,14 @@ dec339_step4_observation_comparison_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "RUN_EXACT_SOURCE_PHXCI_STEP4_QUALIFICATION"
+  next_action: "RERUN_PHXCI_AFTER_SCHEMA_FIXTURE_CORRECTION"
+
+  r1_phxci_run_id: "7e1b476c-73ce-43f2-8bec-da3b96b56c90"
+  r1_source_sha: "bcc5ba167160decc05413e01e1e7671f27c314f9"
+  r1_evidence_commit: "8a155d6820baddccc38aab69f7157da25ae5a5ea"
+  r1_result: "BLOCKED_TEST_FAILURE"
+  r1_failure: "STEP4_FIXTURE_INVENTORY_SCHEMA_VERSION_2_REJECTED_BY_SCHEMA1_VALIDATOR"
+  r1_classification: "TEST_DEFECT"
+  r1_preserved_successes: "AUTHORITY_PREFLIGHT_INSTALL_TYPECHECK_EXISTING_STEP3_LOCAL_PROJECTION_SUITES"
+  r1_correction_commit: "eaa0faf1b8847a708ea39c2634994da59639b825"
+  r1_oracle_change: "NONE_FIXTURE_SCHEMA_VERSION_ONLY"
