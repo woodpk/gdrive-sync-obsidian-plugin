@@ -35,6 +35,8 @@ export interface BrainSyncSettings {
   diagnosticLogLevel: DiagnosticLogLevel;
   diagnosticConsoleMirror: boolean;
   diagnosticRetention: number;
+  /** DEC-339 Step 5: explicit opt-in to verified inventory-backed planning observations. */
+  verifiedInventoryPlanningEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: BrainSyncSettings = {
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: BrainSyncSettings = {
   diagnosticLogLevel: "info",
   diagnosticConsoleMirror: false,
   diagnosticRetention: DEFAULT_DIAGNOSTIC_RETENTION,
+  verifiedInventoryPlanningEnabled: false,
 };
 
 interface PersistedPluginData {
@@ -271,6 +274,7 @@ export class PluginDataRepository implements AuditPersistence, DiagnosticPersist
       if (!["off", "error", "warn", "info", "debug", "trace"].includes(merged.diagnosticLogLevel)) merged.diagnosticLogLevel = DEFAULT_SETTINGS.diagnosticLogLevel;
       merged.diagnosticConsoleMirror = Boolean(merged.diagnosticConsoleMirror);
       if (!Number.isSafeInteger(merged.diagnosticRetention)) merged.diagnosticRetention = DEFAULT_DIAGNOSTIC_RETENTION;
+      merged.verifiedInventoryPlanningEnabled = merged.verifiedInventoryPlanningEnabled === true;
       return { settings: merged, audit: Array.isArray(value.audit) ? [...value.audit] : [], diagnostics: value.diagnostics, syncAttention: Array.isArray(value.syncAttention) ? value.syncAttention.map(record => ({ ...record })) : [] };
     });
     return this.loaded;
