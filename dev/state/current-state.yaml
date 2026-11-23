@@ -2354,7 +2354,7 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step3_storage_shadow_2026_11_23:
-  status: "BUILDER_CANDIDATE_READY_PENDING_PHXCI"
+  status: "BUILDER_REPAIRED_CANDIDATE_PENDING_PHXCI"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_PLANNING_RECONCILIATION_AND_IMMEDIATE_EXECUTION"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02-05/DEC339_STEP3_STORAGE_SHADOW"
   handoff-count: 0
@@ -2369,6 +2369,10 @@ dec339_step3_storage_shadow_2026_11_23:
   step3_test_first_commit: "018028329197f675f3344048c55fd7ae7255d7a4"
   step3_assembled_continuity_commit: "fd48eef4c051a5d37c29163afbe73607ca754a5d"
   step3_fixture_query_correction_commit: "0fd31deba3f20582df511c9ad761626d0a1f8306"
+  prior_blocked_phxci_run: "03f86b04-600f-4e89-92ad-3b1767fea073"
+  prior_blocked_evidence_commit: "94830a049f0062d46b57053871900faacee42a8f"
+  prior_blocker: "TYPECHECK_TS18048_IN_NEW_STEP3_TEST_ONLY"
+  type_narrowing_repair_commit: "4291c32bba9bcfd7b0c0a233578e09ca3b8dd97d"
   step3_production_code_change_required: false
   legacy_planner_executor_remain_sole_authority: true
   isolated_test_state_only: true
@@ -2379,4 +2383,4 @@ dec339_step3_storage_shadow_2026_11_23:
   live_drive_vault_device_operations_authorized: false
   physical_testing_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "RUN_EXACT_SOURCE_PHXCI_STEP3_QUALIFICATION"
+  next_action: "RERUN_EXACT_SOURCE_PHXCI_AFTER_TYPE_NARROWING_REPAIR"
