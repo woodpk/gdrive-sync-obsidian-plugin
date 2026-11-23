@@ -168,6 +168,21 @@ async function requestBody(request: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+async function stopBrowser(browser: ChildProcessWithoutNullStreams | undefined): Promise<void> {
+  if (!browser || browser.exitCode !== null) return;
+  await new Promise<void>(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    browser.once("exit", finish);
+    try { browser.kill(); } catch { finish(); return; }
+    setTimeout(finish, 5000).unref();
+  });
+}
+
 test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rollback safely", {
   skip: process.platform !== "win32",
   timeout: 90000,
@@ -315,8 +330,8 @@ test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rol
       "blocked/late upgrade completion must preserve the pre-upgrade backup byte-for-byte",
     );
   } finally {
-    if (browser && browser.exitCode === null) browser.kill();
+    await stopBrowser(browser);
     await new Promise<void>(resolve => server.close(() => resolve()));
-    rmSync(temp, { recursive: true, force: true });
+    rmSync(temp, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
   }
 });
