@@ -2292,7 +2292,7 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   dec339_integration_complete: false
-  next_action: "RERUN_PHXCI_AFTER_TEST_FIXTURE_CORRECTION"
+  next_action: "RERUN_PHXCI_AFTER_OAUTH_FIXTURE_CORRECTION"
 
   pre_compatibility_source_sha: "2c46aa4a4be76f85ebba51d35e5ac4aef7a413d7"
   phxci_compatibility_test_command_commit: "7d7c9f3853b61602b0b9c2afa4d9b59cf9bbc572"
@@ -2309,3 +2309,14 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   r1_full_result: "1341_PASS_1_FAIL"
   r1_correction_commit: "3728d0b8dc7849bb3a1df566ab704bbe71ae7248"
   r1_oracle_change: "NONE_FIXTURE_COMPLETENESS_ONLY"
+  r2_phxci_run_id: "fe5780d5-9df0-4371-aa7d-c550cc03a161"
+  r2_source_sha: "b35b8a498cc8b6a06719e33f9d97853557a811c3"
+  r2_evidence_commit: "f0e792c1b4dd24ce06d6ed7fd8912820b66c1972"
+  r2_result: "BLOCKED_TEST_FAILURE"
+  r2_failure: "WS03_SUCCESS_FIXTURE_OAUTH_TOKEN_ENTERED_60_SECOND_REFRESH_WINDOW"
+  r2_classification: "TEST_DEFECT"
+  r2_preserved_successes: "AUTHORITY_PREFLIGHT_NODE_PROJECT_INSTALL_TYPECHECK_REPOSITORY_GATE"
+  r2_focused_result: "77_PASS_1_FAIL"
+  r2_full_result: "1341_PASS_1_FAIL"
+  r2_correction_commit: "d95ed2fdf96b914d582955ad39b5f60206c32846"
+  r2_oracle_change: "NONE_FIXTURE_TOKEN_LIFETIME_ONLY"
