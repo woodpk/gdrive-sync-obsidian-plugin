@@ -62,3 +62,24 @@ All executable software validation runs only through pinned PHX-CI.
 ## Acceptance boundary
 
 Exact-source PHX-CI PASS followed by blind-first independent Reviewer acceptance. Step 5 may not begin until Step 4 is accepted. Step 4 acceptance does not authorize planner cutover, activation, migration, merge, installation, physical testing, promotion or release.
+
+
+## Builder ten-family adequacy
+
+1. **Nominal/success** — exact production Step-2 boundary → account-key derivation → verified reader → isolated IndexedDB publication → inventory-backed assembly is compared against existing full assembly, and both feed the existing deterministic planner.
+2. **Negative/boundary/malformed/unsupported** — wrong-fence comparison forces ordinary physical fallback; existing focused projection/assembler suites cover malformed, incomplete, duplicate-path, provenance and coverage failures.
+3. **Legal/forbidden transitions** — baseline and Changes-driven incremental publication are exercised; no comparison result receives dispatch authority.
+4. **Repetition/idempotency/retry/recovery** — Step-3 continuity and focused storage suites remain selected, preserving replay/recovery and batch-continuity coverage.
+5. **Concurrency/order/stale state** — existing selected projection/storage tests cover changed authority, stale cursor/generation and invalidation races; Step 4 adds no mutable production owner.
+6. **Persistence/restart/data integrity** — accepted Step-3 restart proof remains selected; Step-4 uses actual isolated IndexedDB publication rather than fabricated inventory rows.
+7. **Identity/authorization/security/trust** — production paired-account opaque derivation and exact `createObsidianGoogleDriveBoundary` metadata reader are inside the parity chain.
+8. **Contracts/integration/backward compatibility** — existing authoritative assembler/planner outputs are the oracle; complete/unambiguous inventory observations must be exactly equivalent.
+9. **Architecture/ownership/invariants** — no production source changes, second planner, second OAuth client, runtime flag, controller or executor path is introduced.
+10. **End-to-end/fail-closed/destructive safety** — same-ID baseline→Changes publication is followed by observation/plan parity; partial LOCAL and wrong-fence cases cannot become more permissive or authorize deletion.
+
+## Source-readiness notes
+
+- Accepted Step-3 closeout `d8fdf66db0aeb7c44fafb42ccd5cbee706682425` is the direct Step-4 base.
+- Step-4 implementation is test-only by design; shipping runtime remains unchanged and legacy planning/execution stays authoritative.
+- Focused PHX-CI selection includes the Step-4 parity gate, existing inventory assembler/projection tests, local invalidation coverage and accepted Step-3 continuity proof.
+- No live provider/database/device operation is used or authorized.
