@@ -2498,7 +2498,7 @@ dec339_step4_observation_comparison_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step5_gated_planner_cutover_2026_11_23:
-  status: "BUILDER_ACTIVE"
+  status: "BUILDER_CANDIDATE_READY_PENDING_PHXCI"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP5_GATED_PLANNER_CUTOVER"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP5_GATED_PLANNER_CUTOVER"
   handoff-count: 0
@@ -2519,4 +2519,19 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "IMPLEMENT_TEST_FIRST_DEFAULT_OFF_RUNTIME_CUTOVER"
+  next_action: "RUN_EXACT_SOURCE_PHXCI_STEP5_QUALIFICATION"
+
+  implementation_gate_commit: "f752fbdcebcf0415524b6cff97080ff0cd17b385"
+  implementation_scope_fingerprint_commit: "e862f9fbc54e21bf14b8cedd690000c6d5adc4af"
+  implementation_domain_identity_commit: "8804a03c08e13f0dece76298eed0e0edcc186743"
+  implementation_non_migrating_store_commit: "9419132fbd58d7cbe265a8e4bec018d53bead2e3"
+  implementation_runtime_cutover_commit: "ef53b7782c8f1dadbb73f6399fb0a08c4fe920c7"
+  implementation_cutover_contract_commit: "54d62e7c596a1d7db4b1cafc4fa6145d782fa364"
+  test_first_step5_commit: "44c685faa83b00d7136fe02ca3870fa873b76891"
+  focused_selector_commit: "ece14df8569b69661181aab08b315eb702c3ce9e"
+  production_boundary_test_extension_commit: "8e5ae679913755ad4502273622c5a7a552649d02"
+  source_readiness_commit: "ef0f1da2560e00aad42e4b1fa480394ae57e5552"
+  source_readiness_result: "READY_FOR_EXACT_SOURCE_PHXCI"
+  production_code_changed: true
+  live_migration_performed: false
+  live_operations_performed: false
