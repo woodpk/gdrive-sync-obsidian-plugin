@@ -61,10 +61,10 @@ test("DEC339 Step 5 default setting is off and legacy persisted settings remain 
 
 test("DEC339 Step 5 disabled selector never constructs or touches inventory planning dependencies", () => {
   let inventoryConstructed = 0;
-  const selected = selectPlanningAssembler(
+  const selected = selectPlanningAssembler<{ readonly kind: "legacy" | "inventory" }>(
     false,
-    () => ({ kind: "legacy" as const }),
-    () => { inventoryConstructed += 1; return { kind: "inventory" as const }; },
+    () => ({ kind: "legacy" }),
+    () => { inventoryConstructed += 1; return { kind: "inventory" }; },
   );
   assert.deepEqual(selected, { kind: "legacy" });
   assert.equal(inventoryConstructed, 0);
@@ -73,10 +73,10 @@ test("DEC339 Step 5 disabled selector never constructs or touches inventory plan
 test("DEC339 Step 5 enabled selector chooses exactly one inventory-backed planning owner", () => {
   let legacyConstructed = 0;
   let inventoryConstructed = 0;
-  const selected = selectPlanningAssembler(
+  const selected = selectPlanningAssembler<{ readonly kind: "legacy" | "inventory" }>(
     true,
-    () => { legacyConstructed += 1; return { kind: "legacy" as const }; },
-    () => { inventoryConstructed += 1; return { kind: "inventory" as const }; },
+    () => { legacyConstructed += 1; return { kind: "legacy" }; },
+    () => { inventoryConstructed += 1; return { kind: "inventory" }; },
   );
   assert.deepEqual(selected, { kind: "inventory" });
   assert.equal(legacyConstructed, 0);
