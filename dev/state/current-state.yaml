@@ -2498,7 +2498,7 @@ dec339_step4_observation_comparison_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step5_gated_planner_cutover_2026_11_23:
-  status: "BUILDER_CANDIDATE_READY_PENDING_PHXCI"
+  status: "BUILDER_REPAIRED_CANDIDATE_PENDING_PHXCI"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP5_GATED_PLANNER_CUTOVER"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP5_GATED_PLANNER_CUTOVER"
   handoff-count: 0
@@ -2519,7 +2519,7 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "RUN_EXACT_SOURCE_PHXCI_STEP5_QUALIFICATION"
+  next_action: "RERUN_EXACT_SOURCE_PHXCI_AFTER_TYPECHECK_REPAIR"
 
   implementation_gate_commit: "f752fbdcebcf0415524b6cff97080ff0cd17b385"
   implementation_scope_fingerprint_commit: "e862f9fbc54e21bf14b8cedd690000c6d5adc4af"
@@ -2538,3 +2538,9 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   pre_phx_fixture_correction_commit: "b438931616f6764407f8a5914813e1f5ecdc33ac"
   pre_phx_fixture_correction: "OPEN_READ_SCHEMA_FAILURE_ASSERTED_AS_FAIL_CLOSED_RESULT_NOT_THROW"
   pre_phx_oracle_change: "NONE"
+  prior_phx_run: "0e464e25-c193-417e-9398-2d5a050da727"
+  prior_phx_evidence_commit: "bccc7b497727df460c4df9ca193d5eec1cfc9f8e"
+  prior_phx_result: "BLOCKED_TYPECHECK_PRODUCT_FAILURE"
+  repair_runtime_optional_gate_commit: "8a166deddd9268e7c4e2738884cc67ea9b6fc0e3"
+  repair_test_generic_commit: "3a2f2b1b3c65883b16838f7f876f70af481898ef"
+  repair_oracle_change: "NONE"
