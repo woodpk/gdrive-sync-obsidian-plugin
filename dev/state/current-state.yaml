@@ -2218,8 +2218,8 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   r3_browser_duration_ms: 9806.3269
   r3_artifact_sha256: "4bde1bad5045ba8f732d6e072b63110aadcb9ab8265d1454bb2a7dd9c860d828"
   r3_artifact_bytes: 927076
-  review_assignment: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu06-r3-independent-review-2026-11-22.md"
-  handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r3-2026-11-22.md"
+  r3_review_assignment_path: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu06-r3-independent-review-2026-11-22.md"
+  r3_handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r3-2026-11-22.md"
   r3_reviewer_verdict: "CORRECTION_REQUIRED_B01_NONCOOPERATING_BLOCKER_IN_SAME_CONTEXT_AS_UPGRADER"
   r4_fix: "CROSS_CONTEXT_BLOCKER_FRAME_A;PRODUCTION_V2_UPGRADER_FRAME_B;RELEASE_FROM_FRAME_A;RESPONSE_SOURCE_AND_FRAME_ID_ENFORCEMENT;BLOCKED_COMPLETION_BEFORE_RELEASE_ASSERTION"
   r4_change_scope: "BROWSER_INTEGRATION_TEST_ONLY;NO_PRODUCTION_SOURCE_CHANGE"
@@ -2243,7 +2243,6 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   r4_artifact_sha256: "4bde1bad5045ba8f732d6e072b63110aadcb9ab8265d1454bb2a7dd9c860d828"
   r4_artifact_bytes: 927076
   r4_b01_disposition: "BUILDER_CORRECTED_PENDING_INDEPENDENT_CONFIRMATION"
-  review_assignment: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu06-r4-independent-review-2026-11-23.md"
   handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r4-2026-11-23.md"
-  bu06_independent_acceptance: false
-  next_action: "INDEPENDENT_REVIEW_BU06_R4_BLIND_FIRST_THEN_EVIDENCE_REVIEW"
+  handoff_governance: "NEUTRAL_BUILDER_TO_REVIEWER_TRANSFER_ONLY;HANDOFF_COUNT_REMAINS_3;NO_NEW_TRANSFER"
+  next_action: "REVIEWER_RECEIVE_NEUTRAL_HANDOFF_COUNT_3_AND_INDEPENDENTLY_REVIEW_EXACT_R4_SOURCE_UNDER_EXISTING_GOVERNANCE"
