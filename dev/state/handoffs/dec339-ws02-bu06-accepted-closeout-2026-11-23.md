@@ -13,5 +13,5 @@
   1. Current real-browser proof uses distinct same-origin browsing contexts, not separate Obsidian/WebView processes or physical devices.
   2. Late blocked-request closure is proven indirectly by safe retry/schema/byte integrity rather than direct orphan-handle instrumentation.
   3. Whole-WS-02 scope-owner/local-hint consumer wiring and generic cursor-writer predecessor audit remain open.
-- **Next dependency-safe WS-02 unit:** BU-07 — wire the already-accepted local inventory coordinator/visibility protections into the dormant scope-owner/local-hint consumer boundary, retaining fresh enumeration and fail-closed advisory semantics; perform the remaining whole-WS-02 cursor/scope audit within that integration boundary.
+- **Next governed sequence boundary:** the canonical DEC-339 integration plan places WS-03 remote metadata transport after WS-02 storage safety. No WS-03 implementation dispatch is recorded as Owner-authorized in current state. Do not begin another build unit until that authorization exists.
 - BU-06 acceptance does not complete WS-02 or DEC-339 and does not authorize inventory activation, master/PR #157 merge, live database migration, Drive/vault/device operations, physical testing, installation, promotion or release.
