@@ -2421,12 +2421,12 @@ dec339_step3_storage_shadow_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step4_observation_comparison_2026_11_23:
-  status: "BUILDER_QUALIFIED_PENDING_REVIEWER_FINAL_REVIEW"
+  status: "REVIEWER_CORRECTION_REQUIRED_G01_QUALIFICATION_TREE_METADATA_MISMATCH"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP4_OBSERVATION_ONLY_COMPARISON"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP4_OBSERVATION_COMPARISON"
-  handoff-count: 1
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 2
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-step4-observation-comparison-20261123"
   starting_source_sha: "d8fdf66db0aeb7c44fafb42ccd5cbee706682425"
   planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step4-observation-comparison-2026-11-23.md"
@@ -2446,7 +2446,7 @@ dec339_step4_observation_comparison_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "REVIEWER_FINAL_INDEPENDENT_REVIEW_BLIND_FIRST_PASS"
+  next_action: "BUILDER_RECONCILE_QUALIFICATION_VERIFIED_TREE_TO_ACTUAL_SOURCE_AND_PHXCI_TREE;NO_SOFTWARE_RERUN"
 
   r1_phxci_run_id: "7e1b476c-73ce-43f2-8bec-da3b96b56c90"
   r1_source_sha: "bcc5ba167160decc05413e01e1e7671f27c314f9"
@@ -2465,4 +2465,11 @@ dec339_step4_observation_comparison_2026_11_23:
   qualification_evidence_commit: "f512e523b11f769769f9a6afd113ff541f7b3984"
   qualification_evidence_path: "dev/test-results/9d34351e-227f-4082-8ab6-46b7eae3b36e/"
   qualification_result: "PASS"
-  reviewer_handoff_direction: "BUILDER_TO_REVIEWER"
+  reviewer_handoff_direction: "REVIEWER_TO_BUILDER"
+  reviewer_verdict: "CORRECTION_REQUIRED_G01_ADMINISTRATIVE_TREE_IDENTITY"
+  reviewer_actual_source_tree: "315d87203ea83681f4ea75edd52d8f911c009eeb"
+  reviewer_blind_report: "dev/reviews/dec339-step4-observation-comparison-20261123-review-brain-10-blind-source.md"
+  reviewer_blind_report_commit: "3eec1f6eae2a1c9969b24fe36fe210a79d75e756"
+  reviewer_final_report: "dev/reviews/dec339-step4-observation-comparison-20261123-review-brain-10-final.md"
+  reviewer_final_report_commit: "5e3546c92cef93a098e0985d5b2d2f6255128954"
+  reviewer_software_assessment: "NO_SOURCE_DEFECT;PHXCI_EXACT_SOURCE_PASS;FORMAL_ACCEPTANCE_PENDING_TREE_METADATA_RECONCILIATION"
