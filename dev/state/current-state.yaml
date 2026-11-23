@@ -2498,12 +2498,12 @@ dec339_step4_observation_comparison_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step5_gated_planner_cutover_2026_11_23:
-  status: "BUILDER_QUALIFIED_PENDING_REVIEWER_FINAL_REVIEW"
+  status: "REVIEWER_CORRECTION_REQUIRED_BUILDER_ACTIVE"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP5_GATED_PLANNER_CUTOVER"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP5_GATED_PLANNER_CUTOVER"
-  handoff-count: 1
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 2
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-step5-gated-planner-cutover-20261123"
   starting_source_sha: "f936961a4b9dbcb8b23e887771d27bbba7e7ac55"
   planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step5-gated-planner-cutover-2026-11-23.md"
@@ -2519,7 +2519,7 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "REVIEWER_FINAL_INDEPENDENT_REVIEW_BLIND_FIRST_PASS"
+  next_action: "CORRECT_F01_SETTINGS_CHANGE_ORDERING_AND_REQUALIFY"
 
   implementation_gate_commit: "f752fbdcebcf0415524b6cff97080ff0cd17b385"
   implementation_scope_fingerprint_commit: "e862f9fbc54e21bf14b8cedd690000c6d5adc4af"
@@ -2553,3 +2553,10 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   qualification_result: "PASS"
   qualification_artifact_main_js_sha256: "e2940ba3c78cbef2ebcee2681a8449f2592d7024d8662fa2ed85b3282e2c3fe5"
   reviewer_handoff_direction: "BUILDER_TO_REVIEWER"
+  reviewer_verdict: "CORRECTION_REQUIRED_F01"
+  reviewer_blind_report: "dev/reviews/dec339-step5-gated-planner-cutover-20261123-review-brain-10-blind-source.md"
+  reviewer_blind_report_commit: "380b760b5d18241d21f224f7223249f7dafee0be"
+  reviewer_final_report: "dev/reviews/dec339-step5-gated-planner-cutover-20261123-review-brain-10-final.md"
+  reviewer_final_report_commit: "ba42c47e0daa52e11dadd47bc5138d797d2af9cc"
+  blocking_finding_f01: "GATE_TOGGLE_EARLY_RETURN_BYPASSES_CO_OCCURRING_SCOPE_AND_OPERATIONAL_SETTINGS_TRANSITIONS"
+  reviewer_to_builder_handoff_direction: "REVIEWER_TO_BUILDER"
