@@ -2498,11 +2498,11 @@ dec339_step4_observation_comparison_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step5_gated_planner_cutover_2026_11_23:
-  status: "REVIEWER_CORRECTION_REQUIRED_BUILDER_ACTIVE"
+  status: "BUILDER_F01_CORRECTED_PENDING_PHXCI"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP5_GATED_PLANNER_CUTOVER"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP5_GATED_PLANNER_CUTOVER"
   handoff-count: 2
-  handoff-owner-role: REVIEWER
+  handoff-owner-role: BUILDER
   handoff-recipient-role: BUILDER
   branch: "build/dec339-step5-gated-planner-cutover-20261123"
   starting_source_sha: "f936961a4b9dbcb8b23e887771d27bbba7e7ac55"
@@ -2519,7 +2519,7 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "CORRECT_F01_SETTINGS_CHANGE_ORDERING_AND_REQUALIFY"
+  next_action: "RUN_FRESH_EXACT_SOURCE_PHXCI_FOR_F01_CORRECTION"
 
   implementation_gate_commit: "f752fbdcebcf0415524b6cff97080ff0cd17b385"
   implementation_scope_fingerprint_commit: "e862f9fbc54e21bf14b8cedd690000c6d5adc4af"
@@ -2560,3 +2560,10 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   reviewer_final_report_commit: "ba42c47e0daa52e11dadd47bc5138d797d2af9cc"
   blocking_finding_f01: "GATE_TOGGLE_EARLY_RETURN_BYPASSES_CO_OCCURRING_SCOPE_AND_OPERATIONAL_SETTINGS_TRANSITIONS"
   reviewer_to_builder_handoff_direction: "REVIEWER_TO_BUILDER"
+  f01_runtime_repair_commit: "047bca02ff288d17552e075c5bab93e7318be097"
+  f01_adversarial_tests_commit: "58e07924b63261979056ff0566e8e0eda71a165a"
+  f01_planning_record_commit: "8caed4a1d8fde19f7e54ab81808ffe291591f57f"
+  f01_repair_oracle_change: "NONE"
+  f01_repair_scope: "SETTINGS_TRANSITION_ORDERING_AND_GATE_PERSISTENCE_THROUGH_RELOCATION_ONLY"
+  prior_accepted_qualification_preserved: true
+  reviewer_f01_status: "CORRECTED_PENDING_REQUALIFICATION"
