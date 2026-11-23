@@ -214,7 +214,7 @@ async function environment() {
     contentDomainRootId: contentRoot,
     configDomainRootId: configRoot,
     scopePolicyFingerprint: "scope:step4",
-    inventorySchemaVersion: 2,
+    inventorySchemaVersion: 1,
   };
 
   const factory = new FakeDatabase().openFactory();
