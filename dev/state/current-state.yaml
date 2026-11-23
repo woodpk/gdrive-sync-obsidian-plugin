@@ -2165,12 +2165,12 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
 
 
 dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
-  status: "R3_BUILDER_QUALIFIED_PASS_PENDING_INDEPENDENT_REVIEW;WS02_INCOMPLETE"
+  status: "R3_INDEPENDENT_REVIEW_CORRECTION_REQUIRED_B01;WS02_INCOMPLETE"
   owner_authorization: "2026-11-19_APPROVED_DEC339_WS02_INTEGRATION_SEQUENCE;2026-11-22_BU05_ACCEPTED_CONTINUE_NEXT_APPROVED_WS02_WORK"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-02/DEC339_BU06_REAL_MULTICONTEXT_IDB_UPGRADE_ROLLBACK"
-  handoff-count: 1
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
+  handoff-count: 2
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
   branch: "build/dec339-ws02-bu06-real-multicontext-upgrade-rollback-20261122"
   baseline_bu05_closeout: "38b9eb88057d338e78425677f8742f5af6560015"
   accepted_bu05_source: "0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b"
@@ -2220,5 +2220,10 @@ dec339_ws02_bu06_real_multicontext_upgrade_2026_11_22:
   r3_artifact_bytes: 927076
   review_assignment: "dev/planning/02-workstreams/WS-02-sync-semantics-and-state/tasks/dec339-ws02-bu06-r3-independent-review-2026-11-22.md"
   handoff_artifact: "dev/state/handoffs/dec339-ws02-bu06-builder-to-reviewer-r3-2026-11-22.md"
+  r3_reviewer_verdict: "CORRECTION_REQUIRED_B01_NONCOOPERATING_BLOCKER_IN_SAME_CONTEXT_AS_UPGRADER"
+  r3_reviewer_blind_report_path: "dev/reviews/dec339-ws02-bu06-r3-20261122-review-brain-10-blind-source.md"
+  r3_reviewer_blind_report_commit: "a2359cc35d4876b68bb813b95dfa3edd4a395f32"
+  r3_reviewer_final_report_path: "dev/reviews/dec339-ws02-bu06-r3-20261122-review-brain-10-final.md"
+  r3_reviewer_final_report_commit: "724b9b4df6d4497684493b8e680c15bd7f9884aa"
   bu06_independent_acceptance: false
-  next_action: "INDEPENDENT_REVIEW_BU06_R3_BLIND_FIRST_THEN_EVIDENCE_REVIEW"
+  next_action: "BUILDER_FIX_CROSS_CONTEXT_BLOCKER_TOPOLOGY_FRESH_PHXCI_NEW_REVIEW_HANDOFF"
