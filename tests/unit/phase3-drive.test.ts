@@ -60,7 +60,7 @@ test("resumable create consumes content incrementally and verifies size", async(
 test("DEC-339 WS-03 production boundary exposes verified metadata reader over the existing authenticated requestUrl transport", async () => {
   const secrets = new MemorySecrets();
   secrets.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID, JSON.stringify({
-    accessToken: "active", refreshToken: "refresh", expiresAtMs: Date.now() + 60_000,
+    accessToken: "active", refreshToken: "refresh", expiresAtMs: Date.now() + 5 * 60_000,
     tokenType: "Bearer", scope: "https://www.googleapis.com/auth/drive.file",
   }));
   secrets.setSecret("brain-gdrive-paired-account", "permission-123");
