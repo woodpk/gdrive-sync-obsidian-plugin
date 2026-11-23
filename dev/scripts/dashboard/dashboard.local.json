@@ -1,0 +1,6 @@
+{
+  "repository_url": "https://github.com/woodpk/gdrive-sync-obsidian-plugin.git",
+  "reference_branch": "master",
+  "feature_prefixes": ["build/dec339-", "fix/dec362-"],
+  "max_feature_refs": 40
+}

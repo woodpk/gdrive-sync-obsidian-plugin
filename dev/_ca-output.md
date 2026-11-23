@@ -48,3 +48,12 @@ STATUS: COMPLETE
 - main.js: 922631 bytes; SHA-256 6bb0012cb21a244a2f53a44b7bdcf3203b6284070bb3b725d7b32d919c2b881d
 
 Final verdict: COMPLETE
+
+
+## BRAIN Dashboard integration — 2026-11-23 — progress branch
+- Action: commit DCM-derived BRAIN dashboard module under dev/scripts/dashboard/ on branch progress.
+- Parent baseline: 08cb4a2a861f4fd697fca1c740c03b6671668715.
+- Verification performed in available Linux environment: HTML embedded JavaScript syntax check (node --check): PASS; template.sha256 SHA-256 manifest check: PASS; ZIP CRC: PASS.
+- Windows/PowerShell 7 runner and Edge end-to-end browser QA: NOT EXECUTED in this environment; required before full qualification.
+- Source selection: fresh read-only Git clone of origin/master and selected feature branches; no GitHub Actions.
+- Repository merge to master and production activation: NOT PERFORMED.

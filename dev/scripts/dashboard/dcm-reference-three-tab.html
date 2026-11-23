@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Progress Dashboard</title>
+<style>
+  :root{
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    color-scheme:dark;
+    --background:#25282D;
+    --panel:#2E3339;
+    --card:#363C44;
+    --primary:#F3F4F6;
+    --secondary:#B7C0CB;
+    --border:#48515C;
+    --success:#35A675;
+    --pending:#E2A64B;
+    --failure:#E06A70;
+    --info:#61A8E8;
+    color:var(--primary);background:var(--background)
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:12px;background:var(--background);color:var(--primary)}
+  button{font:inherit}
+  .dashboard{max-width:1100px;margin:auto;background:var(--background);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 4px 18px #00000044}
+  .heading{display:flex;gap:14px;align-items:center;margin-bottom:18px}
+  .logo{display:grid;place-items:center;width:46px;height:46px;flex:none;background:var(--card);color:var(--info);border:1px solid var(--border);border-radius:13px;font-size:23px}
+  h1{font-size:22px;margin:0;letter-spacing:-.6px}h2{font-size:17px;margin:0 0 12px}h3{font-size:14px;margin:0 0 8px}
+  .sub,.muted{color:var(--secondary)}.sub{font-size:12px;margin-top:4px;overflow-wrap:anywhere}.muted{font-size:12px}
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;background:var(--panel);border:1px solid var(--border);border-radius:12px;margin-bottom:20px}
+  .tab{background:transparent;color:var(--secondary);border:0;border-radius:9px;padding:11px 7px;cursor:pointer;font-size:13px;font-weight:600}
+  .tab[aria-selected=true]{background:var(--card);color:var(--primary);box-shadow:0 1px 5px #00000040}
+  .tab:focus-visible,.unit:focus-visible,.tree-toggle:focus-visible,.ref-toggle:focus-visible,.tree-action:focus-visible{outline:3px solid var(--info);outline-offset:2px}
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  .card{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--card);min-width:0}
+  .card .value{font-size:23px;font-weight:750;letter-spacing:-.6px;overflow-wrap:anywhere;margin:5px 0}
+  .card .label{color:var(--secondary);font-size:11px;font-weight:650}.card .note{font-size:11px;color:var(--secondary)}
+  .section{margin-top:22px}.text{font-size:13px;line-height:1.55}.pair{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .meter{margin:13px 0}.track{height:12px;background:var(--card);border:1px solid var(--border);border-radius:100px;overflow:hidden;margin-top:7px}
+  .fill{height:100%;background:var(--success);border-radius:100px;transition:width .18s}.fill.amber{background:var(--pending)}.fill.blue{background:var(--info)}
+  .list{display:flex;flex-direction:column;gap:4px}.item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;min-width:0}
+  .item:nth-child(even){background:var(--panel)}.item .item-name{flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere}
+  .id{font-size:11px;font-weight:700;min-width:76px}.dot{width:10px;height:10px;border-radius:50%;background:var(--border);flex:none}
+  .dot.partial{background:var(--pending)}
+  .dot.accepted,.dot.passed{background:var(--success)}.dot.active,.dot.pending{background:var(--pending)}.dot.blocked,.dot.failed{background:var(--failure)}.dot.verified{background:var(--info)}
+  .badge{border:1px solid var(--border);background:var(--card);border-radius:50px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--secondary);white-space:nowrap}
+  .badge.accepted,.badge.passed{border-color:var(--success);background:var(--card);color:var(--success)}
+  .badge.partial{border-color:var(--pending);color:var(--pending)}
+  .badge.active,.badge.pending{border-color:var(--pending);background:var(--card);color:var(--pending)}
+  .badge.failed,.badge.blocked{border-color:var(--failure);background:var(--card);color:var(--failure)}
+  .badge.verified{border-color:var(--info);background:var(--card);color:var(--info)}
+  .panel{border:1px solid var(--border);border-radius:12px;padding:15px;background:var(--panel);margin-top:12px}
+  .unit{display:flex;width:100%;align-items:center;gap:10px;text-align:left;border:1px solid transparent;background:transparent;border-radius:9px;padding:10px;cursor:pointer;color:inherit}
+  .unit:hover,.unit[aria-pressed=true]{border-color:var(--border);background:var(--card)}.unit .unit-name{flex:1;font-size:12px;min-width:0}
+  .tree{border-left:2px solid var(--border);margin:10px 0 10px 8px;padding-left:14px}
+  .tree .item{padding:7px 6px}.empty{color:var(--secondary);font-size:13px;padding:9px 0}
+  .cohort{display:grid;grid-template-columns:minmax(130px,1fr) 2.3fr 65px;gap:10px;align-items:center;margin:12px 0;font-size:12px}
+  .cohort .track{margin:0;height:10px}.footer{border-top:1px solid var(--border);margin-top:22px;padding-top:12px;font-size:11px;color:var(--secondary);overflow-wrap:anywhere}
+  .error{border:1px solid var(--failure);background:var(--panel);color:var(--failure);border-radius:12px;padding:16px;font-size:13px}
+  @media(max-width:650px){body{padding:0}.dashboard{border-radius:0;border-left:0;border-right:0;padding:14px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:19px}.tab{font-size:11px}.item .id{min-width:70px}.cohort{grid-template-columns:1fr 1.3fr 50px}}
+
+  /* Upgrade v3: source-grounded typed work hierarchy and cross-linked verification evidence. */
+  .tree-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:10px 0 8px}
+  .tree-search{flex:1 1 245px;background:var(--card);color:var(--primary);border:1px solid var(--border);border-radius:9px;padding:11px 12px;min-width:0;font:inherit;font-size:13px}
+  .tree-search:focus{outline:2px solid var(--info);outline-offset:1px}
+  .tree-actions{display:flex;flex-wrap:wrap;gap:5px}
+  .tree-action{background:var(--card);color:var(--secondary);border:1px solid var(--border);border-radius:8px;padding:9px;font-size:11px;cursor:pointer}
+  .tree-stats{font-size:11px;color:var(--secondary);margin-bottom:11px}
+  .hierarchy{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:7px}
+  .tree-branch{margin:2px 0 2px 11px;border-left:1px solid var(--border);padding-left:11px}
+  .tree-node{margin-top:3px;min-width:0}.tree-header{display:flex;align-items:center;gap:6px;min-width:0}
+  .tree-toggle,.ref-toggle{display:flex;align-items:center;gap:7px;flex:1;min-width:0;background:transparent;color:var(--primary);border:1px solid transparent;border-radius:9px;padding:8px 6px;cursor:pointer;text-align:left;font:inherit}
+  .tree-toggle:hover,.ref-toggle:hover{background:var(--card);border-color:var(--border)}
+  .tree-caret{display:inline-flex;align-items:center;justify-content:center;width:17px;flex:none;color:var(--secondary);font-size:13px}
+  .tree-text{flex:1;min-width:0;font-size:12px;overflow-wrap:anywhere}
+  .tree-id{font-weight:750;color:var(--primary)}
+  .tree-secondary{font-size:11px;color:var(--secondary);padding:3px 7px 8px 29px;line-height:1.5}
+  .tree-ref{margin:3px 0 3px 11px;border-left:1px solid var(--border);padding-left:10px}
+  .ref-toggle{font-size:12px;padding:7px 5px}.ref-role{font-size:11px;color:var(--secondary);line-height:1.45;overflow-wrap:anywhere;margin:1px 2px 8px 29px}
+  .ref-details{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin:2px 4px 9px 24px}
+  .ref-details p{font-size:12px;line-height:1.5;margin:6px 0;color:var(--secondary)}
+  .ref-details strong{color:var(--primary)}.ref-details a{color:var(--info);overflow-wrap:anywhere}
+  .ref-details .related{font-size:11px;color:var(--secondary);margin-top:7px}
+  .tree-legend{font-size:11px;color:var(--secondary);line-height:1.5;margin:9px 1px}
+  .search-match{color:var(--info);font-weight:750}
+  .tree-root{border:1px solid var(--border);background:var(--card);border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center}
+  @media(max-width:650px){.tree-branch{margin-left:5px;padding-left:7px}.ref-details{margin-left:8px}.tree-tools{align-items:stretch}.tree-actions{width:100%}.tree-action{flex:1}}
+\n  /* v3: structural semantics are quiet text, never competing with actual work or status. */
+  .map-note{color:var(--secondary);font-size:12px;line-height:1.5;margin:8px 0 13px}
+  .map-note b{color:var(--primary)}
+  .map-help{background:transparent;border:0;color:var(--info);text-decoration:underline;cursor:pointer;font:inherit;font-size:11px;padding:4px}
+  .type-guide{border:1px solid var(--border);background:var(--panel);border-radius:11px;padding:13px;margin:9px 0;font-size:12px;color:var(--secondary);line-height:1.65}
+  .type-guide strong{color:var(--primary)}
+  .hierarchy{padding:10px}
+  .tree-root{margin-bottom:7px;line-height:1.4}
+  .tree-branch{margin-left:14px;padding-left:12px;border-left:1px solid #58606a}
+  .node-header{display:flex;align-items:center;gap:4px;padding:3px;border-radius:9px;min-width:0}
+  .node-header:hover,.node-header[aria-current=true]{background:var(--card)}
+  .node-chevron{width:25px;min-width:25px;align-self:stretch;border:0;color:var(--secondary);background:transparent;cursor:pointer;border-radius:6px;font-size:13px}
+  .node-main{border:0;background:transparent;color:var(--primary);display:flex;align-items:center;gap:8px;flex:1;min-width:0;text-align:left;padding:6px 2px;cursor:pointer;font:inherit}
+  .node-type-icon{font-size:14px;color:#9DAAB6;min-width:17px;text-align:center}
+  .node-name{flex:1;min-width:0;font-size:12px;line-height:1.43;overflow-wrap:anywhere}
+  .node-type-label{color:var(--secondary);font-size:10px;white-space:nowrap;margin-left:7px;font-weight:400;letter-spacing:0}
+  .node-status{flex:none;padding-right:5px}
+  .inline-refs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:1px 5px 6px 42px;color:var(--secondary);font-size:10px}
+  .inline-ref{border:1px solid #526579;background:transparent;color:#A3C8E6;font:inherit;font-size:10px;padding:3px 6px;border-radius:6px;cursor:pointer}
+  .inline-ref:hover{background:var(--card)}
+  .inline-ref.fail{border-color:#825259;color:#ECA7AC}
+  .selection-detail{margin-top:15px;border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:14px}
+  .selection-title{font-size:15px;margin:0 0 6px;font-weight:700}
+  .selection-meta{font-size:11px;color:var(--secondary);line-height:1.65;margin-bottom:8px}
+  .selection-content{color:var(--primary);font-size:12px;line-height:1.6}
+  .selection-sub{margin-top:11px;font-size:11px;font-weight:700;color:var(--secondary);text-transform:uppercase;letter-spacing:.4px}
+  .breadcrumbs{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin:8px 0 12px}
+  .crumb{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 7px;color:var(--secondary);font-size:11px}
+  .crumb.active{color:var(--primary);border-color:var(--info)}
+  .rel-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--secondary)}
+  .rel-icon{font-size:15px;color:var(--info)}
+  .link-button{background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--primary);padding:5px 7px;font:inherit;font-size:11px;cursor:pointer;margin:3px}
+  .compact-guide{font-size:11px;color:var(--secondary);line-height:1.55;margin:7px 0 0}
+  .compact-guide b{color:var(--primary)}
+  .src-link{color:var(--info);font-size:11px;overflow-wrap:anywhere}
+  .node-chevron:focus-visible,.node-main:focus-visible,.inline-ref:focus-visible,.link-button:focus-visible,.map-help:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+  @media(max-width:710px){.node-type-label{display:block;margin-left:0;margin-top:2px}.node-main{align-items:flex-start}.node-name{font-size:11px}.node-header{gap:2px}.tree-branch{margin-left:6px;padding-left:6px}.inline-refs{padding-left:27px}.node-status .badge{font-size:9px;padding:2px 5px}}
+
+  /* v3.1 restoration: each verification item is its own expandable row. */
+  .verification-group{margin:1px 0 9px 38px;padding-left:12px;border-left:1px solid #65707A}
+  .verification-heading{font-size:10px;color:var(--secondary);letter-spacing:.2px;padding:6px 5px}
+  .verification-item{margin:1px 0 4px}
+  .verification-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 8px;color:var(--primary);cursor:pointer;font:inherit;min-width:0}
+  .verification-row:hover,.verification-row[aria-expanded=true]{background:var(--card);border-color:var(--border)}
+  .verification-row:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+  .verification-chevron{color:var(--secondary);font-size:13px;min-width:10px}
+  .verification-symbol{color:var(--info);font-size:12px}
+  .verification-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px}
+  .verification-details{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px;margin:2px 5px 10px 30px}
+  .verification-details h3{font-size:13px;margin:0 0 7px}
+  .verification-details p{font-size:12px;color:var(--secondary);line-height:1.55;margin:7px 0}
+  .verification-details .related{font-size:11px;color:var(--secondary);line-height:1.5;margin-top:9px}
+  .verification-details a{color:var(--info)}
+  .related-work-button{background:#414953;border:1px solid #596574;color:var(--primary);border-radius:6px;padding:5px 7px;cursor:pointer;font:inherit;font-size:11px;margin:3px}
+  .related-work-button:hover{border-color:var(--info)}
+  .verification-meta{font-size:11px;color:var(--secondary)}
+  @media(max-width:710px){.verification-group{margin-left:22px;padding-left:7px}.verification-details{margin-left:7px}.verification-row{gap:5px;padding:7px 4px}.verification-name{font-size:11px}}
+</style>
+</head>
+<body>
+<main class="dashboard" id="progress-dashboard" aria-label="Project progress dashboard">
+  <header class="heading"><div class="logo" aria-hidden="true">▦</div><div><h1 id="project-title">Project Progress Dashboard</h1><div id="project-sub" class="sub">Awaiting verified project data</div></div></header>
+  <nav class="tabs" aria-label="Dashboard views">
+    <button class="tab" type="button" data-tab="overview" aria-selected="true">Project Overview</button>
+    <button class="tab" type="button" data-tab="workstream" aria-selected="false">Active Workstream</button>
+    <button class="tab" type="button" data-tab="performance" aria-selected="false">Performance</button>
+  </nav>
+  <section id="dashboard-content" aria-live="polite"><p class="empty">Awaiting a verified snapshot.</p></section>
+  <footer id="dashboard-footer" class="footer">Fixed three-tab template · project-specific data only</footer>
+</main>
+<script id="project-snapshot" type="application/json">__PROJECT_SNAPSHOT_JSON__</script>
+<script>
+(function(){
+  'use strict';
+  const host=document.getElementById('progress-dashboard');
+  const content=document.getElementById('dashboard-content');
+  const tabs=Array.from(host.querySelectorAll('[data-tab]'));
+  const state={tab:'workstream',selected:null,query:'',expanded:new Set(),closedSearch:new Set(),details:new Set(),hierarchyInitialized:false,showGuide:false,selection:{kind:'unit',key:null}};
+  let data=null;
+  const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined&&value!==null)n.textContent=String(value);return n;};
+  const add=(parent,...children)=>{for(const child of children)if(child)parent.appendChild(child);return parent;};
+  const value=(v)=>v===null||v===undefined||v===''?'Not established':String(v);
+  const ratio=(done,total)=>Number.isInteger(done)&&Number.isInteger(total)&&total>0&&done>=0&&done<=total?done/total:null;
+  const count=(arr,status)=>arr.filter(x=>x.status===status).length;
+  const label=(s)=>({accepted:'Accepted',active:'Active',planned:'Planned',passed:'PASS',pending:'Pending',blocked:'Blocked',failed:'Failed',verified:'Verified',partial:'Partial',unknown:'Unknown'}[s]||'Unknown');
+  const item=(id,name,status)=>{const r=el('div','item');add(r,el('span','dot '+status),el('span','id',id),el('span','item-name',name),el('span','badge '+status,label(status)));return r;};
+  const section=(parent,title)=>{const s=el('section','section');add(s,el('h2','',title));parent.appendChild(s);return s;};
+  function card(labelText,big,note){const n=el('div','card');add(n,el('div','label',labelText),el('div','value',big),el('div','note',note));return n;}
+  function meter(title,done,total,color){const p=ratio(done,total),m=el('div','meter'),h=el('div','pair'),track=el('div','track'),fill=el('div','fill '+(color||''));
+    add(h,el('strong','text',title),el('span','muted',p===null?'Not established':done+' / '+total+'  ·  '+(p*100).toFixed(1)+'%'));
+    fill.style.width=p===null?'0%':(p*100)+'%';track.appendChild(fill);add(m,h,track);return m;}
+  const messages=(parent,arr)=>{if(!arr.length){parent.appendChild(el('p','empty','None reported.'));return;}for(const msg of arr)parent.appendChild(el('div','item text','•  '+msg));};
+  function projectView(){const p=el('div');const w=data.workstreams;const u=data.units;const r=data.requirements||{};const a=count(w,'accepted');const v=data.verification||{};
+    const cards=el('div','grid');add(cards,
+      card('Accepted workstreams',w.length?a+' / '+w.length:'N/A','Formal project closure'),
+      card('Accepted Build Units',u.length?u.filter(x=>x.nodeType==='major_unit'&&x.status==='accepted').length+' / '+u.filter(x=>x.nodeType==='major_unit').length:'N/A','Independent Reviewer PASS and Builder closeout'),
+      card('Mapped requirements',Number.isInteger(r.mapped)&&Number.isInteger(r.total)?r.mapped+' / '+r.total:'N/A','Mapping ≠ implementation'),
+      card('Latest verification',value(v.result),'Scope: '+value(v.scope)));
+    p.appendChild(cards);
+    const progress=section(p,'Project completion');progress.appendChild(meter('Formal workstream acceptance',a,w.length,''));
+    const stages=section(p,'Lifecycle stages');const st=el('div','grid');for(const s of data.stages)st.appendChild(card(s.name,label(s.status),s.detail||''));stages.appendChild(st);
+    const inventory=section(p,'All workstreams');const list=el('div','list');for(const x of w){const bu=u.filter(y=>y.nodeType==='major_unit'&&y.parentId===x.id);const accepted=bu.filter(y=>y.status==='accepted').length;list.appendChild(item(x.id,x.name+' · '+accepted+'/'+bu.length+' Build Units accepted; formal Workstream: '+(x.formalStatus||'not established'),x.status));}inventory.appendChild(list);
+    const pos=section(p,'Current development position');const b=el('div','panel');add(b,el('strong','text',data.active.path),el('p','text','Next: '+value(data.active.nextAction)));pos.appendChild(b);
+    const milestones=section(p,'Recent milestones');messages(milestones,data.milestones||[]);
+    const risks=section(p,'Risks and blockers');messages(risks,data.blockers||[]);
+    return p;}
+  // Canonical reference records are kept once in verificationCatalog.
+  // unit.verificationRefs contains membership + unit-specific responsibility, not copied requirements.
+  function verificationIndex(){const out=new Map();for(const r of (data.verificationCatalog||[])){const k=r&&(r.key||r.id);if(k&&!out.has(String(k)))out.set(String(k),r);}return out;}
+  function refLinks(node){return Array.isArray(node.verificationRefs)?node.verificationRefs.filter(x=>(typeof x==='string'&&x.trim())||(x&&(x.id||x.refId))).map(x=>typeof x==='string'?{id:x}:x):[];}
+  function treeIndex(){
+    const units=data.units||[], nodes=new Map(),children=new Map();
+    for(const u of units){if(!u||!u.id||nodes.has(String(u.id)))continue;nodes.set(String(u.id),u);children.set(String(u.id),[]);}
+    const roots=[];
+    for(const u of nodes.values()){
+      const parent=u.parentId&&String(u.parentId)!==String(u.id)?String(u.parentId):null;
+      if(!parent||!nodes.has(parent)){roots.push(u);continue;}
+      // A malformed ancestry cycle cannot suppress the node or freeze rendering.
+      const seen=new Set([String(u.id)]);let cur=parent,cycle=false;
+      while(cur&&nodes.has(cur)){if(seen.has(cur)){cycle=true;break;}seen.add(cur);const next=nodes.get(cur).parentId;cur=next?String(next):null;}
+      if(cycle)roots.push(u);else children.get(parent).push(u);
+    }
+    return {nodes,children,roots};
+  }
+  function refsFor(u,cat){return refLinks(u).map(link=>({link,record:cat.get(String(link.refId||link.id))}));}
+  function searchable(u,cat){const entries=[u.id,u.name,u.detail,u.status];
+    for(const {link,record} of refsFor(u,cat))entries.push(link.id,link.refId,record?.id,record?.key,link.role,link.detail,link.status,record?.name,record?.description,record?.status,record?.nextProof,record?.type);
+    return entries.filter(x=>x!==undefined&&x!==null).join(' ').toLowerCase();}
+  function matchingTree(index,cat,q){const visible=new Set(),selfMatched=new Set(),seen=new Set();
+    function visit(u){const id=String(u.id);if(seen.has(id))return false;seen.add(id);
+      const own=!q||searchable(u,cat).includes(q);let matchesChild=false;for(const child of (index.children.get(id)||[]))if(visit(child))matchesChild=true;
+      if(own||matchesChild){visible.add(id);if(own)selfMatched.add(id);return true;}return false;}
+    for(const u of index.roots)visit(u);
+    for(const u of index.nodes.values())if(!seen.has(String(u.id)))visit(u);
+    return {visible,selfMatched};
+  }
+  function sourceElement(source){if(!source)return null;
+    const label=typeof source==='string'?source:(source.label||source.path||source.url||'Source');
+    const url=typeof source==='object'&&typeof source.url==='string'?source.url:null;
+    if(url&&/^https:\/\//i.test(url)){const a=el('a','',label);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;}
+    return el('span','',label);
+  }
+  function refRecordDetails(link,record){const panel=el('div','ref-details');const status=link.status||record?.status||'unknown';
+    add(panel,el('h3','',(record?.id||link.id||link.refId)+' — '+(record?.name||'Unresolved reference')),
+      el('span','badge '+status,label(status)));
+    if(record?.type)panel.appendChild(el('p','',record.type));
+    if(record?.status)panel.appendChild(el('p','', 'Overall reference status: '+label(record.status)+' · This build unit: '+label(status)));
+    panel.appendChild(el('p','',record?.description||'No authoritative description supplied; the reference is not claimed as verified.'));
+    if(link.role||link.detail)panel.appendChild(el('p','', 'This build unit: '+(link.role||link.detail)));
+    if(record?.nextProof)panel.appendChild(el('p','', 'Remaining proof: '+record.nextProof));
+    if(link.evidence)panel.appendChild(el('p','', 'Unit evidence: '+link.evidence));
+    if(record?.evidence)panel.appendChild(el('p','', 'Reference evidence: '+record.evidence));
+    const associations=(data.units||[]).filter(x=>refLinks(x).some(l=>String(l.refId||l.id)===String(link.refId||link.id))).map(x=>x.id);
+    if(associations.length>1)panel.appendChild(el('div','related','Also associated with: '+associations.join(', ')));
+    const src=[...(Array.isArray(record?.sources)?record.sources:[]),...(Array.isArray(link.sources)?link.sources:[])];
+    if(src.length){const area=el('div','related');area.appendChild(el('strong','', 'Sources: '));for(const [i,source] of src.entries()){if(i)area.appendChild(document.createTextNode(' · '));area.appendChild(sourceElement(source));}panel.appendChild(area);}
+    return panel;
+  }
+  function workstreamView(){
+    const p=el('div'),w=data.workstreams||[],u=data.units||[],g=data.gates||[],id=data.active.workstreamId;
+    add(p,el('h2','',id+' — '+(w.find(x=>x.id===id)?.name||'Active workstream')),
+      meter('Project · accepted workstreams',count(w,'accepted'),w.length,''),
+      meter(id+' · accepted major build units',u.filter(x=>x.nodeType==='major_unit'&&x.parentId===id&&x.status==='accepted').length,u.filter(x=>x.nodeType==='major_unit'&&x.parentId===id).length,'amber'));
+    const info=el('div','map-note');info.appendChild(el('span','','Indented solid lines show what work belongs to. The lighter ↗ links show what it verifies; they are not additional build units.'));
+    const help=el('button','map-help','How to read types & links');help.type='button';info.appendChild(help);p.appendChild(info);
+    const guide=el('div','type-guide');guide.hidden=!state.showGuide;
+    add(guide,el('div','','▣  Workstream → ◈  Major unit → ▤  Work package → ▥  Task group → ▸  Execution slice.'),
+      el('div','','Source-defined hierarchy is preserved; some friendly type labels are dashboard classifications, not repository-approved enum names.'),
+      el('div','','↗  Verification references (T13, QB03, QP07) are linked evidence/requirements, not work units. One reference may be linked to multiple work units.'),
+      el('div','','A colored status describes progress or evidence. It never defines what kind of item something is.'));
+    p.appendChild(guide);help.addEventListener('click',()=>{state.showGuide=!state.showGuide;guide.hidden=!state.showGuide;});
+    const sec=section(p,'Work hierarchy');const tools=el('div','tree-tools'),input=el('input','tree-search');
+    input.type='search';input.placeholder='Search T13, QB03, build IDs, work names…';input.setAttribute('aria-label','Search work hierarchy and linked verification records');input.value=state.query;
+    const actions=el('div','tree-actions');const makeAction=(txt)=>{const b=el('button','tree-action',txt);b.type='button';return b;};
+    const expand=makeAction('Expand all'),collapse=makeAction('Collapse all'),clear=makeAction('Clear');
+    add(actions,expand,collapse,clear);add(tools,input,actions);sec.appendChild(tools);
+    const stats=el('div','tree-stats'),outer=el('div','hierarchy'),detail=el('div','selection-detail');sec.appendChild(stats);sec.appendChild(outer);sec.appendChild(detail);
+    const idx=treeIndex(),cat=verificationIndex();
+    const kindLabel=(n)=>n?.nodeTypeLabel||({major_unit:'Major build unit',work_package:'Work package',task_group:'Task group',execution_slice:'Execution slice',qualification_task:'Qualification task'}[n?.nodeType]||'Work item');
+    const kindIcon=(n)=>({major_unit:'◈',work_package:'▤',task_group:'▥',execution_slice:'▸',qualification_task:'◇'}[n?.nodeType]||'▪');
+    const linksFor=(n)=>refsFor(n,cat);
+    const parentOf=(n)=>n?.parentId?idx.nodes.get(String(n.parentId)):null;
+    function ancestors(n){let a=[],visited=new Set();while(n&&!visited.has(String(n.id))){visited.add(String(n.id));a.unshift(n);n=parentOf(n);}return a;}
+    function matching(n,q){if(!q)return true;const f=[n.id,n.name,n.detail,n.nodeType,n.nodeTypeLabel,n.canonicalPath];
+      for(const {link,record} of linksFor(n))f.push(link.refId,link.role,link.status,record?.id,record?.name,record?.description,record?.type,record?.nextProof);
+      return f.filter(Boolean).join(' ').toLowerCase().includes(q);}
+    function detailSelection(){detail.replaceChildren();
+      const selection=state.selection;
+      if(!selection.key){add(detail,el('div','selection-title','Select any work item or ↗ verification link'),el('p','muted','The explanation of its type, exact parent relationship and relevant evidence will appear here—without crowding the hierarchy.'));return;}
+      if(selection.kind==='unit'){
+        const n=idx.nodes.get(selection.key);if(!n){state.selection={kind:'unit',key:null};return detailSelection();}
+        add(detail,el('div','selection-title',n.id+' — '+(n.name||'')),el('div','selection-meta',kindLabel(n)+' · Work status: '+label(n.status)));
+        const bc=el('div','breadcrumbs');const chain=ancestors(n);bc.appendChild(el('span','crumb',id));
+        for(const x of chain){bc.appendChild(el('span','muted','›'));const b=el('button','crumb'+(x.id===n.id?' active':''),x.id.replace(/^WS02-/,'')||x.id);b.type='button';b.addEventListener('click',()=>{state.selection={kind:'unit',key:String(x.id)};detailSelection();});bc.appendChild(b);}detail.appendChild(bc);
+        if(n.detail)detail.appendChild(el('p','selection-content',n.detail));
+        if(n.canonicalPath)detail.appendChild(el('div','selection-meta','Canonical/source path: '+n.canonicalPath));
+        const par=parentOf(n);detail.appendChild(el('div','rel-row',par?'↳ Part of '+par.id+' — '+par.name:'↳ Direct child of '+id+' (workstream)'));
+        if(n.classificationNote)detail.appendChild(el('div','selection-meta','Type note: '+n.classificationNote));
+        const direct=idx.children.get(n.id)||[];if(direct.length)detail.appendChild(el('div','rel-row','↳ Contains '+direct.length+' directly nested work item(s)'));
+        const refs=linksFor(n);if(refs.length){detail.appendChild(el('div','selection-sub','Verification links — not child work items'));const row=el('div');for(const {link,record} of refs){const b=el('button','link-button','↗ '+(record?.id||link.refId)+' · '+(link.status||record?.status||'unknown'));b.type='button';b.addEventListener('click',()=>{state.selection={kind:'ref',key:link.refId||link.id,from:n.id};detailSelection();});row.appendChild(b);}detail.appendChild(row);}
+        if(Array.isArray(n.sources)&&n.sources.length){const foot=el('div','selection-meta','Source: '+n.sources.map(x=>x.path||x.label||'Unspecified').join(' · '));detail.appendChild(foot);}
+      }else{
+        const k=selection.key,record=cat.get(k);if(!record){detail.appendChild(el('div','selection-title','Unresolved verification reference: '+k));return;}
+        add(detail,el('div','selection-title','↗ '+record.id+' — '+record.name),el('div','selection-meta',record.type+' · Overall requirement status: '+label(record.status)),el('p','selection-content',record.description||''));
+        if(record.nextProof)detail.appendChild(el('p','selection-content','Still required: '+record.nextProof));
+        if(record.evidence)detail.appendChild(el('p','selection-meta','Evidence: '+record.evidence));
+        detail.appendChild(el('div','selection-sub','Associated work — same reference, different responsibilities'));
+        for(const n of u){for(const {link} of linksFor(n)){if(String(link.refId||link.id)!==k)continue;
+          const row=el('div','rel-row');const b=el('button','link-button',n.id+' · '+kindLabel(n));b.type='button';b.addEventListener('click',()=>{state.selection={kind:'unit',key:n.id};state.expanded.add(n.id);for(const a of ancestors(n))state.expanded.add(a.id);state.query='';input.value='';state.closedSearch.clear();draw();});
+          add(row,el('span','rel-icon','↗'),b,el('span','muted',label(link.status||record.status)));detail.appendChild(row);if(link.role)detail.appendChild(el('div','selection-meta',link.role));}}
+        for(const s of (record.sources||[])){const source=sourceElement(s);if(source){const row=el('div','selection-meta');add(row,el('span','','Source: '),source);detail.appendChild(row);}}
+      }
+    }
+    function isOpen(k,q){return q?!state.closedSearch.has(k):state.expanded.has(k);}
+    function draw(){const q=state.query.trim().toLowerCase(),mt=matchingTree(idx,cat,q);outer.replaceChildren();
+      let direct=0;for(const n of idx.nodes.values())if(matching(n,q))direct++;
+      const inv=data.verificationInventory||{};
+      stats.textContent=(q?direct+' direct match(es) · '+mt.visible.size+' work item(s) including ancestors':idx.nodes.size+' work items')+' · '+cat.size+' linked-reference definitions · '+(inv.scope||inv.status||'inventory scope not established');
+      const root=el('div','tree-root');add(root,el('span','node-type-icon','▣'),el('span','',id+' · '+(w.find(x=>x.id===id)?.name||'Active workstream')),el('span','badge active','Active'));outer.appendChild(root);
+      const visited=new Set();
+      function drawNode(n,container){const k=String(n.id);if(visited.has(k)||!mt.visible.has(k))return;visited.add(k);
+        const open=isOpen(k,q),holder=el('div','tree-node'),head=el('div','node-header');
+        head.setAttribute('aria-current',String(state.selection.kind==='unit'&&state.selection.key===k));
+        const caret=el('button','node-chevron',open?'▾':'▸');caret.type='button';caret.setAttribute('aria-label',(open?'Collapse ':'Expand ')+k);caret.setAttribute('aria-expanded',String(open));
+        const main=el('button','node-main');main.type='button';main.setAttribute('aria-label','Inspect '+k+' '+n.name);
+        const body=el('span','node-name');add(body,el('strong','',k+' — '),el('span','',n.name||''));
+        add(main,el('span','node-type-icon',kindIcon(n)),body,el('span','node-type-label',kindLabel(n)));
+        const statusBox=el('span','node-status');statusBox.appendChild(el('span','badge '+n.status,label(n.status)));
+        add(head,caret,main,statusBox);holder.appendChild(head);container.appendChild(holder);
+        caret.addEventListener('click',()=>{if(q){open?state.closedSearch.add(k):state.closedSearch.delete(k);}else{open?state.expanded.delete(k):state.expanded.add(k);}draw();});
+        main.addEventListener('click',()=>{state.selection={kind:'unit',key:k};detailSelection();drawSelection();});
+        function drawSelection(){outer.querySelectorAll('.node-header').forEach(x=>x.setAttribute('aria-current','false'));head.setAttribute('aria-current','true');}
+        if(open){const links=linksFor(n).filter(({link,record})=>!q||[link.refId,link.role,link.status,record?.id,record?.name,record?.description,record?.nextProof].some(x=>String(x||'').toLowerCase().includes(q)));
+          if(links.length){
+            const group=el('div','verification-group');group.appendChild(el('div','verification-heading','Verification / validation requirements · click a row for details'));
+            for(const {link,record} of links){
+              const refKey=String(link.refId||link.id), detailKey=k+'::'+refKey;
+              const status=link.status||record?.status||'unknown';
+              const item=el('div','verification-item'), button=el('button','verification-row');
+              button.type='button';button.setAttribute('aria-label','Toggle details for '+(record?.id||refKey)+' in '+k);
+              const isExpanded=state.details.has(detailKey);
+              button.setAttribute('aria-expanded',String(isExpanded));
+              add(button,
+                el('span','verification-chevron',isExpanded?'▾':'▸'),
+                el('span','verification-symbol','↗'),
+                el('span','dot '+status),
+                el('span','verification-name',(record?.id||link.id||link.refId)+' — '+(record?.name||'Unresolved verification reference')),
+                el('span','badge '+status,label(status)));
+              item.appendChild(button);
+              button.addEventListener('click',()=>{state.details.has(detailKey)?state.details.delete(detailKey):state.details.add(detailKey);draw();});
+              if(isExpanded){
+                const contents=refRecordDetails(link,record);contents.className='verification-details';
+                const key=String(refKey),related=(data.units||[]).filter(u=>refLinks(u).some(l=>String(l.refId||l.id)===key));
+                if(related.length){
+                  const section=el('div','related');section.appendChild(el('strong','','Associated work (same requirement; separate responsibilities):'));
+                  for(const u of related){
+                    const local=refLinks(u).find(l=>String(l.refId||l.id)===key);
+                    const nav=el('button','related-work-button',u.id+' · '+label(local?.status||record?.status||'unknown'));
+                    nav.type='button';nav.setAttribute('aria-label','Navigate to '+u.id+' from '+(record?.id||refKey));
+                    nav.addEventListener('click',()=>{state.query='';input.value='';state.closedSearch.clear();state.selection={kind:'unit',key:String(u.id)};for(const ancestor of ancestors(u))state.expanded.add(String(ancestor.id));draw();});
+                    section.appendChild(nav);
+                  }
+                  contents.appendChild(section);
+                }
+                item.appendChild(contents);
+              }
+              group.appendChild(item);
+            }
+            holder.appendChild(group);
+          }
+          const children=(idx.children.get(k)||[]).filter(x=>mt.visible.has(String(x.id)));if(children.length){const branch=el('div','tree-branch');for(const c of children)drawNode(c,branch);holder.appendChild(branch);}}
+      }
+      for(const n of idx.roots)drawNode(n,outer);
+      if(!mt.visible.size)outer.appendChild(el('div','empty','No matches. Clear the search to restore the hierarchy.'));
+      detailSelection();
+    }
+    input.addEventListener('input',()=>{state.query=input.value;state.closedSearch.clear();const q=state.query.trim().toLowerCase();const exact=[...cat.values()].find(r=>String(r.id||'').toLowerCase()===q||String(r.key||'').toLowerCase()===q);if(exact)state.selection={kind:'ref',key:String(exact.key||exact.id)};else if(q)state.selection={kind:'unit',key:null};draw();});
+    expand.addEventListener('click',()=>{if(state.query.trim())state.closedSearch.clear();else state.expanded=new Set(idx.nodes.keys());draw();});
+    collapse.addEventListener('click',()=>{if(state.query.trim())state.closedSearch=new Set(idx.nodes.keys());else state.expanded.clear();draw();});
+    clear.addEventListener('click',()=>{state.query='';input.value='';state.closedSearch.clear();draw();input.focus();});
+    if(!state.hierarchyInitialized){
+      const active=idx.nodes.get(String(data.active.unitId));if(active){for(const n of ancestors(active))state.expanded.add(String(n.id));state.selection={kind:'unit',key:String(active.id)};}
+      state.hierarchyInitialized=true;
+    }
+    draw();p.appendChild(el('div','compact-guide','Work items retain their typed parent-child hierarchy. Each linked ↗ verification requirement has its own expandable row with full details, evidence and associated work. These rows are links, not additional build units.'));
+    const gates=section(p,'Workstream gates'),gl=el('div','list');for(const step of g)gl.appendChild(item('',step.name,step.status));gates.appendChild(gl);
+    const nxt=section(p,'Authorized next step / boundary');nxt.appendChild(el('div','panel text',value(data.active.nextAction)));return p;
+  }
+  function performanceView(){const p=el('div'),v=data.verification||{},perf=data.performance||{};const cards=el('div','grid');
+    add(cards,card('Latest verifier result',value(v.result),value(v.scope)),
+      card('Verification stages',showCount(v.stagesPassed,v.stagesTotal),value(v.runId)),
+      card('Focused cases',showCount(v.focusedPassed,v.focusedTotal),'Exact verification scope'),
+      card('Repository cases',showCount(v.repositoryPassed,v.repositoryTotal),'Scope must be verified'));
+    p.appendChild(cards);
+    const cohorts=section(p,'Scenario / qualification coverage');const c=perf.cohorts||[];
+    if(!c.length)cohorts.appendChild(el('p','empty','No comparable scenario cohorts established.'));
+    else for(const x of c){const r=ratio(x.verified,x.total),row=el('div','cohort'),t=el('div','track'),fill=el('div','fill blue');fill.style.width=r===null?'0%':(r*100)+'%';t.appendChild(fill);
+      add(row,el('strong','',x.name),t,el('span','muted',r===null?'N/A':x.verified+'/'+x.total));cohorts.appendChild(row);}
+    cohorts.appendChild(el('p','muted','Separate pilot evidence is never presented as an integrated benchmark or formal acceptance.'));
+    const history=section(p,'Accepted-unit throughput');const trend=perf.trend||[];
+    if(!trend.length)history.appendChild(el('p','empty','Not established: insufficient comparable historical data.'));
+    else{const max=Math.max(1,...trend.map(x=>Number.isInteger(x.completed)&&x.completed>=0?x.completed:0));for(const h of trend){const row=el('div','cohort'),track=el('div','track'),fill=el('div','fill blue');const valid=Number.isInteger(h.completed)&&h.completed>=0;fill.style.width=valid?(100*h.completed/max)+'%':'0%';track.appendChild(fill);add(row,el('strong','',h.period),track,el('span','muted',valid?String(h.completed):'N/A'));history.appendChild(row);}history.appendChild(el('p','muted','Accepted units per labeled period; zero-filled or undated periods must not be invented.'));}
+    const forecast=section(p,'Evidence-based delivery forecast');forecast.appendChild(el('div','panel text',value(perf.forecast)));
+    const blockers=section(p,'Open risks / rework');messages(blockers,data.blockers||[]);
+    return p;}
+  const showCount=(x,y)=>Number.isInteger(x)&&Number.isInteger(y)&&y>=0&&x>=0&&x<=y?x+' / '+y:'N/A';
+  function validate(s){if(!s||typeof s!=='object'||!s.project||!s.active||!Array.isArray(s.workstreams)||!Array.isArray(s.units)||!Array.isArray(s.gates)||!Array.isArray(s.stages))throw Error('Required dashboard snapshot fields are missing.');
+    if(!s.project.name||!s.project.repository||!s.project.commit||!s.project.asOf)throw Error('Project identity, repository commit, and snapshot time are required.');
+    if(!Array.isArray(s.sources)||!s.sources.length)throw Error('At least one source reference is required.');
+    for(const group of [s.workstreams,s.units,s.gates,s.stages])for(const x of group)if(!['accepted','active','planned','passed','pending','blocked','failed','verified','partial','unknown'].includes(x.status))throw Error('Unrecognized progress status: '+String(x.status));
+    return s;}
+  function render(){if(!data){content.replaceChildren(el('p','empty','Awaiting verified project snapshot.'));return;}
+    try{validate(data);document.getElementById('project-title').textContent=data.project.name+' | Progress Dashboard';
+      document.getElementById('project-sub').textContent=[data.project.repository,data.project.branch,data.project.commit.slice(0,10),data.project.asOf].filter(Boolean).join('  ·  ');
+      for(const btn of tabs)btn.setAttribute('aria-selected',String(state.tab===btn.dataset.tab));
+      content.replaceChildren(state.tab==='overview'?projectView():state.tab==='workstream'?workstreamView():performanceView());
+      document.getElementById('dashboard-footer').textContent='Evidence: '+data.sources.map(x=>x.label+' ['+x.ref+']').join(' · ')+' · READ-ONLY report';
+    }catch(err){content.replaceChildren(el('div','error','Cannot display unverified snapshot: '+err.message));}}
+  tabs.forEach(btn=>btn.addEventListener('click',()=>{state.tab=btn.dataset.tab;render();}));
+  try{const raw=document.getElementById('project-snapshot').textContent.trim();if(raw&&!raw.startsWith('__')){data=JSON.parse(raw);render();}}catch(e){content.replaceChildren(el('div','error','Embedded JSON could not be parsed.'));}
+  globalThis.__effect?.(()=>{const provided=globalThis.__bindings?.snapshot;if(provided!==undefined&&provided!==null){data=provided;state.selected=data.active?.unitId||null;render();}});
+})();
+</script>
+</body>
+</html>

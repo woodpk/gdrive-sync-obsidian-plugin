@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BRAIN — Progress Dashboard</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#25282d;--panel:#2e3339;--card:#363c44;--line:#48515c;--fg:#f2f4f5;--muted:#aab1b9;--type:#898f97;--future:#d0cec8;--blue:#7ca4e4;--deepblue:#3256a8;--green:#77c099;--deepgreen:#276747;--red:#d0787c;--deepred:#813c44;--orange:#e6a05f;--deeporange:#955c26}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);padding:12px;font:13px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.dashboard{max-width:1150px;margin:auto;background:var(--bg);border:1px solid var(--line);border-radius:15px;padding:20px;min-height:90vh}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:17px}.mark{width:44px;height:44px;flex:none;border-radius:11px;background:#343d48;border:1px solid #4d6687;color:#91b8ef;display:grid;place-items:center;font-size:22px}.heading{font-size:20px;font-weight:770;letter-spacing:-.5px}.sub{color:var(--muted);font-size:11px;overflow-wrap:anywhere}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;border:1px solid var(--line);background:var(--panel);border-radius:11px;margin:0 0 16px}.tab{border:0;border-radius:8px;padding:11px 7px;background:transparent;color:var(--muted);font-weight:700}.tab[aria-selected=true]{background:var(--card);color:var(--fg);box-shadow:0 1px 6px #0005}
+.pill{display:inline-flex;align-items:center;gap:5px;border:1px solid #58616e;border-radius:99px;padding:3px 8px;font-size:10px;font-weight:800;letter-spacing:.2px;white-space:nowrap}
+.pill.accepted{border-color:#387653;color:var(--green);background:#264234}.pill.active,.pill.partial{border-color:#4b72bc;color:#b4cdfa;background:#293c60}.pill.pending{border-color:#786b48;color:#e1c68c;background:#423a2a}.pill.planned{border-color:#667078;color:var(--future)}.pill.blocked{border-color:var(--deepred);color:var(--red);background:#402a30}.pill.invalidated{border-color:var(--deeporange);color:var(--orange);background:#463326}
+.section-cap{font-size:10px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}h2{font-size:16px;margin:0;font-weight:780;letter-spacing:-.3px}h3{font-size:13px;margin:0 0 7px}p{margin:7px 0}.hero{border:1px solid #4d6790;border-left:5px solid #597fce;border-radius:12px;background:linear-gradient(110deg,#263955,#303943 65%,#30363e);padding:18px 20px;margin-bottom:12px}.hero-top,.pair,.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.hero-title{font-size:21px;font-weight:780;letter-spacing:-.6px;line-height:1.32;margin:9px 0 4px}.hero-sub{font-size:12px;color:#b6c8df}.purpose-box{border:1px solid #597397;background:#2b3c54;border-radius:9px;padding:12px;margin-top:13px}.purpose-box strong{font-size:11px;letter-spacing:.25px;color:#b3d1fb}.purpose-box p{font-size:13px;margin:5px 0 0;line-height:1.55;color:#e8eef7}.purpose-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}.purpose-detail{border-top:1px solid #547093;padding-top:8px;font-size:12px;line-height:1.5;color:#d7e1ed}.purpose-detail strong{display:block;font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:#abc7ec;margin-bottom:4px}.ins-purpose{background:#343d49;border:1px solid #506275;border-radius:8px;padding:11px;margin:10px 0}.ins-purpose .ins-label{margin-top:9px}.ins-purpose .ins-label:first-child{margin-top:0}.ins-purpose .ins-body{color:#e2e8ef}.hero-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:15px}.hero-field{border-top:1px solid #577092;padding-top:9px;min-width:0}.field-title{font-size:10px;letter-spacing:.4px;font-weight:750;color:#a1b6d3;text-transform:uppercase;margin-bottom:4px}.field-content{font-size:12px;overflow-wrap:anywhere}
+.next{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:21px}.next-layout{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-top:10px}.next-action{padding:12px;background:#354356;border:1px solid #526b8b;border-radius:9px}.next-action strong{font-size:14px;line-height:1.43;display:block;margin:5px 0}.guardrail{padding:12px;background:#393536;border:1px solid #5f5554;border-radius:9px}.guardrail .section-cap{color:#e5a7a6}.exact-directive{margin-top:10px;font-size:11px;color:#d0d9e6;border-top:1px solid #50647f;padding-top:8px}.exact-directive summary{cursor:pointer;color:#b4cdfa}
+.h-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(230px,1fr);gap:12px;margin-top:12px}.work-panel,.inspector,.readiness,.perf-panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px;min-width:0}.tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.search{min-width:0;flex:1 1 180px;border:1px solid var(--line);background:var(--card);border-radius:7px;padding:10px;color:var(--fg)}.toolbtn{border:1px solid var(--line);background:var(--card);color:#d3d8df;padding:9px;border-radius:7px;font-size:11px}.tree{max-height:570px;overflow:auto;scrollbar-color:#66717a transparent;scrollbar-width:thin}.tree-row{display:flex;align-items:center;gap:5px;min-width:0;border-radius:7px;padding:2px}.tree-row:hover,.tree-row.selected{background:var(--card)}.chev{background:transparent;border:0;color:#a2aab3;width:23px;min-width:23px;height:30px}.item-btn{border:0;background:transparent;text-align:left;min-width:0;flex:1;display:flex;gap:8px;align-items:center;padding:7px 3px}.item-wrap{min-width:0;flex:1}.work-name{font-size:12px;font-weight:690;line-height:1.35;overflow-wrap:anywhere}.work-id{font-weight:850;margin-right:5px}.work-name.accepted{color:var(--green)}.work-name.active,.work-name.partial{color:var(--blue)}.work-name.planned{color:var(--future)}.work-name.blocked{color:var(--red)}.work-name.invalidated{color:var(--orange)}.type-label{display:block;color:var(--type);font-size:10px;font-weight:450;margin-top:3px;line-height:1.35}.mini-state{width:6px;height:24px;border-radius:3px;background:#6e757c;flex:none}.mini-state.accepted{background:var(--deepgreen)}.mini-state.active,.mini-state.partial{background:var(--deepblue)}.mini-state.planned{background:#686d72}.mini-state.blocked{background:var(--deepred)}.mini-state.invalidated{background:var(--deeporange)}.tree-row .pill{font-size:9px;padding:2px 6px}.branch{border-left:1px solid #565d66;margin:2px 0 5px 12px;padding-left:10px}
+.inspector .ins-head{display:flex;align-items:center;justify-content:space-between;gap:7px}.ins-title{font-size:14px;font-weight:800;margin:9px 0 5px;line-height:1.35;overflow-wrap:anywhere}.ins-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#282d33;border:1px solid var(--line);padding:3px;border-radius:8px;margin:13px 0}.ins-tab{border:0;border-radius:6px;background:transparent;color:var(--muted);padding:8px 5px;font-size:11px;font-weight:700}.ins-tab[aria-selected=true]{background:var(--card);color:var(--fg)}.ins-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;color:var(--type);margin-top:13px;margin-bottom:4px}.ins-body{font-size:12px;line-height:1.58;color:#dce0e4;overflow-wrap:anywhere}.soft-box{background:#353b43;border:1px solid var(--line);border-radius:8px;padding:10px 11px;margin:8px 0}.evidence-search{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);margin:8px 0}.evidence-list{max-height:315px;overflow:auto}.evidence-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border:0;border-bottom:1px solid #48515c;color:#bbd4ee;background:transparent;text-align:left}.evidence-row:hover{background:var(--card)}.ref-detail{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px;margin:10px 0;overflow-wrap:anywhere}.ref-detail a,.source-link{color:#abcff2}.ref-detail h3{margin:0 0 8px}.ref-text{font-size:12px;color:#d6dce2;line-height:1.6}.ref-meta{font-size:10px;color:var(--muted);margin:6px 0}.ref-details-back{padding:6px 10px;border-radius:7px;border:1px solid #596f85;color:#bbd4ee;background:#344458}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:10px;padding:6px 3px;color:var(--muted);font-size:10px}.legend-item{display:flex;align-items:center;gap:5px}.legend-swatch{width:9px;height:9px;border-radius:3px}.legend-swatch.planned{background:var(--future)}.legend-swatch.active{background:var(--deepblue);border:1px solid var(--blue)}.legend-swatch.accepted{background:var(--deepgreen);border:1px solid var(--green)}.legend-swatch.blocked{background:var(--deepred);border:1px solid var(--red)}.legend-swatch.invalidated{background:var(--deeporange);border:1px solid var(--orange)}
+.readiness{margin-top:15px;padding:14px 17px}.readiness-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.readiness-item{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px}.ready-icon{font-weight:900;font-size:16px}.ready-icon.done{color:var(--green)}.ready-icon.wait{color:var(--blue)}.ready-label{font-size:11px;font-weight:700;margin-top:5px}.ready-sub{color:var(--muted);font-size:10px;margin-top:3px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:14px;min-width:0}.metric .n{font-size:24px;font-weight:800;letter-spacing:-.6px;margin:3px 0}.metric .k{font-size:10px;font-weight:750;color:var(--muted)}.metric .note{font-size:10px;color:var(--muted)}.perf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}.progress-track{background:#454b52;border-radius:10px;height:10px;overflow:hidden;margin:8px 0 15px}.progress-fill{background:var(--green);height:100%;border-radius:10px}.hint{font-size:11px;color:var(--muted);line-height:1.55}.empty{color:var(--muted);padding:10px;font-size:12px}.footer{margin-top:18px;border-top:1px solid var(--line);padding-top:12px;font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+@media(max-width:790px){.dashboard{padding:13px}.hero-grid{grid-template-columns:1fr 1fr}.h-layout{grid-template-columns:1fr}.tree{max-height:380px}.readiness-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.purpose-grid{grid-template-columns:1fr}body{padding:0}.dashboard{border-radius:0;border-left:0;border-right:0;padding:11px}.heading{font-size:17px}.hero-title{font-size:18px}.hero-grid,.next-layout,.perf-grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.tree-row .pill{font-size:8px;padding:2px 5px}.readiness-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main class="dashboard" id="progress-dashboard" aria-label="BRAIN progress dashboard">
+  <header class="head"><div class="mark" aria-hidden="true">▦</div><div><div class="heading" id="project-title">BRAIN · Progress Dashboard</div><div class="sub" id="project-sub">Loading verified repository snapshot</div></div></header>
+  <nav class="tabs" role="tablist" aria-label="Dashboard views"><button class="tab" role="tab" type="button" data-tab="workstream" aria-selected="true">Work Hierarchy</button><button class="tab" role="tab" type="button" data-tab="performance" aria-selected="false">Performance</button></nav>
+  <section id="dashboard-content" aria-live="polite"><p class="empty">Awaiting verified project data.</p></section>
+  <footer class="footer" id="dashboard-footer">BRAIN · DCM-derived read-only template · Source-bound data only</footer>
+</main>
+<script id="project-snapshot" type="application/json">__PROJECT_SNAPSHOT_JSON__</script>
+<script>
+(function(){
+'use strict';
+const host=document.getElementById('progress-dashboard');
+const content=document.getElementById('dashboard-content');
+const tabs=Array.from(host.querySelectorAll('[data-tab]'));
+const state={tab:'workstream',selected:null,open:new Set(),query:'',inspector:'work',evidenceQuery:'',browseAll:false,selectedRef:null,initialized:false};
+let data=null;
+const esc=s=>String(s===undefined||s===null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pill=s=>'<span class="pill '+esc(s)+'">'+({accepted:'ACCEPTED',active:'ACTIVE',partial:'STARTED',planned:'FUTURE',blocked:'BLOCKED',invalidated:'INVALIDATED',pending:'PENDING'}[s]||'NOT RECORDED')+'</span>';
+const display=u=>u.displayStatus||u.status||'planned';
+const fmt=n=>Number.isInteger(n)?String(n):'Not recorded';
+const purposeText=value=>esc(value||'The project plan does not provide this explanation.');
+function humanContext(item,hero){
+ const u=item||{};
+ if(hero)return '<div class="purpose-box"><strong>WHAT IS THIS BUILD UNIT FOR?</strong><p>'+purposeText(u.purpose)+'</p></div>'+
+  '<div class="purpose-grid"><div class="purpose-detail"><strong>WHY IT MATTERS</strong>'+purposeText(u.whyItMatters)+'</div><div class="purpose-detail"><strong>WHAT SUCCESS LOOKS LIKE</strong>'+purposeText(u.expectedResult)+'</div></div>'+
+  '<div class="purpose-detail" style="margin-top:9px"><strong>WHAT THIS UNIT DOES NOT DO</strong>'+purposeText(u.scopeBoundary)+'</div>';
+ return '<div class="ins-purpose"><div class="ins-label">What this work is for</div><div class="ins-body">'+purposeText(u.purpose)+'</div>'+
+  '<div class="ins-label">Why it matters</div><div class="ins-body">'+purposeText(u.whyItMatters)+'</div>'+
+  '<div class="ins-label">What success looks like</div><div class="ins-body">'+purposeText(u.expectedResult)+'</div>'+
+  '<div class="ins-label">What this work does not do</div><div class="ins-body">'+purposeText(u.scopeBoundary)+'</div></div>';
+}
+const nodeIndex=()=>new Map(data.units.map(u=>[String(u.id),u]));
+const workIndex=()=>new Map(data.workstreams.map(w=>[String(w.id),w]));
+const refs=()=>new Map((data.verificationCatalog||[]).map(r=>[String(r.id),r]));
+const unitLinks=u=>Array.isArray(u.verificationRefs)?u.verificationRefs.map(r=>typeof r==='string'?r:r.refId).filter(Boolean):[];
+const info=(label,value)=>'<div class="hero-field"><div class="field-title">'+esc(label)+'</div><div class="field-content">'+esc(value||'The project record does not say yet.')+'</div></div>';
+const row=(label,detail,done)=>'<div class="readiness-item"><div class="ready-icon '+(done?'done':'wait')+'">'+(done?'✓':'◌')+'</div><div class="ready-label">'+esc(label)+'</div><div class="ready-sub">'+esc(detail)+'</div></div>';
+const safeHref=u=>typeof u==='string'&&/^https:\/\/github\.com\/woodpk\/gdrive-sync-obsidian-plugin\/blob\/[a-f0-9]{40}\/(?!.*(?:^|\/)archive\/)[a-zA-Z0-9/_\-.]+$/.test(u)?u:null;
+function validate(d){
+ if(!d||!d.project||!d.active||!d.activePresentation||!d.nextStep||!d.closeoutReadiness||!Array.isArray(d.workstreams)||!Array.isArray(d.units)||!Array.isArray(d.verificationCatalog)||!Array.isArray(d.sources))throw Error('Draft 1 snapshot contract incomplete');
+ if(d.units.length < d.workstreams.length||d.workstreams.length!==7||d.verificationCatalog.length<1)throw Error('BRAIN snapshot hierarchy or verification inventory missing');
+ if(!d.project.commit||!d.project.name)return false;
+ for(const u of d.units){
+  if(!['accepted','active','partial','planned','blocked','invalidated'].includes(display(u)))throw Error('Unsupported hierarchy presentation state for '+u.id);
+  for(const field of ['purpose','whyItMatters','expectedResult','scopeBoundary'])if(typeof u[field]!=='string'||u[field].length<40)throw Error('Missing purpose field '+field+' for '+u.id);
+ }
+ return true;
+}
+function hero(){
+ const ap=data.activePresentation||{},next=data.nextStep||{},w=data.closeoutReadiness||{};
+ const activeUnit=nodeIndex().get(data.active.unitId);
+ return '<section class="hero" aria-label="Active Unit"><div class="hero-top"><span class="section-cap" style="color:#a4c5f7">CURRENT FEATURE · SOURCE-BOUND REPORTING FOCUS</span>'+pill(activeUnit?.status||'planned')+'</div>'+
+ '<div class="hero-title">'+esc(data.active.unitId)+' — '+esc(ap.name||'Active Build Unit')+'</div>'+
+ '<div class="hero-sub">'+esc(ap.scope||data.active.workstreamId)+' · '+esc(ap.sourceLabel||'Current project records')+'</div>'+humanContext(activeUnit,true)+
+ '<div class="hero-grid">'+info('What has been done',ap.construction)+info('What the tests show',ap.qualification)+info('Has it been accepted?',ap.acceptance)+'</div></section>'+
+ '<section class="next"><div class="pair"><h2>Authorized Next Step / Boundary</h2><span class="pill active">'+esc(next.role||'Role not named')+'</span></div>'+
+ '<div class="next-layout"><div class="next-action"><div class="section-cap" style="color:#a2c2ec">WHAT NEEDS TO HAPPEN NEXT</div><strong>'+esc(next.title||'Not recorded')+'</strong><div class="hint">'+esc(next.context||'Read the full instruction below for the details.')+'</div>'+
+ '<details class="exact-directive"><summary>Read the exact instruction from the project record</summary><p>'+esc(next.sourceText||data.active.nextAction)+'</p></details></div>'+
+ '<div class="guardrail"><div class="section-cap">WHAT MUST NOT HAPPEN YET</div><p>'+esc(next.boundary||'An accepted progress status does not itself grant execution, merge or release authorization.')+'</p><div class="sub">Based on: '+esc(next.sourceLabel||'Current project records')+'</div></div></div></section>';
+}
+function hierarchy(){
+ return hero()+
+ '<div class="section-head"><div><h2>Work Hierarchy</h2><div class="sub">Explore the work, see what is complete, and open any item for its details.</div></div><div class="sub">'+data.workstreams.length+' Workstreams · '+data.units.filter(u=>u.nodeType==='major_unit').length+' Build Units</div></div>'+
+ '<div class="h-layout"><section class="work-panel" aria-label="Project work hierarchy"><div class="tools"><input class="search" type="search" data-search placeholder="Find Workstream or Build Unit..." aria-label="Search work items" value="'+esc(state.query)+'"><button class="toolbtn" data-expand="all">Expand all</button><button class="toolbtn" data-expand="none">Collapse all</button></div><div class="tree" data-tree></div></section>'+
+ '<aside class="inspector" data-inspector aria-label="Details for the selected work item"></aside></div>'+
+ '<div class="legend"><span class="section-cap">Colors</span>'+
+ [['planned','Not started'],['active','In progress'],['accepted','Accepted'],['blocked','Blocked'],['invalidated','Invalidated or changed dependencies']].map(x=>'<span class="legend-item"><span class="legend-swatch '+x[0]+'"></span>'+x[1]+'</span>').join('')+
+ '<span class="legend-item"><strong style="color:var(--type)">Aa</strong> Subdued type</span></div>'+
+ '<section class="readiness"><div class="section-head"><div><h2>'+esc(wName())+' Closeout Readiness</h2><div class="sub">See what is finished and what still needs to happen before this Workstream can close.</div></div>'+pill(data.closeoutReadiness.status)+'</div>'+
+ '<div class="readiness-grid">'+(data.closeoutReadiness.checks||[]).map(x=>row(x.label,x.detail,x.complete===true)).join('')+'</div></section>';
+}
+function wName(){return String(data.active.workstreamId||'Active Workstream');}
+function drawTree(){
+ const el=host.querySelector('[data-tree]');if(!el)return;
+ const q=state.query.trim().toLowerCase(),map=nodeIndex();let html='';
+ for(const w of data.workstreams){
+  const ws=map.get(w.id),children=data.units.filter(u=>u.parentId===w.id&&u.nodeType==='major_unit');
+  const match=(w.id+' '+w.name).toLowerCase().includes(q);
+  const visible=children.filter(u=>match||(u.id+' '+u.name).toLowerCase().includes(q));
+  if(q&&!match&&!visible.length)continue;
+  const open=!!q||state.open.has(w.id),ds=display(ws||w);
+  html+=treeNode({id:w.id,name:w.name,nodeType:'workstream',displayStatus:ds,status:w.status},false,open,w.acceptedBuildUnits+'/'+w.totalBuildUnits+' Build Units accepted');
+  if(open){html+='<div class="branch">';for(const u of visible)html+=treeNode(u,true,false,'Build Unit');html+='</div>';}
+ }
+ el.innerHTML=html||'<div class="empty">No work items match that search.</div>';
+}
+function treeNode(u,child,open,desc){
+ const ds=display(u),type=child?'Build Unit':'Workstream',id=String(u.id);
+ return '<div class="tree-row '+(state.selected===id?'selected':'')+'" data-node-id="'+esc(id)+'">'+
+ (child?'<span class="chev" aria-hidden="true">◈</span>':'<button class="chev" type="button" data-toggle="'+esc(id)+'" aria-label="'+(open?'Collapse ':'Expand ')+esc(id)+'">'+(open?'▾':'▸')+'</button>')+
+ '<span class="mini-state '+ds+'"></span><button type="button" class="item-btn" data-select="'+esc(id)+'"><span class="item-wrap"><span class="work-name '+ds+'"><span class="work-id">'+esc(child?id.split('/')[1]:id)+'</span>'+esc(u.name)+'</span><span class="type-label">'+esc(desc||type)+'</span></span></button>'+pill(ds)+'</div>';
+}
+function sourceLinks(u){
+ return (u.sources||[]).map(s=>{
+  const url=safeHref(s.url);
+  return '<div style="margin:5px 0">'+(url?'<a class="source-link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.label)+'</a>':'<span class="sub">'+esc(s.label)+'</span>')+'</div>';
+ }).join('');
+}
+function evidenceList(u){
+ const all=state.browseAll||u.nodeType==='workstream';
+ let ids=all?(data.verificationCatalog||[]).map(r=>r.id):unitLinks(u);
+ const q=state.evidenceQuery.trim().toLowerCase(),idx=refs();
+ ids=ids.filter(id=>{const r=idx.get(String(id));return !q||(String(id)+' '+String(r&&r.name||'')+' '+String(r&&r.description||'')).toLowerCase().includes(q);});
+ let list=ids.map(id=>{const r=idx.get(String(id));if(!r)return '';return '<button type="button" class="evidence-row" data-ref="'+esc(id)+'"><span>'+esc(id)+' · '+esc(r.name)+'</span>'+pill(r.status||'planned')+'</button>';}).join('');
+ const selected=state.selectedRef&&idx.get(state.selectedRef);
+ let detail='';
+ if(selected){
+   detail='<div class="ref-detail"><button class="ref-details-back" data-back-ref type="button">Close requirement details</button><h3>'+esc(selected.id)+' · '+esc(selected.name)+'</h3><div class="ref-meta">'+esc(selected.type||'Verification check')+' · '+esc(selected.status||'Not recorded')+'</div>'+
+   '<div class="ins-label">What this check requires</div><div class="ref-text">'+esc(selected.description||'Not recorded')+'</div><div class="ins-label">What needs to be proven</div><div class="ref-text">Evaluate the requirement using the source identified here; an accepted build unit does not automatically close a separate system or activation gate.</div><details class="exact-directive"><summary>Read the exact acceptance rule</summary><p>'+esc(selected.nextProof||'Not recorded')+'</p></details>'+
+   '<div class="ins-label">Where this requirement comes from</div>'+sourceLinks(selected)+'</div>';
+ }
+ return '<p class="hint">These checks are linked to the work, but they do not count as completed tasks or automatically pass when a Build Unit is accepted. The catalog contains '+data.verificationCatalog.length+' checks and planned tests.</p>'+
+ '<button type="button" class="toolbtn" data-browse-all>'+ (state.browseAll?'Show checks for this Build Unit':'See every check in the catalog')+'</button>'+
+ '<input class="evidence-search" type="search" data-evidence-search aria-label="Search verification requirements" placeholder="Find PR, M1/M2 or E2E..." value="'+esc(state.evidenceQuery)+'">'+
+ '<div class="sub" data-evidence-count>'+ids.length+' matching checks</div><div class="evidence-list" data-evidence-list>'+ (list||'<div class="empty">No checks match that search.</div>')+'</div>'+detail;
+}
+function renderInspector(){
+ const box=host.querySelector('[data-inspector]');if(!box)return;
+ const index=nodeIndex(),u=index.get(state.selected)||index.get(data.active.unitId);
+ if(!u){box.innerHTML='<div class="empty">Select a work item.</div>';return;}
+ const ds=display(u);
+ let body='';
+ if(state.inspector==='evidence'){body=evidenceList(u);}
+ else{
+  const done=u.status==='accepted',current=u.id===data.active.unitId;
+  body=humanContext(u,false)+'<div class="ins-label">Where this work stands</div><div class="ins-body">'+esc(u.detail||'Not recorded')+'</div>'+
+  '<div class="ins-label">Acceptance progress</div><div class="soft-box">'+(u.nodeType==='workstream'?esc((data.workstreams.find(w=>w.id===u.id)||{}).acceptedBuildUnits)+' of '+esc((data.workstreams.find(w=>w.id===u.id)||{}).totalBuildUnits)+' Build Units accepted':done?'The source records formally accept this bounded unit. Acceptance does not automatically authorize merge, activation or release.':current?'This is the current Build Unit. It still needs independent acceptance.':'Independent acceptance has not been recorded yet.')+'</div>'+
+  (u.displayReason?'<div class="ins-label">Why this status changed</div><div class="ins-body">'+esc(u.displayReason)+'</div>':'')+
+  '<div class="ins-label">Read the original records</div>'+sourceLinks(u)+ (u.acceptedSourceSha?'<div class="ins-label">Accepted source revision</div><div class="sub">'+esc(u.acceptedSourceSha)+'</div>':'');
+ }
+ box.innerHTML='<div class="pair"><span class="section-cap">SELECTED ITEM</span>'+pill(ds)+'</div><div class="ins-title">'+esc(u.id)+' · '+esc(u.name)+'</div><div class="sub">'+esc(u.nodeTypeLabel||u.nodeType)+'</div>'+
+ '<div class="ins-tabs" role="tablist"><button type="button" class="ins-tab" data-inspect="work" aria-selected="'+(state.inspector==='work')+'">About this work</button><button type="button" class="ins-tab" data-inspect="evidence" aria-selected="'+(state.inspector==='evidence')+'">Checks &amp; evidence</button></div>'+body;
+}
+function metric(label,number,note,color){return '<div class="metric"><div class="k">'+esc(label)+'</div><div class="n" style="color:'+color+'">'+esc(number)+'</div><div class="note">'+esc(note)+'</div></div>';}
+function performance(){
+ const acceptedWS=data.workstreams.filter(w=>w.status==='accepted').length,bu=data.units.filter(u=>u.nodeType==='major_unit');
+ const done=bu.filter(u=>u.status==='accepted').length,v=data.activePresentation||{};
+ const latest=v.lastEvidence;
+ return '<div class="section-head"><div><h2>Progress &amp; Verification</h2><div class="sub">A snapshot of accepted work and the test evidence actually recorded.</div></div></div>'+
+ '<div class="metrics">'+metric('FORMAL WORKSTREAM CLOSURE','N/A','Parent-wide acceptance history is not reconstructed from feature-branch records.','var(--future)')+
+ metric('ACCEPTED BUILD UNITS',done+' / '+bu.length,'These Build Units have been accepted by a Reviewer and closed out by the Builder.','var(--green)')+
+ metric('ACTIVE UNIT TEST EVIDENCE',latest&&latest.pass!==null?latest.pass+' / '+(latest.pass+latest.fail):'N/A',latest&&latest.scope?latest.scope:'No complete, source-linked test result is available for the current unit.','var(--blue)')+
+ metric('LINKED VERIFICATION CHECKS',data.verificationCatalog.length,'These source-bound checks are distinct from accepted build units.','var(--future)')+'</div>'+
+ '<div class="perf-grid"><section class="perf-panel"><h2>How much work has been accepted</h2><div class="sub">Formal workstream closure <span style="float:right">Not assessed</span></div><div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>'+
+ '<div class="sub">Build Units <span style="float:right">'+done+' / '+bu.length+'</span></div><div class="progress-track"><div class="progress-fill" style="width:'+(100*done/bu.length)+'%"></div></div><p class="hint">Build Unit counts are limited to discovered BRAIN feature branches. Formal Workstream acceptance and product-wide completion are not established by this adapter.</p></section>'+
+ '<section class="perf-panel"><h2>What the test results actually show</h2><div class="soft-box">'+(latest&&latest.pass!==null?'<strong>'+esc(latest.pass)+' PASS / '+esc(latest.fail)+' FAIL</strong><p class="hint">'+esc(latest.scope)+'</p><p class="hint">Evidence: '+esc(latest.path)+'</p>':'<div class="hint">The project record does not provide enough information to show a verified test result for the current Build Unit.</div>')+'</div><div class="ins-label">What these results do not prove</div><p class="hint">These results do not establish how the installed system performs, whether the full test suite passes, or when the project will finish.</p></section></div>'+
+ '<section class="perf-panel" style="margin-top:12px"><h2>What still needs full-system verification</h2><p class="hint">Each outstanding BRAIN integration and system-wide requirement needs its own evidence and independent acceptance. Passing a schema check or a small local test does not show that the whole installed system works.</p></section>';
+}
+function render(){
+ try{
+  if(!validate(data))throw Error('Project metadata missing');
+  document.getElementById('project-title').textContent=data.project.name+' / Progress Dashboard';
+  document.getElementById('project-sub').textContent=[data.project.repository,data.project.branch,data.project.commit.slice(0,10),data.project.asOf].filter(Boolean).join(' · ');
+  for(const t of tabs)t.setAttribute('aria-selected',String(t.dataset.tab===state.tab));
+  content.innerHTML=state.tab==='workstream'?hierarchy():performance();
+  if(state.tab==='workstream'){drawTree();renderInspector();}
+ }catch(e){content.innerHTML='<div class="empty" role="alert">Dashboard validation failed: '+esc(e.message)+'</div>';}
+}
+function updateEvidenceSearch(){
+ const el=host.querySelector('[data-inspector]');if(!el)return;
+ const focus=document.activeElement===host.querySelector('[data-evidence-search]');
+ renderInspector();
+ if(focus){const inp=host.querySelector('[data-evidence-search]');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
+}
+host.addEventListener('click',e=>{
+ const t=e.target.closest('[data-tab]');if(t){state.tab=t.dataset.tab;render();return;}
+ const x=e.target.closest('[data-expand]');if(x){state.open=x.dataset.expand==='all'?new Set(data.workstreams.map(w=>w.id)):new Set();drawTree();return;}
+ const toggle=e.target.closest('[data-toggle]');if(toggle){const id=toggle.dataset.toggle;state.open.has(id)?state.open.delete(id):state.open.add(id);drawTree();return;}
+ const sel=e.target.closest('[data-select]');if(sel){state.selected=sel.dataset.select;state.inspector='work';state.selectedRef=null;state.evidenceQuery='';renderInspector();drawTree();return;}
+ const ins=e.target.closest('[data-inspect]');if(ins){state.inspector=ins.dataset.inspect;state.selectedRef=null;renderInspector();return;}
+ const b=e.target.closest('[data-browse-all]');if(b){state.browseAll=!state.browseAll;state.selectedRef=null;renderInspector();return;}
+ const r=e.target.closest('[data-ref]');if(r){state.selectedRef=r.dataset.ref;renderInspector();return;}
+ if(e.target.closest('[data-back-ref]')){state.selectedRef=null;renderInspector();}
+});
+host.addEventListener('input',e=>{
+ if(e.target.matches('[data-search]')){state.query=e.target.value;drawTree();}
+ if(e.target.matches('[data-evidence-search]')){state.evidenceQuery=e.target.value;updateEvidenceSearch();}
+});
+try{data=JSON.parse(document.getElementById('project-snapshot').textContent);const active=data&&data.active?data.active.unitId:null;state.selected=active;const ws=data&&data.active?data.active.workstreamId:null;if(ws)state.open.add(ws);render();}
+catch(e){content.innerHTML='<div class="empty" role="alert">Unable to read the validated repository snapshot: '+esc(e.message)+'</div>';}
+})();
+</script>
+</body>
+</html>
