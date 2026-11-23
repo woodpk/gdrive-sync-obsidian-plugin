@@ -142,3 +142,34 @@ test("DEC-339 WS-03 paired inventory account binding is deterministic opaque and
   );
   assert.equal(await missing.pairedInventoryAccountKey(), undefined);
 });
+
+
+test("DEC-339 WS-03 metadata reader fails closed before transport when explicit paired account identity is absent", async () => {
+  const secrets = new MemorySecrets();
+  secrets.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID, JSON.stringify({
+    accessToken: "active", expiresAtMs: Date.now() + 60_000,
+    tokenType: "Bearer", scope: "https://www.googleapis.com/auth/drive.file",
+  }));
+  let requests = 0;
+  const boundary = createObsidianGoogleDriveBoundary({
+    oauth: { clientId: "c", redirectUri: "https://cb" },
+    secretStorage: secrets,
+    requestUrl: async () => {
+      requests++;
+      throw new Error("metadata transport must not run without explicit pairing");
+    },
+  });
+  const result = await boundary.metadataReader.verifyRootWideManagedProvenance({
+    vaultIdentity: vault("vault-1"),
+    deviceIdentity: contractId<"DeviceIdentity">("device-1") as DeviceIdentity,
+    pairedAccountKey: "sha256:" + "0".repeat(64),
+    managedRootId: id("root"),
+    protocolVersion: contractId<"ProtocolVersion">("1") as ProtocolVersion,
+    contentDomainRootId: id("content"),
+    configDomainRootId: id("config"),
+    scopePolicyFingerprint: "scope:ws03",
+    inventorySchemaVersion: 2,
+  });
+  assert.equal(result.status, "incompatible");
+  assert.equal(requests, 0);
+});
