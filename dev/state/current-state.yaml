@@ -2073,19 +2073,6 @@ dec339_ws02_bu05_cursor_recovery_gates_2026_11_20:
   current_qualified_source_sha: "0533ab2edc8f8631c72aee5bf5a3b1b23d1beb1b"
   current_qualified_source_tree: "702e8e5d875b31f0f1d9cfb099a06c75b1f9b779"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
-  r1_phxci_run_id: "4f7089b8-f3fc-4e3d-8534-79f08e474868"
-  r1_source_sha: "f494f68603330adf283b9680d90047d76cd00be4"
-  r1_evidence_commit: "cc47420769ddfbf754b08288200454c8b3e2079a"
-  r1_result: "BLOCKED_TEST_FAILURE"
-  r1_failure: "WS03_SUCCESS_FIXTURE_ROOT_METADATA_OMITTED_REQUIRED_PARENTS_ARRAY"
-  r1_classification: "TEST_DEFECT"
-  r1_preserved_successes: "AUTHORITY_PREFLIGHT_NODE_PROJECT_INSTALL_TYPECHECK_REPOSITORY_GATE"
-  r1_focused_result: "77_PASS_1_FAIL"
-  r1_full_result: "1341_PASS_1_FAIL"
-  r1_correction_commit: "3728d0b8dc7849bb3a1df566ab704bbe71ae7248"
-  r1_oracle_change: "NONE_FIXTURE_COMPLETENESS_ONLY"
-  next_action: "RERUN_PHXCI_AFTER_TEST_FIXTURE_CORRECTION"
-
   qualification_classification: "SOFTWARE_ONLY;NO_PHYSICAL_ACTIVATION"
   qualification_evidence_commit_did_not_change_source: true
   phxci_r4_run_id: "99a90abf-16fd-4e31-a5ca-0d05589de610"
@@ -2305,9 +2292,20 @@ dec339_ws03_remote_metadata_transport_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   dec339_integration_complete: false
-  next_action: "RUN_FULL_SOFTWARE_ONLY_PHXCI_AGAINST_CURRENT_REMOTE_CANDIDATE"
+  next_action: "RERUN_PHXCI_AFTER_TEST_FIXTURE_CORRECTION"
 
   pre_compatibility_source_sha: "2c46aa4a4be76f85ebba51d35e5ac4aef7a413d7"
   phxci_compatibility_test_command_commit: "7d7c9f3853b61602b0b9c2afa4d9b59cf9bbc572"
   exact_qualification_source: "RESOLVE_REMOTE_BRANCH_HEAD_AT_DISPATCH"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
+  r1_phxci_run_id: "4f7089b8-f3fc-4e3d-8534-79f08e474868"
+  r1_source_sha: "f494f68603330adf283b9680d90047d76cd00be4"
+  r1_evidence_commit: "cc47420769ddfbf754b08288200454c8b3e2079a"
+  r1_result: "BLOCKED_TEST_FAILURE"
+  r1_failure: "WS03_SUCCESS_FIXTURE_ROOT_METADATA_OMITTED_REQUIRED_PARENTS_ARRAY"
+  r1_classification: "TEST_DEFECT"
+  r1_preserved_successes: "AUTHORITY_PREFLIGHT_NODE_PROJECT_INSTALL_TYPECHECK_REPOSITORY_GATE"
+  r1_focused_result: "77_PASS_1_FAIL"
+  r1_full_result: "1341_PASS_1_FAIL"
+  r1_correction_commit: "3728d0b8dc7849bb3a1df566ab704bbe71ae7248"
+  r1_oracle_change: "NONE_FIXTURE_COMPLETENESS_ONLY"
