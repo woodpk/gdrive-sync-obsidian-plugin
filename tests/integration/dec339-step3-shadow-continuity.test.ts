@@ -111,6 +111,8 @@ class Step3DriveServer {
     if (q.includes("brainSyncRole") && q.includes("brain-sync-content")) return [this.content];
     if (q.includes("brainSyncRole") && q.includes("brain-sync-portable-config")) return [this.config];
     if (q.includes("appProperties has") && q.includes("brainManagedRootId")) return [this.current];
+    if (q.includes(`'${this.root.id}' in parents`) &&
+        q.includes("__brain_sync_portable_config__")) return [this.config];
     if (q.includes(`'${this.content.id}' in parents`)) {
       if (q.includes("__brain_sync_portable_config__")) return [];
       if (q.includes("name=") && !q.includes("note.md")) return [];
