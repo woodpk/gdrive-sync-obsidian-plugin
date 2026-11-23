@@ -2535,3 +2535,6 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   production_code_changed: true
   live_migration_performed: false
   live_operations_performed: false
+  pre_phx_fixture_correction_commit: "b438931616f6764407f8a5914813e1f5ecdc33ac"
+  pre_phx_fixture_correction: "OPEN_READ_SCHEMA_FAILURE_ASSERTED_AS_FAIL_CLOSED_RESULT_NOT_THROW"
+  pre_phx_oracle_change: "NONE"
