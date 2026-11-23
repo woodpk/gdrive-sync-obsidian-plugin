@@ -2,6 +2,7 @@ import { contractId, type ConfigurationClassification, type LocalEnumerationUnce
 import type { LocalObservation } from "../contracts/snapshot";
 import { SelectiveConfigurationPolicy } from "../local/config-policy";
 import { LocalExclusionPolicy } from "../local/exclusions";
+import { sha256Text } from "../util/sha256";
 
 export const CONFIG_REMOTE_NAMESPACE = "__brain_sync_portable_config__";
 const vp = (value: string) => contractId<"VaultPath">(value) as VaultPath;
@@ -60,6 +61,19 @@ export class ProductPathScope {
 
   portableLogicalPaths(): readonly VaultPath[] { return [...this.portable].map(relative => vp(`${CONFIG_REMOTE_NAMESPACE}/${relative}`)); }
   activeConfigurationDirectory(): VaultPath { return this.configurationDirectory; }
+
+  /** Stable DEC-339 identity for the exact effective planning scope, never path/content telemetry. */
+  inventoryScopeFingerprint(): string {
+    const settings = this.settings();
+    const value = {
+      version: 1,
+      configurationDirectory: norm(String(this.configurationDirectory)),
+      userExclusionPatterns: [...settings.userExclusionPatterns].map(norm).sort(),
+      operationalExclusions: [...this.operationalExclusions()].map(norm).sort(),
+      portableLogicalPaths: this.portableLogicalPaths().map(path => norm(String(path))).sort(),
+    };
+    return String(sha256Text(JSON.stringify(value)));
+  }
 }
 
 function mapObservation(observation: LocalObservation, path: VaultPath): LocalObservation {
