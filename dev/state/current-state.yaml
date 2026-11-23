@@ -2459,7 +2459,7 @@ dec339_step4_observation_comparison_2026_11_23:
   r1_oracle_change: "NONE_FIXTURE_SCHEMA_VERSION_ONLY"
 
   qualification_source_sha: "41653ada82c90d898c730e181290ca155ff1574f"
-  qualification_verified_tree: "b59e6a64d8d1b63f72e2b327cadb8d2b7ad554bf"
+  qualification_verified_tree: "315d87203ea83681f4ea75edd52d8f911c009eeb"
   qualification_runtime_sha: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   qualification_run_id: "9d34351e-227f-4082-8ab6-46b7eae3b36e"
   qualification_evidence_commit: "f512e523b11f769769f9a6afd113ff541f7b3984"
