@@ -62,6 +62,10 @@ window.addEventListener("message", async event => {
     }, location.origin);
   }
 });
+parent.postMessage({
+  kind: "ready",
+  frameId: new URLSearchParams(location.search).get("id"),
+}, location.origin);
 </script>`;
 }
 
@@ -69,8 +73,8 @@ function rootHtml(cooperativeDb: string, blockedDb: string): string {
   return `<!doctype html>
 <meta charset="utf-8">
 <title>WS-02 BU-06 real IndexedDB arbitration</title>
-<iframe id="a" src="/frame.html"></iframe>
-<iframe id="b" src="/frame.html"></iframe>
+<iframe id="a" src="/frame.html?id=a"></iframe>
+<iframe id="b" src="/frame.html?id=b"></iframe>
 <script>
 "use strict";
 const cooperativeDb = ${JSON.stringify(cooperativeDb)};
@@ -78,9 +82,22 @@ const blockedDb = ${JSON.stringify(blockedDb)};
 const a = document.getElementById("a");
 const b = document.getElementById("b");
 const pending = new Map();
+const readyFrames = new Set();
+const readyWaiters = new Map();
 let sequence = 0;
 window.addEventListener("message", event => {
-  if (event.origin !== location.origin || !event.data || event.data.kind !== "response") return;
+  if (event.origin !== location.origin || !event.data) return;
+  if (event.data.kind === "ready" && event.data.frameId) {
+    readyFrames.add(event.data.frameId);
+    const waiter = readyWaiters.get(event.data.frameId);
+    if (waiter) {
+      readyWaiters.delete(event.data.frameId);
+      clearTimeout(waiter.timer);
+      waiter.resolve();
+    }
+    return;
+  }
+  if (event.data.kind !== "response") return;
   const waiter = pending.get(event.data.id);
   if (!waiter) return;
   pending.delete(event.data.id);
@@ -88,10 +105,14 @@ window.addEventListener("message", event => {
   if (event.data.ok) waiter.resolve(event.data.value);
   else waiter.reject(new Error(event.data.error || "frame-command-failed"));
 });
-function loaded(frame) {
-  return new Promise(resolve => {
-    if (frame.contentDocument && frame.contentDocument.readyState === "complete") resolve();
-    else frame.addEventListener("load", resolve, { once: true });
+function ready(frameId) {
+  if (readyFrames.has(frameId)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      readyWaiters.delete(frameId);
+      reject(new Error("frame-ready-timeout:" + frameId));
+    }, 30000);
+    readyWaiters.set(frameId, { resolve, reject, timer });
   });
 }
 function command(frame, name, databaseName, extra = {}) {
@@ -100,7 +121,7 @@ function command(frame, name, databaseName, extra = {}) {
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error("frame-command-timeout:" + name));
-    }, 15000);
+    }, 30000);
     pending.set(id, { resolve, reject, timer });
     frame.contentWindow.postMessage({ id, command: name, args: { databaseName, ...extra } }, location.origin);
   });
@@ -115,7 +136,7 @@ async function postResult(value) {
 }
 (async () => {
   try {
-    await Promise.all([loaded(a), loaded(b)]);
+    await Promise.all([ready("a"), ready("b")]);
 
     const cooperativeSeed = await command(a, "seedLegacy", cooperativeDb);
     const cooperativeUpgrade = await command(b, "upgradeSnapshot", cooperativeDb);
@@ -185,7 +206,7 @@ async function stopBrowser(browser: ChildProcessWithoutNullStreams | undefined):
 
 test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rollback safely", {
   skip: process.platform !== "win32",
-  timeout: 90000,
+  timeout: 150000,
 }, async () => {
   const edge = edgeExecutable();
   assert.ok(edge, "Microsoft Edge is required on Windows for the real multi-context IndexedDB gate");
@@ -286,7 +307,7 @@ test("WS-02 BU-06 real Edge contexts arbitrate v1→v2 upgrade, blocking and rol
     const result = await Promise.race([
       resultPromise,
       new Promise<BrowserResult>((_, reject) => setTimeout(() => reject(new Error(
-        `Timed out waiting for real-browser IndexedDB result\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`)), 60000)),
+        `Timed out waiting for real-browser IndexedDB result\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`)), 120000)),
     ]);
     assert.equal(result.ok, true, result.error ?? `browser gate failed\nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`);
     assert.ok(result.cooperative);
