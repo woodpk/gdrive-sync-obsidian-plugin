@@ -1,10 +1,12 @@
 import "../contracts/drive/phase6-remote-protocol.test";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath } from "../../src/contracts/common";
+import { contractId, type BinaryContentSource, type RemoteObjectId, type VaultIdentity, type VaultPath, type DeviceIdentity, type ProtocolVersion } from "../../src/contracts/common";
+import type { InventoryIdentityFence } from "../../src/contracts/verified-metadata-inventory";
 import type { DriveResult } from "../../src/contracts/google-drive";
 import { GoogleOAuthSession, ObsidianSecretStore } from "../../src/drive/auth";
 import { GoogleDriveAdapter } from "../../src/drive/google-drive-port";
+import { createObsidianGoogleDriveBoundary } from "../../src/drive/runtime";
 import { GoogleHttpTransport, type PortableRequestInit } from "../../src/drive/transport";
 class MemorySecrets { readonly values=new Map<string,string>(); getSecret(id:string){return this.values.get(id)??null;} setSecret(id:string,v:string){this.values.set(id,v);} deleteSecret(id:string){this.values.delete(id);} }
 class StubTransport extends GoogleHttpTransport { constructor(private readonly handler:(url:string,init?:PortableRequestInit)=>Promise<DriveResult<Response>>){ const m=new MemorySecrets(); super(new GoogleOAuthSession({clientId:"c",redirectUri:"https://cb"},new ObsidianSecretStore(m))); } override request(url:string,init:PortableRequestInit={}):Promise<DriveResult<Response>>{ return this.handler(url,init); } }
@@ -52,4 +54,91 @@ test("resumable create consumes content incrementally and verifies size", async(
   const a=adapter(async (url,init)=>{ if(url.includes("/about")) return ok({user:{permissionId:"acct"}}); const fixture=domainFixtures(url); if(fixture) return fixture; if(url.startsWith("https://www.googleapis.com/upload/")) return ok({},200,{location:"https://upload.example/session"}); if(url==="https://upload.example/session"){ const range=new Headers(init?.headers).get("content-range")!; uploadRanges.push(range); if(uploadRanges.length===1) return Promise.resolve({ok:true,value:new Response(undefined,{status:308,headers:{range:"bytes=0-262143"}})} as DriveResult<Response>); return ok({id:"new-id",name:"large.bin",mimeType:"application/octet-stream",parents:["content"],size:"500000",version:"1",appProperties:provenance("content")}); } throw new Error(url); });
   const source:BinaryContentSource={sizeBytes:500000,async *openChunks(){yield new Uint8Array(200000);yield new Uint8Array(200000);yield new Uint8Array(100000);}};
   const result=await a.create(id("root"),{path:path("large.bin"),entityKind:"file",content:source,expectedEvidence:{sizeBytes:500000}}); assert.equal(result.ok,true); assert.deepEqual(uploadRanges,["bytes 0-262143/*","bytes 262144-499999/500000"]);
+});
+
+
+test("DEC-339 WS-03 production boundary exposes verified metadata reader over the existing authenticated requestUrl transport", async () => {
+  const secrets = new MemorySecrets();
+  secrets.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID, JSON.stringify({
+    accessToken: "active", refreshToken: "refresh", expiresAtMs: Date.now() + 60_000,
+    tokenType: "Bearer", scope: "https://www.googleapis.com/auth/drive.file",
+  }));
+  secrets.setSecret("brain-gdrive-paired-account", "permission-123");
+  const calls: Array<{ url: string; method: string }> = [];
+  const encoder = new TextEncoder();
+  const response = (body: unknown, status = 200) => {
+    const bytes = encoder.encode(JSON.stringify(body));
+    return Promise.resolve({
+      status, headers: { "content-type": "application/json" },
+      arrayBuffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    });
+  };
+  const requestUrl = async (request: { readonly url: string; readonly method?: string }) => {
+    calls.push({ url: request.url, method: request.method ?? "GET" });
+    const url = norm(request.url);
+    if (url.includes("/about?")) return response({ user: { permissionId: "permission-123" } });
+    if (url.includes("/files/root?")) return response(root());
+    if (url.includes("/files/content?")) return response(content());
+    if (url.includes("/files/config?")) return response(config());
+    if (isContentRootQuery(url)) return response({ files: [content()], incompleteSearch: false });
+    if (isConfigRootQuery(url)) return response({ files: [config()], incompleteSearch: false });
+    if (url.includes("brainManagedRootId")) return response({ files: [], incompleteSearch: false });
+    throw new Error("unexpected request: " + request.url);
+  };
+  const boundary = createObsidianGoogleDriveBoundary({
+    oauth: { clientId: "c", redirectUri: "https://cb" },
+    secretStorage: secrets,
+    requestUrl,
+    managedRemoteIdentity: () => ({
+      rootId: id("root"), vaultIdentity: vault("vault-1"),
+      protocolVersion: contractId<"ProtocolVersion">("1") as ProtocolVersion,
+    }),
+  });
+  assert.ok(boundary.metadataReader);
+  const accountKey = await boundary.drive.pairedInventoryAccountKey();
+  assert.ok(accountKey);
+  assert.notEqual(accountKey, "permission-123");
+  assert.match(accountKey!, /^sha256:[0-9a-f]{64}$/);
+  const fence: InventoryIdentityFence = {
+    vaultIdentity: vault("vault-1"),
+    deviceIdentity: contractId<"DeviceIdentity">("device-1") as DeviceIdentity,
+    pairedAccountKey: accountKey!,
+    managedRootId: id("root"),
+    protocolVersion: contractId<"ProtocolVersion">("1") as ProtocolVersion,
+    contentDomainRootId: id("content"),
+    configDomainRootId: id("config"),
+    scopePolicyFingerprint: "scope:ws03",
+    inventorySchemaVersion: 2,
+  };
+  const verified = await boundary.metadataReader.verifyRootWideManagedProvenance(fence);
+  assert.equal(verified.status, "ok");
+  assert.equal(calls.length > 0, true);
+  assert.equal(calls.every(call => call.method === "GET"), true);
+  assert.equal(calls.some(call => call.url.includes("/drive/v3/about")), true);
+  assert.equal(calls.some(call => call.url.includes("/drive/v3/files")), true);
+});
+
+test("DEC-339 WS-03 paired inventory account binding is deterministic opaque and absent without explicit pairing", async () => {
+  const paired = new MemorySecrets();
+  paired.setSecret("brain-gdrive-paired-account", "person@example.com");
+  const drive = new GoogleDriveAdapter(
+    new GoogleOAuthSession({ clientId: "c", redirectUri: "https://cb" }, new ObsidianSecretStore(paired)),
+    new StubTransport(async () => { throw new Error("network must not be used"); }),
+    new ObsidianSecretStore(paired),
+  );
+  const first = await drive.pairedInventoryAccountKey();
+  const second = await drive.pairedInventoryAccountKey();
+  assert.equal(first, second);
+  assert.ok(first);
+  assert.notEqual(first, "person@example.com");
+  assert.equal(first!.includes("person@example.com"), false);
+  assert.match(first!, /^sha256:[0-9a-f]{64}$/);
+
+  const unpaired = new MemorySecrets();
+  const missing = new GoogleDriveAdapter(
+    new GoogleOAuthSession({ clientId: "c", redirectUri: "https://cb" }, new ObsidianSecretStore(unpaired)),
+    new StubTransport(async () => { throw new Error("network must not be used"); }),
+    new ObsidianSecretStore(unpaired),
+  );
+  assert.equal(await missing.pairedInventoryAccountKey(), undefined);
 });
