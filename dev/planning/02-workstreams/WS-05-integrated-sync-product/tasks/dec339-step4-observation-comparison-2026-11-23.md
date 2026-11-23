@@ -3,7 +3,7 @@
 **Authorized:** Owner, 2026-11-23.  
 **Branch:** `build/dec339-step4-observation-comparison-20261123`  
 **Starting source:** `d8fdf66db0aeb7c44fafb42ccd5cbee706682425`  
-**Status:** BUILDER ACTIVE — isolated software comparison only.
+**Status:** ACCEPTED / CLOSED — independent Reviewer PASS WITH MINOR FINDINGS on 2026-11-23.
 
 ## Objective
 
@@ -83,3 +83,19 @@ Exact-source PHX-CI PASS followed by blind-first independent Reviewer acceptance
 - Step-4 implementation is test-only by design; shipping runtime remains unchanged and legacy planning/execution stays authoritative.
 - Focused PHX-CI selection includes the Step-4 parity gate, existing inventory assembler/projection tests, local invalidation coverage and accepted Step-3 continuity proof.
 - No live provider/database/device operation is used or authorized.
+
+
+## Accepted closeout
+
+- **Accepted source SHA:** `41653ada82c90d898c730e181290ca155ff1574f`
+- **Accepted Git tree:** `315d87203ea83681f4ea75edd52d8f911c009eeb`
+- **PHX-CI run:** `9d34351e-227f-4082-8ab6-46b7eae3b36e`
+- **Evidence commit:** `f512e523b11f769769f9a6afd113ff541f7b3984`
+- **Formal acceptance record:** `dev/reviews/dec339-step4-observation-comparison-20261123-review-brain-10-g01-resolution-acceptance.md`
+- **Formal acceptance commit:** `243b3edcd41058c65e00bd1d6baf3bfdb85b046d`
+- **Handoff-count at closeout:** `2` — no increment for the G-01 administrative confirmation.
+- **G-01:** resolved; incorrect state-only tree transcription corrected to the actual qualified tree with no software/test change and no PHX-CI rerun.
+
+Carry forward to later integration gates: software-only Drive/IndexedDB fixtures are not live provider/browser/device proof; conservative legacy fallback is not always a forced complete physical listing; local scope/lifecycle invalidation coverage remains distributed across existing suites; broader malformed-provider combinations remain primarily covered by focused projection/reader suites.
+
+**Step 5 remains separately Owner-gated and is not authorized by this closeout.**
