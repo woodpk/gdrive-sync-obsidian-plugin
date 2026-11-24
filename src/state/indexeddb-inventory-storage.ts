@@ -9,6 +9,7 @@ import type {
   InventoryPublishResult, InventoryReadLease, InventoryReadResult,
   InventoryRemoteEntity, InventoryStageRequest, InventoryLocalObservation, RemoteObjectId, VaultPath,
 } from "../contracts";
+import { inventoryContinuityGrant } from "../contracts/verified-metadata-inventory";
 import { inventoryFenceMatches } from "./verified-metadata-inventory-validation";
 import { inspectInventoryAuthorityFence, prepareInventoryAuthorityPublication } from "./persistent-state-store";
 
@@ -185,6 +186,9 @@ function goodCoverage(value: InventoryCoverage, manifest: InventoryGenerationMan
     value.terminalCursor === manifest.terminalCursor &&
     (value.domain === "content" || value.domain === "portable-config") &&
     valid(value.scopeId) && (value.scopeKind === "domain" || value.scopeKind === "parent") &&
+    (!inventoryContinuityGrant(manifest.fence.scopePolicyFingerprint) ||
+      (manifest.parentGeneration === null ? value.proofBasis === "physical-baseline" :
+        value.proofBasis === "changes-continuity" || (value.scopeKind === "parent" && value.proofBasis === "affected-parent"))) &&
     (value.state === "complete" || value.state === "partial" || value.state === "unknown" || value.state === "invalid");
 }
 function contentDomainRoot(f: InventoryIdentityFence, domain: InventoryDomain): RemoteObjectId {
@@ -647,7 +651,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         await complete;
         if (!c || c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
             !c.provenanceVerified || c.visibility !== "app-visible" ||
-            c.terminalCursor !== active.terminalCursor)
+            c.terminalCursor !== active.terminalCursor || !goodCoverage(c, active))
           return error("unknown", "coverage-unproven-at-active-horizon");
         return { status: "verified-observation", generation: active.generation, value: c };
       };
@@ -959,7 +963,7 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
         if (!coverage || coverage.scopeKind !== "domain" || coverage.state !== "complete" ||
             !coverage.allPagesRead || coverage.incompleteSearch ||
             coverage.visibility !== "app-visible" || !coverage.provenanceVerified ||
-            coverage.terminalCursor !== m.terminalCursor)
+            coverage.terminalCursor !== m.terminalCursor || !goodCoverage(coverage, m))
           return await fail("invalid", "required-managed-domain-coverage-unproven");
       }
       const prepared = prepareInventoryAuthorityPublication(current, {

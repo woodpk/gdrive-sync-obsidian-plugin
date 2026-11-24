@@ -5,7 +5,7 @@ import type { GoogleDriveAdapter } from "./google-drive-port";
 import type { GoogleHttpTransport } from "./transport";
 
 const API = "https://www.googleapis.com/drive/v3";
-const FIELDS = "id,name,mimeType,parents,trashed,size,sha256Checksum,version,appProperties";
+const FIELDS = "id,name,mimeType,parents,trashed,size,sha256Checksum,version,appProperties,driveId,ownedByMe";
 const FOLDER = "application/vnd.google-apps.folder";
 const valid = (x: unknown): x is string => typeof x === "string" && x.length > 0 && x.trim() === x;
 const object = (x: unknown): x is Record<string, unknown> => x !== null && typeof x === "object" && !Array.isArray(x);
@@ -17,6 +17,8 @@ export interface InventoryDriveFile {
   readonly mimeType: string;
   readonly parents: readonly string[];
   readonly trashed: boolean;
+  readonly driveId?: string;
+  readonly ownedByMe?: boolean;
   readonly version?: string;
   readonly sha256Checksum?: string;
   readonly size?: string;
@@ -55,6 +57,8 @@ function parseFile(value: unknown): InventoryDriveFile | undefined {
   if (!object(value) || !valid(value.id) || typeof value.name !== "string" || value.name.length === 0 ||
       !valid(value.mimeType) || !Array.isArray(value.parents) || !value.parents.every(valid) ||
       typeof value.trashed !== "boolean") return undefined;
+  if (value.driveId !== undefined && !valid(value.driveId)) return undefined;
+  if (value.ownedByMe !== undefined && typeof value.ownedByMe !== "boolean") return undefined;
   if (value.version !== undefined && !valid(value.version)) return undefined;
   if (value.sha256Checksum !== undefined && !valid(value.sha256Checksum)) return undefined;
   if (value.size !== undefined && (!valid(value.size) || !/^\d+$/.test(value.size) ||
@@ -63,6 +67,8 @@ function parseFile(value: unknown): InventoryDriveFile | undefined {
       !Object.values(value.appProperties).every(x => typeof x === "string"))) return undefined;
   return { id: value.id, name: value.name, mimeType: value.mimeType,
     parents: value.parents as string[], trashed: value.trashed,
+    ...(value.driveId !== undefined ? { driveId: value.driveId as string } : {}),
+    ...(value.ownedByMe !== undefined ? { ownedByMe: value.ownedByMe as boolean } : {}),
     ...(value.version !== undefined ? { version: value.version as string } : {}),
     ...(value.sha256Checksum !== undefined ? { sha256Checksum: value.sha256Checksum as string } : {}),
     ...(value.size !== undefined ? { size: value.size as string } : {}),
@@ -141,7 +147,8 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
     if (!valid(token)) return fail("invalid-changes-token", "recovery-required");
     const params = new URLSearchParams({
       pageToken: token, spaces: "drive", pageSize: "1000", includeRemoved: "true",
-      fields: "nextPageToken,newStartPageToken,changes(fileId,removed,file(" + FIELDS + "))",
+      includeCorpusRemovals: "true", restrictToMyDrive: "false", supportsAllDrives: "false",
+      fields: "nextPageToken,newStartPageToken,changes(changeType,driveId,fileId,removed,file(" + FIELDS + "))",
     });
     const response = await this.get(API + "/changes?" + params);
     if (response.status !== "ok") return response;
@@ -156,6 +163,8 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
       if (!object(change) || !valid(change.fileId) ||
           (change.removed !== undefined && typeof change.removed !== "boolean"))
         return fail("malformed-change-identity", "partial");
+      if ((change.changeType !== undefined && change.changeType !== "file") || change.driveId !== undefined)
+        return fail("unsupported-change-corpus-or-type", "recovery-required");
       const f = change.file === undefined ? undefined : parseFile(change.file);
       if (change.file !== undefined && !f) return fail("malformed-change-file-metadata", "partial");
       if (f && f.id !== change.fileId) return fail("change-id-file-id-mismatch", "recovery-required");
@@ -200,6 +209,8 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
     if (responses.some(r => r.status !== "ok"))
       return fail("managed-roots-not-independently-observed", "incompatible");
     const roots = responses.map(r => (r as { status: "ok"; value: InventoryDriveFile }).value);
+    if (grant && roots.some(file => file.ownedByMe !== true || file.driveId !== undefined))
+      return fail("inventory-personal-corpus-unproven", "incompatible");
     const [root, content, config] = roots;
     if (root.trashed || root.mimeType !== FOLDER ||
         root.appProperties.brainSyncRole !== "brain-sync-root" ||

@@ -12,7 +12,8 @@ import type {
   InventoryOverlayRecord, InventoryPublishRequest, InventoryReadLease,
   InventoryRemoteEntity, InventoryTrustFailure, RemoteIngestionBatchId, RemoteObjectId,
 } from "../contracts";
-import { validateInventoryCandidate } from "./verified-metadata-inventory-validation";
+import { inventoryContinuityGrant } from "../contracts/verified-metadata-inventory";
+import { inventoryFenceMatches, validateInventoryCandidate } from "./verified-metadata-inventory-validation";
 import type { IndexedDbInventoryObservationStore } from "./indexeddb-inventory-storage";
 import type { VerifiedMetadataInventoryReader } from "../drive/verified-metadata-inventory-reader";
 
@@ -20,6 +21,7 @@ type Failure = { readonly status: InventoryTrustFailure; readonly reason: string
 export type InventoryIntegrationResult =
   | { readonly status: "published"; readonly generation: InventoryGeneration;
       readonly terminalCursor: ChangeCursor; readonly ambiguousSiblingKeys: readonly string[] }
+  | { readonly status: "unchanged"; readonly generation: InventoryGeneration; readonly terminalCursor: ChangeCursor }
   | Failure;
 const failed = (status: InventoryTrustFailure, reason: string): Failure => ({ status, reason });
 const MAX_VALIDATED_ROWS = 12000;
@@ -48,7 +50,7 @@ function coverageComplete(
         !folders.has(JSON.stringify([c.domain, c.scopeId]))) return false;
     if (c.terminalCursor !== cursor || c.visibility !== "app-visible" ||
         c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
-        !c.provenanceVerified) return false;
+        !c.provenanceVerified || (inventoryContinuityGrant(fence.scopePolicyFingerprint) && !c.proofBasis)) return false;
     const key = JSON.stringify([c.domain, c.scopeKind, c.scopeId]);
     if (keys.has(key)) return false;
     keys.add(key);
@@ -235,7 +237,8 @@ export class VerifiedInventoryBaselineCoordinator {
         prior.generation !== before.value.activeGeneration ||
         prior.terminalCursor !== before.value.canonicalCursor)
       return failed("stale", "no-coherent-active-inventory-to-extend");
-    if (prior.overlayDepth >= 32)
+    const continuity = inventoryContinuityGrant(fence.scopePolicyFingerprint) !== undefined;
+    if (!continuity && prior.overlayDepth >= 32)
       return failed("recovery-required", "overlay-depth-requires-full-rebaseline");
     if (!this.storage.openRead) return failed("recovery-required", "active-lease-read-unavailable");
     const read = await this.storage.openRead();
@@ -243,7 +246,7 @@ export class VerifiedInventoryBaselineCoordinator {
     let materialized: Awaited<ReturnType<VerifiedInventoryBaselineCoordinator["materialize"]>>;
     try {
       if (read.value.generation !== prior.generation ||
-          read.value.fence.managedRootId !== fence.managedRootId)
+          !inventoryFenceMatches(read.value.fence, fence))
         return failed("stale", "read-lease-does-not-match-current-authority");
       materialized = await this.materialize(read.value, fence);
     } finally {
@@ -256,9 +259,23 @@ export class VerifiedInventoryBaselineCoordinator {
     const candidate = delta.value;
     if (candidate.publishAuthorized !== false ||
         candidate.inputCursor !== prior.terminalCursor ||
-        candidate.terminalCursor === prior.terminalCursor ||
+        (!continuity && candidate.terminalCursor === prior.terminalCursor) ||
         candidate.overlays.length + candidate.coverage.length > MAX_VALIDATED_ROWS)
       return failed("invalid", "unbounded-or-discontinuous-incremental-read");
+    if (candidate.terminalCursor === prior.terminalCursor) {
+      if (candidate.overlays.length || candidate.learnedChanges.length || candidate.invalidatedParentIds.length ||
+          !coverageComplete(materialized.entities, candidate.coverage, fence, prior.terminalCursor))
+        return failed("invalid", "same-cursor-observation-contradiction");
+      const again = await this.storage.publicationSnapshot(fence);
+      if (again.status !== "trusted-fence") return failed(again.status, again.reason);
+      if (again.value.activeGeneration !== prior.generation || again.value.canonicalCursor !== prior.terminalCursor ||
+          again.value.persistenceRevision !== before.value.persistenceRevision ||
+          again.value.semanticGeneration !== before.value.semanticGeneration)
+        return failed("stale", "unchanged-inventory-authority-raced");
+      return { status: "unchanged", generation: prior.generation, terminalCursor: prior.terminalCursor };
+    }
+    if (prior.overlayDepth >= 32)
+      return failed("recovery-required", "overlay-depth-requires-full-rebaseline");
     const overlayIds = new Set<string>();
     const effective = new Map<string, InventoryRemoteEntity>(
       materialized.entities.map(entity => [String(entity.remoteObjectId), entity]));
@@ -323,7 +340,7 @@ export class VerifiedInventoryBaselineCoordinator {
     };
     const fullGraphDigest = await digest(normalized);
     if (!fullGraphDigest) return failed("recovery-required", "effective-graph-digest-unavailable");
-    const receipt = await digest({ basis, touched, fullGraphDigest, coverage });
+    const receipt = await digest({ basis, predecessorReceipt: prior.validationReceipt, touched, fullGraphDigest, coverage });
     if (!receipt) return failed("recovery-required", "delta-validation-receipt-unavailable");
     const manifest: InventoryGenerationManifest = { ...basis, validationReceipt: receipt };
     const again = await this.storage.publicationSnapshot(fence);

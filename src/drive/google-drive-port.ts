@@ -27,9 +27,10 @@ const CONFIG_DOMAIN = "portable-config";
 const ACCOUNT_SECRET = "brain-gdrive-paired-account";
 const UPLOAD_CHUNK_BYTES = 256 * 1024;
 const FIELDS = "id,name,mimeType,parents,trashed,size,sha256Checksum,md5Checksum,modifiedTime,version,appProperties";
+const INVENTORY_CORPUS_FIELDS = FIELDS + ",driveId,ownedByMe";
 
 type DomainKind = typeof CONTENT_DOMAIN | typeof CONFIG_DOMAIN;
-interface DriveFile { id: string; name?: string; mimeType?: string; parents?: string[]; trashed?: boolean; size?: string; sha256Checksum?: string; md5Checksum?: string; modifiedTime?: string; version?: string; appProperties?: Record<string,string>; }
+interface DriveFile { id: string; driveId?: string; ownedByMe?: boolean; name?: string; mimeType?: string; parents?: string[]; trashed?: boolean; size?: string; sha256Checksum?: string; md5Checksum?: string; modifiedTime?: string; version?: string; appProperties?: Record<string,string>; }
 interface FileListResponse { files?: DriveFile[]; nextPageToken?: string; }
 interface ChangesResponse { changes?: Array<{ fileId: string; removed?: boolean; file?: DriveFile }>; nextPageToken?: string; newStartPageToken?: string; }
 interface GenerateIdsResponse { ids?: string[]; }
@@ -246,7 +247,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
    * calls or accepted as executor proof. Complete uniqueness queries and
    * independent exact-ID folder reads are both required.
    */
-  async observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity): Promise<DriveResult<{
+  async observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity, requirePersonalCorpus = false): Promise<DriveResult<{
     readonly pairedAccountKey: string; readonly contentRootId: RemoteObjectId;
     readonly configRootId: RemoteObjectId; readonly cursor: ChangeCursor;
   }>> {
@@ -256,7 +257,8 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     if (!account) return fail("inventory-paired-account-unavailable");
     const guard = await this.guardPairedAccount();
     if (!guard.ok) return guard;
-    const root = await this.getFile(identity.rootId);
+    const fields = requirePersonalCorpus ? INVENTORY_CORPUS_FIELDS : FIELDS;
+    const root = await this.getFile(identity.rootId, fields);
     if (!root.ok) return root;
     const r = root.value;
     const nonempty = (value: unknown): value is string =>
@@ -265,6 +267,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
       Boolean(file && nonempty(file.id) && typeof file.name === "string" &&
         file.name.length > 0 && nonempty(file.mimeType) && Array.isArray(file.parents) &&
         file.parents.every(nonempty) && typeof file.trashed === "boolean" &&
+        (!requirePersonalCorpus || (file.ownedByMe === true && file.driveId === undefined)) &&
         file.appProperties && typeof file.appProperties === "object" &&
         !Array.isArray(file.appProperties) && Object.values(file.appProperties).every(v => typeof v === "string") &&
         (file.version === undefined || nonempty(file.version)) &&
@@ -283,9 +286,9 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     const parent = "'" + escaped(String(identity.rootId)) + "' in parents";
     const [contents, configs] = await Promise.all([
       this.inventoryBoundaryCandidates(parent + " and appProperties has { key='" +
-        APP_ROLE + "' and value='" + CONTENT_ROLE + "' }"),
+        APP_ROLE + "' and value='" + CONTENT_ROLE + "' }", fields),
       this.inventoryBoundaryCandidates(parent + " and trashed=false and name='" +
-        escaped(PORTABLE_CONFIG_NAME) + "'"),
+        escaped(PORTABLE_CONFIG_NAME) + "'", fields),
     ]);
     if (!contents.ok) return contents;
     if (!configs.ok) return configs;
@@ -299,7 +302,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
         k.name !== PORTABLE_CONFIG_NAME || new Set([r.id, c.id, k.id]).size !== 3)
       return fail("inventory-managed-domain-uniqueness-unproven");
     const [exactContent, exactConfig] = await Promise.all([
-      this.getFile(rid(c.id)), this.getFile(rid(k.id)),
+      this.getFile(rid(c.id), fields), this.getFile(rid(k.id), fields),
     ]);
     if (!exactContent.ok) return exactContent;
     if (!exactConfig.ok) return exactConfig;
@@ -320,13 +323,13 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
       contentRootId: rid(c.id), configRootId: rid(k.id), cursor: cursor(body.startPageToken) } };
   }
 
-  private async inventoryBoundaryCandidates(q: string): Promise<DriveResult<DriveFile[]>> {
+  private async inventoryBoundaryCandidates(q: string, fields: string): Promise<DriveResult<DriveFile[]>> {
     const files: DriveFile[] = [];
     const seen = new Set<string>();
     let token: string | undefined;
     for (let page = 0; page < 2000; page++) {
       const params = new URLSearchParams({ q, spaces: "drive", pageSize: "1000",
-        fields: "nextPageToken,incompleteSearch,files(" + FIELDS + ")",
+        fields: "nextPageToken,incompleteSearch,files(" + fields + ")",
         ...(token ? { pageToken: token } : {}) });
       const response = await this.request(DRIVE_API + "/files?" + params);
       if (!response.ok) return response;
@@ -632,9 +635,9 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
   private async validateByExpected(rootId:RemoteObjectId,expected:VaultIdentity):Promise<DriveResult<ManagedRemoteValidation>>{const file=await this.getFile(rootId);if(!file.ok)return file.signal.kind==="not-found"?{ok:true,value:{status:"missing-root"}}:file;if(file.value.trashed||file.value.mimeType!==FOLDER_MIME||file.value.appProperties?.[APP_ROLE]!==ROOT_ROLE)return {ok:true,value:{status:"missing-root"}};const observedVault=file.value.appProperties?.[APP_VAULT],observedProtocol=file.value.appProperties?.[APP_PROTOCOL];if(!observedVault)return {ok:true,value:{status:"ambiguous",reason:"managed-root-vault-identity-missing"}};if(observedVault!==String(expected))return {ok:true,value:{status:"identity-mismatch",observedVaultIdentity:contractId<"VaultIdentity">(observedVault) as VaultIdentity}};if(!observedProtocol)return {ok:true,value:{status:"ambiguous",reason:"managed-root-protocol-version-missing"}};const roots=await this.domainRoots(rootId);if(!roots.ok){if(roots.signal.kind==="recovery-required"||roots.signal.kind==="conflict")return {ok:true,value:{status:"ambiguous",reason:"detail" in roots.signal?roots.signal.detail:"managed-remote-domain-ambiguous"}};return roots;}const version=pversion(observedProtocol);if(observedProtocol!=="1")return {ok:true,value:{status:"incompatible-protocol",observedVersion:version}};return {ok:true,value:{status:"valid",identity:{rootId,vaultIdentity:expected,protocolVersion:version}}};}
   private async guardPairedAccount():Promise<DriveResult<void>>{const paired=this.secrets.get(ACCOUNT_SECRET);if(!paired)return {ok:false,signal:{kind:"authentication-required",detail:"explicit-remote-pairing-required"}};const current=await this.withPurpose("managed-root-account").currentAccountKey();if(!current.ok)return current;return current.value===paired?{ok:true,value:undefined}:{ok:false,signal:{kind:"authentication-required",detail:"google-account-changed-repair-required"}};}
   private async currentAccountKey():Promise<DriveResult<string>>{const response=await this.request(`${DRIVE_API}/about?fields=user(emailAddress,permissionId)`,{},false);if(!response.ok)return response;const data=await json<AboutResponse>(response.value),key=data.user?.permissionId??data.user?.emailAddress;return key?{ok:true,value:key}:{ok:false,signal:{kind:"authentication-required",detail:"google-account-identity-unavailable"}};}
-  private async getFile(id:RemoteObjectId):Promise<DriveResult<DriveFile>>{
+  private async getFile(id:RemoteObjectId, fields = FIELDS):Promise<DriveResult<DriveFile>>{
     this.semantic("drive-exact-id-observation-started",{operation:"exact-id-observation",observationSource:"exact-id",remoteObjectId:String(id)});
-    const response=await this.request(`${DRIVE_API}/files/${encodeURIComponent(String(id))}?fields=${encodeURIComponent(FIELDS)}`);
+    const response=await this.request(`${DRIVE_API}/files/${encodeURIComponent(String(id))}?fields=${encodeURIComponent(fields)}`);
     if(!response.ok){this.semantic("drive-exact-id-observation-result",{operation:"exact-id-observation",observationSource:"exact-id",remoteObjectId:String(id),result:"failure",driveSignal:response.signal.kind});return {ok:false,signal:withRemoteId(response.signal,id)};}
     const value=await json<DriveFile>(response.value);const ev=evidence(value);
     this.semantic("drive-exact-id-observation-result",{operation:"exact-id-observation",observationSource:"exact-id",remoteObjectId:String(id),result:"present",trashed:Boolean(value.trashed),...(value.version?{observedRevision:value.version}:{}),...(ev.hash?{contentHash:String(ev.hash)}:{}),...(ev.sizeBytes!==undefined?{sizeBytes:ev.sizeBytes}:{})});

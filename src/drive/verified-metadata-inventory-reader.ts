@@ -5,6 +5,7 @@
  */
 import type { RemoteChange } from "../contracts/google-drive";
 import { contractId, type ChangeCursor, type RemoteObjectId, type VaultPath } from "../contracts/common";
+import { inventoryContinuityGrant } from "../contracts/verified-metadata-inventory";
 import type {
   InventoryCoverage, InventoryDomain, InventoryGeneration, InventoryIdentityFence,
   InventoryOverlayRecord, InventoryRemoteEntity, InventoryTargetedProof,
@@ -70,6 +71,9 @@ interface RawManaged {
 const domainRoot = (f: InventoryIdentityFence, d: InventoryDomain) =>
   String(d === "content" ? f.contentDomainRootId : f.configDomainRootId);
 const live = (file: InventoryDriveFile) => !file.trashed;
+const continuity = (fence: InventoryIdentityFence) => inventoryContinuityGrant(fence.scopePolicyFingerprint) !== undefined;
+const supportedCorpus = (file: InventoryDriveFile, fence: InventoryIdentityFence) =>
+  !continuity(fence) || (file.ownedByMe === true && file.driveId === undefined);
 function suitableName(name: string): boolean {
   return name.length > 0 && name !== "." && name !== ".." &&
     !name.includes("/") && !/[\u0000-\u001f]/.test(name);
@@ -103,7 +107,8 @@ export class VerifiedMetadataInventoryReader {
   /** A missing marker on an otherwise reachable legacy file is uncertainty, not a permission to heal/stamp it. */
   private provenance(file: InventoryDriveFile, fence: InventoryIdentityFence,
     domain: InventoryDomain): boolean {
-    return file.appProperties.brainManagedRootId === String(fence.managedRootId) &&
+    return supportedCorpus(file, fence) &&
+      file.appProperties.brainManagedRootId === String(fence.managedRootId) &&
       file.appProperties.brainSyncDomain === domain;
   }
 
@@ -205,6 +210,10 @@ export class VerifiedMetadataInventoryReader {
           entry.file.name !== file.name || entry.file.version !== file.version)
         return error("root-wide-managed-object-outside-known-domain", "recovery-required");
     }
+    if (continuity(fence)) for (const [id, entry] of graph) {
+      if (entry.parentId !== null && !seen.has(id))
+        return error("tracked-managed-id-missing-from-baseline-census", "recovery-required");
+    }
     return { status: "ok", value: undefined };
   }
 
@@ -292,7 +301,7 @@ export class VerifiedMetadataInventoryReader {
       const rootId = domainRoot(fence, domain);
       const root = await this.source.getFile(rootId);
       if (root.status !== "ok") return root;
-      if (!live(root.value) || root.value.mimeType !== FOLDER)
+      if (!live(root.value) || !supportedCorpus(root.value, fence) || root.value.mimeType !== FOLDER)
         return error("missing-managed-domain-root", "incompatible");
       graph.set(rootId, { file: root.value, domain, parentId: null });
       const queue = [rootId];
@@ -375,6 +384,11 @@ export class VerifiedMetadataInventoryReader {
     if (marked.status !== "ok") return marked;
     const renewed = await this.source.verifyFence(fence);
     if (renewed.status !== "ok") return renewed;
+    if (continuity(fence)) {
+      const current = await this.source.getStartToken();
+      if (current.status !== "ok") return current;
+      if (current.value !== String(replay.value.terminal)) return error("baseline-horizon-drift", "stale");
+    }
     // Rebuild full ancestry paths after Changes. Duplicate names are retained by stable ID.
     const resolved = new Map<string, string>();
     const visiting = new Set<string>();
@@ -417,12 +431,14 @@ export class VerifiedMetadataInventoryReader {
         generation, domain, scopeId: rid(root), scopeKind: "domain", state: "complete",
         visibility: "app-visible", allPagesRead: true, incompleteSearch: false,
         provenanceVerified: true, terminalCursor: terminal,
+        ...(continuity(fence) ? { proofBasis: "physical-baseline" as const } : {}),
       });
       for (const [id, item] of graph) if (item.domain === domain && item.file.mimeType === FOLDER) {
         coverage.push({
           generation, domain, scopeId: rid(id), scopeKind: "parent", state: "complete",
           visibility: "app-visible", allPagesRead: true, incompleteSearch: false,
           provenanceVerified: true, terminalCursor: terminal,
+        ...(continuity(fence) ? { proofBasis: "physical-baseline" as const } : {}),
         });
       }
     }
@@ -460,6 +476,7 @@ export class VerifiedMetadataInventoryReader {
           root.parentRemoteObjectId !== null) return error("incremental-domain-root-unproven");
     }
     const affected = new Set<string>();
+    const verifiedAncestors = new Set<string>();
     const rows = new Map<string, InventoryOverlayRecord>();
     const learned: RemoteChange[] = [];
     const processed = await this.changes(fence, inputCursor, async change => {
@@ -504,7 +521,7 @@ export class VerifiedMetadataInventoryReader {
             existing.kind !== (f.mimeType === FOLDER ? "folder" : "file"))))
         return error("unsupported-changed-object-or-foreign-provenance");
       if (existing?.kind === "folder" &&
-          (existing.name !== f.name || existing.parentRemoteObjectId !== rid(f.parents[0])))
+          (continuity(fence) || existing.name !== f.name || existing.parentRemoteObjectId !== rid(f.parents[0])))
         return error("folder-subtree-relocation-requires-full-baseline");
       const logical = parent.logicalPath ? String(parent.logicalPath) + "/" + f.name :
         parent.remoteObjectId === fence.configDomainRootId ?
@@ -523,29 +540,53 @@ export class VerifiedMetadataInventoryReader {
     if (processed.status !== "ok") return processed;
     const terminal = processed.value.terminal;
 
-    // A managed-root census prevents a same-parent query from hiding a marked
-    // object that escaped its domain. Also detects unobserved marked objects.
-    const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
-    if (marked.status !== "ok") return marked;
-    const seenMarked = new Set<string>();
-    for (const file of marked.value) {
-      if (seenMarked.has(file.id)) return error("duplicate-managed-census-identity");
-      seenMarked.add(file.id);
-      const e = graph.get(file.id);
-      if (!e || file.trashed || !this.provenance(file, fence, e.domain) ||
-          file.parents.length !== 1 || file.parents[0] !== e.parentRemoteObjectId ||
-          file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined) ||
-          (file.mimeType === FOLDER ? "folder" : "file") !== e.kind)
-        return error("root-wide-managed-census-disagrees-with-changes");
-    }
-    for (const e of graph.values()) {
-      if (e.parentRemoteObjectId !== null && !seenMarked.has(String(e.remoteObjectId)))
-        return error("tracked-managed-id-missing-from-root-wide-census");
+    // DEC-365: a complete scoped Changes replay replaces routine global census.
+    // Legacy receipt namespaces retain their stronger historical check.
+    if (!continuity(fence)) {
+      // A managed-root census prevents a same-parent query from hiding a marked
+      // object that escaped its domain. Also detects unobserved marked objects.
+      const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
+      if (marked.status !== "ok") return marked;
+      const seenMarked = new Set<string>();
+      for (const file of marked.value) {
+        if (seenMarked.has(file.id)) return error("duplicate-managed-census-identity");
+        seenMarked.add(file.id);
+        const e = graph.get(file.id);
+        if (!e || file.trashed || !this.provenance(file, fence, e.domain) ||
+            file.parents.length !== 1 || file.parents[0] !== e.parentRemoteObjectId ||
+            file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined) ||
+            (file.mimeType === FOLDER ? "folder" : "file") !== e.kind)
+          return error("root-wide-managed-census-disagrees-with-changes");
+      }
+      for (const e of graph.values()) {
+        if (e.parentRemoteObjectId !== null && !seenMarked.has(String(e.remoteObjectId)))
+          return error("tracked-managed-id-missing-from-root-wide-census");
+      }
     }
 
     // Re-read each mutated parent; fresh provider result must be identical to
     // the Changes-materialized occupants. Unknown, extra or duplicated IDs block.
     for (const parent of affected) {
+      if (continuity(fence)) {
+        let ancestor = graph.get(parent);
+        const chain = new Set<string>();
+        while (ancestor && ancestor.parentRemoteObjectId !== null) {
+          const id = String(ancestor.remoteObjectId);
+          if (verifiedAncestors.has(id)) break;
+          if (chain.has(id) || chain.size >= 128 || ancestor.kind !== "folder")
+            return error("affected-ancestor-cycle-or-kind", "recovery-required");
+          chain.add(id);
+          const exact = await this.source.getFile(id);
+          if (exact.status !== "ok" || exact.value.id !== id || !live(exact.value) ||
+              exact.value.mimeType !== FOLDER || !this.provenance(exact.value, fence, ancestor.domain) ||
+              exact.value.name !== ancestor.name || exact.value.parents.length !== 1 ||
+              exact.value.parents[0] !== String(ancestor.parentRemoteObjectId))
+            return error("affected-ancestor-unproven", "recovery-required");
+          ancestor = graph.get(String(ancestor.parentRemoteObjectId));
+          if (!ancestor) return error("affected-ancestor-missing", "recovery-required");
+        }
+        for (const id of chain) verifiedAncestors.add(id);
+      }
       const observed = await this.allPages(token => this.source.listChildren(parent, token));
       if (observed.status !== "ok") return observed;
       const expected = [...graph.values()].filter(e => String(e.parentRemoteObjectId) === parent);
@@ -556,7 +597,8 @@ export class VerifiedMetadataInventoryReader {
         return error("post-changes-parent-occupancy-not-coherent");
       for (const file of observed.value) {
         const e = graph.get(file.id);
-        if (!e || !this.provenance(file, fence, e.domain) ||
+        if (!e || !live(file) || !this.provenance(file, fence, e.domain) ||
+            (file.mimeType === FOLDER ? "folder" : "file") !== e.kind ||
             file.parents.length !== 1 || file.parents[0] !== parent ||
             file.name !== e.name || file.version !== (e.revision ? String(e.revision) : undefined))
           return error("post-changes-parent-metadata-not-coherent");
@@ -565,6 +607,13 @@ export class VerifiedMetadataInventoryReader {
     const renewed = await this.source.verifyFence(fence);
     if (renewed.status !== "ok") return renewed;
 
+    if (continuity(fence)) {
+      const current = await this.source.getStartToken();
+      if (current.status !== "ok") return current;
+      if (current.value !== String(terminal)) return error("incremental-horizon-drift", "stale");
+      if (terminal === inputCursor && processed.value.count !== 0)
+        return error("unchanged-cursor-with-events", "recovery-required");
+    }
     // Complete at the terminal Changes horizon only under the existing trusted
     // app-visible baseline + continuous replay. This is not global Drive absence.
     const coverage: InventoryCoverage[] = [];
@@ -574,6 +623,7 @@ export class VerifiedMetadataInventoryReader {
         generation, domain: d, scopeId: root, scopeKind: "domain",
         state: "complete", visibility: "app-visible", allPagesRead: true,
         incompleteSearch: false, provenanceVerified: true, terminalCursor: terminal,
+        ...(continuity(fence) ? { proofBasis: "changes-continuity" as const } : {}),
       });
     }
     for (const e of graph.values()) if (e.kind === "folder") {
@@ -581,6 +631,7 @@ export class VerifiedMetadataInventoryReader {
         generation, domain: e.domain, scopeId: e.remoteObjectId, scopeKind: "parent",
         state: "complete", visibility: "app-visible", allPagesRead: true,
         incompleteSearch: false, provenanceVerified: true, terminalCursor: terminal,
+        ...(continuity(fence) ? { proofBasis: affected.has(String(e.remoteObjectId)) ? "affected-parent" as const : "changes-continuity" as const } : {}),
       });
     }
     return { status: "ok", value: {

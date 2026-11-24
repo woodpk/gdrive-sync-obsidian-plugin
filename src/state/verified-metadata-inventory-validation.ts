@@ -1,4 +1,5 @@
 /** DEC-339 D339-01: pure bounded shape/graph checks. Never mutation authorization. */
+import { inventoryContinuityGrant } from "../contracts/verified-metadata-inventory";
 import type { ChangeCursor, PersistenceRevision, RemoteObjectId, SemanticStateGeneration } from "../contracts/common";
 import type {
   InventoryCoverage, InventoryDomain, InventoryGeneration, InventoryGenerationManifest,
@@ -84,7 +85,9 @@ function validCoverage(x: unknown): x is InventoryCoverage {
     (x.state === "complete" || x.state === "partial" || x.state === "unknown" || x.state === "invalid") &&
     (x.visibility === "app-visible" || x.visibility === "unknown") &&
     typeof x.allPagesRead === "boolean" && typeof x.incompleteSearch === "boolean" &&
-    typeof x.provenanceVerified === "boolean" && validId(x.terminalCursor);
+    typeof x.provenanceVerified === "boolean" && validId(x.terminalCursor) &&
+    (x.proofBasis === undefined || x.proofBasis === "physical-baseline" ||
+      x.proofBasis === "changes-continuity" || x.proofBasis === "affected-parent");
 }
 
 /** Validates only caller-supplied bounded fixtures/batches, never enumerates an entire live vault. */
@@ -197,7 +200,8 @@ export function validateInventoryCandidate(value: unknown, maxRows = 10000): Inv
     const c = matching[0];
     if (c.state !== "complete" || !c.allPagesRead || c.incompleteSearch ||
         c.visibility !== "app-visible" || !c.provenanceVerified ||
-        c.terminalCursor !== active.terminalCursor) uncertainty = true;
+        c.terminalCursor !== active.terminalCursor ||
+        (inventoryContinuityGrant(fence.scopePolicyFingerprint) && !c.proofBasis)) uncertainty = true;
   }
   if (uncertainty) return { status: "unknown", reason: "uncertain-record-or-incomplete-coverage" };
   return { status: "verified-observation", generation: active.generation,
