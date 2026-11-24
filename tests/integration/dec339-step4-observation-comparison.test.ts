@@ -607,7 +607,9 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
   });
   const observePlanningBoundary = async () => {
     const observedFingerprint = fingerprint();
-    const hint = await new IndexedDbInventoryObservationStore(databaseName, factory).continuityRootHint();
+    // Advisory reads must preserve production's no-schema-upgrade contract.
+    const hint = await new IndexedDbInventoryObservationStore(databaseName, factory,
+      { allowSchemaUpgrade: false }).continuityRootHint();
     const knownDomains = hint && hint.scopePolicyFingerprint === observedFingerprint &&
       hint.deviceIdentity === device && hint.vaultIdentity === vault &&
       hint.managedRootId === root
