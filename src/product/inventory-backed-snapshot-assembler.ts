@@ -125,8 +125,9 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
     if (!preferIncremental || this.options.fullReconcileRequired?.())
       return super.assembleFull(runId);
     const initial = await this.options.state.load(this.options.stateContext);
+    if (initial.status === "uninitialized") return super.assembleFull(runId);
     if (initial.status !== "trusted" || initial.state.operations.some(op => op.status !== "completed"))
-      return super.assembleFull(runId);
+      throw new SnapshotAssemblyError("recovery-required", "canonical synchronization authority untrusted; use explicit recovery");
 
     let attempt = await this.attemptInventory(runId);
     let replayed = false, rebuilt = false;

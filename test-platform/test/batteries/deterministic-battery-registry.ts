@@ -50,6 +50,10 @@ const S07_FAULT_RECOVERY_SAFETY = [
   "s07f-deterministic-scale-resource-measurement.test.js",
 ] as const;
 
+const DEC339_METADATA_CONTINUITY = [
+  "dec339-continuity-safety.test.js",
+] as const;
+
 const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
   "dec354-diagnostic-retention.test.js",
   "s08a-production-run-receipt-seam.test.js",
@@ -81,6 +85,7 @@ const ALL_PLATFORM_TESTS = [
     ...PLATFORM_CORE,
     ...S06_SYNC_SEMANTICS,
     ...S07_FAULT_RECOVERY_SAFETY,
+    ...DEC339_METADATA_CONTINUITY,
     ...S08_LIVE_PLATFORM_INFRASTRUCTURE,
     ...S09_LATE_COMPLETION_RECOVERY,
   ]),
@@ -102,6 +107,11 @@ const DETERMINISTIC_BATTERIES: Readonly<Record<string, DeterministicBatteryDefin
       name: "s07-fault-recovery-safety",
       description: "Deterministic crash/recovery, authority, cancellation, transfer integrity, resource, destructive-safety, and scale coverage.",
       testFiles: S07_FAULT_RECOVERY_SAFETY,
+    },
+    "dec339-metadata-continuity": {
+      name: "dec339-metadata-continuity",
+      description: "Deterministic BVP safety controls for verified metadata inventory continuity; real product composition is qualified by native tests.",
+      testFiles: DEC339_METADATA_CONTINUITY,
     },
     "s08-live-platform-infrastructure": {
       name: "s08-live-platform-infrastructure",

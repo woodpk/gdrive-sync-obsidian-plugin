@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   contractId,
+  inventoryContinuityFingerprint,
   type ChangeCursor,
   type ContentHash,
   type DeviceIdentity,
@@ -77,7 +78,7 @@ class ObservationServer {
   private readonly extra: ServerFile[];
   domainFault: "none" | "partial" | "duplicate" | "exact" | "repeated" = "none";
   account = "permission-step4";
-  constructor(extraFiles = 0) {
+  constructor(extraFiles = 0, private readonly personalOwned = false) {
     const folder: ServerFile = { id: "nested-folder", name: "nested", mimeType: FOLDER,
       parents: [String(contentRoot)], trashed: false, version: "1",
       appProperties: { brainManagedRootId: String(root), brainSyncDomain: "content" } };
@@ -167,7 +168,10 @@ class ObservationServer {
   }
 
   private response(body: unknown, status = 200) {
-    const bytes = new TextEncoder().encode(JSON.stringify(body));
+    const bytes = new TextEncoder().encode(JSON.stringify(body, (_key, value: unknown) =>
+      this.personalOwned && value && typeof value === "object" && !Array.isArray(value) &&
+      "id" in value && "mimeType" in value && "parents" in value
+        ? { ...value, ownedByMe: true } : value));
     return Promise.resolve({
       status,
       headers: { "content-type": "application/json" },
@@ -461,7 +465,8 @@ function physicalTreeRead(raw: string): boolean {
     (q.includes("'content' in parents") || q.includes("'config' in parents") || q.includes("'nested-folder' in parents"));
 }
 type BoundarySample = { readonly purpose: RequestClass; readonly ms: number;
-  readonly physicalTree: boolean; readonly method: string; readonly sharedAncestor: boolean };
+  readonly physicalTree: boolean; readonly method: string; readonly sharedAncestor: boolean;
+  readonly responsePayloadBytes: number; readonly requestUrlUtf8Bytes: number };
 function logicalBytes(db: FakeDatabase, authority: boolean): number {
   let total = 0;
   for (const [name, table] of db.tables) {
@@ -475,9 +480,9 @@ function logicalBytes(db: FakeDatabase, authority: boolean): number {
   return total;
 }
 
-async function pairedEnvironment(enabled: boolean, establish = enabled, extraFiles = 0) {
+async function pairedEnvironment(enabled: boolean, establish = enabled, extraFiles = 0, continuity = false) {
   withRangeOnly();
-  const server = new ObservationServer(extraFiles);
+  const server = new ObservationServer(extraFiles, continuity);
   const extraBase = server.extraBaseline();
   const samples: BoundarySample[] = [];
   const db = new FakeDatabase();
@@ -500,6 +505,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
   let scopeExclusions: string[] = [];
   let censusFault = false;
   let changesFault = false;
+  let advanceAfterChanges = false;
   let changeDuringCensus = false;
   let accountDuringCensus = false;
   let domainDuringCensus = false;
@@ -534,6 +540,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
       const method = request.method ?? "GET";
       const purpose = requestClass(request.url);
       const started = performance.now();
+      let responsePayloadBytes = 0;
       try {
         // All requests terminate here; no mutation is allowed in this BU.
         if (method !== "GET") throw new Error("unexpected synthetic provider mutation");
@@ -548,12 +555,20 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
         }
         if ((censusFault && purpose === "markedCensus") || (changesFault && purpose === "changes")) {
           const payload = new TextEncoder().encode(JSON.stringify({ error: { message: "synthetic denied census" } }));
+          responsePayloadBytes = payload.byteLength;
           return { status: 403, headers: { "content-type": "application/json" },
             arrayBuffer: payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) };
         }
-        return await server.request(request);
+        const response = await server.request(request);
+        responsePayloadBytes = response.arrayBuffer.byteLength;
+        if (purpose === "changes" && advanceAfterChanges) {
+          advanceAfterChanges = false;
+          server.advanceSameId();
+        }
+        return response;
       } finally {
         samples.push({ purpose, method, physicalTree: physicalTreeRead(request.url),
+          responsePayloadBytes, requestUrlUtf8Bytes: new TextEncoder().encode(request.url).byteLength,
           sharedAncestor: new URL(request.url).pathname === "/drive/v3/files/nested-folder",
           ms: performance.now() - started });
       }
@@ -573,17 +588,20 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
       ...extraBase.map(({ path, entityKind, remoteObjectId }) => ({ path, entityKind, remoteObjectId }))],
   });
   assert.equal(saved.status, "saved");
+  const fingerprint = () => continuity
+    ? inventoryContinuityFingerprint(boundary.oauth.inventoryGrantBinding()!, scope.inventoryScopeFingerprint())
+    : scope.inventoryScopeFingerprint();
   const currentFence = () => buildInventoryPlanningFence({
     drive: boundary.drive, remoteIdentity: remote, deviceIdentity: device,
-    vaultIdentity: vault, scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
+    vaultIdentity: vault, scopePolicyFingerprint: fingerprint(),
   });
   const observePlanningBoundary = async () => {
-    const fingerprint = scope.inventoryScopeFingerprint();
+    const observedFingerprint = fingerprint();
     const observed = await buildInventoryPlanningBoundary({
       drive: boundary.drive, remoteIdentity: remote, deviceIdentity: device,
-      vaultIdentity: vault, scopePolicyFingerprint: fingerprint,
+      vaultIdentity: vault, scopePolicyFingerprint: observedFingerprint,
     });
-    if (scope.inventoryScopeFingerprint() !== fingerprint) throw new Error("scope changed during boundary");
+    if (fingerprint() !== observedFingerprint) throw new Error("scope changed during boundary");
     return observed;
   };
   const legacy = (owner: PersistentSynchronizationStateStore = state) => new ProductSnapshotAssembler(
@@ -612,6 +630,10 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
       writes: observed.filter(s => s.method !== "GET").length,
       heapBefore: memoryBefore.heapUsed, heapAfter: memoryAfter.heapUsed,
       rssBefore: memoryBefore.rss, rssAfter: memoryAfter.rss,
+      providerResponsePayloadBytes: observed.reduce((sum, sample) => sum + sample.responsePayloadBytes, 0),
+      requestUrlUtf8Bytes: observed.reduce((sum, sample) => sum + sample.requestUrlUtf8Bytes, 0),
+      contentResponsePayloadBytes: 0, // Metadata-only synthetic boundary, no file-content transfer.
+      networkWireBytesMeasured: false, // HTTP payload and URL bytes exclude headers, compression and TLS.
       authorityLogicalBytes: logicalBytes(db, true), inventoryLogicalBytes: logicalBytes(db, false),
     } };
   }
@@ -672,6 +694,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
     denyCensus: () => { censusFault = true; },
     denyChanges: () => { changesFault = true; },
     allowChanges: () => { changesFault = false; },
+    raceAfterNextChanges: () => { advanceAfterChanges = true; },
     changeDuringNextCensus: () => { changeDuringCensus = true; },
     changeAccountDuringCensus: () => { accountDuringCensus = true; },
     changeDomainDuringCensus: () => { domainDuringCensus = true; },
@@ -684,6 +707,12 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
       table.records.delete(key);
     },
     changePairedAccount: () => secrets.setSecret("brain-gdrive-paired-account", "other-account"),
+    reauthorize: () => {
+      const raw = secrets.getSecret(GoogleOAuthSession.TOKEN_SECRET_ID);
+      assert.ok(raw);
+      secrets.setSecret(GoogleOAuthSession.TOKEN_SECRET_ID,
+        JSON.stringify({ ...JSON.parse(raw), inventoryGrantEpoch: "a".repeat(32) }));
+    },
     reopen: () => new SynchronizationStateAuthorityAdapter(new PersistentSynchronizationStateStore(
       new IndexedDbInventoryAwareStateByteStorage(databaseName, factory))),
   };
@@ -953,4 +982,135 @@ test("DEC339 Step 6 combined proof rechecks account, domain and scope after cens
     assert.equal(observed.some(sample => sample.physicalTree || sample.purpose === "changes"), false);
     assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
   }
+});
+
+/**
+ * DEC-365 correction: real product adapter + actual synthetic HTTP boundary,
+ * isolated per-device IndexedDB, and the existing independent legacy/full worlds.
+ * These tests do not simulate a second planner or assume provider omniscience.
+ */
+test("DEC365 unchanged verified inventory uses one Changes replay, no census, and retains identical planning", async t => {
+  const enabled = await pairedEnvironment(true, true, 24, true);
+  const legacy = await pairedEnvironment(false, false, 24);
+  const full = await pairedEnvironment(false, false, 24);
+  const optimized = await enabled.plan(enabled.selected(enabled.reopen()));
+  const ordinary = await legacy.plan(legacy.selected());
+  const physical = await full.plan(full.selected(), true);
+  comparePlanObservations(optimized, ordinary);
+  comparePlanObservations(optimized, physical);
+  assert.equal(optimized.value.assembly.mode, "incremental");
+  assert.equal(optimized.value.assembly.inventoryContinuity, true);
+  assert.equal(optimized.metrics.counts.markedCensus, 0);
+  assert.equal(optimized.metrics.physicalTreeReads, 0);
+  assert.equal(optimized.metrics.counts.changes, 1);
+  assert.equal(optimized.metrics.writes, 0);
+  const active = await enabled.publicationProof();
+  assert.equal(active.cursorMatches, true);
+  reportMeasurements(t, "continuity-steady", [
+    { mode: "legacy", metrics: ordinary.metrics },
+    { mode: "inventory", metrics: optimized.metrics },
+    { mode: "full", metrics: physical.metrics },
+  ]);
+});
+
+test("DEC365 stale Changes refreshes verified stable ID without any routine marked census", async t => {
+  const enabled = await pairedEnvironment(true, true, 24, true);
+  const legacy = await pairedEnvironment(false, false, 24);
+  const full = await pairedEnvironment(false, false, 24);
+  for (const world of [enabled, legacy, full]) world.server.advanceSameId();
+  const optimized = await enabled.plan(enabled.selected());
+  const ordinary = await legacy.plan(legacy.selected());
+  const physical = await full.plan(full.selected(), true);
+  comparePlanObservations(optimized, ordinary);
+  comparePlanObservations(optimized, physical);
+  assert.equal(optimized.value.assembly.inventoryContinuity, true);
+  assert.equal(optimized.metrics.counts.markedCensus, 0);
+  assert.equal(optimized.metrics.counts.changes, 1);
+  assert.ok(optimized.metrics.counts.parentListing >= 1);
+  assert.ok(optimized.metrics.physicalTreeReads >= 1,
+    "only affected parent directory may need complete fresh occupancy");
+  assert.ok(optimized.value.planned.operations.some(op => op.kind === "download-update"));
+  await enabled.publicationProof();
+  reportMeasurements(t, "continuity-leaf-delta", [
+    { mode: "legacy", metrics: ordinary.metrics },
+    { mode: "inventory", metrics: optimized.metrics },
+    { mode: "full", metrics: physical.metrics },
+  ]);
+});
+
+test("DEC365 repeated unchanged planning is idempotent and avoids generation/cursor churn", async () => {
+  const enabled = await pairedEnvironment(true, true, 24, true);
+  const first = await enabled.plan(enabled.selected());
+  const authority = await enabled.raw.loadAuthority();
+  const second = await enabled.plan(enabled.selected(enabled.reopen()));
+  const after = await enabled.raw.loadAuthority();
+  assert.equal(first.value.assembly.inventoryContinuity, true);
+  assert.equal(second.value.assembly.inventoryContinuity, true);
+  assert.equal(first.metrics.counts.markedCensus, 0);
+  assert.equal(second.metrics.counts.markedCensus, 0);
+  assert.equal(first.metrics.counts.changes, 1);
+  assert.equal(second.metrics.counts.changes, 1);
+  assert.deepEqual(after, authority);
+  assert.deepEqual(second.value.planned, first.value.planned);
+});
+
+test("DEC365 reauthorization never reuses the old generation without a complete new baseline", async () => {
+  const enabled = await pairedEnvironment(true, true, 0, true);
+  const before = await enabled.publicationProof();
+  assert.equal(before.cursorMatches, true);
+  enabled.reauthorize();
+  const start = enabled.samples.length;
+  const rebuilt = await enabled.plan(enabled.selected());
+  const newRequests = enabled.samples.slice(start);
+  assert.ok(newRequests.some(x => x.purpose === "markedCensus"),
+    "a changed grant requires fresh complete physical marked provenance");
+  assert.ok(newRequests.some(x => x.physicalTree), "rebaseline must enumerate the full managed domain");
+  assert.equal(rebuilt.value.assembly.inventoryContinuity, true);
+  assert.equal(rebuilt.metrics.writes, 0);
+});
+
+test("DEC365 explicit full reconciliation still physically lists managed objects", async () => {
+  const enabled = await pairedEnvironment(true, true, 24, true);
+  const full = await enabled.plan(enabled.selected(), true);
+  assert.equal(full.value.assembly.mode, "full");
+  assert.equal(full.value.assembly.inventoryContinuity, undefined);
+  assert.ok(full.metrics.physicalTreeReads > 0);
+  assert.equal(full.metrics.writes, 0);
+});
+
+test("DEC365 failed Changes read preserves complete durable state and permits retry", async () => {
+  const enabled = await pairedEnvironment(true, true, 0, true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.denyChanges();
+  await assert.rejects(enabled.plan(enabled.selected()), /verified inventory refresh failed/);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+  enabled.allowChanges();
+  const retry = await enabled.plan(enabled.selected());
+  assert.equal(retry.value.assembly.inventoryContinuity, true);
+  assert.equal(retry.metrics.counts.markedCensus, 0);
+});
+
+test("DEC365 BASE-independent persistence-only revision does not force remote metadata reconstruction", async () => {
+  const enabled = await pairedEnvironment(true, true, 0, true);
+  const before = await enabled.raw.loadAuthority();
+  if (before.status !== "trusted") throw new Error("source authority unavailable");
+  const saved = await enabled.raw.saveAuthority(before.state,
+    before.state.persistenceRevision, before.state.semanticGeneration);
+  assert.equal(saved.status, "saved");
+  const after = await enabled.plan(enabled.selected());
+  assert.equal(after.value.assembly.inventoryContinuity, true);
+  assert.equal(after.metrics.counts.markedCensus, 0);
+  assert.equal(after.metrics.physicalTreeReads, 0);
+  assert.equal(after.metrics.counts.changes, 1);
+});
+
+test("DEC365 provider horizon advancing after replay rejects publication without cursor loss", async () => {
+  const enabled = await pairedEnvironment(true, true, 0, true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.raceAfterNextChanges();
+  await assert.rejects(enabled.plan(enabled.selected()), /verified inventory refresh failed/);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+  const restored = await enabled.plan(enabled.selected());
+  assert.equal(restored.value.assembly.inventoryContinuity, true);
+  assert.equal(restored.metrics.counts.markedCensus, 0);
 });

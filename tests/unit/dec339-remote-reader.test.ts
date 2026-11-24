@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type ChangeCursor, type RemoteObjectId } from "../../src/contracts/common";
-import type { InventoryGeneration, InventoryIdentityFence } from "../../src/contracts/verified-metadata-inventory";
+import { inventoryContinuityFingerprint, type InventoryGeneration, type InventoryIdentityFence } from "../../src/contracts/verified-metadata-inventory";
 import {
   type InventoryDriveChange, type InventoryDriveFile, type InventoryDriveFetch,
   type InventoryDriveListPage, type InventoryDriveChangesPage, type InventoryMetadataSource,
@@ -42,6 +42,9 @@ class Provider implements InventoryMetadataSource {
   marked: InventoryDriveFile[] = [];
   events: InventoryDriveChange[] = [];
   token = "t1";
+  currentStartToken = false;
+  markedCalls = 0;
+  childrenCalls: string[] = [];
   partial = false;
   nextPage?: string;
   verified = true;
@@ -59,7 +62,7 @@ class Provider implements InventoryMetadataSource {
       { status: "incompatible", reason: "paired-fence-invalid" };
   }
   async getStartToken(): Promise<InventoryDriveFetch<string>> {
-    return { status: "ok", value: "t0" };
+    return { status: "ok", value: this.currentStartToken ? this.token : "t0" };
   }
   async getFile(objectId: string): Promise<InventoryDriveFetch<InventoryDriveFile>> {
     const f = this.files.get(objectId);
@@ -67,6 +70,7 @@ class Provider implements InventoryMetadataSource {
   }
   async listChildren(parent: string, token?: string, name?: string):
     Promise<InventoryDriveFetch<InventoryDriveListPage>> {
+    this.childrenCalls.push(parent);
     return { status: "ok", value: {
       files: (this.children.get(parent) ?? []).filter(f => name === undefined || f.name === name),
       incompleteSearch: this.partial && parent === "dir",
@@ -74,9 +78,10 @@ class Provider implements InventoryMetadataSource {
     } };
   }
   async listMarked(): Promise<InventoryDriveFetch<InventoryDriveListPage>> {
+    this.markedCalls++;
     return { status: "ok", value: { files: this.marked, incompleteSearch: false } };
   }
-  async listChanges(): Promise<InventoryDriveFetch<InventoryDriveChangesPage>> {
+  async listChanges(_token?: string): Promise<InventoryDriveFetch<InventoryDriveChangesPage>> {
     return { status: "ok", value: { changes: this.events, newStartPageToken: this.token } };
   }
 }
@@ -379,4 +384,188 @@ test("DEC339 F02 fresh census rejects inaccessible shared ancestor and duplicate
   const duplicate = await r.verifyRootWideManagedProvenance(fence);
   assert.equal(duplicate.status, "recovery-required");
   assert.equal(duplicate.reason, "duplicate-managed-provenance-identity");
+});
+
+/** DEC-365 independent provider-level test family: app-owned private corpus only. */
+const continuityFence = {
+  ...fence,
+  scopePolicyFingerprint: inventoryContinuityFingerprint("sha256:" + "a".repeat(64), "sha256:" + "b".repeat(64)),
+};
+function continuityProvider(): Provider {
+  const p = new Provider();
+  p.currentStartToken = true;
+  p.files = new Map([...p.files].map(([id, file]) => [id, { ...file, ownedByMe: true }]));
+  p.children = new Map([...p.children].map(([id, children]) =>
+    [id, children.map(file => p.files.get(file.id) ?? { ...file, ownedByMe: true })]));
+  p.marked = p.marked.map(file => p.files.get(file.id) ?? { ...file, ownedByMe: true });
+  return p;
+}
+async function continuityBaseline(p: Provider) {
+  const baseline = await reader(p).baseline(continuityFence, generation("continuity-base"));
+  if (baseline.status !== "ok") throw new Error("continuity fixture baseline failed: " + baseline.reason);
+  assert.ok(baseline.value.coverage.every(x => x.proofBasis === "physical-baseline"));
+  return baseline.value;
+}
+
+test("DEC365 nominal unchanged replay reuses ID graph without any global marked census", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  const markedBefore = p.markedCalls;
+  const childrenBefore = p.childrenCalls.length;
+  const result = await reader(p).incremental(continuityFence, generation("continuity-next"),
+    cursor("t1"), base.entities);
+  if (result.status !== "ok") throw new Error("unchanged continuity rejected: " + result.reason);
+  assert.equal(result.value.terminalCursor, cursor("t1"));
+  assert.deepEqual(result.value.overlays, []);
+  assert.deepEqual(result.value.invalidatedParentIds, []);
+  assert.equal(result.value.learnedChanges.length, 0);
+  assert.equal(p.markedCalls, markedBefore);
+  assert.equal(p.childrenCalls.length, childrenBefore);
+  assert.ok(result.value.coverage.every(x => x.proofBasis === "changes-continuity"));
+});
+
+test("DEC365 same-ID leaf edit rereads only affected parent, preserving unrelated scope", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  p.token = "t2";
+  const updated = { ...p.files.get("doc")!, version: "2" };
+  p.files.set("doc", updated);
+  p.children.set("dir", [updated]);
+  p.marked = [p.files.get("dir")!, updated];
+  p.events = [{ fileId: "doc", removed: false, file: updated }];
+  p.childrenCalls = [];
+  const before = p.markedCalls;
+  const result = await reader(p).incremental(continuityFence, generation("continuity-edit"),
+    cursor("t1"), base.entities);
+  if (result.status !== "ok") throw new Error("changed continuity rejected: " + result.reason);
+  assert.equal(p.markedCalls, before);
+  assert.deepEqual(p.childrenCalls, ["dir"]);
+  assert.equal(result.value.learnedChanges.length, 1);
+  assert.equal(result.value.overlays.length, 1);
+  assert.equal(result.value.coverage.find(x => x.scopeId === id("dir"))?.proofBasis, "affected-parent");
+  assert.equal(result.value.coverage.find(x => x.scopeId === id("content"))?.proofBasis, "changes-continuity");
+});
+
+test("DEC365 unmarked extra occupant in affected parent defeats incremental completeness", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  const updated = { ...p.files.get("doc")!, version: "2" };
+  p.files.set("doc", updated);
+  p.children.set("dir", [updated, { ...item("foreign", "foreign.md", "dir", "content"), ownedByMe: true,
+    appProperties: {} }]);
+  p.events = [{ fileId: "doc", removed: false, file: updated }];
+  p.token = "t2";
+  const result = await reader(p).incremental(continuityFence, generation("continuity-foreign"),
+    cursor("t1"), base.entities);
+  assert.equal(result.status, "unknown");
+  assert.equal(p.markedCalls, 1, "no extra census may hide an affected-parent contradiction");
+});
+
+test("DEC365 access loss is not proof of a deletion", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  p.events = [{ fileId: "doc", removed: true }];
+  p.token = "t2";
+  assert.equal((await reader(p).incremental(continuityFence, generation("continuity-loss"),
+    cursor("t1"), base.entities)).status, "unknown");
+});
+
+test("DEC365 changed managed folder conservatively requires complete rebaseline", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  const moved = { ...p.files.get("dir")!, name: "Other" };
+  p.files.set("dir", moved);
+  p.events = [{ fileId: "dir", removed: false, file: moved }];
+  p.token = "t2";
+  const result = await reader(p).incremental(continuityFence, generation("continuity-folder"),
+    cursor("t1"), base.entities);
+  assert.equal(result.status, "unknown");
+});
+
+test("DEC365 incomplete or repeated Changes pages never authorize a candidate", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  const original = p.listChanges.bind(p);
+  p.listChanges = async token => token === "t1" ?
+    { status: "ok", value: { changes: [], nextPageToken: "page1" } } :
+    { status: "ok", value: { changes: [], nextPageToken: "page1" } };
+  assert.equal((await reader(p).incremental(continuityFence, generation("continuity-cycle"),
+    cursor("t1"), base.entities)).status, "recovery-required");
+  p.listChanges = original;
+});
+
+test("DEC365 empty intermediate Changes pages correctly reach terminal without global rediscovery", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  p.token = "t2";
+  p.listChanges = async token => ({ status: "ok", value: token === "t1" ?
+    { changes: [], nextPageToken: "page2" } :
+    { changes: [], newStartPageToken: "t2" } });
+  const before = p.markedCalls;
+  const result = await reader(p).incremental(continuityFence, generation("continuity-empty-pages"),
+    cursor("t1"), base.entities);
+  if (result.status !== "ok") throw new Error("empty-page replay rejected: " + result.reason);
+  assert.equal(p.markedCalls, before);
+  assert.equal(result.value.terminalCursor, cursor("t2"));
+  assert.equal(result.value.overlays.length, 0);
+  assert.equal(result.value.learnedChanges.length, 0);
+});
+
+test("DEC365 silent provider omission cannot be instantly detected; explicit full baseline finds escaped marker", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  const escaped = { ...item("escaped", "elsewhere.md", "outside", "content"), ownedByMe: true };
+  p.marked.push(escaped);
+  p.files.set("escaped", escaped);
+  p.events = []; // model an out-of-contract silent visibility failure
+  const noChange = await reader(p).incremental(continuityFence, generation("continuity-silent"),
+    cursor("t1"), base.entities);
+  assert.equal(noChange.status, "ok", "normal feed trust does not magically reveal unreported changes");
+  assert.equal((await reader(p).baseline(continuityFence,
+    generation("continuity-physical-reconcile"))).status, "recovery-required",
+    "periodic/explicit full proof must discover an escaped marked object");
+});
+
+test("DEC365 corpus exclusion refuses app-owned but Shared Drive metadata", async () => {
+  const p = continuityProvider();
+  const base = await continuityBaseline(p);
+  p.token = "t2";
+  const updated = { ...p.files.get("doc")!, version: "2", driveId: "shared-drive" };
+  p.files.set("doc", updated);
+  p.events = [{ fileId: "doc", removed: false, file: updated }];
+  assert.equal((await reader(p).incremental(continuityFence, generation("continuity-corpus"),
+    cursor("t1"), base.entities)).status, "unknown");
+});
+
+test("DEC365 Changes transport explicitly requests corpus removals, bounded app-visible fields and complete page tokens", async () => {
+  const seen: string[] = [];
+  const transport = { request: async (url: string) => {
+    seen.push(url);
+    return { ok: true as const, value: new Response(JSON.stringify({
+      changes: [], newStartPageToken: "opaque:next",
+    }), { status: 200 }) };
+  } } as unknown as Pick<GoogleHttpTransport, "request">;
+  const source = new GoogleDriveInventoryMetadataSource({} as GoogleDriveAdapter,
+    transport, async () => "opaque-account-key");
+  const result = await source.listChanges("opaque:previous");
+  assert.equal(result.status, "ok");
+  const url = new URL(seen[0]!);
+  assert.equal(url.searchParams.get("includeRemoved"), "true");
+  assert.equal(url.searchParams.get("includeCorpusRemovals"), "true");
+  assert.equal(url.searchParams.get("restrictToMyDrive"), "false");
+  assert.equal(url.searchParams.get("supportsAllDrives"), "false");
+  assert.equal(url.searchParams.get("pageToken"), "opaque:previous");
+  assert.match(url.searchParams.get("fields") ?? "", /ownedByMe/);
+  assert.match(url.searchParams.get("fields") ?? "", /driveId/);
+});
+
+test("DEC365 Drive-level change event cannot be silently classified as personal file delta", async () => {
+  const source = new GoogleDriveInventoryMetadataSource({} as GoogleDriveAdapter, {
+    request: async () => ({ ok: true as const, value: new Response(JSON.stringify({
+      changes: [{ changeType: "drive", driveId: "shared-drive", fileId: "opaque-file", removed: true }],
+      newStartPageToken: "t2",
+    }), { status: 200 }) }),
+  } as unknown as Pick<GoogleHttpTransport, "request">, async () => "opaque-account-key");
+  const result = await source.listChanges("t1");
+  assert.equal(result.status, "recovery-required");
 });

@@ -11,6 +11,7 @@ test("deterministic batteries partition the automated BVP platform suite without
   deepStrictEqual(listDeterministicBatteryNames(), [
     "all-platform-tests",
     "bvp-private-tap-canary",
+    "dec339-metadata-continuity",
     "platform-core",
     "s06-sync-semantics",
     "s07-fault-recovery-safety",
@@ -22,6 +23,7 @@ test("deterministic batteries partition the automated BVP platform suite without
     getDeterministicBattery("platform-core")!,
     getDeterministicBattery("s06-sync-semantics")!,
     getDeterministicBattery("s07-fault-recovery-safety")!,
+    getDeterministicBattery("dec339-metadata-continuity")!,
     getDeterministicBattery("s08-live-platform-infrastructure")!,
     getDeterministicBattery("s09-late-completion-recovery")!,
   ];
