@@ -57,3 +57,15 @@ Final verdict: COMPLETE
 - Windows/PowerShell 7 runner and Edge end-to-end browser QA: NOT EXECUTED in this environment; required before full qualification.
 - Source selection: fresh read-only Git clone of origin/master and selected feature branches; no GitHub Actions.
 - Repository merge to master and production activation: NOT PERFORMED.
+
+
+## BRAIN Dashboard DCM-architecture correction — 2026-11-23
+- Branch: progress only; parent HEAD 4f92bb3679ec454b1e685889080e3c1475da9e96.
+- Cause: prior bootstrap required the operator's feature checkout be on progress, contradicting the DCM module/data/checkout separation and preventing dashboard launch from build/dec339-step4-observation-comparison-20261123.
+- Repair: new branch-independent launcher uses an isolated progress clone; the lower-level writer refuses non-progress checkouts BEFORE creating any dev output; optional evidence publication pushes only progress without force.
+- Source model: BRAIN DEC-339 Steps 3/4 accepted, Step 5 reviewer F01 correction required; exact-source PHX-CI PASS never implies independent acceptance. DEC362-14 accepted only with independently accepted Step 3 direct continuity proof.
+- Verification: Node JavaScript syntax PASS; template SHA-256 PASS; source contract/branch invariant static checks PASS; actual Step 3/4/5 GitHub source state manually inspected.
+- PowerShell 7 parser and Windows Edge/launcher execution: NOT RUN in Linux environment; qualification PENDING Windows verification.
+- Chromium Linux smoke: TIMED OUT and not counted as PASS.
+- Evidence: dev/test-results/dashboard/repair-20261123.md.
+- No GitHub Actions. No product source changes; master unchanged.

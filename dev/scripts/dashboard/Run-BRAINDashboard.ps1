@@ -25,6 +25,18 @@ $encoding=[Text.UTF8Encoding]::new($false)
 $start=[DateTimeOffset]::UtcNow
 $runId=$start.ToString('yyyyMMddTHHmmssfffZ')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)
 $root=[IO.Path]::GetFullPath($RepositoryRoot)
+# SECURITY/PERSISTENCE PREFLIGHT: do not create any output, evidence, or
+# dev/_ca-output.md in a feature-branch checkout, even on a failed invocation.
+$preflightBranch=''
+if(Get-Command git -ErrorAction SilentlyContinue) {
+    $rawBranch=@(& git -C $root symbolic-ref --short HEAD 2>$null)
+    if($LASTEXITCODE -eq 0){$preflightBranch=($rawBranch -join '').Trim()}
+}
+if($preflightBranch -cne 'progress') {
+    Write-Host "[dashboard] STOP: Current checkout is '$preflightBranch', not progress. Use the branch-independent Launch-BRAINDashboard.ps1." -ForegroundColor Red
+    @([pscustomobject]@{Operation='BRAIN dashboard';OperatorBranch=$preflightBranch;Verdict='NOT RUN';Writes='NONE';Exit=2})|Format-Table -AutoSize|Out-Host
+    exit 2
+}
 $evidence=Join-Path $root ('dev/test-results/dashboard/'+$runId)
 $summary=Join-Path $root 'dev/_ca-output.md'
 if(-not $OutputDirectory){$OutputDirectory=Join-Path $root 'dev/dashboards'}
@@ -61,6 +73,20 @@ try {
     Assert-Brain ($RepositoryUrl -eq 'https://github.com/woodpk/gdrive-sync-obsidian-plugin.git') 'Repository URL must match approved BRAIN repository.'
     Assert-Brain ($ReferenceBranch -eq 'master') 'Current BRAIN dashboard requires the canonical master baseline.'
     Assert-Brain ([IO.File]::Exists((Join-Path $root '.git')) -or [IO.Directory]::Exists((Join-Path $root '.git'))) "RepositoryRoot must be a local checkout: $root"
+    # Data sources include master and feature branches, but writable dashboard output
+    # and verification evidence must be in an isolated progress checkout only.
+    $writableBranch=(Invoke-BrainGit -Arguments @('-C',$root,'symbolic-ref','--short','HEAD') -Quiet).Trim()
+    Assert-Brain ($writableBranch -ceq 'progress') "Dashboard writer requires progress; the operator's checkout is '$writableBranch'. Use Launch-BRAINDashboard.ps1 from any branch instead."
+    # DCM-style parser preflight: a broken .ps1 cannot reliably run its own tests.
+    foreach($name in @('Run-BRAINDashboard.ps1','Dashboard.BrainCore.ps1','Test-BRAINDashboard.ps1','Launch-BRAINDashboard.ps1')) {
+        $tokens=$null;$errors=$null
+        $scriptPath=Join-Path $PSScriptRoot $name
+        $null=[System.Management.Automation.Language.Parser]::ParseFile($scriptPath,[ref]$tokens,[ref]$errors)
+        if(@($errors).Count -gt 0){
+            throw "PowerShell parser preflight failed for $name : " + (@($errors|ForEach-Object {$_.Message}) -join '; ')
+        }
+    }
+    Write-Host '[parser-preflight] PASS — four dashboard scripts.'
     $settingsPath=Join-Path $PSScriptRoot 'dashboard.local.json'
     $settings=Get-Content $settingsPath -Raw -Encoding UTF8|ConvertFrom-Json -AsHashtable -Depth 10
     $prefixes=@($settings['feature_prefixes']);$maxRefs=[int]$settings['max_feature_refs']
@@ -170,7 +196,7 @@ try {
     }catch{}
     if(-not $KeepTemporaryCheckout){try{if(Test-Path -LiteralPath $temp){Remove-Item $temp -Recurse -Force -ErrorAction Stop}}catch{Write-Warning "Temporary clone cleanup failed: $($_.Exception.Message)"}}
     Write-Host ''
-    @([pscustomobject]@{Run=$runId;Verdict=$verdict;Source=$master.Substring(0,[Math]::Min(12,$master.Length));Published=$published;Evidence=$evidence;Exit=$(if($verdict -eq 'PASS'){0}else{1})})|Format-Table -AutoSize -Wrap|Out-Host
+    @([pscustomobject]@{Run=$runId;Verdict=$verdict;Source=$(if($master){$master.Substring(0,[Math]::Min(12,$master.Length))}else{'unavailable'});Published=$published;Evidence=$evidence;Exit=$(if($verdict -eq 'PASS'){0}else{1})})|Format-Table -AutoSize -Wrap|Out-Host
     if($started){try{Stop-Transcript | Out-Null}catch{}}
 }
 if($verdict -ne 'PASS'){exit 1};exit 0

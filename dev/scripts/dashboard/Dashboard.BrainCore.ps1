@@ -20,6 +20,9 @@ $script:BrainDescriptions = @{
     'WS-02/BU-06'=@('Real browser multi-context IndexedDB upgrade and rollback','A live browser may hold multiple database contexts that block version changes.','Verify browser-backed upgrade, blocking, late completion, retry and v2-aware rollback behavior.','Software/browser-backed checks do not authorize a real vault or physical device migration.')
     'WS-02/BU-07'=@('Scope-owner and local-hint integration','Every local metadata consumer must honor the active scope and invalidation barriers.','Integrate effective policy ownership and local hint read safety without giving hints authority.','Local advisory integration does not authorize inventory planner cutover.')
     'WS-03/DEC339-RM'=@('Authenticated remote metadata transport','Reuse the paired Google Drive transport for verified metadata observations.','Provide read-only, account-bound metadata reads with exact identity and conservative partial-result handling.','No new OAuth scopes, live Drive writes, or inventory planner activation.')
+    'WS-05/STEP-03'=@('DEC-339 Step 3 — Persisted inventory shadow' , 'Persist stable-ID Changes observations without authorizing the planner.', 'Prove same-ID content updates flow through Changes to verified inventory persistence.', 'Storage-only shadow mode; no planner cutover or live activation.')
+    'WS-05/STEP-04'=@('DEC-339 Step 4 — Observation-only parity comparison', 'Compare existing authoritative reconciliation with advisory inventory observations.', 'Establish parity evidence without dispatching or modifying canonical decisions.', 'Observation-only comparison is not planner authorization or live migration.')
+    'WS-05/STEP-05'=@('DEC-339 Step 5 — Default-off planner cutover', 'Permit only controlled, explicitly gated inventory-backed planning while preserving existing planner authority.', 'Resolve reviewer F-01 settings-transition ordering and requalify before acceptance.', 'Owner has not authorized inventory activation, merge, deployment, physical tests, or release.')
     'WS-07/BVP-CLI'=@('BVP CLI result finalization','The verification platform must preserve exact run results and failure evidence.','Qualify the current BVP execution/output lifecycle and obtain source-bound review.','The BVP global pointer is a separate workstream and must not override newer DEC-339 feature-specific state.')
     'WS-05/DEC362'=@('Stable Drive ID content updates','Existing-file edits must preserve the established Google Drive object identity.','Implement same-ID updates and clean-merge propagation, with revision/content and recovery checks.','Accepted software feature only; physical provider proof and DEC-339 cutover are separate.')
 }
@@ -61,6 +64,7 @@ function Get-BrainFeatureId {
     if($Key -match '^dec339_ws02_storage_upgrade_') { return 'WS-02/BU-01' }
     if($Key -match '^dec339_ws02_bu(?<num>\d{2})_') { return 'WS-02/BU-'+$Matches.num }
     if($Key -match '^dec339_ws03_remote_metadata_') { return 'WS-03/DEC339-RM' }
+    if($Key -match '^dec339_step(?<step>3|4|5)_') { return 'WS-05/STEP-0'+$Matches.step }
     if($Key -match '^dec362_') { return 'WS-05/DEC362' }
     if($Key -match '^dec339_ws(?<num>\d{2})_') { return 'WS-'+$Matches.num+'/DEC339-'+($Key -replace '^dec339_ws\d{2}_','' -replace '_\d{4}_\d{2}_\d{2}$','').ToUpperInvariant() }
     return ''
@@ -91,7 +95,7 @@ function Get-BrainLatestEvidence {
     param([Parameter(Mandatory)][string]$Checkout,[Parameter(Mandatory)][string]$Commit,[System.Collections.IDictionary]$Fields)
     $ids=New-Object System.Collections.Generic.List[string]
     foreach($key in @($Fields.Keys)) {
-        if($key -match '(?i)(phxci|verification).*(run_id)$' -or $key -match '(?i)^phxci_run_id$') {
+        if($key -match '(?i)(phxci|verification|qualification).*(run_id)$' -or $key -match '(?i)^phxci_run_id$') {
             $v=[string]$Fields[$key];if($v -match '^[a-f0-9]{8}-[a-f0-9-]{27,}$' -and -not $ids.Contains($v)){$ids.Add($v)}
         }
     }
@@ -108,13 +112,34 @@ function Get-BrainLatestEvidence {
             $focusOutput=if($null -ne $focused){[string]$focused['stdout']}else{''}
             $fullOutput=if($null -ne $full){[string]$full['stdout']}else{''}
             $matchF=[regex]::Match($focusOutput,'(?m)^# pass\s+(\d+)')
+            $matchFTotal=[regex]::Match($focusOutput,'(?m)^# tests\s+(\d+)')
             $matchT=[regex]::Match($fullOutput,'(?m)^# pass\s+(\d+)')
+            $matchTTotal=[regex]::Match($fullOutput,'(?m)^# tests\s+(\d+)')
             $matchX=[regex]::Match($fullOutput,'(?m)^# fail\s+(\d+)')
-            $nF=$null;$nT=$null;$nX=$null
+            $nF=$null;$nFT=$null;$nT=$null;$nTT=$null;$nX=$null
             if($matchF.Success){$nF=[int]$matchF.Groups[1].Value}
+            if($matchFTotal.Success){$nFT=[int]$matchFTotal.Groups[1].Value}
             if($matchT.Success){$nT=[int]$matchT.Groups[1].Value}
+            if($matchTTotal.Success){$nTT=[int]$matchTTotal.Groups[1].Value}
             if($matchX.Success){$nX=[int]$matchX.Groups[1].Value}
-            $results.Add([pscustomobject]@{id=$id;path=$path;date=$date;pass=($result['overallVerificationResult'] -eq 'PASS');source=[string]$result['repository']['verifiedHead'];focused=$nF;product=$nT;fail=$nX;count=@($stages|Where-Object {$_.result -eq 'PASS'}).Count;total=$stages.Count})
+            $verifiedSource=[string]$result['repository']['verifiedHead']
+            $declaredSource=''
+            foreach($key in @('qualification_source_sha','qualified_source_sha','frozen_qualified_source_sha','accepted_source_sha')) {
+                $candidate=[string]$Fields[$key]
+                if($candidate -match '^[a-f0-9]{40}$'){$declaredSource=$candidate;break}
+            }
+            if($verifiedSource -notmatch '^[a-f0-9]{40}$') {
+                Write-Warning "Ignoring $id: verification result has no exact verified source SHA."
+                continue
+            }
+            if($declaredSource -and $verifiedSource -cne $declaredSource) {
+                Write-Warning "Ignoring $id: verified source $verifiedSource differs from feature source $declaredSource."
+                continue
+            }
+            $passed=($result['overallVerificationResult'] -eq 'PASS' -and
+                     @($stages|Where-Object {$_.result -ne 'PASS'}).Count -eq 0 -and
+                     $null -ne $nX -and $nX -eq 0)
+            $results.Add([pscustomobject]@{id=$id;path=$path;date=$date;pass=$passed;source=$verifiedSource;focused=$nF;focusedTotal=$nFT;product=$nT;productTotal=$nTT;fail=$nX;count=@($stages|Where-Object {$_.result -eq 'PASS'}).Count;total=$stages.Count})
         } catch {
             # A state value without an accessible immutable result is not positive verification proof.
             Write-Host "[evidence] Unavailable run $id (not counted as passed): $($_.Exception.Message)"
@@ -164,7 +189,7 @@ function New-BrainSnapshot {
         $unit.verificationRefs+=,[ordered]@{refId=$refId;status=$qualResult;role='Source-bound acceptance status for this exact feature.'}
         if($latest){
             $rid=$id+'-phxci'
-            $qstatus=if($latest.pass){'accepted'}else{'blocked'}
+            $qstatus=if($latest.pass){'passed'}else{'blocked'}
             $evref=Get-BrainRefSource $f.sha $latest.path 'Original PHX-CI result'
             $catalog.Add([ordered]@{id=$rid;name="$pretty — recorded PHX-CI";type='Exact-source Windows software qualification';status=$qstatus;
                 description="Run $($latest.id): $($latest.count)/$($latest.total) stages; focused PASS $($latest.focused); product PASS $($latest.product), FAIL $($latest.fail). Verified source $($latest.source).";
@@ -177,9 +202,11 @@ function New-BrainSnapshot {
     # Preserve the supplied DEC-362 task checklist as a distinct evidence catalog; not new work units.
     $dec362=@($units|Where-Object {$_.id -eq 'WS-05/DEC362'})|Select-Object -First 1
     if($dec362){
+        $step3=@($units|Where-Object {$_.id -eq 'WS-05/STEP-03'})|Select-Object -First 1
+        $step3Accepted=($null -ne $step3 -and $step3.status -eq 'accepted')
         $taskRows=@(
             @('DEC362-13','Simulated cross-device regressions','accepted','A→B→A and clean-merge software proof. No physical execution.'),
-            @('DEC362-14','Changes and inventory continuity','partial','Supporting Changes replay exists; direct integrated end-to-end inventory test not conclusively established.'),
+            @('DEC362-14','Changes and inventory continuity',$(if($step3Accepted){'accepted'}else{'partial'}),$(if($step3Accepted){'Step 3 independently accepted the direct same-ID update → Changes → persisted verified-inventory proof; physical/live tests remain gated.'}else{'Step-3 direct end-to-end continuity proof is not yet source-bound and independently accepted.'})),
             @('DEC362-15','Independent full software qualification','accepted','Formal accepted software scope; verify the original immutable PHX-CI and review artifacts.'),
             @('DEC362-16','DEC-339 / PR #157 activation boundary','pending','Accepted DEC-362 prerequisite is not approval to merge or activate PR #157.')
         )
@@ -225,7 +252,16 @@ function New-BrainSnapshot {
     $currentEvidence=$null
     if($candidate){$cands=Get-BrainLatestEvidence $Checkout $candidate.sha $candidate.fields;if(@($cands).Count){$currentEvidence=@($cands)[0]}}
     $lastEv=$null
-    if($currentEvidence){$lastEv=[ordered]@{pass=$currentEvidence.product;fail=$currentEvidence.fail;scope="Source $($currentEvidence.source); PHX-CI overall $(if($currentEvidence.pass){'PASS'}else{'BLOCKED'})";path=$currentEvidence.path}}
+    $cohorts=New-Object System.Collections.Generic.List[object]
+    if($currentEvidence){
+        $lastEv=[ordered]@{pass=$currentEvidence.product;fail=$currentEvidence.fail;scope="Source $($currentEvidence.source); PHX-CI overall $(if($currentEvidence.pass){'PASS'}else{'BLOCKED'})";path=$currentEvidence.path}
+        if($null -ne $currentEvidence.focused -and $null -ne $currentEvidence.focusedTotal -and $currentEvidence.focusedTotal -ge $currentEvidence.focused){
+            $cohorts.Add([ordered]@{name='Current qualified feature — focused';verified=$currentEvidence.focused;total=$currentEvidence.focusedTotal})
+        }
+        if($null -ne $currentEvidence.product -and $null -ne $currentEvidence.productTotal -and $currentEvidence.productTotal -ge $currentEvidence.product){
+            $cohorts.Add([ordered]@{name='Current qualified feature — product suite';verified=$currentEvidence.product;total=$currentEvidence.productTotal})
+        }
+    }
     $checks=@(
         [ordered]@{label='Accepted feature slices';complete=(@($units|Where-Object {$_.parentId -eq $activeWs -and $_.status -ne 'accepted'}).Count -eq 0);detail='Every currently discovered Build Unit has an independent acceptance record.'},
         [ordered]@{label='Entire Workstream gate';complete=$false;detail='No parent-wide acceptance inferred from individual feature closeouts.'},
@@ -243,9 +279,9 @@ function New-BrainSnapshot {
        workstreams=@($workstreams.ToArray());units=@($allUnits.ToArray());verificationCatalog=@($catalog.ToArray());
        verificationInventory=[ordered]@{status='partial';scope='Discovered source-bound feature checks plus supplied DEC-362 checklist; not the exhaustive BRAIN requirement inventory'}
        requirements=[ordered]@{mapped=$null;total=$null}
-       verification=[ordered]@{result=$(if($currentEvidence){if($currentEvidence.pass){'PASS software evidence'}else{'BLOCKED software evidence'}}else{'Not established'});scope='Most recent per-feature original source verification; does not imply system acceptance';stagesPassed=$(if($currentEvidence){$currentEvidence.count}else{$null});stagesTotal=$(if($currentEvidence){$currentEvidence.total}else{$null});focusedPassed=$(if($currentEvidence){$currentEvidence.focused}else{$null});focusedTotal=$null;repositoryPassed=$(if($currentEvidence){$currentEvidence.product}else{$null});repositoryTotal=$null;runId=$(if($currentEvidence){$currentEvidence.id}else{''})}
+       verification=[ordered]@{result=$(if($currentEvidence){if($currentEvidence.pass){'PASS software evidence'}else{'BLOCKED software evidence'}}else{'Not established'});scope='Most recent per-feature original source verification; does not imply system acceptance';stagesPassed=$(if($currentEvidence){$currentEvidence.count}else{$null});stagesTotal=$(if($currentEvidence){$currentEvidence.total}else{$null});focusedPassed=$(if($currentEvidence){$currentEvidence.focused}else{$null});focusedTotal=$(if($currentEvidence){$currentEvidence.focusedTotal}else{$null});repositoryPassed=$(if($currentEvidence){$currentEvidence.product}else{$null});repositoryTotal=$(if($currentEvidence){$currentEvidence.productTotal}else{$null});runId=$(if($currentEvidence){$currentEvidence.id}else{''})}
        milestones=@();blockers=@('Full DEC-339 integration and PR #157 activation are not established by bounded software acceptance.','Full-system physical Windows/iOS acceptance and Stage 3 remain separately gated.')
-       performance=[ordered]@{cohorts=@();trend=@();forecast='No evidence-supported full-system delivery date established.'}
+       performance=[ordered]@{cohorts=@($cohorts.ToArray());trend=@();forecast='No evidence-supported full-system delivery date established.'}
        sources=@($sources.ToArray())
     }
 }
