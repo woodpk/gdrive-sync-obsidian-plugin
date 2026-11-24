@@ -9,12 +9,12 @@ STATUS: COMPLETE
 - Overall verification: PASS
 
 - Framework version: 0.2.0-dev.2
-- Run ID: a344a2a4-2390-4721-bba0-7491260a0b9f
-- Repository: C:/temp/749ffe06c18d4ccca4c901a0867ee035/phx-67f4e4dde2c34735/w
+- Run ID: 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1
+- Repository: C:/temp/66738caf15f04cb3a45885bb9a1be69c/phx-66f0dd86c4174081/w
 - Branch:
-- Verified HEAD: 85eef2acaab0244bb8a03b95598e5d2b3434b556
-- Verified tree: aea8f6e32225295efbc04023da9e37230a6e75ca
-- Expected HEAD: 85eef2acaab0244bb8a03b95598e5d2b3434b556
+- Verified HEAD: 540b27848853d5af4625f254c6159877a7e14ae0
+- Verified tree: d96f35984c20196d2702517aa4b5f0cd6e973d1c
+- Expected HEAD: 540b27848853d5af4625f254c6159877a7e14ae0
 - Base SHA: f936961a4b9dbcb8b23e887771d27bbba7e7ac55
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,27 +24,27 @@ STATUS: COMPLETE
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-11-23T22:16:12.9205966Z
-- Ended: 2026-11-23T22:20:06.6404769Z
+- Started: 2026-11-24T00:01:54.6913938Z
+- Ended: 2026-11-24T00:05:33.8760917Z
 
 ## Ordered stages
 
-- authority-check: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- preflight: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- node-preflight: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- node-project-files: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- install: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- typecheck: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- test-focused: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- test: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- artifact-preparation: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- build: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- artifacts: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- check: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
-- repository-check: PASS (exit 0; NONE; run a344a2a4-2390-4721-bba0-7491260a0b9f)
+- authority-check: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- preflight: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- node-preflight: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- node-project-files: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- install: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- typecheck: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- test-focused: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- test: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- artifact-preparation: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- build: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- artifacts: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- check: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
+- repository-check: PASS (exit 0; NONE; run 6cefc4c8-1e53-4cee-b453-d9eeecfe53f1)
 
 ## Artifacts
 
-- main.js: 1036802 bytes; SHA-256 e2940ba3c78cbef2ebcee2681a8449f2592d7024d8662fa2ed85b3282e2c3fe5
+- main.js: 1037132 bytes; SHA-256 76de2ef222d20789ba72a07dcc4b4365552a7fc50ac91406058edde525be98e1
 
 Final verdict: COMPLETE
