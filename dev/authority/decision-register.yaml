@@ -1188,6 +1188,16 @@ decisions:
     rationale: "F02 reduced requests but ordinary planning and incremental refresh still repeat root-wide census."
     authority: "Owner 2026-11-24; planning parent c76e0e20b04e5419c0aefd1eed910c2af074bb7f; technical design dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md"
 
+  - id: DEC-365
+    status: locked
+    category: metadata_inventory_continuity_provider_contract
+    amends: [DEC-364]
+    relates_to: [DEC-339, DEC-338, DEC-362, DEC-363, DEC-350]
+    decision: "Owner 2026-11-24 expressly authorized implementation, directed provider research before finalizing design, and agreed with the research-supported recommendation. In the supported single-user personal My Drive, unchanged app/grant and policy, use complete scoped Changes replay with verified stable-ID inventory as normal remote observation authority; eliminate routine root-wide census in both planning and incremental refresh. Retain full baseline, periodic and explicit reconciliation, detected uncertainty recovery/blocking, targeted affected-scope proof, independent final authority and all existing executor precondition/convergence/deletion safeguards. No broader OAuth scope, Shared Drives, blanket safety waiver, new BU, targeted executor optimization, live action or activation. Research supports normal reliance but does not establish absolute delivery or every app-visibility transition. The residual possibility of silent observational staleness is handled by independent effect checks and periodic reconciliation; no claim of instant detection. No open-ended provider-proof research hold; actual new material safety tradeoffs require separate Owner decision. Measure after correction. Implementation authorized but not started at this documentation checkpoint."
+    rationale: "Google documents the scoped current-state Changes feed, durable page tokens, removal semantics and per-file grant support; independent rclone implementation corroborates cached-ID delta polling. No substantiated routine omissions found in intended regime; research is not exhaustive or live proof."
+    authority: "Owner 2026-11-24, design approval and explicit implementation authorization; technical design dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md; predecessor 84b4728b8f81af25f4ef478f8cb51ba71249927d"
+
+
 superseded_decisions:
   - id: SUP-001
     status: superseded

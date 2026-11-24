@@ -31,6 +31,9 @@
 
 Implementation within this workstream remains subordinate to the target-system specification, the decision register, inherited repository contracts, and dependency ownership recorded in `00-WORKSTREAM.md`.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 WS-03 owns personal My Drive, drive.file scoped continuity and affected-ID/parent/ancestry observation. Shared Drives and expanded OAuth excluded. Removed event not deletion proof. Retain root-wide evidence where equivalent proof unavailable.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Use documented Changes authority in supported personal My Drive, same app/grant; eliminate normal root-wide census. Retain independent execution proof and exceptional scans; no Shared Drives or broadened OAuth. See the canonical F03 technical design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

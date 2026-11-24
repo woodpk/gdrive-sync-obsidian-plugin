@@ -176,6 +176,9 @@ Detailed requirement text remains authoritative in the two target-system specifi
 
 **Qualification status:** first DEC-357 PHX-CI run `422cc526-615e-4848-8566-9f4152b5126e` was **BLOCKED** at focused TypeScript compilation, with no Reviewer approval; the DEC-356 R5 prior PASS cannot qualify it. Live OAuth/Google Drive access requires a separate explicit Owner decision; no merge/physical execution.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 No new numbered requirements. F03 §§2–7 and §9: REM/AUTH/PRIV families map to WS-03 corpus, fence, identity and access-loss cases; CHANGE-004–007 and STATE-001–017 map to WS-02/03 baseline, replay, cursor/CAS, restart/rollback; PLAN-001–009, MOVE/DELETE and INV-001–020 map to WS-05 projection/final fence, parity, no unsafe effects; CONFIG/ASSET/PRIV families to domain isolation and metric privacy; SYS/FAIL/XFER to resource and failure bounds with WS-06 later physical evidence. WS-07 qualifies differential and adversarial coverage via PHX-CI. D339-06 separately gated. Existing detailed requirement mappings unchanged; prospective coverage, not PASS.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no implementation authorization.
+
+### DEC-365 — operative research disposition (2026-11-24)
+Owner approved documented scoped Changes reliance for eligible personal My Drive and authorized implementation. Both ordinary planning and incremental refresh must omit routine root-wide census; retain complete baseline, targeted checks, final fences, existing execution safeguards and periodic/explicit/exceptional reconciliation. No claim of instantaneous detection of silent provider faults; verify detectable uncertainty, targeted-effect protection and periodic discovery. All existing requirements, ownership, two-BU sequence and PHX-CI authority remain. Prior research hold is superseded; no activation or live use. Canonical F03 design §2.1 governs.

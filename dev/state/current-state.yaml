@@ -2595,7 +2595,7 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   f01_builder_closeout_next_authority: "OWNER_APPROVAL_REQUIRED_FOR_STEP6_OR_MERGE_INSTALLATION_PHYSICAL_LIVE_RELEASE"
 
 dec339_step6_metadata_bvp_2026_11_24:
-  status: "BU01_F03_DESIGN_DOCUMENTED_CONDITIONAL_PROOF_IMPLEMENTATION_NOT_AUTHORIZED"
+  status: "BU01_F03_RESEARCH_SUPPORTED_DESIGN_APPROVED_IMPLEMENTATION_AUTHORIZED_NOT_STARTED"
   owner_authorization: "2026-11-24_EXPLICIT_TWO_BU_TESTING_WORKSTREAM_APPROVAL"
   branch: "build/dec339-step6-metadata-bvp-20261124"
   starting_source_sha: "62fb2632017c0744f16fe95467d39d35ae655b16"
@@ -2613,15 +2613,17 @@ dec339_step6_metadata_bvp_2026_11_24:
   phxci_status: "SUT_PASS_OVERALL_BLOCKED_SCRIPT_COUNT_GATE"
   reviewer_status: "NOT_REQUESTED"
   bu01_source_readiness: "NOT_ESTABLISHED_SHIPPING_REVISION_COMPARISON_AND_BVP_SEAM"
-  bu01_next_action: "OWNER_IMPLEMENTATION_AUTHORIZATION_AND_PROVIDER_PROOF_GATE_BEFORE_PRODUCTION_EDIT"
+  bu01_next_action: "BEGIN_F03_INCREMENT_A_AFTER_OWNER_DOCUMENTATION_CHECKPOINT"
   bu01_f03_owner_direction: "2026-11-24_FIX_REPEATED_REMOTE_REDISCOVERY_BEFORE_MEASUREMENT"
-  bu01_f03_status: "TECHNICAL_DESIGN_PERSISTED_PROVIDER_PROOF_CONDITIONAL_IMPLEMENTATION_NOT_AUTHORIZED"
+  bu01_f03_status: "TECHNICAL_DESIGN_RESEARCH_UPDATED_APPROVED_IMPLEMENTATION_AUTHORIZED"
   bu01_f03_design: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md"
-  bu01_f03_decision: "DEC-364"
-  bu01_f03_provider_proof_status: "APP_VISIBILITY_GUARANTEE_NOT_ESTABLISHED_RETAIN_CENSUS_OR_BLOCK_IF_UNPROVEN"
+  bu01_f03_decision: "DEC-365"
+  bu01_f03_prior_decision: "DEC-364"
+  bu01_f03_owner_implementation_authorization: "2026-11-24_EXPLICIT_RESEARCH_SUPPORTED_APPROACH_APPROVED"
+  bu01_f03_provider_proof_status: "DOCUMENTED_SCOPED_CHANGES_RELIANCE_APPROVED_RESIDUAL_SILENT_VISIBILITY_LIMIT_RECORDED_NO_RESEARCH_HOLD"
   bu01_f03_analysis_source: "5167004edacf46e90aa79f1ca898f5b51824da0b"
   bu01_f03_benchmarking: "DEFERRED_UNTIL_CORRECTED_ARCHITECTURE"
-  bu01_f03_production_change_authorized: false
+  bu01_f03_production_change_authorized: true
   bu01_f02_cause: "REPEATED_ACCOUNT_ROOT_DOMAIN_PROOFS_AND_VAULT_WIDE_CENSUS"
   bu01_f02_analysis_source: "facd8db72a26a7d2706f1134008f7c59bcf1a61e"
   bu01_f02_remediation: "SUBSTANTIVE_PASS_MEASURED_REQUEST_REDUCTION"
@@ -2652,7 +2654,7 @@ dec339_step6_metadata_bvp_2026_11_24:
   bu01_diagnostic_focused: "7/10"
   bu01_diagnostic_full: "1362/1365"
   bu01_native_prerequisite_tests: "tests/integration/dec339-step4-observation-comparison.test.ts"
-  bu01_production_change_authorized: false
+  bu01_production_change_authorized: true
   approved_build_unit_count: 2
   inventory_activation_authorized: false
   live_migration_authorized: false

@@ -40,6 +40,9 @@ Dormant `InventoryBackedSnapshotAssembler` and the verified projection preserve 
 
 Follow the [single integration plan](tasks/dec339-inventory-production-integration-2026-11-17.md). Keep D339-06 targeted executor reads disabled in the initial cutover, **but retain their future separately gated DEC-339 objective**; activation requires new exact-source verification, independent review and Owner approval.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 Inventory-backed planning consumes WS-02 verified generation plus WS-03 complete scoped replay/targeted evidence only under proven eligibility. Independent initial/final provider boundary and durable publication checks; no global census on eligible ordinary path, no cache-only mutation proof, no silent fallback. Unsupported/uncertain proof retains census or blocks. Explicit full/recovery remains physical.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Use complete scoped replay from durable cursor with verified lease, same-attempt reuse of replay evidence, targeted affected scopes, independent final fence and atomic learned history. No routine global census; uncertainty triggers exceptional proof/recovery/block. See canonical F03 design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

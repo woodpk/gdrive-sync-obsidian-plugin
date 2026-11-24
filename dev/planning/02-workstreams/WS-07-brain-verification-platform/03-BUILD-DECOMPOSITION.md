@@ -533,6 +533,9 @@ This prerequisite **does not replace or activate** S09A–S09V. It preserves acc
 
 The detailed durable work-unit contract is `tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md`. Both units remain **PLANNED / NOT-YET-DISPATCHED** until exact predecessor SHAs and writable-path allowlists are rebound. No physical invocation, release, installed-device modification, S09A rerun or Stage 3 authorization follows from either software unit.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 Existing Step 6 two-BU task governs this corrective contribution; no new WS-07 BU. After corrected observation path, complete BU-01 registry, coverage, measurement and PHX-CI; after acceptance/closeout BU-02 simulated end-to-end. No additional execution or activation permission.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Proceed with existing two-BU sequence under approved DEC-365; no new work unit or open-ended research gate. Registry, metrics and qualification after correction. See canonical F03 design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

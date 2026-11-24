@@ -183,6 +183,9 @@ The prospective inventory safety/equivalence/performance gates are specified in 
 
 **Mandatory separation:** no `src/**` edits or unapproved production imports, no Node modules in the generated device/mobile bundle, no privilege escalation or copy of Obsidian refresh tokens, no second verification system. Preserve framework-core **4850** and live-device **1250** frozen logical LOC ceilings, guard and pinned PHX-CI. The current candidate **has not been PHX-CI verified**. Real separate OAuth file visibility remains **unverified** and blocks live activation. Detailed design, risks, contracts, negative matrix and dependencies: [DEC-357 build unit](tasks/bvp-windows-controller-oauth-2026-10-28.md).
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 Existing deterministic-battery-registry.ts and run-deterministic-battery.ts remain registry/runner owners. Register metadata planning battery once in existing aggregate, privacy-safe metrics, no new shipping seam or frozen lock change. Native product integration tests demonstrate actual composition; BVP seam gap needs approval rather than duplicate simulation policy.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Existing BVP registry/runner and seams remain unchanged; distinguish supported provider-contract simulation from out-of-contract silent omission. No new seam without approval. See canonical F03 design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

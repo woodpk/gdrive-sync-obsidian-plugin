@@ -74,6 +74,9 @@ Phase 1 only.
 
 D339-01/02/04 software is already implemented dormant. **Do not rebuild it.** Follow the [single WS-05 integration task](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md): WS-02 qualifies safe v1→v2 migration/rollback, every canonical cursor writer, atomic generation+cursor publication and pending-intent preservation; it also qualifies already-implemented `VerifiedLocalInventoryCoordinator` refresh/invalidation of all in-scope LOCAL file/folder hints without replacing fresh vault enumeration. Keep BASE/history, conflict logic and existing state authority; accepted original Phase-2 scope is unchanged.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 Within Step 6 BU-01 establish WS-02 frozen receipt/namespace and no-advance contract before dependent WS-03/05 implementation. Preserve accepted migration, rollback, cursor-writer and recovery invariants; no second store or new BU.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Implement the frozen receipt/namespace and no-advance contract as increment A of existing BU-01, then coordinate WS-03 and WS-05. Owner authorized implementation; not yet started. See the canonical F03 technical design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

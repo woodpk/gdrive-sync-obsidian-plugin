@@ -33,6 +33,9 @@ The [reviewed architecture](../../../research/verified-remote-metadata-inventory
 
 Use the [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md). Existing accepted Phase-2 authority is not reopened.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 Reuse existing IndexedDB generation, lease, coverage, publicationSnapshot, prepareRemoteRebaseline and publishAtomically lifecycle. Salt the policy fingerprint to distinguish old receipts from new eligibility; bind account/app/grant epoch, device/vault, roots, protocol/schema/corpus, scope and authority revisions. Same-token empty replay reuses generation without churn; changed cursor requires durable batch and atomic CAS. Rebaseline cannot skip learned history. Unknown visibility fails closed.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Use policy-salted continuity namespace, exact app/grant and durable revision binding. Retain full baseline and periodic/explicit recovery; detected inconsistencies invalidate. Silent provider faults remain a residual observational limitation, not an indefinite prerequisite. See the canonical F03 technical design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

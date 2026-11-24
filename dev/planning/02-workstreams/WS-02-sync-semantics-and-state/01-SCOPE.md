@@ -31,6 +31,9 @@
 
 Implementation within this workstream remains subordinate to the target-system specification, the decision register, inherited repository contracts, and dependency ownership recorded in `00-WORKSTREAM.md`.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 WS-02 owns the continuity receipt, canonical namespace, atomic inventory/learned Changes/cursor publication and invalidation/recovery contract. Fresh BASE/history and LOCAL authority remain separate; no migration or implementation permission.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
+
+### DEC-365 — operative research-supported design
+Treat verified inventory plus complete documented scoped Changes replay as normal observation authority; invalidate on relevant grant/app/policy changes. Same-cursor no-change observation does not churn generations; advance only with atomic learned batch/cursor. No new migration or store. See the canonical F03 technical design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.

@@ -220,6 +220,9 @@ No additional human product choice is identified in this design. A later finding
 
 **Design grounded from:** `AGENTS.md`, active `dev/state/**`, DEC-339 register, Target Specification §7.9, WS-02/03/05/07 architecture/decomposition, BVP lock, S09A report, and actual source at the baseline SHA; official Google Drive v3 `changes.list`/`files.list` API documentation.
 
-## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24; historical pre-research design)
 Prospective successor refinement for planning/refresh only. Earlier non-local proof obligation remains binding. Baseline plus cursor equality or targeted parent listing alone is insufficient; retire routine census only where new scoped continuity proof closes equivalent counterexamples. Section 7 targeted executor proof stays separately gated.
 Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no implementation authorization.
+
+### DEC-365 — operative research disposition (2026-11-24)
+Owner approved documented scoped Changes reliance for eligible personal My Drive and authorized implementation. Both ordinary planning and incremental refresh must omit routine root-wide census; retain complete baseline, targeted checks, final fences, existing execution safeguards and periodic/explicit/exceptional reconciliation. No claim of instantaneous detection of silent provider faults; verify detectable uncertainty, targeted-effect protection and periodic discovery. All existing requirements, ownership, two-BU sequence and PHX-CI authority remain. Prior research hold is superseded; no activation or live use. Canonical F03 design §2.1 governs.
