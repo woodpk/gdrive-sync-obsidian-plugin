@@ -194,7 +194,7 @@ test("D339-05 portable namespace is preserved with one existing snapshot assembl
   assert.equal(result.input.snapshots.find(entry => entry.path === portable)?.remote.status, "present");
 });
 
-test("D339-05 missing, stale, wrong-scope and invalid coverage always fall back to ordinary reconciliation", async () => {
+test("D339-05 missing, stale, wrong-scope and invalid coverage block without a verified rebuild owner", async () => {
   const incorrect = { ...fence, pairedAccountKey: "other-account" };
   const conditions = [
     { fence: incorrect },
@@ -205,50 +205,49 @@ test("D339-05 missing, stale, wrong-scope and invalid coverage always fall back 
     { rows: [rootEntity("content"), rootEntity("portable-config"), fileEntity({ pathValidity: "unknown" })] },
   ];
   for (const condition of conditions) {
-    const sample = fixture(condition);
-    const result = await sample.optimized.assemble();
-    assert.equal(sample.remoteLists, 1, JSON.stringify(condition));
-    assert.equal(result.input.snapshots.find(entry => entry.path === path)?.remote.status, "present");
+    const sample = fixture({ ...condition, emptyIncrementalChanges: true });
+    await assert.rejects(sample.optimized.assemble(), /metadata-enabled synchronization blocked/);
+    assert.equal(sample.remoteLists, 0, JSON.stringify(condition));
+    assert.equal(sample.changesReads, 0);
     assert.equal(sample.releases, sample.invReads, "every acquired read lease must be released");
   }
 });
 
-test("D339-10 missing or invalid root-wide provenance proof forces full reconciliation", async () => {
+test("D339-10 missing or invalid root-wide provenance proof blocks ordinary enabled planning", async () => {
   for (const condition of [{ provenanceFailure: true }, { provenanceMissing: true }]) {
     const sample = fixture(condition);
-    const result = await sample.optimized.assemble();
-    assert.equal(sample.remoteLists, 1, "cached inventory must not authorize planning without proof");
-    assert.equal(result.input.snapshots[0]?.remote.status, "present");
+    await assert.rejects(sample.optimized.assemble(), /root-wide managed provenance unproven/);
+    assert.equal(sample.remoteLists, 0);
     assert.equal(sample.provenanceReads, condition.provenanceMissing ? 0 : 1);
   }
 });
-
-test("D339-10 managed-marked object outside domain blocks optimized and fallback planning", async () => {
+test("D339-10 managed-marked object outside domain blocks optimized and explicit full planning", async () => {
   const sample = fixture({ provenanceFailure: true, fullListingFailure: true });
-  await assert.rejects(sample.optimized.assemble(), /managed-object-left-remote-domain/);
-  assert.equal(sample.provenanceReads, 1, "cached observations require a fresh provenance check");
-  assert.equal(sample.remoteLists, 1, "unsafe cached result must fall through to the real listing");
+  await assert.rejects(sample.optimized.assemble(), /root-wide managed provenance unproven/);
+  assert.equal(sample.provenanceReads, 1);
+  assert.equal(sample.remoteLists, 0);
+  await assert.rejects(sample.optimized.assembleFull(), /managed-object-left-remote-domain/);
+  assert.equal(sample.remoteLists, 1);
 });
-
-test("D339-11 failed, missing or throwing provenance census cannot use empty incremental Changes", async () => {
-  for (const unsafe of [
-    { provenanceFailure: true }, { provenanceMissing: true }, { provenanceThrows: true },
-  ]) {
+test("D339-11 failed, missing or throwing provenance cannot use empty incremental Changes", async () => {
+  for (const unsafe of [{ provenanceFailure: true }, { provenanceMissing: true }, { provenanceThrows: true }]) {
     const sample = fixture({ ...unsafe, emptyIncrementalChanges: true });
-    const result = await sample.optimized.assemble();
-    assert.equal(result.mode, "full", "unproven census requires physical reconciliation");
-    assert.equal(result.remoteEnumeration.status, "complete");
-    assert.equal(sample.remoteLists, 1, "fresh full listing must run");
-    assert.equal(sample.changesReads, 0, "empty incremental Changes must not bypass census");
+    await assert.rejects(sample.optimized.assemble(), /metadata-enabled synchronization blocked/);
+    assert.equal(sample.remoteLists, 0);
+    assert.equal(sample.changesReads, 0);
+    const explicit = await sample.optimized.assembleFull();
+    assert.equal(explicit.remoteEnumeration.status, "complete");
+    assert.equal(sample.remoteLists, 1);
   }
 });
-
 test("D339-11 failed census with empty Changes cannot bypass unsafe or incomplete full listing", async () => {
   for (const failure of [{ fullListingFailure: true }, { fullListingPartial: true }]) {
     const sample = fixture({ provenanceFailure: true, emptyIncrementalChanges: true, ...failure });
-    await assert.rejects(sample.optimized.assemble(), /managed-object-left-remote-domain|root-wide managed provenance unproven/);
-    assert.equal(sample.remoteLists, 1);
-    assert.equal(sample.changesReads, 0, "incremental reconciliation may not replace failed full proof");
+    await assert.rejects(sample.optimized.assemble(), /root-wide managed provenance unproven/);
+    assert.equal(sample.remoteLists, 0);
+    assert.equal(sample.changesReads, 0);
+    if (failure.fullListingFailure) await assert.rejects(sample.optimized.assembleFull(), /managed-object-left-remote-domain/);
+    else assert.equal((await sample.optimized.assembleFull()).remoteEnumeration.status, "partial");
   }
 });
 
@@ -257,9 +256,10 @@ test("D339-05 same-name duplicates never become a false unique or empty occupanc
   const sample = fixture({ rows: [
     rootEntity("content"), rootEntity("portable-config"), fileEntity(), duplicate,
   ] });
-  const assembled = await sample.optimized.assemble();
-  assert.equal(sample.remoteLists, 1);
-  assert.equal(assembled.input.snapshots[0]?.remote.status, "present");
+  await assert.rejects(sample.optimized.assemble(), /metadata-enabled synchronization blocked/);
+  assert.equal(sample.remoteLists, 0);
+  const explicit = await sample.optimized.assembleFull();
+  assert.equal(explicit.input.snapshots[0]?.remote.status, "present");
 });
 
 test("D339-05 explicit full and recovery paths never consult inventory", async () => {
@@ -293,6 +293,8 @@ test("D339-05 incomplete local observation and trusted tombstones remain existin
       openRead: async () => ({ status: "verified-observation" as const, generation, value: sample.lease }),
     } as never,
     currentFence: async () => fence,
+    provenanceReader: { verifyRootWideManagedProvenance: async () =>
+      ({ status: "ok" as const, value: undefined }) },
   });
   const assembled = await optimized.assemble();
   const existing = assembled.input.snapshots.find(item => item.path === path);

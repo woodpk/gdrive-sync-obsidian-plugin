@@ -337,13 +337,14 @@ test("DEC339 Step 4 exact production boundary yields snapshot and plan parity be
     "production paired-account boundary must participate in the comparison chain");
 });
 
-test("DEC339 Step 4 wrong-fence uncertainty falls back to the existing physical observation and cannot become more permissive", async () => {
+test("DEC339 Step 4 wrong-fence uncertainty blocks ordinary enabled planning; explicit full remains independent", async () => {
   const env = await environment();
   const wrongFence = { ...env.fence, pairedAccountKey: "sha256:" + "0".repeat(64) };
-  const fallback = await env.inventoryBacked(async () => wrongFence).assemble();
+  await assert.rejects(env.inventoryBacked(async () => wrongFence).assemble(), /metadata-enabled synchronization blocked/);
+  const explicit = await env.inventoryBacked(async () => wrongFence).assembleFull();
   const ordinary = await env.ordinary().assembleFull();
-  assert.deepEqual(fallback.input.snapshots, ordinary.input.snapshots);
-  assert.deepEqual(await planner().plan(fallback.input), await planner().plan(ordinary.input));
+  assert.deepEqual(explicit.input.snapshots, ordinary.input.snapshots);
+  assert.deepEqual(await planner().plan(explicit.input), await planner().plan(ordinary.input));
 });
 
 test("DEC339 Step 4 partial fresh LOCAL observation remains uncertainty on both observation paths", async () => {
@@ -457,6 +458,8 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
   let inventoryConstructions = 0;
   let scopeExclusions: string[] = [];
   let censusFault = false;
+  let changesFault = false;
+  let changeDuringCensus = false;
   const scope = new ProductPathScope(contractId<"VaultPath">(".obsidian") as VaultPath,
     () => ({ userExclusionPatterns: scopeExclusions }));
   const local = {
@@ -488,7 +491,11 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
       try {
         // All requests terminate here; no mutation is allowed in this BU.
         if (method !== "GET") throw new Error("unexpected synthetic provider mutation");
-        if (censusFault && purpose === "markedCensus") {
+        if (changeDuringCensus && purpose === "markedCensus") {
+          changeDuringCensus = false;
+          server.advanceSameId();
+        }
+        if ((censusFault && purpose === "markedCensus") || (changesFault && purpose === "changes")) {
           const payload = new TextEncoder().encode(JSON.stringify({ error: { message: "synthetic denied census" } }));
           return { status: 403, headers: { "content-type": "application/json" },
             arrayBuffer: payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) };
@@ -554,9 +561,11 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
   const selected = (owner: PersistentSynchronizationStateStore = state) =>
     selectPlanningAssembler<ProductSnapshotAssembler>(enabled, () => legacy(owner), () => {
       inventoryConstructions++;
+      const inventory = inventoryStore(false);
       return new InventoryBackedSnapshotAssembler({
         local: local as never, drive: boundary.drive, state: owner, stateContext: context,
-        remoteIdentity: async () => remote, inventory: inventoryStore(false), currentFence,
+        remoteIdentity: async () => remote, inventory, currentFence,
+        refresh: new VerifiedInventoryBaselineCoordinator(boundary.metadataReader, inventory),
         pathIncluded: path => scope.isManagedLogical(path), fullReconcileRequired: () => false,
         provenanceReader: boundary.metadataReader, reliableChanges: boundary.drive,
         authorityStore: owner,
@@ -598,6 +607,17 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
     setLocalContent: (content: typeof localContent) => { localContent = content; },
     setScopeExclusions: (patterns: string[]) => { scopeExclusions = patterns; },
     denyCensus: () => { censusFault = true; },
+    denyChanges: () => { changesFault = true; },
+    allowChanges: () => { changesFault = false; },
+    changeDuringNextCensus: () => { changeDuringCensus = true; },
+    removeInventoryRow: () => {
+      const table = db.tables.get("inventory-entities");
+      assert.ok(table);
+      const key = [...table.records.keys()].find(key => key.includes(String(noteId)));
+      assert.ok(key);
+      table.records.delete(key);
+    },
+    changePairedAccount: () => secrets.setSecret("brain-gdrive-paired-account", "other-account"),
     reopen: () => new SynchronizationStateAuthorityAdapter(new PersistentSynchronizationStateStore(
       new IndexedDbInventoryAwareStateByteStorage(databaseName, factory))),
   };
@@ -691,26 +711,35 @@ test("DEC339 Step 6 refreshed same-ID observation matches legacy Changes and ful
 
 test("DEC339 Step 6 missing inventory and changed scope cannot substitute an unverified listing", async () => {
   const missing = await pairedEnvironment(true, false);
-  const absent = await missing.plan(missing.selected());
-  assert.equal(absent.value.assembly.mode, "incremental");
+  await assert.rejects(missing.plan(missing.selected()), /metadata-enabled synchronization blocked/);
   assert.equal(missing.db.version, 1, "enabled reads must not migrate existing storage");
-  assert.equal(absent.metrics.inventoryLogicalBytes, 0);
+  assert.equal(logicalBytes(missing.db, false), 0);
   const enabled = await pairedEnvironment(true);
   enabled.setScopeExclusions(["unrelated/**"]);
-  const stale = await enabled.plan(enabled.selected());
-  assert.equal(stale.value.assembly.mode, "incremental");
-  assert.ok(stale.metrics.counts.changes > 0);
-  assert.equal(stale.metrics.writes, 0);
+  const rebuilt = await enabled.plan(enabled.selected());
+  assert.equal(rebuilt.value.assembly.mode, "full");
+  assert.ok(rebuilt.metrics.physicalTreeReads > 0);
+  assert.ok(rebuilt.metrics.counts.markedCensus > 0);
+  assert.equal(rebuilt.metrics.writes, 0);
+  await enabled.publicationProof();
+  assertOptimized(await enabled.plan(enabled.selected(enabled.reopen())));
 });
-
-test("DEC339 Step 6 stale provider horizon uses current Changes rather than obsolete inventory", async () => {
+test("DEC339 Step 6 stale provider horizon refreshes verified inventory before planning", async t => {
   const enabled = await pairedEnvironment(true);
-  enabled.server.advanceSameId();
-  const stale = await enabled.plan(enabled.selected());
+  const legacy = await pairedEnvironment(false);
+  enabled.server.advanceSameId(); legacy.server.advanceSameId();
+  const refreshed = await enabled.plan(enabled.selected());
   const physical = await enabled.plan(enabled.legacy(), true);
-  comparePlanObservations(stale, physical);
-  assert.equal(stale.value.assembly.mode, "incremental");
-  assert.ok(stale.metrics.counts.changes > 0);
+  const ordinary = await legacy.plan(legacy.selected());
+  comparePlanObservations(refreshed, physical);
+  comparePlanObservations(refreshed, ordinary);
+  assert.equal(refreshed.value.assembly.mode, "full");
+  assert.ok(refreshed.metrics.counts.changes > 0);
+  assert.ok(refreshed.metrics.counts.markedCensus > 0);
+  await enabled.publicationProof();
+  reportMeasurements(t, "automatic-refresh-and-plan", [{ mode: "inventory", metrics: refreshed.metrics },
+    { mode: "legacy", metrics: ordinary.metrics }, { mode: "full", metrics: physical.metrics }]);
+  assertOptimized(await enabled.plan(enabled.selected(enabled.reopen())));
 });
 
 test("DEC339 Step 6 partial fresh local observation does not become deletion authority", async () => {
@@ -727,7 +756,74 @@ test("DEC339 Step 6 partial fresh local observation does not become deletion aut
 test("DEC339 Step 6 failed required provider provenance cannot certify inventory or Changes-only success", async () => {
   const enabled = await pairedEnvironment(true);
   enabled.denyCensus();
-  await assert.rejects(enabled.plan(enabled.selected()), /.+/);
-  assert.ok(enabled.samples.some(sample => sample.purpose === "markedCensus"));
+  const start = enabled.samples.length;
+  await assert.rejects(enabled.plan(enabled.selected()), /root-wide managed provenance unproven/);
+  const attempted = enabled.samples.slice(start);
+  assert.ok(attempted.some(sample => sample.purpose === "markedCensus"));
+  assert.equal(attempted.some(sample => sample.purpose === "changes" || sample.physicalTree), false);
   assert.ok(enabled.samples.every(sample => sample.method === "GET"));
+});
+
+test("DEC339 Step 6 failed refresh preserves prior cursor and permits a bounded verified retry", async () => {
+  const enabled = await pairedEnvironment(true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.server.advanceSameId();
+  enabled.denyChanges();
+  await assert.rejects(enabled.plan(enabled.selected()), /verified inventory refresh failed/);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+  enabled.allowChanges();
+  const result = await enabled.plan(enabled.selected());
+  assert.equal(result.value.assembly.mode, "full");
+  await enabled.publicationProof();
+  assertOptimized(await enabled.plan(enabled.selected(enabled.reopen())));
+});
+
+test("DEC339 Step 6 damaged persisted row is rebuilt before planning with unchanged canonical cursor", async () => {
+  const enabled = await pairedEnvironment(true);
+  const before = await enabled.raw.loadAuthority();
+  enabled.removeInventoryRow();
+  const rebuilt = await enabled.plan(enabled.selected());
+  assert.ok(rebuilt.metrics.physicalTreeReads > 0);
+  assert.equal(rebuilt.value.assembly.mode, "full");
+  const after = await enabled.raw.loadAuthority();
+  assert.equal(before.status, "trusted");
+  assert.equal(after.status, "trusted");
+  if (before.status !== "trusted" || after.status !== "trusted") throw new Error("authority lost");
+  assert.equal(after.state.changeCursor, before.state.changeCursor);
+  assert.deepEqual(after.state.base, before.state.base);
+  assert.deepEqual(after.state.learnedRemoteBatches, before.state.learnedRemoteBatches);
+  await enabled.publicationProof();
+  assertOptimized(await enabled.plan(enabled.selected(enabled.reopen())));
+});
+
+test("DEC339 Step 6 rebaseline cannot skip unlearned provider cursor advance", async () => {
+  const enabled = await pairedEnvironment(true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.removeInventoryRow();
+  enabled.setScopeExclusions(["unrelated/**"]);
+  enabled.server.advanceSameId();
+  await assert.rejects(enabled.plan(enabled.selected()), /rebaseline-would-advance-canonical-cursor-without-learned-changes/);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+  const rollback = await enabled.plan(enabled.legacy());
+  assert.equal(rollback.value.assembly.mode, "incremental");
+  assert.ok(rollback.value.planned.operations.some(operation => operation.kind === "download-update"));
+});
+
+test("DEC339 Step 6 provider horizon racing final census blocks stale plan", async () => {
+  const enabled = await pairedEnvironment(true);
+  enabled.changeDuringNextCensus();
+  const start = enabled.samples.length;
+  await assert.rejects(enabled.plan(enabled.selected()), /metadata fence or provider horizon changed|root-wide managed provenance unproven/);
+  assert.ok(enabled.samples.slice(start).some(sample => sample.purpose === "markedCensus"));
+  assert.equal(enabled.samples.slice(start).some(sample => sample.purpose === "changes"), false);
+});
+
+test("DEC339 Step 6 wrong paired account cannot trigger rebuild or legacy planning", async () => {
+  const enabled = await pairedEnvironment(true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.changePairedAccount();
+  const start = enabled.samples.length;
+  await assert.rejects(enabled.plan(enabled.selected()), /metadata-enabled synchronization blocked/);
+  assert.equal(enabled.samples.slice(start).some(sample => sample.purpose === "changes" || sample.physicalTree), false);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
 });

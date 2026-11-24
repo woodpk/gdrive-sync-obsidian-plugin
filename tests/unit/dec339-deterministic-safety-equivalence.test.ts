@@ -160,14 +160,13 @@ test("D339-07A A04/A05 never accepts incomplete pages, stale tokens, wrong scope
   ];
   for (const option of cases) {
     const check = fixture(option);
-    const actual = await check.inventory.assemble();
-    assert.equal(check.fullLists, 1, JSON.stringify(option));
-    assert.equal(actual.input.snapshots.find(x => x.path === path)?.remote.status, "present");
+    await assert.rejects(check.inventory.assemble(), /metadata-enabled synchronization blocked/);
+    assert.equal(check.fullLists, 0, JSON.stringify(option));
     assert.equal(check.mutationCalls, 0);
   }
 });
 
-test("D339-07A A01/A07 duplicate IDs, normalized collisions and contradictory path/provenance force fallback", async () => {
+test("D339-07A A01/A07 duplicate IDs, normalized collisions and contradictory path/provenance block ordinary enabled planning", async () => {
   const cases: readonly (readonly InventoryRemoteEntity[])[] = [
     [rootRow("content"), rootRow("portable-config"), fileRow(),
       fileRow({ remoteObjectId: id<"RemoteObjectId">("second") })],
@@ -182,8 +181,8 @@ test("D339-07A A01/A07 duplicate IDs, normalized collisions and contradictory pa
   for (const rows of cases) {
     const check = fixture({ rows });
     assert.equal(await readInventoryRemoteListing(check.lease, fence, cursor), undefined);
-    await check.inventory.assemble();
-    assert.equal(check.fullLists, 1);
+    await assert.rejects(check.inventory.assemble(), /metadata-enabled synchronization blocked/);
+    assert.equal(check.fullLists, 0);
     assert.equal(check.mutationCalls, 0);
   }
 });
