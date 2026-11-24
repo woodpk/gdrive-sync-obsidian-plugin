@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { ProductionSynchronizationPlanner } from "../../src/core/production-planner";
-import { buildInventoryPlanningFence, selectPlanningAssembler } from "../../src/product/inventory-planning-cutover";
+import { buildInventoryPlanningBoundary, buildInventoryPlanningFence, selectPlanningAssembler } from "../../src/product/inventory-planning-cutover";
 import { ProductPathScope } from "../../src/product/path-scope";
 import { SynchronizationStateAuthorityAdapter } from "../../src/product/synchronization-adapters";
 import { IndexedDbInventoryAwareStateByteStorage } from "../../src/state/indexeddb-inventory-authority-storage";
@@ -74,6 +74,33 @@ class ObservationServer {
   private hash = "11".repeat(32);
   private token = "changes:step4:0";
   private changes: Array<{ fileId: string; removed: boolean; file: ServerFile }> = [];
+  private readonly extra: ServerFile[];
+  domainFault: "none" | "partial" | "duplicate" | "exact" | "repeated" = "none";
+  account = "permission-step4";
+  constructor(extraFiles = 0) {
+    const folder: ServerFile = { id: "nested-folder", name: "nested", mimeType: FOLDER,
+      parents: [String(contentRoot)], trashed: false, version: "1",
+      appProperties: { brainManagedRootId: String(root), brainSyncDomain: "content" } };
+    this.extra = extraFiles === 0 ? [] : [folder, ...Array.from({ length: extraFiles }, (_, i) => ({
+      id: "extra-" + i, name: "note-" + i + ".md", mimeType: "text/plain",
+      parents: [folder.id], trashed: false, version: "1", size: "5",
+      sha256Checksum: "11".repeat(32), appProperties: {
+        brainManagedRootId: String(root), brainSyncDomain: "content",
+      },
+    }))];
+  }
+  extraBaseline() {
+    return this.extra.map(file => ({
+      path: contractId<"VaultPath">(file.mimeType === FOLDER ? file.name : "nested/" + file.name) as VaultPath,
+      entityKind: file.mimeType === FOLDER ? "folder" as const : "file" as const,
+      localExisted: true, remoteExisted: true,
+      remoteObjectId: contractId<"RemoteObjectId">(file.id),
+      content: file.mimeType === FOLDER ? undefined : {
+        hash: contractId<"ContentHash">("sha256:" + file.sha256Checksum) as ContentHash,
+        revision: file.version, sizeBytes: Number(file.size),
+      },
+    }));
+  }
   readonly calls: Array<{ readonly url: string; readonly method: string }> = [];
 
   private rootFile(): ServerFile {
@@ -155,7 +182,7 @@ class ObservationServer {
     const url = new URL(request.url);
 
     if (normalized.includes("/drive/v3/about?"))
-      return this.response({ user: { permissionId: "permission-step4" } });
+      return this.response({ user: { permissionId: this.account } });
     if (normalized.includes("/drive/v3/changes/startPageToken"))
       return this.response({ startPageToken: this.token });
     if (normalized.includes("/drive/v3/changes?")) {
@@ -169,23 +196,36 @@ class ObservationServer {
 
     if (normalized.includes("/drive/v3/files/root?")) return this.response(this.rootFile());
     if (normalized.includes("/drive/v3/files/content?")) return this.response(this.contentFile());
-    if (normalized.includes("/drive/v3/files/config?")) return this.response(this.configFile());
+    if (normalized.includes("/drive/v3/files/config?")) return this.response(this.domainFault === "exact" ? { ...this.configFile(), parents: ["different-root"] } : this.configFile());
     if (normalized.includes("/drive/v3/files/stable-alpha?")) return this.response(this.note());
+    const extra = this.extra.find(file => url.pathname === "/drive/v3/files/" + file.id);
+    if (extra) return this.response(extra);
 
     if (url.pathname === "/drive/v3/files") {
       const q = this.normalize(url.searchParams.get("q") ?? "");
-      if (q.includes("'root' in parents") && q.includes("brain-sync-content"))
+      if (q.includes("'root' in parents") && q.includes("brain-sync-content")) {
+        if (this.domainFault === "partial") return this.response({ files: [this.contentFile()], incompleteSearch: true });
+        if (this.domainFault === "duplicate") return this.response({ files: [this.contentFile(), { ...this.contentFile(), id: "duplicate-content" }], incompleteSearch: false });
+        if (this.domainFault === "repeated") return this.response({ files: [], incompleteSearch: false, nextPageToken: "loop" });
         return this.response({ files: [this.contentFile()], incompleteSearch: false });
+      }
       if (q.includes("'root' in parents") && q.includes("__brain_sync_portable_config__"))
         return this.response({ files: [this.configFile()], incompleteSearch: false });
       if (q.includes("'content' in parents") && q.includes("__brain_sync_portable_config__"))
         return this.response({ files: [], incompleteSearch: false });
       if (q.includes("'content' in parents"))
-        return this.response({ files: [this.note()], incompleteSearch: false });
+        return this.response({ files: [this.note(), ...this.extra.filter(file => file.parents[0] === "content")], incompleteSearch: false });
+      if (q.includes("'nested-folder' in parents"))
+        return this.response({ files: this.extra.filter(file => file.parents[0] === "nested-folder"), incompleteSearch: false });
       if (q.includes("'config' in parents"))
         return this.response({ files: [], incompleteSearch: false });
-      if (q.includes("brainManagedRootId"))
-        return this.response({ files: [this.note()], incompleteSearch: false });
+      if (q.includes("brainManagedRootId")) {
+        const files = [this.note(), ...this.extra];
+        const offset = Number(url.searchParams.get("pageToken") ?? "0");
+        const next = offset + 25;
+        return this.response({ files: files.slice(offset, next), incompleteSearch: false,
+          ...(next < files.length ? { nextPageToken: String(next) } : {}) });
+      }
     }
     throw new Error("unexpected Step-4 request: " + method + " " + request.url);
   }
@@ -418,10 +458,10 @@ function physicalTreeRead(raw: string): boolean {
   const url = new URL(raw);
   const q = url.searchParams.get("q") ?? "";
   return url.pathname === "/drive/v3/files" &&
-    (q.includes("'content' in parents") || q.includes("'config' in parents"));
+    (q.includes("'content' in parents") || q.includes("'config' in parents") || q.includes("'nested-folder' in parents"));
 }
 type BoundarySample = { readonly purpose: RequestClass; readonly ms: number;
-  readonly physicalTree: boolean; readonly method: string };
+  readonly physicalTree: boolean; readonly method: string; readonly sharedAncestor: boolean };
 function logicalBytes(db: FakeDatabase, authority: boolean): number {
   let total = 0;
   for (const [name, table] of db.tables) {
@@ -435,9 +475,10 @@ function logicalBytes(db: FakeDatabase, authority: boolean): number {
   return total;
 }
 
-async function pairedEnvironment(enabled: boolean, establish = enabled) {
+async function pairedEnvironment(enabled: boolean, establish = enabled, extraFiles = 0) {
   withRangeOnly();
-  const server = new ObservationServer();
+  const server = new ObservationServer(extraFiles);
+  const extraBase = server.extraBaseline();
   const samples: BoundarySample[] = [];
   const db = new FakeDatabase();
   const factory = db.openFactory();
@@ -460,6 +501,9 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
   let censusFault = false;
   let changesFault = false;
   let changeDuringCensus = false;
+  let accountDuringCensus = false;
+  let domainDuringCensus = false;
+  let scopeDuringCensus = false;
   const scope = new ProductPathScope(contractId<"VaultPath">(".obsidian") as VaultPath,
     () => ({ userExclusionPatterns: scopeExclusions }));
   const local = {
@@ -470,7 +514,9 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
         : { entries: [{
           status: "present" as const, side: "local" as const, path: notePath,
           entityKind: "file" as const, stability: "stable" as const, content: localContent,
-        }], completeness: { status: "complete" as const } };
+        }, ...extraBase.map(entry => ({ status: "present" as const, side: "local" as const,
+          path: entry.path, entityKind: entry.entityKind, stability: "stable" as const,
+          content: entry.content }))], completeness: { status: "complete" as const } };
     },
   };
   const secrets = new MemorySecrets();
@@ -495,6 +541,11 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
           changeDuringCensus = false;
           server.advanceSameId();
         }
+        if (purpose === "markedCensus") {
+          if (accountDuringCensus) { accountDuringCensus = false; server.account = "different-provider-account"; }
+          if (domainDuringCensus) { domainDuringCensus = false; server.domainFault = "exact"; }
+          if (scopeDuringCensus) { scopeDuringCensus = false; scopeExclusions = ["other/**"]; }
+        }
         if ((censusFault && purpose === "markedCensus") || (changesFault && purpose === "changes")) {
           const payload = new TextEncoder().encode(JSON.stringify({ error: { message: "synthetic denied census" } }));
           return { status: 403, headers: { "content-type": "application/json" },
@@ -503,6 +554,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
         return await server.request(request);
       } finally {
         samples.push({ purpose, method, physicalTree: physicalTreeRead(request.url),
+          sharedAncestor: new URL(request.url).pathname === "/drive/v3/files/nested-folder",
           ms: performance.now() - started });
       }
     },
@@ -516,14 +568,24 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
   const saved = await raw.saveTrusted({
     ...initial, changeCursor: server.currentCursor(),
     base: [{ path: notePath, entityKind: "file", localExisted: true, remoteExisted: true,
-      remoteObjectId: noteId, content: originalContent }],
-    remoteMappings: [{ path: notePath, entityKind: "file", remoteObjectId: noteId }],
+      remoteObjectId: noteId, content: originalContent }, ...extraBase],
+    remoteMappings: [{ path: notePath, entityKind: "file", remoteObjectId: noteId },
+      ...extraBase.map(({ path, entityKind, remoteObjectId }) => ({ path, entityKind, remoteObjectId }))],
   });
   assert.equal(saved.status, "saved");
   const currentFence = () => buildInventoryPlanningFence({
     drive: boundary.drive, remoteIdentity: remote, deviceIdentity: device,
     vaultIdentity: vault, scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
   });
+  const observePlanningBoundary = async () => {
+    const fingerprint = scope.inventoryScopeFingerprint();
+    const observed = await buildInventoryPlanningBoundary({
+      drive: boundary.drive, remoteIdentity: remote, deviceIdentity: device,
+      vaultIdentity: vault, scopePolicyFingerprint: fingerprint,
+    });
+    if (scope.inventoryScopeFingerprint() !== fingerprint) throw new Error("scope changed during boundary");
+    return observed;
+  };
   const legacy = (owner: PersistentSynchronizationStateStore = state) => new ProductSnapshotAssembler(
     local as never, boundary.drive, owner, context, async () => remote,
     path => scope.isManagedLogical(path), () => false, undefined, boundary.drive, owner,
@@ -546,6 +608,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
       count: observed.length, counts, wallMs,
       simulatedHttpMs: observed.reduce((sum, s) => sum + s.ms, 0),
       physicalTreeReads: observed.filter(s => s.physicalTree).length,
+      sharedAncestorReads: observed.filter(s => s.sharedAncestor).length,
       writes: observed.filter(s => s.method !== "GET").length,
       heapBefore: memoryBefore.heapUsed, heapAfter: memoryAfter.heapUsed,
       rssBefore: memoryBefore.rss, rssAfter: memoryAfter.rss,
@@ -564,7 +627,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
       const inventory = inventoryStore(false);
       return new InventoryBackedSnapshotAssembler({
         local: local as never, drive: boundary.drive, state: owner, stateContext: context,
-        remoteIdentity: async () => remote, inventory, currentFence,
+        remoteIdentity: async () => remote, inventory, currentFence, observePlanningBoundary,
         refresh: new VerifiedInventoryBaselineCoordinator(boundary.metadataReader, inventory),
         pathIncluded: path => scope.isManagedLogical(path), fullReconcileRequired: () => false,
         provenanceReader: boundary.metadataReader, reliableChanges: boundary.drive,
@@ -610,6 +673,9 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
     denyChanges: () => { changesFault = true; },
     allowChanges: () => { changesFault = false; },
     changeDuringNextCensus: () => { changeDuringCensus = true; },
+    changeAccountDuringCensus: () => { accountDuringCensus = true; },
+    changeDomainDuringCensus: () => { domainDuringCensus = true; },
+    changeScopeDuringCensus: () => { scopeDuringCensus = true; },
     removeInventoryRow: () => {
       const table = db.tables.get("inventory-entities");
       assert.ok(table);
@@ -638,7 +704,13 @@ function assertOptimized(measured: MeasuredPlan): void {
   assert.equal(measured.metrics.physicalTreeReads, 0, "must not silently use physical listing");
   assert.equal(measured.metrics.counts.changes, 0, "must not silently use legacy Changes");
   assert.ok(measured.metrics.counts.markedCensus > 0, "actual fresh provider provenance required");
-  assert.ok(measured.metrics.counts.startCursor > 0, "actual live cursor fence required");
+  assert.equal(measured.metrics.counts.startCursor, 2, "independent initial and final live cursor proof");
+  assert.equal(measured.metrics.counts.account, 2, "one fresh account observation per proof boundary");
+  assert.equal(measured.metrics.counts.parentListing, 4, "two complete uniqueness queries per proof boundary");
+  assert.equal(measured.metrics.counts.exactId, 6 + measured.metrics.sharedAncestorReads,
+    "one exact observation of each root/domain per boundary plus fresh census ancestors");
+  assert.equal(measured.metrics.count, 14 + measured.metrics.counts.markedCensus + measured.metrics.sharedAncestorReads,
+    "no redundant provider validation in successful steady planning");
 }
 function reportMeasurements(t: import("node:test").TestContext, phase: string,
   worlds: readonly { mode: "legacy" | "inventory" | "full"; metrics: MeasuredPlan["metrics"] }[]): void {
@@ -826,4 +898,59 @@ test("DEC339 Step 6 wrong paired account cannot trigger rebuild or legacy planni
   await assert.rejects(enabled.plan(enabled.selected()), /metadata-enabled synchronization blocked/);
   assert.equal(enabled.samples.slice(start).some(sample => sample.purpose === "changes" || sample.physicalTree), false);
   assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+});
+
+
+for (const size of [24, 128]) {
+  test("DEC339 Step 6 matched nested " + size + " file workload shares fresh ancestors across complete census pages", async t => {
+    const legacy = await pairedEnvironment(false, false, size);
+    const enabled = await pairedEnvironment(true, true, size);
+    const full = await pairedEnvironment(false, false, size);
+    const ordinary = await legacy.plan(legacy.selected());
+    const optimized = await enabled.plan(enabled.selected(enabled.reopen()));
+    const physical = await full.plan(full.selected(), true);
+    comparePlanObservations(ordinary, optimized);
+    comparePlanObservations(ordinary, physical);
+    assert.equal(optimized.value.assembly.input.snapshots.length, size + 2);
+    assertOptimized(optimized);
+    assert.equal(optimized.metrics.sharedAncestorReads, 1);
+    assert.equal(optimized.metrics.counts.markedCensus, Math.ceil((size + 2) / 25));
+    assert.ok(optimized.metrics.count < 53, "bounded steady planning cost must improve on prior one-file 53-request path");
+    reportMeasurements(t, "nested-" + size, [{ mode: "legacy", metrics: ordinary.metrics },
+      { mode: "inventory", metrics: optimized.metrics }, { mode: "full", metrics: physical.metrics }]);
+    reportMeasurements(t, "nested-setup-" + size, [{ mode: "inventory", metrics: enabled.setup.metrics }]);
+    const repeat = await enabled.plan(enabled.selected());
+    assertOptimized(repeat);
+    assert.equal(repeat.metrics.sharedAncestorReads, 1, "a new run must reread shared ancestors");
+    assert.equal(repeat.metrics.counts.markedCensus, optimized.metrics.counts.markedCensus);
+  });
+}
+
+test("DEC339 Step 6 combined boundary rejects incomplete, duplicate, cyclic-page and contradictory exact domain observations", async () => {
+  for (const fault of ["partial", "duplicate", "repeated", "exact"] as const) {
+    const enabled = await pairedEnvironment(true);
+    const before = await enabled.raw.exportDiagnosticState();
+    const start = enabled.samples.length;
+    enabled.server.domainFault = fault;
+    await assert.rejects(enabled.plan(enabled.selected()), /metadata-enabled synchronization blocked/);
+    assert.equal(enabled.samples.slice(start).some(sample => sample.physicalTree || sample.purpose === "changes"), false);
+    assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+  }
+});
+
+test("DEC339 Step 6 combined proof rechecks account, domain and scope after census", async () => {
+  for (const change of ["account", "domain", "scope"] as const) {
+    const enabled = await pairedEnvironment(true);
+    const before = await enabled.raw.exportDiagnosticState();
+    if (change === "account") enabled.changeAccountDuringCensus();
+    else if (change === "domain") enabled.changeDomainDuringCensus();
+    else enabled.changeScopeDuringCensus();
+    const start = enabled.samples.length;
+    await assert.rejects(enabled.plan(enabled.selected()), /metadata-enabled synchronization blocked/);
+    const observed = enabled.samples.slice(start);
+    assert.equal(observed.filter(sample => sample.purpose === "account").length, 2);
+    assert.equal(observed.filter(sample => sample.purpose === "markedCensus").length, 1);
+    assert.equal(observed.some(sample => sample.physicalTree || sample.purpose === "changes"), false);
+    assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+  }
 });

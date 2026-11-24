@@ -347,3 +347,37 @@ test("provider rejects both terminal and continuation tokens on one Changes page
     transport, async () => "opaque-account-key");
   assert.equal((await source.listChanges("previous")).status, "recovery-required");
 });
+
+
+test("DEC339 F02 fresh census reads shared ancestors once per invocation and rejects contradictory fresh evidence", async () => {
+  const p = new Provider();
+  const original = p.getFile.bind(p);
+  const reads: string[] = [];
+  p.getFile = async key => { reads.push(key); return original(key); };
+  for (let i = 0; i < 64; i++) {
+    const extra = item("sibling-" + i, "sibling-" + i + ".md", "dir", "content");
+    p.files.set(extra.id, extra); p.marked.push(extra);
+  }
+  const r = reader(p);
+  assert.equal((await r.verifyRootWideManagedProvenance(fence)).status, "ok");
+  assert.deepEqual(reads, ["dir"]);
+  assert.equal((await r.verifyRootWideManagedProvenance(fence)).status, "ok");
+  assert.deepEqual(reads, ["dir", "dir"], "no cross-run ancestor cache");
+  p.files.set("dir", { ...p.files.get("dir")!, parents: ["config"] });
+  const contradictory = await r.verifyRootWideManagedProvenance(fence);
+  assert.equal(contradictory.status, "recovery-required");
+  if (contradictory.status !== "ok")
+    assert.equal(contradictory.reason, "managed-object-ancestor-contradicts-census");
+  assert.deepEqual(reads, ["dir", "dir", "dir"]);
+});
+
+test("DEC339 F02 fresh census rejects inaccessible shared ancestor and duplicate marked ID", async () => {
+  const p = new Provider();
+  p.files.delete("dir");
+  const r = reader(p);
+  assert.equal((await r.verifyRootWideManagedProvenance(fence)).status, "recovery-required");
+  p.marked.push(p.marked[0]!);
+  const duplicate = await r.verifyRootWideManagedProvenance(fence);
+  assert.equal(duplicate.status, "recovery-required");
+  if (duplicate.status !== "ok") assert.equal(duplicate.reason, "duplicate-managed-provenance-identity");
+});

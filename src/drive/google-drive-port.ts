@@ -259,7 +259,19 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     const root = await this.getFile(identity.rootId);
     if (!root.ok) return root;
     const r = root.value;
-    if (r.id !== String(identity.rootId) || r.trashed !== false ||
+    const nonempty = (value: unknown): value is string =>
+      typeof value === "string" && value.length > 0 && value.trim() === value;
+    const validMetadata = (file: DriveFile | undefined): file is DriveFile =>
+      Boolean(file && nonempty(file.id) && typeof file.name === "string" &&
+        file.name.length > 0 && nonempty(file.mimeType) && Array.isArray(file.parents) &&
+        file.parents.every(nonempty) && typeof file.trashed === "boolean" &&
+        file.appProperties && typeof file.appProperties === "object" &&
+        !Array.isArray(file.appProperties) && Object.values(file.appProperties).every(v => typeof v === "string") &&
+        (file.version === undefined || nonempty(file.version)) &&
+        (file.sha256Checksum === undefined || nonempty(file.sha256Checksum)) &&
+        (file.size === undefined || (nonempty(file.size) && /^\d+$/.test(file.size) &&
+          Number.isSafeInteger(Number(file.size)))));
+    if (!validMetadata(r) || r.id !== String(identity.rootId) || r.trashed !== false ||
         r.mimeType !== FOLDER_MIME || r.appProperties?.[APP_ROLE] !== ROOT_ROLE ||
         r.appProperties?.[APP_VAULT] !== String(identity.vaultIdentity) ||
         r.appProperties?.[APP_PROTOCOL] !== String(identity.protocolVersion) ||
@@ -279,8 +291,7 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
     if (!configs.ok) return configs;
     const c = contents.value[0], k = configs.value[0];
     const isDomain = (file: DriveFile | undefined, role: string): file is DriveFile =>
-      Boolean(file && typeof file.id === "string" && file.id.length > 0 &&
-        file.id.trim() === file.id && file.trashed === false && file.mimeType === FOLDER_MIME &&
+      Boolean(validMetadata(file) && file.trashed === false && file.mimeType === FOLDER_MIME &&
         Array.isArray(file.parents) && file.parents.length === 1 &&
         file.parents[0] === r.id && file.appProperties?.[APP_ROLE] === role);
     if (contents.value.length !== 1 || configs.value.length !== 1 ||

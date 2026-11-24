@@ -167,6 +167,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         return blocked("canonical synchronization state requires recovery");
       const authority = durableFence(loaded.state);
       const initialBoundary = await this.options.observePlanningBoundary?.();
+      if (this.options.observePlanningBoundary && !initialBoundary)
+        return blocked("combined inventory planning boundary unavailable");
       const fence = initialBoundary?.fence ?? await this.options.currentFence();
       const rebuild = (reason: string): InventoryAttempt => ({ kind: "rebuild", fence, authority, reason });
       if (loaded.state.vaultIdentity !== fence.vaultIdentity ||
@@ -251,6 +253,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         return blocked("root-wide managed provenance unproven");
       // Check AFTER the final asynchronous provider proof, not merely before it.
       const finalBoundary = initialBoundary ? await this.options.observePlanningBoundary!() : undefined;
+      if (initialBoundary && !finalBoundary)
+        return blocked("final combined inventory planning boundary unavailable");
       const finalFence = finalBoundary?.fence ?? await this.options.currentFence();
       const finalCursor = finalBoundary ? { ok: true as const, value: finalBoundary.cursor } :
         await drive.getStartCursor(remote.rootId);
