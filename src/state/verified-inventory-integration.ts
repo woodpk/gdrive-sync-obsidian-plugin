@@ -226,6 +226,7 @@ export class VerifiedInventoryBaselineCoordinator {
   async publishIncremental(
     fence?: InventoryIdentityFence, generation?: InventoryGeneration,
     batchId?: RemoteIngestionBatchId,
+    initialProof?: { readonly fence: InventoryIdentityFence; readonly cursor: ChangeCursor },
   ): Promise<InventoryIntegrationResult> {
     if (!fence || !generation || !batchId ||
         !String(generation).trim() || !String(batchId).trim())
@@ -254,7 +255,7 @@ export class VerifiedInventoryBaselineCoordinator {
     }
     if (materialized.status !== "ok") return materialized;
     const delta = await this.reader.incremental(fence, generation,
-      prior.terminalCursor, materialized.entities);
+      prior.terminalCursor, materialized.entities, initialProof);
     if (delta.status !== "ok") return failed(delta.status, delta.reason);
     const candidate = delta.value;
     if (candidate.publishAuthorized !== false ||

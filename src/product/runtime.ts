@@ -309,9 +309,34 @@ export class ProductRuntime {
           };
         };
         const currentFence = async () => (await observePlanningBoundary()).fence;
+        const observePlanningHorizon = async () => {
+          const before = await fenceInput();
+          const horizon = await this.boundary!.drive.observeInventoryPlanningHorizon();
+          if (!horizon.ok) throw new Error("inventory-final-horizon-unavailable");
+          const after = await fenceInput();
+          if (before.scopePolicyFingerprint !== after.scopePolicyFingerprint ||
+              before.remoteIdentity.rootId !== after.remoteIdentity.rootId ||
+              before.drive !== after.drive)
+            throw new Error("inventory-final-horizon-settings-changed");
+          return { pairedAccountKey: horizon.value.pairedAccountKey,
+            scopePolicyFingerprint: after.scopePolicyFingerprint, cursor: horizon.value.cursor };
+        };
         const observePlanningBoundary = async () => {
           const input = await fenceInput();
-          const observed = await buildInventoryPlanningBoundary(input);
+          // A committed prior fence supplies only an identity query hint. The
+          // current authorization and scope must match; fresh provider reads
+          // independently verify each exact root/domain ID.
+          const prior = await inventory.continuityRootHint();
+          const hint = prior && prior.vaultIdentity === vaultIdentity &&
+            prior.deviceIdentity === deviceIdentity &&
+            prior.managedRootId === input.remoteIdentity.rootId &&
+            prior.protocolVersion === input.remoteIdentity.protocolVersion &&
+            prior.scopePolicyFingerprint === input.scopePolicyFingerprint
+              ? { contentRootId: prior.contentDomainRootId, configRootId: prior.configDomainRootId }
+              : undefined;
+          const observed = await buildInventoryPlanningBoundary({ ...input,
+            ...(hint ? { knownDomains: hint } : {}),
+          });
           const after = await fenceInput();
           if (after.scopePolicyFingerprint !== input.scopePolicyFingerprint ||
               after.drive !== input.drive)
@@ -339,7 +364,7 @@ export class ProductRuntime {
           provenanceReader: this.boundary!.metadataReader,
           refresh: new VerifiedInventoryBaselineCoordinator(this.boundary!.metadataReader, inventory),
           currentFence,
-          observePlanningBoundary,
+          observePlanningBoundary, observePlanningHorizon,
           pathIncluded: path => scope.isManagedLogical(path),
           fullReconcileRequired: () => this.host.settings().scopeReconcileRequired,
           diagnostics: this.host.diagnostics,

@@ -48,3 +48,7 @@ Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync
 
 ### DEC-365 — operative research-supported design
 Require zero routine census, semantic parity on supported complete evidence, never more permissive on detectable uncertainty. Test silent omission via affected-effect safeguards and periodic/full reconciliation. Measure after correction, retain ten families and PHX-CI. See canonical F03 design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.
+
+
+### DEC-365 measured-regression closure
+**Required post-correction regression:** PHX-CI must demonstrate identical complete snapshots/plan versus independent legacy/full, zero ordinary global marked census and unchanged-parent listing, one Changes replay, and strict request-count improvement for no-change and leaf-delta. No-change response payload bytes must also beat legacy. Test account change after Changes, domain change after feed, horizon drift, changed authorization, omitted feed and scheduled full recovery; preserve all previous families, BVP bounds and PASS gates. Prior PASS is evidence only for its original SHA, not this revised candidate.

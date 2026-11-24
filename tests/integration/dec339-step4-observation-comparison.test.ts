@@ -506,6 +506,8 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
   let censusFault = false;
   let changesFault = false;
   let advanceAfterChanges = false;
+  let swapAccountAfterChanges = false;
+  let corruptDomainAfterChanges = false;
   let changeDuringCensus = false;
   let accountDuringCensus = false;
   let domainDuringCensus = false;
@@ -565,6 +567,14 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
           advanceAfterChanges = false;
           server.advanceSameId();
         }
+        if (purpose === "changes" && swapAccountAfterChanges) {
+          swapAccountAfterChanges = false;
+          server.account = "different-provider-account";
+        }
+        if (purpose === "changes" && corruptDomainAfterChanges) {
+          corruptDomainAfterChanges = false;
+          server.domainFault = "exact";
+        }
         return response;
       } finally {
         samples.push({ purpose, method, physicalTree: physicalTreeRead(request.url),
@@ -597,12 +607,25 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
   });
   const observePlanningBoundary = async () => {
     const observedFingerprint = fingerprint();
+    const hint = await new IndexedDbInventoryObservationStore(databaseName, factory).continuityRootHint();
+    const knownDomains = hint && hint.scopePolicyFingerprint === observedFingerprint &&
+      hint.deviceIdentity === device && hint.vaultIdentity === vault &&
+      hint.managedRootId === root
+      ? { contentRootId: hint.contentDomainRootId, configRootId: hint.configDomainRootId } : undefined;
     const observed = await buildInventoryPlanningBoundary({
       drive: boundary.drive, remoteIdentity: remote, deviceIdentity: device,
       vaultIdentity: vault, scopePolicyFingerprint: observedFingerprint,
+      ...(knownDomains ? { knownDomains } : {}),
     });
     if (fingerprint() !== observedFingerprint) throw new Error("scope changed during boundary");
     return observed;
+  };
+  const observePlanningHorizon = async () => {
+    const before = fingerprint();
+    const actual = await boundary.drive.observeInventoryPlanningHorizon();
+    if (!actual.ok || before !== fingerprint()) throw new Error("final horizon untrusted");
+    return { pairedAccountKey: actual.value.pairedAccountKey,
+      scopePolicyFingerprint: before, cursor: actual.value.cursor };
   };
   const legacy = (owner: PersistentSynchronizationStateStore = state) => new ProductSnapshotAssembler(
     local as never, boundary.drive, owner, context, async () => remote,
@@ -652,7 +675,8 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
       const inventory = inventoryStore(false);
       return new InventoryBackedSnapshotAssembler({
         local: local as never, drive: boundary.drive, state: owner, stateContext: context,
-        remoteIdentity: async () => remote, inventory, currentFence, observePlanningBoundary,
+        remoteIdentity: async () => remote, inventory, currentFence,
+        observePlanningBoundary, observePlanningHorizon,
         refresh: new VerifiedInventoryBaselineCoordinator(boundary.metadataReader, inventory),
         pathIncluded: path => scope.isManagedLogical(path), fullReconcileRequired: () => false,
         provenanceReader: boundary.metadataReader, reliableChanges: boundary.drive,
@@ -698,6 +722,8 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
     denyChanges: () => { changesFault = true; },
     allowChanges: () => { changesFault = false; },
     raceAfterNextChanges: () => { advanceAfterChanges = true; },
+    swapAccountAfterNextChanges: () => { swapAccountAfterChanges = true; },
+    corruptDomainAfterNextChanges: () => { corruptDomainAfterChanges = true; },
     changeDuringNextCensus: () => { changeDuringCensus = true; },
     changeAccountDuringCensus: () => { accountDuringCensus = true; },
     changeDomainDuringCensus: () => { domainDuringCensus = true; },
@@ -1006,6 +1032,12 @@ test("DEC365 unchanged verified inventory uses one Changes replay, no census, an
   assert.equal(optimized.metrics.counts.markedCensus, 0);
   assert.equal(optimized.metrics.physicalTreeReads, 0);
   assert.equal(optimized.metrics.counts.changes, 1);
+  assert.equal(optimized.metrics.counts.parentListing, 0,
+    "stable domain IDs must not be rediscovered by name");
+  assert.ok(optimized.metrics.count < ordinary.metrics.count,
+    `unchanged inventory must beat legacy request count: ${optimized.metrics.count} vs ${ordinary.metrics.count}`);
+  assert.ok(optimized.metrics.providerResponsePayloadBytes < ordinary.metrics.providerResponsePayloadBytes,
+    `unchanged inventory must beat legacy response payload: ${optimized.metrics.providerResponsePayloadBytes} vs ${ordinary.metrics.providerResponsePayloadBytes}`);
   assert.equal(optimized.metrics.writes, 0);
   const active = await enabled.publicationProof();
   assert.equal(active.cursorMatches, true);
@@ -1032,6 +1064,8 @@ test("DEC365 stale Changes refreshes verified stable ID without any routine mark
   assert.ok(optimized.metrics.counts.parentListing >= 1);
   assert.ok(optimized.metrics.physicalTreeReads >= 1,
     "only affected parent directory may need complete fresh occupancy");
+  assert.ok(optimized.metrics.count < ordinary.metrics.count,
+    `leaf inventory must beat legacy request count: ${optimized.metrics.count} vs ${ordinary.metrics.count}`);
   assert.ok(optimized.value.planned.operations.some(op => op.kind === "download-update"));
   await enabled.publicationProof();
   reportMeasurements(t, "continuity-leaf-delta", [
@@ -1136,4 +1170,21 @@ test("DEC365 steady remote request count does not scale with unchanged nested va
     "steady network request count must not scale with unchanged remote object count");
   assert.equal(observations[0]!.payloadBytes, observations[1]!.payloadBytes,
     "steady provider response metadata payload must not scale with unchanged object count");
+});
+
+test("DEC365 final account check detects remote account switch after complete replay", async () => {
+  const enabled = await pairedEnvironment(true, true, 0, true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.swapAccountAfterNextChanges();
+  await assert.rejects(enabled.plan(enabled.selected()),
+    /metadata-enabled synchronization blocked/);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
+});
+
+test("DEC365 reader independent exact root proof rejects changed domain after Changes read", async () => {
+  const enabled = await pairedEnvironment(true, true, 0, true);
+  const before = await enabled.raw.exportDiagnosticState();
+  enabled.corruptDomainAfterNextChanges();
+  await assert.rejects(enabled.plan(enabled.selected()), /verified inventory refresh failed/);
+  assert.deepEqual(await enabled.raw.exportDiagnosticState(), before);
 });

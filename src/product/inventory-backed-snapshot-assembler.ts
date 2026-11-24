@@ -64,6 +64,7 @@ type ContinuityReceipt = { readonly fence: InventoryIdentityFence; readonly gene
 type InventoryAttempt =
   | { readonly kind: "ready"; readonly assembly: AssembledPlanningInput }
   | { readonly kind: "refresh" | "rebuild"; readonly fence: InventoryIdentityFence;
+      readonly boundary?: InventoryPlanningBoundary;
       readonly authority: DurableFence | undefined; readonly reason: string }
   | { readonly kind: "blocked"; readonly reason: string };
 
@@ -78,8 +79,14 @@ export interface InventorySnapshotAssemblyOptions {
   /** Historical census path for legacy namespaces; never used by DEC-365 normal planning. */
   readonly provenanceReader?: Pick<VerifiedMetadataInventoryReader, "verifyRootWideManagedProvenance"> &
     Partial<Pick<VerifiedMetadataInventoryReader, "observeRootWidePlanningCensus">>;
-  /** Fresh combined provider boundary independently observed before and after planning. */
+  /** Fresh combined provider boundary at the start of each planning attempt. */
   readonly observePlanningBoundary?: () => Promise<InventoryPlanningBoundary>;
+  /** Scoped final proof after the reader has independently verified exact
+   * root/domain metadata and the complete Changes horizon within this attempt. */
+  readonly observePlanningHorizon?: () => Promise<{
+    readonly pairedAccountKey: string; readonly scopePolicyFingerprint: string;
+    readonly cursor: ChangeCursor;
+  }>;
   readonly refresh?: Pick<VerifiedInventoryBaselineCoordinator, "publishBaseline" | "publishIncremental">;
   /** Calculated from the current paired account, root, device and effective scope policy. */
   readonly currentFence: () => Promise<InventoryIdentityFence>;
@@ -143,12 +150,13 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         replayed = true;
         const refreshed = await this.options.refresh.publishIncremental(attempt.fence,
           globalThis.crypto.randomUUID() as InventoryGeneration,
-          contractId<"RemoteIngestionBatchId">(globalThis.crypto.randomUUID()) as RemoteIngestionBatchId);
+          contractId<"RemoteIngestionBatchId">(globalThis.crypto.randomUUID()) as RemoteIngestionBatchId,
+          attempt.boundary);
         if (refreshed.status !== "published" && refreshed.status !== "unchanged")
           throw new SnapshotAssemblyError("recovery-required", "verified inventory refresh failed: " + refreshed.reason);
         if (inventoryContinuityGrant(attempt.fence.scopePolicyFingerprint))
           receipt = { fence: attempt.fence, generation: refreshed.generation, terminalCursor: refreshed.terminalCursor };
-        attempt = await this.attemptInventory(runId, receipt);
+        attempt = await this.attemptInventory(runId, receipt, attempt.boundary);
         continue;
       }
       if (attempt.kind === "rebuild" && !rebuilt && !replayed && attempt.authority && this.options.refresh &&
@@ -168,7 +176,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           receipt = { fence: attempt.fence, generation: baseline.generation, terminalCursor: baseline.terminalCursor };
           replayed = true;
         }
-        attempt = await this.attemptInventory(runId, receipt);
+        attempt = await this.attemptInventory(runId, receipt,
+          attempt.boundary?.cursor === receipt?.terminalCursor ? attempt.boundary : undefined);
         continue;
       }
       break;
@@ -178,7 +187,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       "metadata-enabled synchronization blocked: " + attempt.reason);
   }
 
-  private async attemptInventory(runId?: number, receipt?: ContinuityReceipt): Promise<InventoryAttempt> {
+  private async attemptInventory(runId?: number, receipt?: ContinuityReceipt,
+    priorBoundary?: InventoryPlanningBoundary): Promise<InventoryAttempt> {
     const blocked = (reason: string): InventoryAttempt => ({ kind: "blocked", reason });
     try {
       const { inventory, state, stateContext, drive } = this.options;
@@ -187,7 +197,9 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           loaded.state.operations.some(op => op.status !== "completed"))
         return blocked("canonical synchronization state requires recovery");
       const authority = durableFence(loaded.state);
-      const initialBoundary = await this.options.observePlanningBoundary?.();
+      // An already-verified boundary may be reused only within the same
+      // refresh attempt. Final provider proof is independently observed.
+      const initialBoundary = priorBoundary ?? await this.options.observePlanningBoundary?.();
       if (this.options.observePlanningBoundary && !initialBoundary)
         return blocked("combined inventory planning boundary unavailable");
       const fence = initialBoundary?.fence ?? await this.options.currentFence();
@@ -196,7 +208,7 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         return blocked("continuity requires combined provider and durable authority fences");
       if (receipt && (!continuity || !inventoryFenceMatches(receipt.fence, fence)))
         return blocked("metadata continuity fence changed after replay");
-      const rebuild = (reason: string): InventoryAttempt => ({ kind: "rebuild", fence, authority, reason });
+      const rebuild = (reason: string): InventoryAttempt => ({ kind: "rebuild", fence, boundary: initialBoundary, authority, reason });
       if (loaded.state.vaultIdentity !== fence.vaultIdentity ||
           loaded.state.deviceIdentity !== fence.deviceIdentity)
         return blocked("metadata identity fence differs from trusted state");
@@ -226,9 +238,9 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           receipt.terminalCursor !== before.value.canonicalCursor || liveCursor.value !== receipt.terminalCursor))
         return blocked("metadata generation or provider horizon changed after replay");
       if (continuity && !receipt)
-        return { kind: "refresh", fence, authority, reason: "complete Changes continuity required" };
+        return { kind: "refresh", fence, boundary: initialBoundary, authority, reason: "complete Changes continuity required" };
       if (liveCursor.value !== before.value.canonicalCursor)
-        return { kind: "refresh", fence, authority, reason: "verified inventory horizon is stale" };
+        return { kind: "refresh", fence, boundary: initialBoundary, authority, reason: "verified inventory horizon is stale" };
       const read = await inventory.openRead();
       if (read.status !== "verified-observation") return rebuild(read.reason);
       let listing: RemoteListing | undefined;
@@ -284,12 +296,22 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
         if (provenance?.status !== "ok")
           return blocked("root-wide managed provenance unproven");
       }
-      // Check AFTER the final asynchronous provider proof, not merely before it.
-      const finalBoundary = initialBoundary ? await this.options.observePlanningBoundary!() : undefined;
-      if (initialBoundary && !finalBoundary)
+      // Final proof follows all LOCAL/BASE/provider reads. The reader has
+      // independently verified the three exact root IDs and terminal horizon
+      // before publication; a fresh account/authorization + Changes horizon
+      // suffices after projection. Legacy callers retain the full boundary.
+      const terminal = continuity && receipt && this.options.observePlanningHorizon
+        ? await this.options.observePlanningHorizon() : undefined;
+      const finalBoundary = terminal ? undefined :
+        initialBoundary ? await this.options.observePlanningBoundary!() : undefined;
+      if (initialBoundary && !terminal && !finalBoundary)
         return blocked("final combined inventory planning boundary unavailable");
-      const finalFence = finalBoundary?.fence ?? await this.options.currentFence();
-      const finalCursor = finalBoundary ? { ok: true as const, value: finalBoundary.cursor } :
+      const finalFence = finalBoundary?.fence ??
+        (terminal ? { ...fence, pairedAccountKey: terminal.pairedAccountKey,
+          scopePolicyFingerprint: terminal.scopePolicyFingerprint } :
+          await this.options.currentFence());
+      const finalCursor = terminal ? { ok: true as const, value: terminal.cursor } :
+        finalBoundary ? { ok: true as const, value: finalBoundary.cursor } :
         await drive.getStartCursor(remote.rootId);
       const final = await inventory.publicationSnapshot(fence);
       if (!inventoryFenceMatches(finalFence, fence) || !finalCursor.ok ||

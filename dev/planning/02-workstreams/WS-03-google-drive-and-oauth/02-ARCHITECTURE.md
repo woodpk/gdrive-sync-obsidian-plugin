@@ -47,3 +47,7 @@ Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync
 
 ### DEC-365 — operative research-supported design
 Complete opaque Changes replay from durable cursor; use stable IDs and affected-parent/ancestry checks; independent final fence/horizon. No routine listMarked; retain baseline/recovery and detected-uncertainty proof. Unknown visibility/unsupported corpus fail closed. See the canonical F03 technical design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.
+
+
+### DEC-365 exact-ID boundary optimization
+**WS-03 session-bound proof contract:** On a trusted, current app-grant/policy and matching prior inventory generation, persisted managed-domain IDs are query *hints*, never proof. Fresh exact-ID metadata validates root/content/config instead of repeated domain searches. The Changes reader may consume a previously verified combined boundary only in the same planning attempt, skips its redundant first proof, then independently verifies exact IDs and final cursor before atomic publication. Direct/non-witnessed reader calls retain full validation. Final planner account+cursor validation is independent and follows all assembly reads. Unauthorized changes or provider uncertainty block; baseline/recovery still use full physical proof.

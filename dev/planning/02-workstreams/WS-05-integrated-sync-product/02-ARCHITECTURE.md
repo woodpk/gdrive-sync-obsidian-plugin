@@ -46,3 +46,7 @@ Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync
 
 ### DEC-365 — operative research-supported design
 Use complete scoped replay from durable cursor with verified lease, same-attempt reuse of replay evidence, targeted affected scopes, independent final fence and atomic learned history. No routine global census; uncertainty triggers exceptional proof/recovery/block. See canonical F03 design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.
+
+
+### DEC-365 corrective proof-carrying observation and performance gate
+**Measured corrective refinement:** Prior PHX-CI passed but quantified ordinary inventory planning 39 versus legacy 15 requests (unchanged) and 40 versus 17 (leaf), so this build unit was not ready for acceptance. Use verified prior domain IDs as advisory hints only; exact-ID revalidation replaces repeated name-based root queries. A single planning attempt shares its initial proof with Changes replay, reader independently verifies root IDs and terminal horizon before atomic publication, and planner obtains a fresh account/grant/policy/horizon observation after projection. No changed executor safety. New native performance gates require strict improvement versus legacy, not just absence of marked census. New source requires PHX-CI again.

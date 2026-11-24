@@ -6,6 +6,7 @@
 import type { RemoteChange } from "../contracts/google-drive";
 import { contractId, type ChangeCursor, type RemoteObjectId, type VaultPath } from "../contracts/common";
 import { inventoryContinuityGrant } from "../contracts/verified-metadata-inventory";
+import { inventoryFenceMatches } from "../state/verified-metadata-inventory-validation";
 import type {
   InventoryCoverage, InventoryDomain, InventoryGeneration, InventoryIdentityFence,
   InventoryOverlayRecord, InventoryRemoteEntity, InventoryTargetedProof,
@@ -457,10 +458,15 @@ export class VerifiedMetadataInventoryReader {
    * Full managed parent scopes are checked before the returned delta is usable.
    */
   async incremental(fence: InventoryIdentityFence, generation: InventoryGeneration,
-    inputCursor: ChangeCursor, tracked: readonly InventoryRemoteEntity[]):
+    inputCursor: ChangeCursor, tracked: readonly InventoryRemoteEntity[],
+    initialProof?: { readonly fence: InventoryIdentityFence; readonly cursor: ChangeCursor }):
     Promise<InventoryDriveFetch<InventoryProviderDelta>> {
-    const first = await this.source.verifyFence(fence);
-    if (first.status !== "ok") return first;
+    const witnessed = continuity(fence) && Boolean(initialProof &&
+      inventoryFenceMatches(initialProof.fence, fence));
+    if (!witnessed) {
+      const first = await this.source.verifyFence(fence);
+      if (first.status !== "ok") return first;
+    }
     if (tracked.length > this.maximumObjects) return error("unbounded-predecessor-graph", "partial");
     const graph = new Map<string, InventoryRemoteEntity>();
     for (const e of tracked) {
@@ -604,13 +610,15 @@ export class VerifiedMetadataInventoryReader {
           return error("post-changes-parent-metadata-not-coherent");
       }
     }
-    const renewed = await this.source.verifyFence(fence);
+    const renewed = await this.source.verifyFence(fence, witnessed);
     if (renewed.status !== "ok") return renewed;
 
     if (continuity(fence)) {
       const current = await this.source.getStartToken();
       if (current.status !== "ok") return current;
-      if (current.value !== String(terminal)) return error("incremental-horizon-drift", "stale");
+      if (current.value !== String(terminal) ||
+          (witnessed && initialProof?.cursor !== terminal))
+        return error("incremental-horizon-drift", "stale");
       if (terminal === inputCursor && processed.value.count !== 0)
         return error("unchanged-cursor-with-events", "recovery-required");
     }

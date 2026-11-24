@@ -247,7 +247,8 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
    * calls or accepted as executor proof. Complete uniqueness queries and
    * independent exact-ID folder reads are both required.
    */
-  async observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity, requirePersonalCorpus = false): Promise<DriveResult<{
+  async observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity, requirePersonalCorpus = false,
+    knownDomains?: { readonly contentRootId: RemoteObjectId; readonly configRootId: RemoteObjectId }): Promise<DriveResult<{
     readonly pairedAccountKey: string; readonly contentRootId: RemoteObjectId;
     readonly configRootId: RemoteObjectId; readonly cursor: ChangeCursor;
   }>> {
@@ -281,37 +282,62 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
         String(identity.protocolVersion) !== String(REMOTE_PROTOCOL_VERSION))
       return fail("inventory-managed-root-identity-unproven");
 
-    // Preserve both existing uniqueness predicates. Unlike the legacy
-    // queries, explicitly require complete, bounded pagination.
-    const parent = "'" + escaped(String(identity.rootId)) + "' in parents";
-    const [contents, configs] = await Promise.all([
-      this.inventoryBoundaryCandidates(parent + " and appProperties has { key='" +
-        APP_ROLE + "' and value='" + CONTENT_ROLE + "' }", fields),
-      this.inventoryBoundaryCandidates(parent + " and trashed=false and name='" +
-        escaped(PORTABLE_CONFIG_NAME) + "'", fields),
-    ]);
-    if (!contents.ok) return contents;
-    if (!configs.ok) return configs;
-    const c = contents.value[0], k = configs.value[0];
+    // A complete baseline and complete scoped Changes continuity bind the known
+    // domain IDs. In that eligible regime exact-ID observations replace the
+    // expensive repeated discovery-by-name queries. New/escaped domains must
+    // enter through Changes or explicit full reconciliation, never cached absence.
     const isDomain = (file: DriveFile | undefined, role: string): file is DriveFile =>
       Boolean(validMetadata(file) && file.trashed === false && file.mimeType === FOLDER_MIME &&
         Array.isArray(file.parents) && file.parents.length === 1 &&
         file.parents[0] === r.id && file.appProperties?.[APP_ROLE] === role);
-    if (contents.value.length !== 1 || configs.value.length !== 1 ||
-        !isDomain(c, CONTENT_ROLE) || !isDomain(k, PORTABLE_CONFIG_ROLE) ||
-        k.name !== PORTABLE_CONFIG_NAME || new Set([r.id, c.id, k.id]).size !== 3)
-      return fail("inventory-managed-domain-uniqueness-unproven");
-    const [exactContent, exactConfig] = await Promise.all([
-      this.getFile(rid(c.id), fields), this.getFile(rid(k.id), fields),
-    ]);
-    if (!exactContent.ok) return exactContent;
-    if (!exactConfig.ok) return exactConfig;
-    if (!isDomain(exactContent.value, CONTENT_ROLE) ||
-        !isDomain(exactConfig.value, PORTABLE_CONFIG_ROLE) ||
-        exactContent.value.id !== c.id || exactConfig.value.id !== k.id ||
-        exactContent.value.name !== c.name || exactConfig.value.name !== k.name ||
-        exactContent.value.version !== c.version || exactConfig.value.version !== k.version)
-      return fail("inventory-managed-domain-exact-identity-unproven");
+    let c: DriveFile | undefined, k: DriveFile | undefined;
+    if (knownDomains && requirePersonalCorpus) {
+      if (new Set([String(identity.rootId), String(knownDomains.contentRootId),
+        String(knownDomains.configRootId)]).size !== 3)
+        return fail("inventory-duplicate-known-domain-ids");
+      const [actualContent, actualConfig] = await Promise.all([
+        this.getFile(knownDomains.contentRootId, fields),
+        this.getFile(knownDomains.configRootId, fields),
+      ]);
+      if (!actualContent.ok) return actualContent;
+      if (!actualConfig.ok) return actualConfig;
+      c = actualContent.value; k = actualConfig.value;
+      if (!isDomain(c, CONTENT_ROLE) || !isDomain(k, PORTABLE_CONFIG_ROLE) ||
+          k.name !== PORTABLE_CONFIG_NAME)
+        return fail("inventory-known-domain-identity-unproven");
+    } else {
+      // First baseline, unsupported regime and explicit recovery still retain
+      // exhaustive uniqueness queries and independent exact-ID confirmation.
+      const parent = "'" + escaped(String(identity.rootId)) + "' in parents";
+      const [contents, configs] = await Promise.all([
+        this.inventoryBoundaryCandidates(parent + " and appProperties has { key='" +
+          APP_ROLE + "' and value='" + CONTENT_ROLE + "' }", fields),
+        this.inventoryBoundaryCandidates(parent + " and trashed=false and name='" +
+          escaped(PORTABLE_CONFIG_NAME) + "'", fields),
+      ]);
+      if (!contents.ok) return contents;
+      if (!configs.ok) return configs;
+      const selectedContent = contents.value[0], selectedConfig = configs.value[0];
+      if (contents.value.length !== 1 || configs.value.length !== 1 ||
+          !isDomain(selectedContent, CONTENT_ROLE) ||
+          !isDomain(selectedConfig, PORTABLE_CONFIG_ROLE) ||
+          selectedConfig.name !== PORTABLE_CONFIG_NAME ||
+          new Set([r.id, selectedContent.id, selectedConfig.id]).size !== 3)
+        return fail("inventory-managed-domain-uniqueness-unproven");
+      const [actualContent, actualConfig] = await Promise.all([
+        this.getFile(rid(selectedContent.id), fields),
+        this.getFile(rid(selectedConfig.id), fields),
+      ]);
+      if (!actualContent.ok) return actualContent;
+      if (!actualConfig.ok) return actualConfig;
+      c = actualContent.value; k = actualConfig.value;
+      if (!isDomain(c, CONTENT_ROLE) || !isDomain(k, PORTABLE_CONFIG_ROLE) ||
+          c.id !== selectedContent.id || k.id !== selectedConfig.id ||
+          c.name !== selectedContent.name || k.name !== selectedConfig.name ||
+          c.version !== selectedContent.version || k.version !== selectedConfig.version)
+        return fail("inventory-managed-domain-exact-identity-unproven");
+    }
+    if (!c || !k) return fail("inventory-domain-identities-absent");
     const result = await this.request(DRIVE_API + "/changes/startPageToken?supportsAllDrives=false");
     if (!result.ok) return result;
     const body = await json<{ startPageToken?: string }>(result.value);
@@ -321,6 +347,29 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
       return fail("inventory-cursor-or-account-binding-unproven");
     return { ok: true, value: { pairedAccountKey: account,
       contentRootId: rid(c.id), configRootId: rid(k.id), cursor: cursor(body.startPageToken) } };
+  }
+
+  /** Fresh final account and Changes horizon. A previously completed
+   * same-attempt reader has independently checked exact root/domain IDs;
+   * this cheap terminal fence cannot substitute for that reader proof. */
+  async observeInventoryPlanningHorizon(): Promise<DriveResult<{
+    readonly pairedAccountKey: string; readonly cursor: ChangeCursor;
+  }>> {
+    const guard = await this.guardPairedAccount();
+    if (!guard.ok) return guard;
+    const account = await this.pairedInventoryAccountKey();
+    if (!account) return { ok: false, signal: { kind: "recovery-required",
+      detail: "inventory-horizon-account-unavailable" } };
+    const response = await this.request(DRIVE_API + "/changes/startPageToken?supportsAllDrives=false");
+    if (!response.ok) return response;
+    const data = await json<{ startPageToken?: string }>(response.value);
+    if (typeof data.startPageToken !== "string" || !data.startPageToken ||
+        data.startPageToken.trim() !== data.startPageToken ||
+        await this.pairedInventoryAccountKey() !== account)
+      return { ok: false, signal: { kind: "recovery-required",
+        detail: "inventory-horizon-account-or-token-drift" } };
+    return { ok: true, value: { pairedAccountKey: account,
+      cursor: cursor(data.startPageToken) } };
   }
 
   private async inventoryBoundaryCandidates(q: string, fields: string): Promise<DriveResult<DriveFile[]>> {

@@ -62,7 +62,8 @@ export interface InventoryPlanningBoundary {
 }
 export async function buildInventoryPlanningBoundary(input: {
   readonly drive: {
-    observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity, requirePersonalCorpus?: boolean): Promise<DriveResult<{
+    observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity, requirePersonalCorpus?: boolean,
+      knownDomains?: { readonly contentRootId: RemoteObjectId; readonly configRootId: RemoteObjectId }): Promise<DriveResult<{
       readonly pairedAccountKey: string; readonly contentRootId: RemoteObjectId;
       readonly configRootId: RemoteObjectId; readonly cursor: ChangeCursor;
     }>>;
@@ -71,11 +72,13 @@ export async function buildInventoryPlanningBoundary(input: {
   readonly deviceIdentity: DeviceIdentity;
   readonly vaultIdentity: VaultIdentity;
   readonly scopePolicyFingerprint: string;
+  readonly knownDomains?: { readonly contentRootId: RemoteObjectId; readonly configRootId: RemoteObjectId };
 }): Promise<InventoryPlanningBoundary> {
   if (input.remoteIdentity.vaultIdentity !== input.vaultIdentity)
     throw new Error("inventory-fence-vault-identity-mismatch");
   const observed = await input.drive.observeInventoryPlanningBoundary(input.remoteIdentity,
-    inventoryContinuityGrant(input.scopePolicyFingerprint) !== undefined);
+    inventoryContinuityGrant(input.scopePolicyFingerprint) !== undefined,
+    input.knownDomains);
   if (!observed.ok) throw new Error("inventory-planning-boundary-unproven");
   return { cursor: observed.value.cursor, fence: {
     vaultIdentity: input.vaultIdentity, deviceIdentity: input.deviceIdentity,

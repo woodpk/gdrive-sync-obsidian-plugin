@@ -255,6 +255,26 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
   }
 
   /**
+   * Advisory only: a previously published fence supplies exact domain IDs for
+   * a fresh provider observation. This is NEVER a trusted inventory snapshot,
+   * proof of coverage or execution permission. The caller compares pairing,
+   * app/grant and policy; the provider independently verifies all three IDs.
+   */
+  async continuityRootHint(): Promise<InventoryIdentityFence | undefined> {
+    try {
+      const db = await this.open();
+      const tx = stores(db, [CONTROL], "readonly");
+      const done = finished(tx);
+      const control = await request(tx.objectStore(CONTROL).get(POINTER)) as InventoryControl | undefined;
+      await done;
+      return control?.status === "ready" &&
+        inventoryContinuityGrant(control.fence.scopePolicyFingerprint) ? control.fence : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * A consistent, integrity-checked read of canonical authority and inventory control.
    * Explicitly dormant. The subsequent multi-store CAS always rechecks these values.
    * An invalid/absent active pointer permits a fresh full baseline only.

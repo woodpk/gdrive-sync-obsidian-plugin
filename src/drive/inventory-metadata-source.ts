@@ -46,7 +46,8 @@ const fail = (reason: string, status: "unknown" | "partial" | "incompatible" | "
   InventoryDriveFetch<never> => ({ status, reason });
 
 export interface InventoryMetadataSource {
-  verifyFence(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>>;
+  /** Same-attempt provider boundary was independently verified by the caller. */
+  verifyFence(fence: InventoryIdentityFence, accountPreviouslyObserved?: boolean): Promise<InventoryDriveFetch<void>>;
   getStartToken(): Promise<InventoryDriveFetch<string>>;
   getFile(id: string): Promise<InventoryDriveFetch<InventoryDriveFile>>;
   listChildren(parentId: string, token?: string, name?: string): Promise<InventoryDriveFetch<InventoryDriveListPage>>;
@@ -184,7 +185,7 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
     return { status: "ok", value: result.value.startPageToken };
   }
 
-  async verifyFence(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>> {
+  async verifyFence(fence: InventoryIdentityFence, accountPreviouslyObserved = false): Promise<InventoryDriveFetch<void>> {
     const grant = inventoryContinuityGrant(fence.scopePolicyFingerprint);
     if (grant && this.currentGrantBinding?.() !== grant)
       return fail("inventory-authorization-binding-changed", "incompatible");
@@ -193,15 +194,19 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
     catch { return fail("account-binding-unavailable", "incompatible"); }
     if (!valid(key) || key !== fence.pairedAccountKey)
       return fail("account-binding-mismatch-or-unavailable", "incompatible");
-    const result = await this.drive.validateManagedRoot({
-      rootId: fence.managedRootId, vaultIdentity: fence.vaultIdentity, protocolVersion: fence.protocolVersion,
-    });
-    if (!result.ok || result.value.status !== "valid")
-      return fail("paired-managed-root-not-valid", "incompatible");
-    if (result.value.identity.rootId !== fence.managedRootId ||
-        result.value.identity.vaultIdentity !== fence.vaultIdentity ||
-        result.value.identity.protocolVersion !== fence.protocolVersion)
-      return fail("managed-root-identity-not-exact", "incompatible");
+    // A freshly verified combined boundary has already proved remote account
+    // and pairing. Fresh exact-ID root/domain checks below remain mandatory.
+    if (!(grant && accountPreviouslyObserved)) {
+      const result = await this.drive.validateManagedRoot({
+        rootId: fence.managedRootId, vaultIdentity: fence.vaultIdentity, protocolVersion: fence.protocolVersion,
+      });
+      if (!result.ok || result.value.status !== "valid")
+        return fail("paired-managed-root-not-valid", "incompatible");
+      if (result.value.identity.rootId !== fence.managedRootId ||
+          result.value.identity.vaultIdentity !== fence.vaultIdentity ||
+          result.value.identity.protocolVersion !== fence.protocolVersion)
+        return fail("managed-root-identity-not-exact", "incompatible");
+    }
     const ids = [String(fence.managedRootId), String(fence.contentDomainRootId),
       String(fence.configDomainRootId)];
     if (new Set(ids).size !== 3) return fail("duplicate-managed-root-ids", "incompatible");
