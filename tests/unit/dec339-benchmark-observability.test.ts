@@ -1,4 +1,4 @@
-/** D339-07C fallback cost controls. Report observed calls; never invent HTTP attribution. */
+/** D339-07C strict-mode block and explicit recovery cost controls. Report observed calls; never invent HTTP attribution. */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { contractId, type InventoryIdentityFence, type InventoryRemoteEntity,
@@ -48,7 +48,7 @@ const normalState: TrustedSynchronizationState = {
 type Scenario = "full-required" | "pending-effect" | "stale-cursor" | "partial-coverage" | "fence-race";
 function fixture(scenario: Scenario) {
   const calls = { lists: 0, rootValidations: 0, cursorReads: 0, pointerReads: 0,
-    leaseOpens: 0, leaseReleases: 0, byParent: 0, local: 0, mutations: 0, fenceReads: 0 };
+    leaseOpens: 0, leaseReleases: 0, byParent: 0, local: 0, mutations: 0, fenceReads: 0, provenanceReads: 0 };
   const state = scenario === "pending-effect" ? { ...normalState, operations: [
     { operationId: id<"OperationId">("unfinished"), status: "uncertain" as const, path },
   ] } : normalState;
@@ -75,7 +75,7 @@ function fixture(scenario: Scenario) {
     validateManagedRoot: async () => { calls.rootValidations++;
       return { ok: true as const, value: { status: "valid" as const, identity } }; },
     getStartCursor: async () => { calls.cursorReads++;
-      return { ok: true as const, value: cursor }; },
+      return { ok: true as const, value: scenario === "stale-cursor" ? id<"ChangeCursor">("new-provider-horizon") : cursor }; },
     listForReconciliation: async () => { calls.lists++;
       return { ok: true as const, value: {
         entries: canonical, completeness: { status: "complete" as const } } }; },
@@ -89,8 +89,7 @@ function fixture(scenario: Scenario) {
   const inventory = {
     publicationSnapshot: async () => { calls.pointerReads++;
       return { status: "trusted-fence" as const, value: {
-        activeGeneration: gen, canonicalCursor: scenario === "stale-cursor" ?
-          id<"ChangeCursor">("stale") : cursor,
+        activeGeneration: gen, canonicalCursor: cursor,
         persistenceRevision: rev, semanticGeneration: id<"SemanticStateGeneration">("semantic:07C"),
         activeManifest: { generation: gen, terminalCursor: cursor },
       } }; },
@@ -110,41 +109,57 @@ function fixture(scenario: Scenario) {
         calls.fenceReads++;
         return scenario === "fence-race" && calls.fenceReads > 1 ?
           { ...fence, scopePolicyFingerprint: "changed:07C" } : fence;
-      }, fullReconcileRequired: () => scenario === "full-required",
+      }, provenanceReader: { verifyRootWideManagedProvenance: async () => {
+        calls.provenanceReads++;
+        return { status: "ok" as const, value: undefined };
+      } }, fullReconcileRequired: () => scenario === "full-required",
     }),
   };
 }
 for (const scenario of ["full-required", "pending-effect", "stale-cursor",
   "partial-coverage", "fence-race"] as const) {
-  test("D339-07C matched fallback " + scenario + " retains canonical safety and costs", async () => {
+  test("D339-07C matched strict-mode " + scenario + " retains canonical safety and costs", async () => {
     const on = fixture(scenario), off = fixture(scenario);
+    const explicit = scenario === "full-required" || scenario === "pending-effect";
     const before = process.memoryUsage(), startOn = performance.now();
-    const actual = await on.on.assemble();
+    const actual = explicit ? await on.on.assemble() : undefined;
+    if (!explicit) {
+      const reason = scenario === "stale-cursor" ? /verified inventory horizon is stale/ :
+        scenario === "partial-coverage" ? /inventory coverage or identity projection is unproven/ :
+          /metadata fence or provider horizon changed during final proof/;
+      await assert.rejects(on.on.assemble(), reason);
+    }
     const elapsedOn = performance.now() - startOn, afterOn = process.memoryUsage();
     const startOff = performance.now(), expected = await off.off.assembleFull();
     const elapsedOff = performance.now() - startOff, afterOff = process.memoryUsage();
-    assert.deepEqual(actual.input, expected.input);
     const planner = new ProductionSynchronizationPlanner(new DeterministicSynchronizationPlanner({
-      assess: async () => { throw new Error("fallback fixture unexpectedly requires conflict adjudication"); },
+      assess: async () => { throw new Error("fixture unexpectedly requires conflict adjudication"); },
     } as never));
-    assert.deepEqual(await planner.plan(actual.input), await planner.plan(expected.input));
-    assert.equal(actual.nextCursor, expected.nextCursor);
-    assert.deepEqual(actual.managedRemote, expected.managedRemote);
-    assert.equal(on.calls.lists, 1);
+    if (actual) {
+      assert.deepEqual(actual.input, expected.input);
+      assert.deepEqual(await planner.plan(actual.input), await planner.plan(expected.input));
+      assert.equal(actual.nextCursor, expected.nextCursor);
+      assert.deepEqual(actual.managedRemote, expected.managedRemote);
+    }
+    assert.equal(on.calls.lists, explicit ? 1 : 0);
     assert.equal(off.calls.lists, 1);
     assert.equal(on.calls.mutations + off.calls.mutations, 0);
-    assert.ok(scenario === "partial-coverage" || scenario === "fence-race" ?
-      on.calls.leaseOpens === 1 : on.calls.leaseOpens === 0);
+    assert.equal(on.calls.leaseOpens, scenario === "partial-coverage" || scenario === "fence-race" ? 1 : 0);
     assert.equal(on.calls.leaseReleases, on.calls.leaseOpens);
-    console.log("D339_07C_METRIC=" + JSON.stringify({ workload: "fallback:" + scenario,
-      semanticEqual: true, OFF: off.calls, ON: on.calls,
-      wallMs: { OFF: elapsedOff, ON: elapsedOn },
+    if (scenario === "stale-cursor") assert.equal(on.calls.cursorReads, 1);
+    if (scenario === "fence-race") {
+      assert.equal(on.calls.provenanceReads, 1, "race must reach final provider proof");
+      assert.ok(on.calls.fenceReads >= 2, "must actually observe changed scope");
+    }
+    console.log("D339_07C_METRIC=" + JSON.stringify({ workload: "strict:" + scenario,
+      semanticEqual: explicit ? true : null, enabledOutcome: explicit ? "EXPLICIT_FULL" : "BLOCKED",
+      OFF: off.calls, ON: on.calls, wallMs: { OFF: elapsedOff, ON: elapsedOn },
       observedHeapBytes: [before.heapUsed, afterOn.heapUsed, afterOff.heapUsed],
       observedRssBytes: [before.rss, afterOn.rss, afterOff.rss],
       serializedInventoryBytesEstimate: Buffer.byteLength(JSON.stringify(rows), "utf8"),
       providerHTTPCounts: "UNMEASURED", providerHTTPMs: "UNMEASURED",
       perOperationLatency: "UNMEASURED", attributedRequestCoverage: "UNMEASURED",
       durableIndexedDbBytes: "UNMEASURED", actualProcessPeakMemory: "UNMEASURED",
-      conclusion: "FALLBACK_NO_SPEEDUP_CLAIM" }));
+      conclusion: explicit ? "EXPLICIT_FULL_NO_SPEEDUP_CLAIM" : "BLOCKED_NOT_A_COMPLETED_PLAN" }));
   });
 }

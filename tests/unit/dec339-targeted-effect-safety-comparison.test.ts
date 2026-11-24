@@ -44,7 +44,7 @@ const base: TrustedSynchronizationState = {
 const canonical: RemoteEntry[] = [{ path, entityKind: "file", remoteObjectId: doc, content: proof, trashed: false }];
 function comparison(options: { drift?: "authority" | "fence"; full?: boolean } = {}) {
   const nodes = [row("content"), row("portable-config"), file];
-  let physicalLists = 0, opens = 0, snapshots = 0, fenceReads = 0, mutationAttempts = 0;
+  let physicalLists = 0, opens = 0, snapshots = 0, fenceReads = 0, mutationAttempts = 0, releases = 0, provenanceReads = 0;
   const lease: InventoryReadLease = {
     generation: gen, fence,
     getById: async key => {
@@ -60,7 +60,7 @@ function comparison(options: { drift?: "authority" | "fence"; full?: boolean } =
         scopeKind: scope === contentRoot || scope === configRoot ? "domain" as const : "parent" as const,
         state: "complete" as const, visibility: "app-visible" as const,
         allPagesRead: true, incompleteSearch: false, provenanceVerified: true, terminalCursor: cursor } }),
-    release: async () => undefined,
+    release: async () => { releases++; },
   };
   const local = { enumerate: async () => ({ entries: [{
     side: "local" as const, status: "present" as const, path, entityKind: "file" as const,
@@ -100,29 +100,38 @@ function comparison(options: { drift?: "authority" | "fence"; full?: boolean } =
         fenceReads++;
         return options.drift === "fence" && fenceReads >= 2 ?
           { ...fence, scopePolicyFingerprint: "changed" } : fence;
-      }, fullReconcileRequired: () => options.full === true }),
+      }, provenanceReader: { verifyRootWideManagedProvenance: async () => {
+        provenanceReads++;
+        return { status: "ok" as const, value: undefined };
+      } }, fullReconcileRequired: () => options.full === true }),
     get physicalLists() { return physicalLists; }, get opens() { return opens; },
     get snapshots() { return snapshots; }, get mutationAttempts() { return mutationAttempts; },
+    get releases() { return releases; }, get fenceReads() { return fenceReads; },
+    get provenanceReads() { return provenanceReads; },
   };
 }
-test("B2-A07 authority publication race after inventory read delegates to real full reconciliation", async () => {
+test("B2-A07 authority publication race after inventory read blocks ordinary enabled planning", async () => {
   const fixture = comparison({ drift: "authority" });
-  const result = await fixture.optimized.assemble();
-  const full = await fixture.full.assembleFull();
-  assert.deepEqual(result.input.snapshots, full.input.snapshots);
+  await assert.rejects(fixture.optimized.assemble(), /inventory or canonical authority changed during lease projection/);
   assert.equal(fixture.opens, 1);
+  assert.equal(fixture.releases, 1);
   assert.ok(fixture.snapshots >= 2);
-  assert.equal(fixture.physicalLists, 2);
-  assert.equal(result.input.snapshots.find(x => x.path === removed)?.base.status, "trusted");
+  assert.equal(fixture.physicalLists, 0);
+  const full = await fixture.full.assembleFull();
+  assert.equal(fixture.physicalLists, 1);
+  assert.equal(full.input.snapshots.find(x => x.path === removed)?.base.status, "trusted");
   assert.equal(fixture.mutationAttempts, 0);
 });
 test("B2-A07 changed scope fence after snapshot prevents cached REMOTE planning input", async () => {
   const fixture = comparison({ drift: "fence" });
-  const result = await fixture.optimized.assemble();
+  await assert.rejects(fixture.optimized.assemble(), /metadata fence or provider horizon changed during final proof/);
   assert.equal(fixture.opens, 1);
-  assert.equal(fixture.physicalLists, 1);
-  assert.equal(result.mode, "full");
-  assert.equal(result.input.snapshots.find(x => x.path === path)?.remote.status, "present");
+  assert.equal(fixture.releases, 1);
+  assert.equal(fixture.provenanceReads, 1);
+  assert.ok(fixture.fenceReads >= 2);
+  assert.ok(fixture.snapshots >= 3);
+  assert.equal(fixture.physicalLists, 0);
+  assert.equal(fixture.mutationAttempts, 0);
 });
 test("B2-A09 explicit full-reconcile request never opens the inventory lease", async () => {
   const fixture = comparison({ full: true });
