@@ -2498,7 +2498,7 @@ dec339_step4_observation_comparison_2026_11_23:
   installation_promotion_release_authorized: false
 
 dec339_step5_gated_planner_cutover_2026_11_23:
-  status: "REVIEWER_F01_ACCEPTED_PENDING_BUILDER_CLOSEOUT"
+  status: "REVIEWER_F01_ACCEPTED_BUILDER_CLOSEOUT_COMPLETE"
   owner_authorization: "2026-11-23_OWNER_AUTHORIZED_STEP5_GATED_PLANNER_CUTOVER"
   feature_id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP5_GATED_PLANNER_CUTOVER"
   handoff-count: 4
@@ -2519,7 +2519,7 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   physical_testing_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
-  next_action: "BUILDER_CLOSEOUT_NO_UNAUTHORIZED_PROMOTION"
+  next_action: "AWAIT_OWNER_AUTHORIZATION_FOR_ANY_FURTHER_STEP_OR_PROMOTION"
 
   implementation_gate_commit: "f752fbdcebcf0415524b6cff97080ff0cd17b385"
   implementation_scope_fingerprint_commit: "e862f9fbc54e21bf14b8cedd690000c6d5adc4af"
@@ -2582,3 +2582,14 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   f01_reviewer_final_report: "dev/reviews/dec339-step5-f01-20261123-review-brain-11-final.md"
   f01_reviewer_final_report_commit: "18d12e4fe7a5da70ec4509cce994878de65219f8"
   f01_reviewer_to_builder_handoff_direction: "REVIEWER_TO_BUILDER"
+
+  f01_builder_closeout_status: "COMPLETE_ACCEPTED_SOFTWARE_ONLY_NO_PROMOTION"
+  f01_builder_closeout_accepted_source_sha: "540b27848853d5af4625f254c6159877a7e14ae0"
+  f01_builder_closeout_accepted_tree_sha: "d96f35984c20196d2702517aa4b5f0cd6e973d1c"
+  f01_builder_closeout_review_verdict: "PASS"
+  f01_builder_closeout_review_report_commit: "18d12e4fe7a5da70ec4509cce994878de65219f8"
+  f01_builder_closeout_phxci_run_id: "6cefc4c8-1e53-4cee-b453-d9eeecfe53f1"
+  f01_builder_closeout_phxci_evidence_commit: "41cbc35c1f9fa26411890b140b6f068133de3b11"
+  f01_builder_closeout_source_changes: "NONE"
+  f01_builder_closeout_handoff_count: 4
+  f01_builder_closeout_next_authority: "OWNER_APPROVAL_REQUIRED_FOR_STEP6_OR_MERGE_INSTALLATION_PHYSICAL_LIVE_RELEASE"
