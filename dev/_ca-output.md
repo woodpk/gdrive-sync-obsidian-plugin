@@ -9,12 +9,12 @@ STATUS: BLOCKED
 - Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 6576dddf-6d2a-49b5-ad07-1d1443504120
-- Repository: C:/phx-49ed2196e33f475d/w
+- Run ID: c89fde2e-d72b-44af-a75c-11b773d1688c
+- Repository: C:/phx-feb491fcc5114771/w
 - Branch:
-- Verified HEAD: 1d6217eaf146d7acb3959b4610d7a18ecffbba95
-- Verified tree: 47ae2205139c9141ff02aa1280a7f8cca65b9f38
-- Expected HEAD: 1d6217eaf146d7acb3959b4610d7a18ecffbba95
+- Verified HEAD: f60f29ce194d190e3895bafd4a8fa344fc89cbe3
+- Verified tree: a1630a7717f3dbae6847267b5a1bd57306458753
+- Expected HEAD: f60f29ce194d190e3895bafd4a8fa344fc89cbe3
 - Base SHA: 62fb2632017c0744f16fe95467d39d35ae655b16
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,18 +24,18 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-11-24T06:09:07.9342064Z
-- Ended: 2026-11-24T06:11:47.2997571Z
+- Started: 2026-11-24T07:01:47.1231111Z
+- Ended: 2026-11-24T07:06:27.5835933Z
 
 ## Ordered stages
 
-- preflight: PASS (exit 0; NONE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
-- node-preflight: PASS (exit 0; NONE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
-- node-project-files: PASS (exit 0; NONE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
-- install: PASS (exit 0; NONE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
-- typecheck: PASS (exit 0; NONE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
-- test-focused: FAIL (exit 1; TEST FAILURE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
-- test: FAIL (exit 1; TEST FAILURE; run 6576dddf-6d2a-49b5-ad07-1d1443504120)
+- preflight: PASS (exit 0; NONE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
+- node-preflight: PASS (exit 0; NONE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
+- node-project-files: PASS (exit 0; NONE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
+- install: PASS (exit 0; NONE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
+- typecheck: PASS (exit 0; NONE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
+- test-focused: FAIL (exit 1; TEST FAILURE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
+- test: FAIL (exit 1; TEST FAILURE; run c89fde2e-d72b-44af-a75c-11b773d1688c)
 - build: MISSING (FRAMEWORK FAILURE)
 - repository-check: MISSING (FRAMEWORK FAILURE)
 - check: MISSING (FRAMEWORK FAILURE)
