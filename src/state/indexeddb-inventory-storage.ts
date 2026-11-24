@@ -307,6 +307,47 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
     }
   }
 
+  /**
+   * Explicit rebaseline preparation; invalidate only the pointer, never
+   * canonical authority, rows, or outstanding durable reader pins. The
+   * observed durable revisions are a CAS against competing publication.
+   * A scope change may be rebuilt, but an account/root/device change may not.
+   */
+  async prepareRemoteRebaseline(fence: InventoryIdentityFence, expected: {
+    readonly persistenceRevision: import("../contracts").PersistenceRevision;
+    readonly semanticGeneration: import("../contracts").SemanticStateGeneration;
+    readonly canonicalCursor: ChangeCursor | null;
+  }): Promise<{ readonly status: "prepared" } | InventoryError> {
+    try {
+      const db = await this.open();
+      const tx = stores(db, [AUTHORITY, CONTROL], "readwrite");
+      const done = finished(tx);
+      const bytes = await request(tx.objectStore(AUTHORITY).get(AUTHORITY_KEY)) as Uint8Array | undefined;
+      const store = tx.objectStore(CONTROL);
+      const control = await request(store.get(POINTER)) as InventoryControl | undefined;
+      const authority = inspectInventoryAuthorityFence(bytes);
+      if (authority.status !== "trusted" || authority.unresolvedEffects ||
+          authority.vaultIdentity !== fence.vaultIdentity || authority.deviceIdentity !== fence.deviceIdentity ||
+          authority.persistenceRevision !== expected.persistenceRevision ||
+          authority.semanticGeneration !== expected.semanticGeneration ||
+          authority.canonicalCursor !== expected.canonicalCursor) {
+        await done;
+        return error("stale", "rebaseline-canonical-authority-untrusted-or-raced");
+      }
+      if (control && (!control.fence ||
+          !inventoryFenceMatches({ ...control.fence, scopePolicyFingerprint: fence.scopePolicyFingerprint }, fence))) {
+        await done;
+        return error("incompatible", "rebaseline-refuses-different-pairing-or-inventory-schema");
+      }
+      if (control?.status === "ready")
+        store.put({ ...control, status: "invalid", reason: "verified-remote-rebaseline-required" } satisfies InventoryControl, POINTER);
+      await done;
+      return { status: "prepared" };
+    } catch {
+      return error("recovery-required", "rebaseline-storage-unavailable");
+    }
+  }
+
   async stage(input: InventoryStageRequest): Promise<InventoryReadResult<InventoryGeneration>> {
     const m = input.candidate;
     if (!valid(m.generation) || !valid(m.validationReceipt) || m.status !== "complete" ||

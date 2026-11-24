@@ -15,6 +15,7 @@ import { MobileVaultAccessBoundary } from "../local/mobile-vault-access-boundary
 import { IndexedDbInventoryAwareStateByteStorage } from "../state/indexeddb-inventory-authority-storage";
 import { IndexedDbInventoryObservationStore } from "../state/indexeddb-inventory-storage";
 import { VerifiedLocalInventoryCoordinator } from "../state/verified-local-inventory";
+import { VerifiedInventoryBaselineCoordinator } from "../state/verified-inventory-integration";
 import { PersistentSynchronizationStateStore } from "../state/persistent-state-store";
 import { generateDeviceIdentity } from "../state/state-policy";
 import { BoundedAuditHistory } from "./audit-history";
@@ -312,8 +313,8 @@ export class ProductRuntime {
           path => scope.isManagedLogical(path),
         );
         this.unsubscribeLocalInventory = this.localInventory.subscribe();
-        // Advisory LOCAL metadata is opportunistic only. Failure or absent v2
-        // inventory never blocks the canonical planner and never triggers migration.
+        // LOCAL hints remain advisory; ordinary enabled REMOTE planning is strict.
+        // Neither path may implicitly migrate an existing v1 pairing.
         void currentFence()
           .then(fence => this.localInventory?.refresh(fence))
           .catch(() => undefined);
@@ -325,6 +326,7 @@ export class ProductRuntime {
           remoteIdentity,
           inventory,
           provenanceReader: this.boundary!.metadataReader,
+          refresh: new VerifiedInventoryBaselineCoordinator(this.boundary!.metadataReader, inventory),
           currentFence,
           pathIncluded: path => scope.isManagedLogical(path),
           fullReconcileRequired: () => this.host.settings().scopeReconcileRequired,

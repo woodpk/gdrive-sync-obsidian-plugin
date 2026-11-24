@@ -88,6 +88,7 @@ export class VerifiedInventoryBaselineCoordinator {
 
   async publishBaseline(
     fence: InventoryIdentityFence, generation: InventoryGeneration,
+    options: { readonly preserveCanonicalCursor?: boolean } = {},
   ): Promise<InventoryIntegrationResult> {
     if (typeof generation !== "string" || !generation.trim())
       return failed("invalid", "invalid-candidate-generation");
@@ -96,6 +97,8 @@ export class VerifiedInventoryBaselineCoordinator {
     const provider = await this.reader.baseline(fence, generation);
     if (provider.status !== "ok") return failed(provider.status, provider.reason);
     const candidate = provider.value;
+    if (options.preserveCanonicalCursor && candidate.terminalCursor !== before.value.canonicalCursor)
+      return failed("recovery-required", "rebaseline-would-advance-canonical-cursor-without-learned-changes");
     // A verified full baseline may replace an invalid or stale inventory even when
     // the terminal Changes cursor is unchanged. Cursor progress is mandatory only
     // for incremental publication; baseline completeness comes from the provider

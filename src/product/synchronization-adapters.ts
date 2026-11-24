@@ -44,7 +44,7 @@ export function nextSemanticGeneration(current: SemanticStateGeneration): Semant
   return contractId<"SemanticStateGeneration">(next) as SemanticStateGeneration;
 }
 
-function semanticStateRevision(generation: SemanticStateGeneration): StateRevision {
+export function semanticStateRevision(generation: SemanticStateGeneration): StateRevision {
   return contractId<"StateRevision">(`semantic-cas:${String(generation)}`) as StateRevision;
 }
 
