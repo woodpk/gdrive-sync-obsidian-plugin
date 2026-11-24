@@ -1,5 +1,5 @@
 /** DEC-339 D339-03: dormant read-only Drive v3 metadata provider; no mutation or global absence authority. */
-import type { InventoryIdentityFence } from "../contracts/verified-metadata-inventory";
+import { inventoryContinuityGrant, type InventoryIdentityFence } from "../contracts/verified-metadata-inventory";
 import type { DriveResult } from "../contracts/google-drive";
 import type { GoogleDriveAdapter } from "./google-drive-port";
 import type { GoogleHttpTransport } from "./transport";
@@ -75,6 +75,7 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
     private readonly drive: Pick<GoogleDriveAdapter, "validateManagedRoot">,
     private readonly http: Pick<GoogleHttpTransport, "request">,
     private readonly pairedAccountKey: () => Promise<string | undefined>,
+    private readonly currentGrantBinding?: () => string | undefined,
   ) {}
 
   private async get(url: string): Promise<InventoryDriveFetch<unknown>> {
@@ -175,6 +176,9 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
   }
 
   async verifyFence(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>> {
+    const grant = inventoryContinuityGrant(fence.scopePolicyFingerprint);
+    if (grant && this.currentGrantBinding?.() !== grant)
+      return fail("inventory-authorization-binding-changed", "incompatible");
     let key: string | undefined;
     try { key = await this.pairedAccountKey(); }
     catch { return fail("account-binding-unavailable", "incompatible"); }
@@ -207,6 +211,8 @@ export class GoogleDriveInventoryMetadataSource implements InventoryMetadataSour
         content.appProperties.brainSyncRole !== "brain-sync-content" ||
         config.appProperties.brainSyncRole !== "brain-sync-portable-config")
       return fail("managed-domain-root-role-or-parent-mismatch", "incompatible");
+    if (grant && this.currentGrantBinding?.() !== grant)
+      return fail("inventory-authorization-binding-changed", "incompatible");
     return { status: "ok", value: undefined };
   }
 }

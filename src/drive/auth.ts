@@ -1,4 +1,5 @@
 import { REQUIRED_DRIVE_SCOPE } from "../contracts/google-drive";
+import { sha256Text } from "../util/sha256";
 import type { DiagnosticLogger } from "../diagnostics/diagnostic-logger";
 
 export const GOOGLE_AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -30,6 +31,8 @@ export interface OAuthTokens {
   readonly expiresAtMs: number;
   readonly tokenType: string;
   readonly scope: string;
+  /** Device-local nonsecret authorization epoch; never a token-derived digest. */
+  readonly inventoryGrantEpoch?: string;
 }
 export interface OAuthAuthorizationRequest {
   readonly url: string;
@@ -112,6 +115,7 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 function randomBytes(size: number): Uint8Array { const value = new Uint8Array(size); crypto.getRandomValues(value); return value; }
+function newInventoryGrantEpoch(): string { return Array.from(randomBytes(16), b => b.toString(16).padStart(2, "0")).join(""); }
 async function sha256(value: string): Promise<Uint8Array> { return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))); }
 function encodeTokens(tokens: OAuthTokens): string { return JSON.stringify(tokens); }
 function decodeTokens(raw: string | undefined): OAuthTokens | undefined {
@@ -119,6 +123,8 @@ function decodeTokens(raw: string | undefined): OAuthTokens | undefined {
   try {
     const value = JSON.parse(raw) as Partial<OAuthTokens>;
     if (typeof value.accessToken !== "string" || typeof value.expiresAtMs !== "number" || typeof value.tokenType !== "string" || typeof value.scope !== "string") return undefined;
+    if (value.inventoryGrantEpoch !== undefined &&
+        (typeof value.inventoryGrantEpoch !== "string" || !/^[a-f0-9]{32}$/.test(value.inventoryGrantEpoch))) return undefined;
     return value as OAuthTokens;
   } catch { return undefined; }
 }
@@ -275,6 +281,7 @@ export class GoogleOAuthSession {
       expiresAtMs: this.now() + parsed.expires_in * 1000,
       tokenType: parsed.token_type ?? "Bearer",
       scope: parsed.scope ?? REQUIRED_DRIVE_SCOPE,
+      inventoryGrantEpoch: newInventoryGrantEpoch(),
     };
     if (!hasExactRequiredDriveScope(tokens.scope)) {
       return {
@@ -293,6 +300,17 @@ export class GoogleOAuthSession {
   }
 
   tokens(): OAuthTokens | undefined { return decodeTokens(this.secrets.get(GoogleOAuthSession.TOKEN_SECRET_ID)); }
+  /** Bind inventory to the OAuth application and the actual local authorization epoch.
+   * Existing exact-scope grants receive an epoch on first inventory use. No secret
+   * or token bytes enter the fingerprint. Reauthorization rotates the epoch. */
+  inventoryGrantBinding(): string | undefined {
+    const current = this.tokens();
+    if (!current || !hasExactRequiredDriveScope(current.scope) || !this.config.clientId) return undefined;
+    const epoch = current.inventoryGrantEpoch ?? newInventoryGrantEpoch();
+    if (!current.inventoryGrantEpoch)
+      this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens({ ...current, inventoryGrantEpoch: epoch }));
+    return String(sha256Text(JSON.stringify(["brain-inventory-grant-v1", this.config.clientId, epoch])));
+  }
   /** Retire old requests when the runtime is replaced, without deleting valid stored tokens. */
   retirePendingOperations(): void {
     ++this.revocationGeneration;
@@ -350,9 +368,16 @@ export class GoogleOAuthSession {
       expiresAtMs: this.now() + parsed.expires_in * 1000,
       tokenType: parsed.token_type ?? current.tokenType,
       scope: parsed.scope ?? current.scope,
+      ...(current.inventoryGrantEpoch ? { inventoryGrantEpoch: current.inventoryGrantEpoch } : {}),
     };
     if (!hasExactRequiredDriveScope(refreshed.scope)) { this.clearTokens(); return undefined; }
     if (generation !== this.revocationGeneration) return undefined;
+    // An authorization or first-use epoch update in another runtime must not
+    // be overwritten by this older suspended refresh.
+    if (this.tokens()?.inventoryGrantEpoch !== current.inventoryGrantEpoch ||
+        this.tokens()?.refreshToken !== current.refreshToken) {
+      this.accessFailure = "transient"; return undefined;
+    }
     this.secrets.set(GoogleOAuthSession.TOKEN_SECRET_ID, encodeTokens(refreshed));
     this.accessFailure = undefined;
     return refreshed.accessToken;

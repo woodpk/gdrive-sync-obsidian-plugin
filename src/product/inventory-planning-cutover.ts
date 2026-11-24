@@ -1,3 +1,4 @@
+import { inventoryContinuityGrant } from "../contracts";
 import type {
   ChangeCursor, DeviceIdentity, DriveResult, InventoryIdentityFence, ManagedRemoteIdentity,
   RemoteObjectId, VaultIdentity,
@@ -61,7 +62,7 @@ export interface InventoryPlanningBoundary {
 }
 export async function buildInventoryPlanningBoundary(input: {
   readonly drive: {
-    observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity): Promise<DriveResult<{
+    observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity, requirePersonalCorpus?: boolean): Promise<DriveResult<{
       readonly pairedAccountKey: string; readonly contentRootId: RemoteObjectId;
       readonly configRootId: RemoteObjectId; readonly cursor: ChangeCursor;
     }>>;
@@ -73,7 +74,8 @@ export async function buildInventoryPlanningBoundary(input: {
 }): Promise<InventoryPlanningBoundary> {
   if (input.remoteIdentity.vaultIdentity !== input.vaultIdentity)
     throw new Error("inventory-fence-vault-identity-mismatch");
-  const observed = await input.drive.observeInventoryPlanningBoundary(input.remoteIdentity);
+  const observed = await input.drive.observeInventoryPlanningBoundary(input.remoteIdentity,
+    inventoryContinuityGrant(input.scopePolicyFingerprint) !== undefined);
   if (!observed.ok) throw new Error("inventory-planning-boundary-unproven");
   return { cursor: observed.value.cursor, fence: {
     vaultIdentity: input.vaultIdentity, deviceIdentity: input.deviceIdentity,

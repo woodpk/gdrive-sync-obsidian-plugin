@@ -39,6 +39,7 @@ export function createObsidianGoogleDriveBoundary(options: ObsidianGoogleDriveBo
     drive,
     transport,
     () => drive.pairedInventoryAccountKey(),
+    () => oauth.inventoryGrantBinding(),
   );
   return { oauth, drive, metadataReader: new VerifiedMetadataInventoryReader(metadataSource) };
 }

@@ -1,6 +1,6 @@
 import { Notice, Platform, requestUrl, type App, type Plugin } from "obsidian";
 import type { DeviceIdentity, DriveSignal, LocalVaultPort, ManagedRemoteIdentity, ProtocolVersion, RemoteObjectId, StateLoadContext, VaultIdentity } from "../contracts";
-import { contractId } from "../contracts";
+import { contractId, inventoryContinuityFingerprint } from "../contracts";
 import { DeterministicSynchronizationPlanner } from "../core/planner";
 import { ProductionSynchronizationPlanner } from "../core/production-planner";
 import { ThreeWayConflictResolver } from "../core/conflict-resolver";
@@ -299,11 +299,13 @@ export class ProductRuntime {
           this.assertBoundPairing(live, boundPairing);
           if (!live.verifiedInventoryPlanningEnabled)
             throw new Error("verified-inventory-planning-disabled");
+          const grant = this.boundary!.oauth.inventoryGrantBinding();
+          if (!grant) throw new Error("inventory-authorization-binding-unavailable");
           return {
             drive: this.boundary!.drive,
             remoteIdentity: await remoteIdentity(),
             deviceIdentity, vaultIdentity,
-            scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
+            scopePolicyFingerprint: inventoryContinuityFingerprint(grant, scope.inventoryScopeFingerprint()),
           };
         };
         const currentFence = async () => buildInventoryPlanningFence(await fenceInput());

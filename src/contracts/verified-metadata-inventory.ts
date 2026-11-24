@@ -10,6 +10,17 @@ import type {
 
 export type InventoryGeneration = string & { readonly __inventoryGeneration: "InventoryGeneration" };
 export type InventoryDomain = "content" | "portable-config";
+/** DEC-365: versioned, personal My Drive continuity policy, distinct from legacy census receipts. */
+export const INVENTORY_CONTINUITY_POLICY = "dec339-continuity-v1";
+export function inventoryContinuityFingerprint(grantBinding: string, scope: string): string {
+  if (!/^sha256:[a-f0-9]{64}$/.test(grantBinding) || !/^sha256:[a-f0-9]{64}$/.test(scope))
+    throw new Error("invalid-inventory-continuity-namespace");
+  return `${INVENTORY_CONTINUITY_POLICY}:${grantBinding}:${scope}`;
+}
+export function inventoryContinuityGrant(fingerprint: string): string | undefined {
+  const match = /^dec339-continuity-v1:(sha256:[a-f0-9]{64}):sha256:[a-f0-9]{64}$/.exec(fingerprint);
+  return match?.[1];
+}
 export type InventoryCoverageState = "complete" | "partial" | "unknown" | "invalid";
 export type InventoryTrustFailure = "unknown" | "partial" | "ambiguous" | "stale" | "incompatible" | "invalid" | "recovery-required";
 
@@ -88,7 +99,9 @@ export interface InventoryCoverage {
   readonly scopeKind: "domain" | "parent";
   readonly state: InventoryCoverageState;
   readonly visibility: "app-visible" | "unknown";
+  /** Complete evidence, not necessarily a fresh listing: basis identifies continuity inheritance. */
   readonly allPagesRead: boolean;
+  readonly proofBasis?: "physical-baseline" | "changes-continuity" | "affected-parent";
   readonly incompleteSearch: boolean;
   readonly provenanceVerified: boolean;
   readonly terminalCursor: ChangeCursor;
