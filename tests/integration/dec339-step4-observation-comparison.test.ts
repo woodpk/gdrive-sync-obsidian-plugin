@@ -614,9 +614,11 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
   async function measure<T>(action: () => Promise<T>) {
     const offset = samples.length;
     const memoryBefore = process.memoryUsage();
+    const cpuBefore = process.cpuUsage();
     const start = performance.now();
     const value = await action();
     const wallMs = performance.now() - start;
+    const cpuElapsed = process.cpuUsage(cpuBefore);
     const memoryAfter = process.memoryUsage();
     const observed = samples.slice(offset);
     const counts = Object.fromEntries(requestClasses.map(purpose => [
@@ -624,6 +626,7 @@ async function pairedEnvironment(enabled: boolean, establish = enabled, extraFil
     ])) as Record<RequestClass, number>;
     return { value, metrics: {
       count: observed.length, counts, wallMs,
+      processCpuMs: (cpuElapsed.user + cpuElapsed.system) / 1000,
       simulatedHttpMs: observed.reduce((sum, s) => sum + s.ms, 0),
       physicalTreeReads: observed.filter(s => s.physicalTree).length,
       sharedAncestorReads: observed.filter(s => s.sharedAncestor).length,
@@ -1113,4 +1116,24 @@ test("DEC365 provider horizon advancing after replay rejects publication without
   const restored = await enabled.plan(enabled.selected());
   assert.equal(restored.value.assembly.inventoryContinuity, true);
   assert.equal(restored.metrics.counts.markedCensus, 0);
+});
+
+test("DEC365 steady remote request count does not scale with unchanged nested vault size", async t => {
+  const observations: Array<{ size: number; count: number; payloadBytes: number }> = [];
+  for (const size of [24, 128]) {
+    const enabled = await pairedEnvironment(true, true, size, true);
+    const optimized = await enabled.plan(enabled.selected());
+    assert.equal(optimized.value.assembly.inventoryContinuity, true);
+    assert.equal(optimized.metrics.counts.markedCensus, 0);
+    assert.equal(optimized.metrics.physicalTreeReads, 0);
+    assert.equal(optimized.metrics.counts.changes, 1);
+    observations.push({ size, count: optimized.metrics.count,
+      payloadBytes: optimized.metrics.providerResponsePayloadBytes });
+    reportMeasurements(t, "continuity-nested-" + size,
+      [{ mode: "inventory", metrics: optimized.metrics }]);
+  }
+  assert.equal(observations[0]!.count, observations[1]!.count,
+    "steady network request count must not scale with unchanged remote object count");
+  assert.equal(observations[0]!.payloadBytes, observations[1]!.payloadBytes,
+    "steady provider response metadata payload must not scale with unchanged object count");
 });
