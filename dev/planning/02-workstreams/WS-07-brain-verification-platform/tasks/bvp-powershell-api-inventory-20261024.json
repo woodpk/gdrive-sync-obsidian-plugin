@@ -36,6 +36,16 @@
       "accessibility": "existing-node-cli"
     },
     {
+      "name": "dec339-metadata-continuity",
+      "kind": "deterministic",
+      "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
+      "export": "getDeterministicBattery",
+      "mode": "deterministic",
+      "effect": "software-test-process",
+      "powershellCommand": "Invoke-BvpBattery",
+      "accessibility": "existing-node-cli"
+    },
+    {
       "name": "s08-live-platform-infrastructure",
       "kind": "deterministic",
       "source": "test-platform/test/batteries/deterministic-battery-registry.ts",
@@ -1616,7 +1626,7 @@
   },
   "counts": {
     "scenarios": 84,
-    "deterministicBatteries": 7,
+    "deterministicBatteries": 8,
     "liveBatteries": 14,
     "deviceKinds": 7,
     "stepVariants": 42,

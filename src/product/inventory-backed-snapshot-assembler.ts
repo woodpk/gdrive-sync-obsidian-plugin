@@ -126,8 +126,12 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       return super.assembleFull(runId);
     const initial = await this.options.state.load(this.options.stateContext);
     if (initial.status === "uninitialized") return super.assembleFull(runId);
-    if (initial.status !== "trusted" || initial.state.operations.some(op => op.status !== "completed"))
+    if (initial.status !== "trusted")
       throw new SnapshotAssemblyError("recovery-required", "canonical synchronization authority untrusted; use explicit recovery");
+    // Pending/uncertain durable effects must bypass every inventory read and
+    // use the existing fresh canonical recovery observation, not cached absence.
+    if (initial.state.operations.some(op => op.status !== "completed"))
+      return super.assembleFull(runId);
 
     let attempt = await this.attemptInventory(runId);
     let replayed = false, rebuilt = false;
@@ -221,8 +225,10 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       if (receipt && (receipt.generation !== before.value.activeGeneration ||
           receipt.terminalCursor !== before.value.canonicalCursor || liveCursor.value !== receipt.terminalCursor))
         return blocked("metadata generation or provider horizon changed after replay");
-      if ((continuity && !receipt) || liveCursor.value !== before.value.canonicalCursor)
+      if (continuity && !receipt)
         return { kind: "refresh", fence, authority, reason: "complete Changes continuity required" };
+      if (liveCursor.value !== before.value.canonicalCursor)
+        return { kind: "refresh", fence, authority, reason: "verified inventory horizon is stale" };
       const read = await inventory.openRead();
       if (read.status !== "verified-observation") return rebuild(read.reason);
       let listing: RemoteListing | undefined;
