@@ -2593,3 +2593,28 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   f01_builder_closeout_source_changes: "NONE"
   f01_builder_closeout_handoff_count: 4
   f01_builder_closeout_next_authority: "OWNER_APPROVAL_REQUIRED_FOR_STEP6_OR_MERGE_INSTALLATION_PHYSICAL_LIVE_RELEASE"
+
+dec339_step6_metadata_bvp_2026_11_24:
+  status: "BU01_AUTHORIZED_IMPLEMENTATION_IN_PROGRESS"
+  owner_authorization: "2026-11-24_EXPLICIT_METADATA_ENABLED_BVP_BUILD"
+  branch: "build/dec339-step6-metadata-bvp-20261124"
+  starting_source_sha: "62fb2632017c0744f16fe95467d39d35ae655b16"
+  predecessor_accepted_source: "540b27848853d5af4625f254c6159877a7e14ae0"
+  planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-metadata-bvp-2026-11-24.md"
+  active_build_unit: "BU-01_PAIRED_PLANNING_MEASUREMENT"
+  handoff-count: 0
+  handoff-owner-role: BUILDER
+  handoff-recipient-role: BUILDER
+  baseline_unique_tests_passed: 634
+  baseline_s09_reconciled: true
+  baseline_diagnostic_gate_failure: "DEFAULT_PROMOTION_ARTIFACT_CHECK_NOT_DEVELOPMENT"
+  baseline_diagnostic_run_id: "4d79b517-a8bc-41ce-a6db-1d9aff41854d"
+  baseline_diagnostic_evidence_local_commit: "a69f2cc1d8b7677ee1fb90d58aa5c3bb26d4ec22"
+  phxci_status: "NOT_RUN"
+  reviewer_status: "NOT_REQUESTED"
+  inventory_activation_authorized: false
+  live_migration_authorized: false
+  physical_testing_authorized: false
+  live_drive_vault_device_operations_authorized: false
+  master_merge_authorized: false
+  installation_promotion_release_authorized: false
