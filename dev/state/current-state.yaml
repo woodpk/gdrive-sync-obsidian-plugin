@@ -2595,7 +2595,7 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   f01_builder_closeout_next_authority: "OWNER_APPROVAL_REQUIRED_FOR_STEP6_OR_MERGE_INSTALLATION_PHYSICAL_LIVE_RELEASE"
 
 dec339_step6_metadata_bvp_2026_11_24:
-  status: "BU01_NATIVE_PREREQUISITE_TESTS_AUTHORED_NOT_VERIFIED"
+  status: "BU01_EXPECTED_RED_DIAGNOSTIC_READY"
   owner_authorization: "2026-11-24_EXPLICIT_TWO_BU_TESTING_WORKSTREAM_APPROVAL"
   branch: "build/dec339-step6-metadata-bvp-20261124"
   starting_source_sha: "62fb2632017c0744f16fe95467d39d35ae655b16"
@@ -2613,6 +2613,7 @@ dec339_step6_metadata_bvp_2026_11_24:
   phxci_status: "NOT_RUN"
   reviewer_status: "NOT_REQUESTED"
   bu01_source_readiness: "NOT_ESTABLISHED_SHIPPING_REVISION_COMPARISON_AND_BVP_SEAM"
+  bu01_next_action: "PHXCI_EXPECTED_RED_DIAGNOSTIC_NATIVE_INTEGRATION"
   bu01_native_prerequisite_tests: "tests/integration/dec339-step4-observation-comparison.test.ts"
   bu01_production_change_authorized: false
   approved_build_unit_count: 2

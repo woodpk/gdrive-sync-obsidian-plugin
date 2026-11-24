@@ -158,8 +158,14 @@ class ObservationServer {
       return this.response({ user: { permissionId: "permission-step4" } });
     if (normalized.includes("/drive/v3/changes/startPageToken"))
       return this.response({ startPageToken: this.token });
-    if (normalized.includes("/drive/v3/changes?"))
-      return this.response({ changes: [...this.changes], newStartPageToken: this.token });
+    if (normalized.includes("/drive/v3/changes?")) {
+      const requested = url.searchParams.get("pageToken");
+      if (requested === this.token)
+        return this.response({ changes: [], newStartPageToken: this.token });
+      if (requested === "changes:step4:0" && this.token === "changes:step4:1")
+        return this.response({ changes: [...this.changes], newStartPageToken: this.token });
+      throw new Error("unexpected synthetic Changes cursor");
+    }
 
     if (normalized.includes("/drive/v3/files/root?")) return this.response(this.rootFile());
     if (normalized.includes("/drive/v3/files/content?")) return this.response(this.contentFile());
@@ -566,7 +572,27 @@ async function pairedEnvironment(enabled: boolean, establish = enabled) {
     return measure(async () => new VerifiedInventoryBaselineCoordinator(boundary.metadataReader, storage)
       .publishIncremental(await currentFence(), gen("step6:g1"), batch("step6:batch:1")));
   };
-  return { server, raw, state, db, setup, samples, selected, legacy, plan, refresh,
+  const publicationProof = async () => {
+    assert.ok(storage);
+    const fence = await currentFence();
+    const publication = await inventoryStore(false).publicationSnapshot(fence);
+    const authority = await raw.loadAuthority();
+    const planning = await state.load(context);
+    assert.equal(publication.status, "trusted-fence");
+    assert.equal(authority.status, "trusted");
+    assert.equal(planning.status, "trusted");
+    if (publication.status !== "trusted-fence" || authority.status !== "trusted" || planning.status !== "trusted")
+      throw new Error("synthetic inventory prerequisite not trusted");
+    assert.ok(publication.value.activeManifest);
+    assert.ok(publication.value.activeGeneration);
+    assert.equal(publication.value.canonicalCursor, server.currentCursor());
+    assert.equal(publication.value.persistenceRevision, authority.state.persistenceRevision);
+    assert.equal(publication.value.semanticGeneration, authority.state.semanticGeneration);
+    return { activeGenerationPresent: true, cursorMatches: true, publicationMatchesDurableAuthority: true,
+      planningRevisionEqualsPersistence: String(planning.state.stateRevision) === String(publication.value.persistenceRevision),
+      planningRevisionIsSemanticCas: String(planning.state.stateRevision).startsWith("semantic-cas:") };
+  };
+  return { server, raw, state, db, setup, samples, selected, legacy, plan, refresh, publicationProof,
     localReads: () => localReads, inventoryConstructions: () => inventoryConstructions,
     makeLocalPartial: () => { partialLocal = true; },
     setLocalContent: (content: typeof localContent) => { localContent = content; },
@@ -634,6 +660,9 @@ test("DEC339 Step 6 real production state adapter must use verified enabled inve
   assert.equal(enabled.inventoryConstructions(), 1);
   assert.ok(enabled.setup.metrics.inventoryLogicalBytes > 0);
   assert.equal(enabled.localReads(), 1);
+  t.diagnostic("DEC339_STEP6_PATH_PROOF " + JSON.stringify({ ...await enabled.publicationProof(),
+    assemblyMode: optimized.value.assembly.mode, changes: optimized.metrics.counts.changes,
+    physicalTreeReads: optimized.metrics.physicalTreeReads, markedCensus: optimized.metrics.counts.markedCensus }));
   reportMeasurements(t, "setup", [{ mode: "inventory", metrics: enabled.setup.metrics }]);
   reportMeasurements(t, "steady", [{ mode: "legacy", metrics: ordinary.metrics },
     { mode: "inventory", metrics: optimized.metrics }, { mode: "full", metrics: physical.metrics }]);
