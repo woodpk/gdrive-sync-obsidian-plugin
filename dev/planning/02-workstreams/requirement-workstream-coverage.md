@@ -144,3 +144,6 @@ The new, Owner-approved **WS-07/BVP_WINDOWS_CONTROLLER_OAUTH** Build Unit introd
 
 **All new proof is pending**: committed code/tests are not PHX-CI verified, and the older DEC-356 R5 source was independently marked CORRECTION REQUIRED. Shipping product workstreams remain unchanged.
 
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+TSS §7.9/DEC-364: WS-02 durable proof namespace, history and CAS; WS-03 scoped provider observations/eligibility; WS-05 same-planner strict enabled integration; WS-07 test discovery and BVP differential metrics; WS-06 physical/resource follow-up. Dependency order and existing two BUs in F03 §8. No new requirement ID/workstream; prior prerequisites remain.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no implementation authorization.

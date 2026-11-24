@@ -249,3 +249,6 @@ See DEC-345, the fixed-runtime read-only research under `dev/research/` and the 
 
 **Exit conditions:** unchanged pinned Windows PHX-CI on exact current candidate → original immutable evidence → new independent full final Reviewer acceptance → separate Owner decision for any real OAuth/Drive operation, installation or release. Draft implementation is **unqualified**; predecessor R5 review is **CORRECTION REQUIRED**, not accepted.
 
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+BU-01 paired planning and post-correction metrics; BU-02 separate simulated full lifecycle. Existing deterministic registry and allowed seams only; PHX-CI sole software qualification. No physical/live testing or second platform.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

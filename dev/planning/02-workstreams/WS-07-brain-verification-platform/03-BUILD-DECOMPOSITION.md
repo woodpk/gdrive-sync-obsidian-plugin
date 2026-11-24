@@ -532,3 +532,7 @@ This prerequisite **does not replace or activate** S09A–S09V. It preserves acc
 **There is no S09-BR03 or S09-BR04.** PHX-CI verification is required per Build Unit and independent Reviewer acceptance is the final gate, not another Build Unit. If BR02 finds an implementation defect, return a scoped correction to BR01 and rerun qualification; do not allow BR02 to edit production-independent implementation files or invent another work unit. A one-file implementation limitation must be surfaced for Owner decision rather than silently changing additional files.
 
 The detailed durable work-unit contract is `tasks/s09/s09-phxci-fixed-runtime-consumer-bridge-build-plan-20261020.md`. Both units remain **PLANNED / NOT-YET-DISPATCHED** until exact predecessor SHAs and writable-path allowlists are rebound. No physical invocation, release, installed-device modification, S09A rerun or Stage 3 authorization follows from either software unit.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+Existing Step 6 two-BU task governs this corrective contribution; no new WS-07 BU. After corrected observation path, complete BU-01 registry, coverage, measurement and PHX-CI; after acceptance/closeout BU-02 simulated end-to-end. No additional execution or activation permission.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

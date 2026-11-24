@@ -30,3 +30,7 @@
 ## Boundary rule
 
 Implementation within this workstream remains subordinate to the target-system specification, the decision register, inherited repository contracts, and dependency ownership recorded in `00-WORKSTREAM.md`.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+WS-03 owns personal My Drive, drive.file scoped continuity and affected-ID/parent/ancestry observation. Shared Drives and expanded OAuth excluded. Removed event not deletion proof. Retain root-wide evidence where equivalent proof unavailable.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

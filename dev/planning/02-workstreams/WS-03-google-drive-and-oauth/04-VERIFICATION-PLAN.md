@@ -41,3 +41,7 @@ Through existing PHX-CI, prove the metadata reader uses the existing authenticat
 ## DEC-362 accepted closeout and scoped exception (2026-11-19)
 
 DEC-362's existing-file in-place update boundary was PHX-CI-qualified at source `640845815dc85672c2411b1b7d3ae48f17a86bc2` (run `56e68fb7-2b1f-4b47-9969-9e871bd30f7a`) and independently **accepted with minor findings** in `dev/reviews/dec362-20261119-review-brain-10-final.md`. **DEC-363** records the Owner's specific acceptance of the final revision-check-to-write race for this single-user product, with no additional engineering or testing solely for that interleaving. This does not weaken stale revisions detected in advance, exact-ID/root/provenance/path validation, independent post-effect content/revision verification, durable recovery, or ambiguity blocking. Live provider tests and any DEC-339 integration remain separately gated.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+PHX-CI tests complete pagination, empty pages, opaque cursor, malformed/repeated tokens, corpus/identity, escaped marked and unmarked occupancy, access loss, folder ancestry, final horizon race and omitted-feed counterexamples. Simulation cannot establish Google delivery guarantees.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

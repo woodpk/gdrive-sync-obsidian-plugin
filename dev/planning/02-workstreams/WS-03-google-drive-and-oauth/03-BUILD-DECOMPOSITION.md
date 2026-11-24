@@ -82,3 +82,7 @@ This correction does not broaden OAuth scope or change synchronization conflict 
 ## DEC-339 remaining integration (2026-11-17)
 
 D339-03's metadata source/reader exists dormant; **do not rebuild it**. Under the [single WS-05 task](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md), WS-03 provides the narrow existing-OAuth metadata transport seam and provider/Changes/provenance equivalence. Preserve `drive.file`, explicit incomplete/unknown results and full-reconciliation fallback. Accepted Phase-3 scope stays unchanged.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+Within BU-01 after WS-02 contract freeze, implement provider-scoped replay and affected invalidation only after authorization and sufficient provider proof. Existing baseline and separately gated executor contracts preserved.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

@@ -24,3 +24,7 @@ See `../../03-verification/verification-plan.md` and `../requirement-workstream-
 ## DEC-339 integration-specific evidence (2026-11-17)
 
 Through existing PHX-CI, prove v1/v2 upgrade, blocked/version-mismatched opens, backup and tested rollback-aware legacy mode, cursor CAS/writer races, interrupted publication, preserved BASE/intents and safe invalidation. Also verify `VerifiedLocalInventoryCoordinator` captures **all in-scope local file/folder hints** from fresh enumeration, invalidates on file change/resume/scope or generation drift, and **never** treats unreadable/absent hints as authoritative deletion or stability evidence. The [single WS-05 integration plan](../WS-05-integrated-sync-product/tasks/dec339-inventory-production-integration-2026-11-17.md) defines the dependent cutover gates. This documentation update does not execute tests or authorize activation.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+Ten-family mapping in F03 §9; PHX-CI verifies crash/CAS, repeat unchanged, cursor history, policy change, stale lease, wrong pairing, restart and rollback, no partial publication.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

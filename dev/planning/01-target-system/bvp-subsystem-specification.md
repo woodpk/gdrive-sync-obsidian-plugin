@@ -513,3 +513,6 @@ With separate OAuth, the Windows controller MUST locate the **pre-existing** BVP
 
 **Evidence update:** An initial PHX-CI run on `af178ebc17f90d0be8db78c45f12b9bf22375594` was **BLOCKED** by a focused TypeScript test compilation error. No qualifying PHX-CI PASS or independent acceptance exists. A prior DEC-356 R5 software PASS belongs only to its historical exact source and was subsequently given CORRECTION REQUIRED by independent integration reassessment. No actual Google sign-in, personal Drive/vault, physical device, promotion, merge or release is authorized by this specification amendment.
 
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+Existing BVP interfaces must support paired identical-world metadata planning evidence and, in BU-02, complete simulated multi-device lifecycle. Distinguish production composition qualification, operational simulation and physical/live results; record request categories, observable payload bytes, timing and local resources after correction. No new requirement ID, runner, production seam, budget or validation authority.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no implementation authorization.

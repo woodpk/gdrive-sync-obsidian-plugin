@@ -84,3 +84,7 @@ Do not begin DEC-339 planner activation until this corrective unit has exact-sou
 ## DEC-339 remaining integration (2026-11-17)
 
 **Canonical plan:** [Minimal Production Inventory Integration](tasks/dec339-inventory-production-integration-2026-11-17.md). D339-05/06 modules already exist dormant. After WS-02 storage/cursor **and local-hint** qualification and WS-03 authenticated metadata transport, complete **isolated storage-only shadow** and **observation-only parity** stages before wiring **default-off** inventory-backed assembly with safe physical fallback; measure safety and usefulness before independent review and separately Owner-authorized cutover. **Defer, do not cancel, D339-06 executor targeted reads** to their separate proof/activation gate. Keep the accepted planner, executor and Phase-5 behavior.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+Step 6 retains the Owner-approved two BUs. BU-01 includes prior F01/F02 repairs, F03 contract/provider/storage/planner correction, then BVP integration, comparative measurements, PHX-CI and independent review. BU-02 is complete simulated lifecycle after BU-01 acceptance/closeout. F03 serial checkpoints follow contract→provider→durable integration→planning→tests/metrics; not extra BUs.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.

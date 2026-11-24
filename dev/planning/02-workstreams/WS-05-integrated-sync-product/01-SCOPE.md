@@ -31,3 +31,7 @@
 ## Boundary rule
 
 Implementation within this workstream remains subordinate to the target-system specification, the decision register, inherited repository contracts, and dependency ownership recorded in `00-WORKSTREAM.md`.
+
+## DEC-364 / DEC-339 BU01-F03 — bounded continuity (2026-11-24)
+Correct both normal planning and incremental refresh repeated census within the existing DEC-339 Step 6 BU-01. Preserve strict enabled mode, explicit full/recovery, fresh LOCAL/BASE, planner/executor and all safety requirements; D339-06 separately gated.
+Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-continuity-technical-design-2026-11-24.md`. Documentation only; no authorization to build.
