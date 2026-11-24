@@ -241,6 +241,98 @@ export class GoogleDriveAdapter implements GoogleDrivePort, ReliableRemoteChange
       value: { contentRootId: rid(roots.value.content.id), configRootId: rid(roots.value.config.id) },
     };
   }
+  /**
+   * One fresh read-only inventory planning boundary. Never cached across
+   * calls or accepted as executor proof. Complete uniqueness queries and
+   * independent exact-ID folder reads are both required.
+   */
+  async observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity): Promise<DriveResult<{
+    readonly pairedAccountKey: string; readonly contentRootId: RemoteObjectId;
+    readonly configRootId: RemoteObjectId; readonly cursor: ChangeCursor;
+  }>> {
+    const fail = (detail: string): DriveResult<never> =>
+      ({ ok: false, signal: { kind: "recovery-required", detail } });
+    const account = await this.pairedInventoryAccountKey();
+    if (!account) return fail("inventory-paired-account-unavailable");
+    const guard = await this.guardPairedAccount();
+    if (!guard.ok) return guard;
+    const root = await this.getFile(identity.rootId);
+    if (!root.ok) return root;
+    const r = root.value;
+    if (r.id !== String(identity.rootId) || r.trashed !== false ||
+        r.mimeType !== FOLDER_MIME || r.appProperties?.[APP_ROLE] !== ROOT_ROLE ||
+        r.appProperties?.[APP_VAULT] !== String(identity.vaultIdentity) ||
+        r.appProperties?.[APP_PROTOCOL] !== String(identity.protocolVersion) ||
+        String(identity.protocolVersion) !== String(REMOTE_PROTOCOL_VERSION))
+      return fail("inventory-managed-root-identity-unproven");
+
+    // Preserve both existing uniqueness predicates. Unlike the legacy
+    // queries, explicitly require complete, bounded pagination.
+    const parent = "'" + escaped(String(identity.rootId)) + "' in parents";
+    const [contents, configs] = await Promise.all([
+      this.inventoryBoundaryCandidates(parent + " and appProperties has { key='" +
+        APP_ROLE + "' and value='" + CONTENT_ROLE + "' }"),
+      this.inventoryBoundaryCandidates(parent + " and trashed=false and name='" +
+        escaped(PORTABLE_CONFIG_NAME) + "'"),
+    ]);
+    if (!contents.ok) return contents;
+    if (!configs.ok) return configs;
+    const c = contents.value[0], k = configs.value[0];
+    const isDomain = (file: DriveFile | undefined, role: string): file is DriveFile =>
+      Boolean(file && typeof file.id === "string" && file.id.length > 0 &&
+        file.id.trim() === file.id && file.trashed === false && file.mimeType === FOLDER_MIME &&
+        Array.isArray(file.parents) && file.parents.length === 1 &&
+        file.parents[0] === r.id && file.appProperties?.[APP_ROLE] === role);
+    if (contents.value.length !== 1 || configs.value.length !== 1 ||
+        !isDomain(c, CONTENT_ROLE) || !isDomain(k, PORTABLE_CONFIG_ROLE) ||
+        k.name !== PORTABLE_CONFIG_NAME || new Set([r.id, c.id, k.id]).size !== 3)
+      return fail("inventory-managed-domain-uniqueness-unproven");
+    const [exactContent, exactConfig] = await Promise.all([
+      this.getFile(rid(c.id)), this.getFile(rid(k.id)),
+    ]);
+    if (!exactContent.ok) return exactContent;
+    if (!exactConfig.ok) return exactConfig;
+    if (!isDomain(exactContent.value, CONTENT_ROLE) ||
+        !isDomain(exactConfig.value, PORTABLE_CONFIG_ROLE) ||
+        exactContent.value.id !== c.id || exactConfig.value.id !== k.id ||
+        exactContent.value.name !== c.name || exactConfig.value.name !== k.name ||
+        exactContent.value.version !== c.version || exactConfig.value.version !== k.version)
+      return fail("inventory-managed-domain-exact-identity-unproven");
+    const result = await this.request(DRIVE_API + "/changes/startPageToken?supportsAllDrives=false");
+    if (!result.ok) return result;
+    const body = await json<{ startPageToken?: string }>(result.value);
+    if (typeof body.startPageToken !== "string" || !body.startPageToken ||
+        body.startPageToken.trim() !== body.startPageToken ||
+        await this.pairedInventoryAccountKey() !== account)
+      return fail("inventory-cursor-or-account-binding-unproven");
+    return { ok: true, value: { pairedAccountKey: account,
+      contentRootId: rid(c.id), configRootId: rid(k.id), cursor: cursor(body.startPageToken) } };
+  }
+
+  private async inventoryBoundaryCandidates(q: string): Promise<DriveResult<DriveFile[]>> {
+    const files: DriveFile[] = [];
+    const seen = new Set<string>();
+    let token: string | undefined;
+    for (let page = 0; page < 2000; page++) {
+      const params = new URLSearchParams({ q, spaces: "drive", pageSize: "1000",
+        fields: "nextPageToken,incompleteSearch,files(" + FIELDS + ")",
+        ...(token ? { pageToken: token } : {}) });
+      const response = await this.request(DRIVE_API + "/files?" + params);
+      if (!response.ok) return response;
+      const body = await json<FileListResponse & { incompleteSearch?: boolean }>(response.value);
+      if (!body || body.incompleteSearch !== false || !Array.isArray(body.files) ||
+          body.files.some(file => !file || typeof file !== "object") ||
+          files.length + body.files.length > 20000)
+        break;
+      files.push(...body.files);
+      const next = body.nextPageToken;
+      if (next === undefined) return { ok: true, value: files };
+      if (typeof next !== "string" || !next || next.trim() !== next || seen.has(next)) break;
+      seen.add(next); token = next;
+    }
+    return { ok: false, signal: { kind: "recovery-required", detail: "inventory-domain-query-incomplete" } };
+  }
+
   async protocolInfo(rootId: RemoteObjectId): Promise<DriveResult<RemoteProtocolInfo>> {
     const guard = await this.guardPairedAccount(); if (!guard.ok) return guard; const file = await this.getFile(rootId); if (!file.ok) return file; const observed = file.value.appProperties?.[APP_PROTOCOL];
     if (!observed) return { ok: false, signal: { kind: "recovery-required", detail: "remote-protocol-metadata-missing" } };

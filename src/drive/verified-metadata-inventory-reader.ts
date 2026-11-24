@@ -115,8 +115,28 @@ export class VerifiedMetadataInventoryReader {
   async verifyRootWideManagedProvenance(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>> {
     const start = await this.source.verifyFence(fence);
     if (start.status !== "ok") return start;
+    const observed = await this.observeRootWidePlanningCensus(fence);
+    if (observed.status !== "ok") return observed;
+    const end = await this.source.verifyFence(fence);
+    return end.status === "ok" ? { status: "ok", value: undefined } : end;
+  }
+
+  /**
+   * Observation only, NOT a verified fence or executor proof. The inventory
+   * assembler must bracket this with independent fresh combined boundaries
+   * and reject any cursor, identity, scope or publication drift.
+   */
+  async observeRootWidePlanningCensus(fence: InventoryIdentityFence): Promise<InventoryDriveFetch<void>> {
     const marked = await this.allPages(token => this.source.listMarked(String(fence.managedRootId), token));
     if (marked.status !== "ok") return marked;
+    const byId = new Map<string, InventoryDriveFile>();
+    for (const file of marked.value) {
+      if (byId.has(file.id)) return error("duplicate-managed-provenance-identity", "recovery-required");
+      byId.set(file.id, file);
+    }
+    // Fresh exact-ID observations only, scoped to this census. Never retain
+    // them across planning attempts or consume persisted inventory rows.
+    const ancestors = new Map<string, InventoryDriveFile>();
     const ids = new Set<string>();
     for (const file of marked.value) {
       if (ids.has(file.id)) return error("duplicate-managed-provenance-identity", "recovery-required");
@@ -139,16 +159,36 @@ export class VerifiedMetadataInventoryReader {
             visited.has(parentId))
           return error("managed-object-outside-expected-domain", "recovery-required");
         visited.add(parentId);
-        const parent = await this.source.getFile(parentId);
-        if (parent.status !== "ok") return error("managed-object-ancestor-unavailable", "recovery-required");
-        if (parent.value.trashed || parent.value.mimeType !== FOLDER)
+        let parent = ancestors.get(parentId);
+        if (!parent) {
+          const observed = await this.source.getFile(parentId);
+          if (observed.status !== "ok" || observed.value.id !== parentId)
+            return error("managed-object-ancestor-unavailable", "recovery-required");
+          parent = observed.value;
+          const markedParent = byId.get(parentId);
+          if (markedParent && (markedParent.name !== parent.name ||
+              markedParent.version !== parent.version || markedParent.trashed !== parent.trashed ||
+              markedParent.mimeType !== parent.mimeType ||
+              markedParent.parents.length !== parent.parents.length ||
+              markedParent.parents.some((id, index) => id !== parent!.parents[index]) ||
+              markedParent.appProperties.brainManagedRootId !== parent.appProperties.brainManagedRootId ||
+              markedParent.appProperties.brainSyncDomain !== parent.appProperties.brainSyncDomain))
+            return error("managed-object-ancestor-contradicts-census", "recovery-required");
+          if (ancestors.size >= this.maximumObjects)
+            return error("managed-object-ancestor-resource-bound", "partial");
+          ancestors.set(parentId, parent);
+        }
+        if (parent.trashed || parent.mimeType !== FOLDER ||
+            (parent.appProperties.brainManagedRootId !== undefined &&
+              parent.appProperties.brainManagedRootId !== String(fence.managedRootId)) ||
+            (parent.appProperties.brainSyncDomain !== undefined &&
+              parent.appProperties.brainSyncDomain !== domain))
           return error("managed-object-ancestor-not-live-folder", "recovery-required");
-        current = parent.value;
+        current = parent;
       }
       if (!reached) return error("managed-object-outside-expected-domain", "recovery-required");
     }
-    const end = await this.source.verifyFence(fence);
-    return end.status === "ok" ? { status: "ok", value: undefined } : end;
+    return { status: "ok", value: undefined };
   }
 
   private async collectMarked(fence: InventoryIdentityFence,

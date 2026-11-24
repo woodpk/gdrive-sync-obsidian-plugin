@@ -26,7 +26,7 @@ import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdap
 import { ProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
 import { InventoryBackedSnapshotAssembler } from "./inventory-backed-snapshot-assembler";
-import { buildInventoryPlanningFence, selectPlanningAssembler } from "./inventory-planning-cutover";
+import { buildInventoryPlanningBoundary, buildInventoryPlanningFence, selectPlanningAssembler } from "./inventory-planning-cutover";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
@@ -294,18 +294,27 @@ export class ProductRuntime {
           globalThis.indexedDB,
           { allowSchemaUpgrade: false },
         );
-        const currentFence = async () => {
+        const fenceInput = async () => {
           const live = this.host.settings();
           this.assertBoundPairing(live, boundPairing);
           if (!live.verifiedInventoryPlanningEnabled)
             throw new Error("verified-inventory-planning-disabled");
-          return buildInventoryPlanningFence({
+          return {
             drive: this.boundary!.drive,
             remoteIdentity: await remoteIdentity(),
-            deviceIdentity,
-            vaultIdentity,
+            deviceIdentity, vaultIdentity,
             scopePolicyFingerprint: scope.inventoryScopeFingerprint(),
-          });
+          };
+        };
+        const currentFence = async () => buildInventoryPlanningFence(await fenceInput());
+        const observePlanningBoundary = async () => {
+          const input = await fenceInput();
+          const observed = await buildInventoryPlanningBoundary(input);
+          const after = await fenceInput();
+          if (after.scopePolicyFingerprint !== input.scopePolicyFingerprint ||
+              after.drive !== input.drive)
+            throw new Error("inventory-planning-boundary-settings-changed");
+          return observed;
         };
         this.localInventory = new VerifiedLocalInventoryCoordinator(
           this.local!,
@@ -328,6 +337,7 @@ export class ProductRuntime {
           provenanceReader: this.boundary!.metadataReader,
           refresh: new VerifiedInventoryBaselineCoordinator(this.boundary!.metadataReader, inventory),
           currentFence,
+          observePlanningBoundary,
           pathIncluded: path => scope.isManagedLogical(path),
           fullReconcileRequired: () => this.host.settings().scopeReconcileRequired,
           diagnostics: this.host.diagnostics,

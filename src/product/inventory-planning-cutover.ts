@@ -1,5 +1,5 @@
 import type {
-  DeviceIdentity, DriveResult, InventoryIdentityFence, ManagedRemoteIdentity,
+  ChangeCursor, DeviceIdentity, DriveResult, InventoryIdentityFence, ManagedRemoteIdentity,
   RemoteObjectId, VaultIdentity,
 } from "../contracts";
 
@@ -50,4 +50,37 @@ export async function buildInventoryPlanningFence(input: {
     scopePolicyFingerprint: input.scopePolicyFingerprint,
     inventorySchemaVersion: VERIFIED_INVENTORY_SCHEMA_VERSION,
   };
+}
+
+
+/** Fresh combined observation. Only the originating planning attempt may
+ * consume this value; it is never a durable proof or mutation permission. */
+export interface InventoryPlanningBoundary {
+  readonly fence: InventoryIdentityFence;
+  readonly cursor: ChangeCursor;
+}
+export async function buildInventoryPlanningBoundary(input: {
+  readonly drive: {
+    observeInventoryPlanningBoundary(identity: ManagedRemoteIdentity): Promise<DriveResult<{
+      readonly pairedAccountKey: string; readonly contentRootId: RemoteObjectId;
+      readonly configRootId: RemoteObjectId; readonly cursor: ChangeCursor;
+    }>>;
+  };
+  readonly remoteIdentity: ManagedRemoteIdentity;
+  readonly deviceIdentity: DeviceIdentity;
+  readonly vaultIdentity: VaultIdentity;
+  readonly scopePolicyFingerprint: string;
+}): Promise<InventoryPlanningBoundary> {
+  if (input.remoteIdentity.vaultIdentity !== input.vaultIdentity)
+    throw new Error("inventory-fence-vault-identity-mismatch");
+  const observed = await input.drive.observeInventoryPlanningBoundary(input.remoteIdentity);
+  if (!observed.ok) throw new Error("inventory-planning-boundary-unproven");
+  return { cursor: observed.value.cursor, fence: {
+    vaultIdentity: input.vaultIdentity, deviceIdentity: input.deviceIdentity,
+    pairedAccountKey: observed.value.pairedAccountKey, managedRootId: input.remoteIdentity.rootId,
+    protocolVersion: input.remoteIdentity.protocolVersion,
+    contentDomainRootId: observed.value.contentRootId, configDomainRootId: observed.value.configRootId,
+    scopePolicyFingerprint: input.scopePolicyFingerprint,
+    inventorySchemaVersion: VERIFIED_INVENTORY_SCHEMA_VERSION,
+  } };
 }

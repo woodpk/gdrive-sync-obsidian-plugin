@@ -21,6 +21,7 @@ import { inventoryFenceMatches } from "../state/verified-metadata-inventory-vali
 import { readVerifiedInventoryListing } from "./verified-inventory-planning-projection";
 import type { VerifiedMetadataInventoryReader } from "../drive/verified-metadata-inventory-reader";
 import { ProductSnapshotAssembler, SnapshotAssemblyError, type AssembledPlanningInput } from "./snapshot-assembler";
+import type { InventoryPlanningBoundary } from "./inventory-planning-cutover";
 
 type InventoryStore = Pick<IndexedDbInventoryObservationStore, "publicationSnapshot" | "openRead"> &
   Partial<Pick<IndexedDbInventoryObservationStore, "prepareRemoteRebaseline">>;
@@ -73,7 +74,10 @@ export interface InventorySnapshotAssemblyOptions {
   readonly remoteIdentity: () => Promise<ManagedRemoteIdentity>;
   readonly inventory: InventoryStore;
   /** Fresh provider-backed managed-object census; absent/unproven blocks ordinary planning. */
-  readonly provenanceReader?: Pick<VerifiedMetadataInventoryReader, "verifyRootWideManagedProvenance">;
+  readonly provenanceReader?: Pick<VerifiedMetadataInventoryReader, "verifyRootWideManagedProvenance"> &
+    Partial<Pick<VerifiedMetadataInventoryReader, "observeRootWidePlanningCensus">>;
+  /** Production combined boundary, independently invoked before and after the census. */
+  readonly observePlanningBoundary?: () => Promise<InventoryPlanningBoundary>;
   readonly refresh?: Pick<VerifiedInventoryBaselineCoordinator, "publishBaseline" | "publishIncremental">;
   /** Calculated from the current paired account, root, device and effective scope policy. */
   readonly currentFence: () => Promise<InventoryIdentityFence>;
@@ -162,7 +166,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           loaded.state.operations.some(op => op.status !== "completed"))
         return blocked("canonical synchronization state requires recovery");
       const authority = durableFence(loaded.state);
-      const fence = await this.options.currentFence();
+      const initialBoundary = await this.options.observePlanningBoundary?.();
+      const fence = initialBoundary?.fence ?? await this.options.currentFence();
       const rebuild = (reason: string): InventoryAttempt => ({ kind: "rebuild", fence, authority, reason });
       if (loaded.state.vaultIdentity !== fence.vaultIdentity ||
           loaded.state.deviceIdentity !== fence.deviceIdentity)
@@ -171,9 +176,11 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       if (remote.rootId !== fence.managedRootId || remote.vaultIdentity !== fence.vaultIdentity ||
           remote.protocolVersion !== fence.protocolVersion)
         return blocked("metadata fence differs from current remote pairing");
-      const validation = await drive.validateManagedRoot(remote);
-      if (!validation.ok || validation.value.status !== "valid")
-        return blocked("managed remote identity is not verified");
+      if (!initialBoundary) {
+        const validation = await drive.validateManagedRoot(remote);
+        if (!validation.ok || validation.value.status !== "valid")
+          return blocked("managed remote identity is not verified");
+      }
       const before = await inventory.publicationSnapshot(fence);
       if (before.status !== "trusted-fence") {
         return before.status === "stale" || before.status === "invalid" || before.status === "unknown"
@@ -184,7 +191,8 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       if (!before.value.activeManifest || !before.value.activeGeneration || !before.value.canonicalCursor ||
           before.value.activeManifest.terminalCursor !== before.value.canonicalCursor)
         return rebuild("no coherent verified active inventory");
-      const liveCursor = await drive.getStartCursor(remote.rootId);
+      const liveCursor = initialBoundary ? { ok: true as const, value: initialBoundary.cursor } :
+        await drive.getStartCursor(remote.rootId);
       if (!liveCursor.ok) return blocked("current provider Changes cursor unavailable");
       if (liveCursor.value !== before.value.canonicalCursor)
         return { kind: "refresh", fence, authority, reason: "verified inventory horizon is stale" };
@@ -207,10 +215,17 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       // remote listing. LOCAL enumeration, BASE and planning CAS are unchanged.
       const fencedDrive = new Proxy(drive, {
         get(target, prop) {
+          if (prop === "validateManagedRoot" && initialBoundary) return async (identity: ManagedRemoteIdentity) =>
+            identity.rootId === remote.rootId && identity.vaultIdentity === remote.vaultIdentity &&
+              identity.protocolVersion === remote.protocolVersion
+              ? { ok: true as const, value: { status: "valid" as const, identity: remote } }
+              : { ok: false as const, signal: { kind: "recovery-required" as const, detail: "planning-proof-identity-mismatch" } };
           if (prop === "getStartCursor") return async (rootId: RemoteObjectId) =>
-            rootId === remote.rootId ? liveCursor : target.getStartCursor(rootId);
+            rootId === remote.rootId ? liveCursor :
+              { ok: false as const, signal: { kind: "recovery-required" as const, detail: "planning-proof-root-mismatch" } };
           if (prop === "listForReconciliation") return async (rootId: RemoteObjectId) =>
-            rootId === remote.rootId ? { ok: true as const, value: listing! } : target.listForReconciliation(rootId);
+            rootId === remote.rootId ? { ok: true as const, value: listing! } :
+              { ok: false as const, signal: { kind: "recovery-required" as const, detail: "planning-proof-root-mismatch" } };
           const value: unknown = Reflect.get(target, prop, target);
           return typeof value === "function" ? value.bind(target) : value;
         },
@@ -229,12 +244,16 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           assembled.managedRemote.protocolVersion !== remote.protocolVersion ||
           assembled.nextCursor !== liveCursor.value)
         return blocked("planning inputs changed while consuming inventory");
-      const provenance = await this.options.provenanceReader?.verifyRootWideManagedProvenance(fence);
+      const provenance = initialBoundary
+        ? await this.options.provenanceReader?.observeRootWidePlanningCensus?.(fence)
+        : await this.options.provenanceReader?.verifyRootWideManagedProvenance(fence);
       if (provenance?.status !== "ok")
         return blocked("root-wide managed provenance unproven");
       // Check AFTER the final asynchronous provider proof, not merely before it.
-      const finalFence = await this.options.currentFence();
-      const finalCursor = await drive.getStartCursor(remote.rootId);
+      const finalBoundary = initialBoundary ? await this.options.observePlanningBoundary!() : undefined;
+      const finalFence = finalBoundary?.fence ?? await this.options.currentFence();
+      const finalCursor = finalBoundary ? { ok: true as const, value: finalBoundary.cursor } :
+        await drive.getStartCursor(remote.rootId);
       const final = await inventory.publicationSnapshot(fence);
       if (!inventoryFenceMatches(finalFence, fence) || !finalCursor.ok ||
           finalCursor.value !== liveCursor.value || final.status !== "trusted-fence" ||
