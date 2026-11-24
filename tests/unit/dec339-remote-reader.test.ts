@@ -366,8 +366,7 @@ test("DEC339 F02 fresh census reads shared ancestors once per invocation and rej
   p.files.set("dir", { ...p.files.get("dir")!, parents: ["config"] });
   const contradictory = await r.verifyRootWideManagedProvenance(fence);
   assert.equal(contradictory.status, "recovery-required");
-  if (contradictory.status !== "ok")
-    assert.equal(contradictory.reason, "managed-object-ancestor-contradicts-census");
+  assert.equal(contradictory.reason, "managed-object-ancestor-contradicts-census");
   assert.deepEqual(reads, ["dir", "dir", "dir"]);
 });
 
@@ -379,5 +378,5 @@ test("DEC339 F02 fresh census rejects inaccessible shared ancestor and duplicate
   p.marked.push(p.marked[0]!);
   const duplicate = await r.verifyRootWideManagedProvenance(fence);
   assert.equal(duplicate.status, "recovery-required");
-  if (duplicate.status !== "ok") assert.equal(duplicate.reason, "duplicate-managed-provenance-identity");
+  assert.equal(duplicate.reason, "duplicate-managed-provenance-identity");
 });
