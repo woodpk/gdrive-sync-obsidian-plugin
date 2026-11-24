@@ -26,7 +26,7 @@ import { ScopedLocalTransactionalMutationPort, SynchronizationStateAuthorityAdap
 import { ProductController } from "./product-controller";
 import { ProductSynchronizationExecutor } from "./production-executor";
 import { InventoryBackedSnapshotAssembler } from "./inventory-backed-snapshot-assembler";
-import { buildInventoryPlanningBoundary, buildInventoryPlanningFence, selectPlanningAssembler } from "./inventory-planning-cutover";
+import { buildInventoryPlanningBoundary, selectPlanningAssembler } from "./inventory-planning-cutover";
 import { ProductSnapshotAssembler } from "./snapshot-assembler";
 import { ProductSyncScheduler } from "./scheduler";
 import { WebLocksRunLeasePort } from "./web-lock-run-lease";
@@ -308,7 +308,7 @@ export class ProductRuntime {
             scopePolicyFingerprint: inventoryContinuityFingerprint(grant, scope.inventoryScopeFingerprint()),
           };
         };
-        const currentFence = async () => buildInventoryPlanningFence(await fenceInput());
+        const currentFence = async () => (await observePlanningBoundary()).fence;
         const observePlanningBoundary = async () => {
           const input = await fenceInput();
           const observed = await buildInventoryPlanningBoundary(input);
@@ -397,6 +397,7 @@ export class ProductRuntime {
         });
         this.scheduler?.refresh();
       },
+      inventoryContinuityEnabled: () => this.host.settings().verifiedInventoryPlanningEnabled === true,
       readScopeReconcileGeneration: () => this.host.settings().scopeReconcileGeneration ?? 0,
       onFullReconciliationCompleted: generation => this.completeFullReconciliation(boundPairing, generation),
       onTrustedBaselineEstablished: async () => {

@@ -43,6 +43,8 @@ export interface AssembledPlanningInput {
   /** Complete terminal Changes traversal awaiting durable authority ingestion. */
   readonly remoteChangeBatch?: DurableRemoteChangeBatch;
   readonly mode: "full" | "incremental";
+  /** Complete remote projection from same-attempt DEC-365 replay; not a physical full reconciliation. */
+  readonly inventoryContinuity?: true;
   readonly reconstruction?: boolean;
   readonly recoveryReason?: string;
 }

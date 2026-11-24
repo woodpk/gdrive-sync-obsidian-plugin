@@ -65,6 +65,8 @@ export interface ProductControllerOptions {
   readonly onTrustedBaselineEstablished?: () => Promise<void>;
   readonly recoveryActive?: () => boolean;
   readonly onRecoveryGateChanged?: (active: boolean, backupId?: string) => Promise<void>;
+  /** Enabled only for the production continuity assembler; first-sync/recovery remain physical. */
+  readonly inventoryContinuityEnabled?: () => boolean;
   readonly readScopeReconcileGeneration?: () => number;
   readonly onFullReconciliationCompleted?: (observedGeneration: number) => Promise<void>;
   readonly diagnostics?: DiagnosticLogger;
@@ -328,7 +330,7 @@ export class ProductControllerBase implements ProductControlPort {
   pendingDestructiveCheckpoint(): CheckpointId | undefined { return this.planned?.checkpointId; }
   async previewManual(runId = this.options.diagnostics?.beginSyncRun("controller")): Promise<SynchronizationPlan | undefined> {
     this.syncInfo(runId, "manual-sync-request-enter", { operation: "preview-manual", trigger: "manual" });
-    return this.createPlan("manual", true, true, runId);
+    return this.createPlan("manual", !this.options.inventoryContinuityEnabled?.() || Boolean(this.options.firstSyncActive?.()), true, runId);
   }
   async previewVerifyReconcile(): Promise<SynchronizationPlan | undefined> { return this.createPlan("verify-reconcile", true, true); }
   noteChangeDuringRun(): void { this.runs.noteLocalOrRemoteChangeDuringRun(); }
@@ -396,7 +398,10 @@ export class ProductControllerBase implements ProductControlPort {
       this.endDiagnosticRun(runId);
       return;
     }
-    const plan = await this.createPlan(trigger, false, false, runId);
+    // The existing periodic opportunity is the explicit integrity reconciliation
+    // for inventory-enabled operation; local/startup/manual ordinary runs use deltas.
+    const plan = await this.createPlan(trigger,
+      trigger === "periodic" && Boolean(this.options.inventoryContinuityEnabled?.()), false, runId);
     if (!plan) return;
     const planned = this.planned;
     if (!planned || planned.plan.planId !== plan.planId) {

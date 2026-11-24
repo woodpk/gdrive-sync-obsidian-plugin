@@ -11,7 +11,7 @@ import type {
   TrustedSynchronizationState, PersistenceRevision, SemanticStateGeneration,
   InventoryGeneration, RemoteIngestionBatchId,
 } from "../contracts";
-import { contractId } from "../contracts";
+import { contractId, inventoryContinuityGrant } from "../contracts";
 import type { DurableSynchronizationAuthorityState } from "../state/persistent-state-store";
 import type { VerifiedInventoryBaselineCoordinator } from "../state/verified-inventory-integration";
 import { semanticStateRevision } from "./synchronization-adapters";
@@ -59,6 +59,8 @@ function samePublication(a: Publication, b: Publication): boolean {
     a.persistenceRevision === b.persistenceRevision && a.semanticGeneration === b.semanticGeneration;
 }
 
+type ContinuityReceipt = { readonly fence: InventoryIdentityFence; readonly generation: InventoryGeneration;
+  readonly terminalCursor: ChangeCursor };
 type InventoryAttempt =
   | { readonly kind: "ready"; readonly assembly: AssembledPlanningInput }
   | { readonly kind: "refresh" | "rebuild"; readonly fence: InventoryIdentityFence;
@@ -73,10 +75,10 @@ export interface InventorySnapshotAssemblyOptions {
   readonly stateContext: StateLoadContext;
   readonly remoteIdentity: () => Promise<ManagedRemoteIdentity>;
   readonly inventory: InventoryStore;
-  /** Fresh provider-backed managed-object census; absent/unproven blocks ordinary planning. */
+  /** Historical census path for legacy namespaces; never used by DEC-365 normal planning. */
   readonly provenanceReader?: Pick<VerifiedMetadataInventoryReader, "verifyRootWideManagedProvenance"> &
     Partial<Pick<VerifiedMetadataInventoryReader, "observeRootWidePlanningCensus">>;
-  /** Production combined boundary, independently invoked before and after the census. */
+  /** Fresh combined provider boundary independently observed before and after planning. */
   readonly observePlanningBoundary?: () => Promise<InventoryPlanningBoundary>;
   readonly refresh?: Pick<VerifiedInventoryBaselineCoordinator, "publishBaseline" | "publishIncremental">;
   /** Calculated from the current paired account, root, device and effective scope policy. */
@@ -127,37 +129,51 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       return super.assembleFull(runId);
 
     let attempt = await this.attemptInventory(runId);
+    let replayed = false, rebuilt = false;
+    let receipt: ContinuityReceipt | undefined;
+    // Bound each observation/rebuild independently. No silent legacy fallback.
+    for (let transitions = 0; transitions < 3; transitions++) {
+      if (attempt.kind === "ready") return attempt.assembly;
+      if (attempt.kind === "refresh" && !replayed && attempt.authority && this.options.refresh) {
+        replayed = true;
+        const refreshed = await this.options.refresh.publishIncremental(attempt.fence,
+          globalThis.crypto.randomUUID() as InventoryGeneration,
+          contractId<"RemoteIngestionBatchId">(globalThis.crypto.randomUUID()) as RemoteIngestionBatchId);
+        if (refreshed.status !== "published" && refreshed.status !== "unchanged")
+          throw new SnapshotAssemblyError("recovery-required", "verified inventory refresh failed: " + refreshed.reason);
+        if (inventoryContinuityGrant(attempt.fence.scopePolicyFingerprint))
+          receipt = { fence: attempt.fence, generation: refreshed.generation, terminalCursor: refreshed.terminalCursor };
+        attempt = await this.attemptInventory(runId, receipt);
+        continue;
+      }
+      if (attempt.kind === "rebuild" && !rebuilt && !replayed && attempt.authority && this.options.refresh &&
+          this.options.inventory.prepareRemoteRebaseline) {
+        rebuilt = true;
+        const prepared = await this.options.inventory.prepareRemoteRebaseline(attempt.fence, attempt.authority);
+        if (prepared.status !== "prepared")
+          throw new SnapshotAssemblyError("recovery-required", "verified inventory rebuild refused: " + prepared.reason);
+        // A baseline cannot advance an existing cursor without durably learned history.
+        const baseline = await this.options.refresh.publishBaseline(attempt.fence,
+          globalThis.crypto.randomUUID() as InventoryGeneration, { preserveCanonicalCursor: true });
+        if (baseline.status !== "published")
+          throw new SnapshotAssemblyError("recovery-required", "verified inventory rebuild failed: " +
+            (baseline.status === "unchanged" ? "unexpected-no-advance-baseline" : baseline.reason));
+        if (inventoryContinuityGrant(attempt.fence.scopePolicyFingerprint)) {
+          // Baseline already replayed its scan-window feed through the verified horizon.
+          receipt = { fence: attempt.fence, generation: baseline.generation, terminalCursor: baseline.terminalCursor };
+          replayed = true;
+        }
+        attempt = await this.attemptInventory(runId, receipt);
+        continue;
+      }
+      break;
+    }
     if (attempt.kind === "ready") return attempt.assembly;
-    // Exactly one incremental refresh, then at most one safe full rebaseline.
-    // Never use a legacy incremental plan to conceal an inventory failure.
-    if (attempt.kind === "refresh" && attempt.authority && this.options.refresh) {
-      const refreshed = await this.options.refresh.publishIncremental(attempt.fence,
-        globalThis.crypto.randomUUID() as InventoryGeneration,
-        contractId<"RemoteIngestionBatchId">(globalThis.crypto.randomUUID()) as RemoteIngestionBatchId);
-      if (refreshed.status !== "published")
-        throw new SnapshotAssemblyError("recovery-required", "verified inventory refresh failed: " + refreshed.reason);
-      attempt = await this.attemptInventory(runId);
-      if (attempt.kind === "ready") return attempt.assembly;
-    }
-    if (attempt.kind === "rebuild" && attempt.authority && this.options.refresh &&
-        this.options.inventory.prepareRemoteRebaseline) {
-      const prepared = await this.options.inventory.prepareRemoteRebaseline(attempt.fence, attempt.authority);
-      if (prepared.status !== "prepared")
-        throw new SnapshotAssemblyError("recovery-required", "verified inventory rebuild refused: " + prepared.reason);
-      // A baseline does not durably learn a Changes batch. It MUST NOT advance
-      // canonical authority here, or an explicit later rollback could lose changes.
-      const rebuilt = await this.options.refresh.publishBaseline(attempt.fence,
-        globalThis.crypto.randomUUID() as InventoryGeneration, { preserveCanonicalCursor: true });
-      if (rebuilt.status !== "published")
-        throw new SnapshotAssemblyError("recovery-required", "verified inventory rebuild failed: " + rebuilt.reason);
-      attempt = await this.attemptInventory(runId);
-      if (attempt.kind === "ready") return attempt.assembly;
-    }
     throw new SnapshotAssemblyError("recovery-required",
       "metadata-enabled synchronization blocked: " + attempt.reason);
   }
 
-  private async attemptInventory(runId?: number): Promise<InventoryAttempt> {
+  private async attemptInventory(runId?: number, receipt?: ContinuityReceipt): Promise<InventoryAttempt> {
     const blocked = (reason: string): InventoryAttempt => ({ kind: "blocked", reason });
     try {
       const { inventory, state, stateContext, drive } = this.options;
@@ -170,6 +186,11 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       if (this.options.observePlanningBoundary && !initialBoundary)
         return blocked("combined inventory planning boundary unavailable");
       const fence = initialBoundary?.fence ?? await this.options.currentFence();
+      const continuity = inventoryContinuityGrant(fence.scopePolicyFingerprint) !== undefined;
+      if (continuity && (!initialBoundary || !authority))
+        return blocked("continuity requires combined provider and durable authority fences");
+      if (receipt && (!continuity || !inventoryFenceMatches(receipt.fence, fence)))
+        return blocked("metadata continuity fence changed after replay");
       const rebuild = (reason: string): InventoryAttempt => ({ kind: "rebuild", fence, authority, reason });
       if (loaded.state.vaultIdentity !== fence.vaultIdentity ||
           loaded.state.deviceIdentity !== fence.deviceIdentity)
@@ -196,8 +217,11 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       const liveCursor = initialBoundary ? { ok: true as const, value: initialBoundary.cursor } :
         await drive.getStartCursor(remote.rootId);
       if (!liveCursor.ok) return blocked("current provider Changes cursor unavailable");
-      if (liveCursor.value !== before.value.canonicalCursor)
-        return { kind: "refresh", fence, authority, reason: "verified inventory horizon is stale" };
+      if (receipt && (receipt.generation !== before.value.activeGeneration ||
+          receipt.terminalCursor !== before.value.canonicalCursor || liveCursor.value !== receipt.terminalCursor))
+        return blocked("metadata generation or provider horizon changed after replay");
+      if ((continuity && !receipt) || liveCursor.value !== before.value.canonicalCursor)
+        return { kind: "refresh", fence, authority, reason: "complete Changes continuity required" };
       const read = await inventory.openRead();
       if (read.status !== "verified-observation") return rebuild(read.reason);
       let listing: RemoteListing | undefined;
@@ -246,11 +270,13 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           assembled.managedRemote.protocolVersion !== remote.protocolVersion ||
           assembled.nextCursor !== liveCursor.value)
         return blocked("planning inputs changed while consuming inventory");
-      const provenance = initialBoundary
-        ? await this.options.provenanceReader?.observeRootWidePlanningCensus?.(fence)
-        : await this.options.provenanceReader?.verifyRootWideManagedProvenance(fence);
-      if (provenance?.status !== "ok")
-        return blocked("root-wide managed provenance unproven");
+      if (!continuity) {
+        const provenance = initialBoundary
+          ? await this.options.provenanceReader?.observeRootWidePlanningCensus?.(fence)
+          : await this.options.provenanceReader?.verifyRootWideManagedProvenance(fence);
+        if (provenance?.status !== "ok")
+          return blocked("root-wide managed provenance unproven");
+      }
       // Check AFTER the final asynchronous provider proof, not merely before it.
       const finalBoundary = initialBoundary ? await this.options.observePlanningBoundary!() : undefined;
       if (initialBoundary && !finalBoundary)
@@ -263,7 +289,7 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
           finalCursor.value !== liveCursor.value || final.status !== "trusted-fence" ||
           !samePublication(final.value, before.value) || this.options.fullReconcileRequired?.())
         return blocked("metadata fence or provider horizon changed during final proof");
-      return { kind: "ready", assembly: assembled };
+      return { kind: "ready", assembly: continuity ? { ...assembled, mode: "incremental", inventoryContinuity: true } : assembled };
     } catch {
       return blocked("verified inventory observation or provider proof failed");
     }

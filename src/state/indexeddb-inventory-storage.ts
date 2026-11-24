@@ -285,18 +285,23 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       if (authority.vaultIdentity !== expectedFence.vaultIdentity ||
           authority.deviceIdentity !== expectedFence.deviceIdentity)
         return error("incompatible", "canonical-identity-fence-mismatch");
+      // Continuity generations describe the provider at a cursor, not BASE revisions.
+      // Current trusted authority is observed here and CAS-bound by the caller;
+      // the historical manifest must still match its original control receipt.
       if (control?.status === "ready" &&
           (!inventoryFenceMatches(control.fence, expectedFence) ||
            control.terminalCursor !== authority.canonicalCursor ||
-           control.authorityPersistenceRevisionAtPublish !== authority.persistenceRevision ||
-           control.authoritySemanticGenerationAtPublish !== authority.semanticGeneration))
+           (!inventoryContinuityGrant(expectedFence.scopePolicyFingerprint) &&
+             (control.authorityPersistenceRevisionAtPublish !== authority.persistenceRevision ||
+              control.authoritySemanticGenerationAtPublish !== authority.semanticGeneration))))
         return error("stale", "active-control-and-canonical-authority-disagree");
       if (control?.status === "ready" && (!activeRecord?.sealed ||
           activeRecord.manifest.status !== "complete" ||
           activeRecord.manifest.generation !== control.activeGeneration ||
           activeRecord.manifest.terminalCursor !== control.terminalCursor ||
-          activeRecord.manifest.authorityPersistenceRevision !== authority.persistenceRevision ||
-          activeRecord.manifest.authoritySemanticGeneration !== authority.semanticGeneration))
+          !inventoryFenceMatches(activeRecord.manifest.fence, control.fence) ||
+          activeRecord.manifest.authorityPersistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
+          activeRecord.manifest.authoritySemanticGeneration !== control.authoritySemanticGenerationAtPublish))
         return error("stale", "active-manifest-is-not-coherent-with-canonical-control");
       return { status: "trusted-fence", value: {
           activeManifest: control?.status === "ready" ? activeRecord!.manifest : null,
@@ -490,8 +495,9 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
           authority.unresolvedEffects || authority.vaultIdentity !== control.fence.vaultIdentity ||
           authority.deviceIdentity !== control.fence.deviceIdentity ||
           authority.canonicalCursor !== control.terminalCursor ||
-          authority.persistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
-          authority.semanticGeneration !== control.authoritySemanticGenerationAtPublish) {
+          (!inventoryContinuityGrant(control.fence.scopePolicyFingerprint) &&
+            (authority.persistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
+             authority.semanticGeneration !== control.authoritySemanticGenerationAtPublish))) {
         await done;
         return error("stale", "inactive-or-authority-mismatched-inventory");
       }
@@ -552,7 +558,9 @@ export class IndexedDbInventoryObservationStore implements InventoryObservationS
       }
       if (!history.length || history[0].parentGeneration !== null ||
           history[0].overlayDepth !== 0 ||
-          history[history.length - 1].terminalCursor !== control.terminalCursor)
+          history[history.length - 1].terminalCursor !== control.terminalCursor ||
+          history[history.length - 1].authorityPersistenceRevision !== control.authorityPersistenceRevisionAtPublish ||
+          history[history.length - 1].authoritySemanticGeneration !== control.authoritySemanticGenerationAtPublish)
         return error("invalid", "discontinuous-active-generation");
       for (let i = 1; i < history.length; i++) {
         if (history[i].parentGeneration !== history[i - 1].generation ||

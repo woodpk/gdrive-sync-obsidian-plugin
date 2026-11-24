@@ -7,6 +7,7 @@
  * using a projection for a new planning horizon. No shipping runtime imports
  * this module yet.
  */
+import { inventoryContinuityGrant } from "../contracts/verified-metadata-inventory";
 import type {
   ChangeCursor, InventoryDomain, InventoryGeneration, InventoryIdentityFence,
   InventoryReadLease, InventoryRemoteEntity, InventoryTrustFailure,
@@ -90,7 +91,9 @@ export async function readVerifiedInventoryListing(
 
       const receipt = await lease.coverage(domain, parent.remoteObjectId);
       if (!completeAt(receipt, lease.generation, domain, parent.remoteObjectId,
-          parent.remoteObjectId === rootId ? "domain" : "parent", cursor))
+          parent.remoteObjectId === rootId ? "domain" : "parent", cursor) ||
+          (inventoryContinuityGrant(fence.scopePolicyFingerprint) &&
+            (receipt.status !== "verified-observation" || !receipt.value.proofBasis)))
         return failed("unknown", "unproven-parent-or-domain-coverage");
 
       const children = await lease.listByParent(domain, parent.remoteObjectId,
