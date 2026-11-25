@@ -278,6 +278,109 @@ function semanticProjection(state: DurableSynchronizationAuthorityState): string
   return JSON.stringify({ vaultIdentity: state.vaultIdentity, deviceIdentity: state.deviceIdentity, base: state.base, baseAuthority: state.baseAuthority, remoteMappings: state.remoteMappings, tombstones: state.tombstones, changeCursor: state.changeCursor, learnedRemoteBatches: state.learnedRemoteBatches, learnedRemoteReductions: state.learnedRemoteReductions, pathConvergence: state.pathConvergence, knownDevices: state.knownDevices });
 }
 function sameSemanticAuthority(a: DurableSynchronizationAuthorityState, b: DurableSynchronizationAuthorityState): boolean { return semanticProjection(a) === semanticProjection(b); }
+
+/** Carry unchanged converged-path authority through one exact semantic CAS. */
+export function rebaseConvergenceGeneration(
+  state: DurableSynchronizationAuthorityState,
+  generation: SemanticStateGeneration,
+): DurableSynchronizationAuthorityState {
+  return {
+    ...state,
+    pathConvergence: state.pathConvergence.map(entry => entry.state.status === "converged"
+      ? { ...entry, state: { ...entry.state, generation } }
+      : entry),
+  };
+}
+
+function rebaseCompletedEffectSemanticAuthority(
+  effect: RecoverableMutationEffectV1_1,
+  generation: SemanticStateGeneration,
+): RecoverableMutationEffectV1_1 {
+  const descriptor = effect.descriptor;
+  if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "existing-file-content-update") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        remoteMutation: {
+          ...descriptor.remoteMutation,
+          identityAuthority: { ...descriptor.remoteMutation.identityAuthority, generation },
+        },
+      },
+    };
+  }
+  if (descriptor.kind === "move") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        identityAuthority: { ...descriptor.identityAuthority, generation },
+      },
+    };
+  }
+  if (descriptor.kind === "trash") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        baseAuthority: { ...descriptor.baseAuthority, generation },
+        ...(descriptor.identityAuthority
+          ? { identityAuthority: { ...descriptor.identityAuthority, generation } }
+          : {}),
+      },
+    };
+  }
+  if (descriptor.kind === "local-folder-create" || descriptor.kind === "remote-folder-create") {
+    return {
+      ...effect,
+      descriptor: {
+        ...descriptor,
+        pathAuthority: { ...descriptor.pathAuthority, generation },
+      },
+    };
+  }
+  return effect;
+}
+
+/**
+ * A fully state-committed intent is inert: its physical effects are already
+ * independently verified and its canonical state is already durable. When the
+ * split-domain state adapter advances the semantic generation for that canonical commit,
+ * keep only that completed journal record aligned with the new generation so a
+ * later restart treats it as idempotently complete rather than stale work. Never
+ * rebase an intent that could still authorize or recover a physical mutation.
+ */
+export function rebaseCompletedIntentSemanticAuthority(
+  state: DurableSynchronizationAuthorityState,
+  generation: SemanticStateGeneration,
+): DurableSynchronizationAuthorityState {
+  let changed = false;
+  const operationIntents = state.operationIntents.map(intent => {
+    if (intent.semanticAuthority.generation === generation
+      || intent.effects.length === 0
+      || !intent.effects.every(effect => effect.stage === "state-committed")) return intent;
+    changed = true;
+    if (intent.logicalKind === "single-effect") {
+      return {
+        ...intent,
+        semanticAuthority: { ...intent.semanticAuthority, generation },
+        effects: [rebaseCompletedEffectSemanticAuthority(intent.effects[0], generation)] as const,
+      };
+    }
+    const [first, second, ...rest] = intent.effects;
+    return {
+      ...intent,
+      semanticAuthority: { ...intent.semanticAuthority, generation },
+      effects: [
+        rebaseCompletedEffectSemanticAuthority(first, generation),
+        rebaseCompletedEffectSemanticAuthority(second, generation),
+        ...rest.map(effect => rebaseCompletedEffectSemanticAuthority(effect, generation)),
+      ] as const,
+    };
+  });
+  return changed ? { ...state, operationIntents } : state;
+}
+
 function issue(code: SemanticStateValidationIssue["code"], detail: string, path?: VaultPath, invariantCategory?: string): SemanticStateValidationIssue { return { code, detail, ...(path ? { path } : {}), ...(invariantCategory ? { invariantCategory } : {}) }; }
 
 function durableRemoteBatchTransitionIssues(
@@ -1070,8 +1173,14 @@ export function prepareInventoryAuthorityPublication(
   const semanticGeneration = sameSemanticAuthority(state, pending)
     ? state.semanticGeneration : nextSemanticGeneration(state.semanticGeneration);
   const persistenceRevision = nextPersistenceRevision(state.persistenceRevision);
+  // Inventory publication is an atomic semantic CAS too. Carry forward only
+  // already state-committed journals and unchanged BASE convergence, exactly
+  // as the production authority adapter does. Unresolved intents were refused
+  // above; never grant a pending effect authority under a newer generation.
+  const carried = semanticGeneration === state.semanticGeneration ? pending :
+    rebaseConvergenceGeneration(rebaseCompletedIntentSemanticAuthority(pending, semanticGeneration), semanticGeneration);
   const replacement: DurableSynchronizationAuthorityState = {
-    ...pending, stateRevision: persistenceRevision, persistenceRevision, semanticGeneration,
+    ...carried, stateRevision: persistenceRevision, persistenceRevision, semanticGeneration,
   };
   if (new DurableSemanticStateValidator().validate(replacement).length)
     return { status: "recovery-required", reason: "candidate-authority-transition-invalid" };

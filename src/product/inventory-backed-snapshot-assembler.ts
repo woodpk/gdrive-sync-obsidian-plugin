@@ -11,7 +11,7 @@ import type {
   TrustedSynchronizationState, PersistenceRevision, SemanticStateGeneration,
   InventoryGeneration, RemoteIngestionBatchId,
 } from "../contracts";
-import { contractId, inventoryContinuityGrant } from "../contracts";
+import { contractId, inventoryContinuityGrant, recoverableOperationV1_1IsComplete, durableCursorCanAdvance } from "../contracts";
 import type { DurableSynchronizationAuthorityState } from "../state/persistent-state-store";
 import type { VerifiedInventoryBaselineCoordinator } from "../state/verified-inventory-integration";
 import { semanticStateRevision } from "./synchronization-adapters";
@@ -137,7 +137,9 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
       throw new SnapshotAssemblyError("recovery-required", "canonical synchronization authority untrusted; use explicit recovery");
     // Pending/uncertain durable effects must bypass every inventory read and
     // use the existing fresh canonical recovery observation, not cached absence.
-    if (initial.state.operations.some(op => op.status !== "completed"))
+    const durable = initial.state as Partial<DurableSynchronizationAuthorityState>;
+    if (initial.state.operations.some(op => op.status !== "completed") ||
+        (durable.authoritySchemaVersion === 2 && durable.operationIntents?.some(intent => !recoverableOperationV1_1IsComplete(intent))))
       return super.assembleFull(runId);
 
     let attempt = await this.attemptInventory(runId);
@@ -325,8 +327,21 @@ export class InventoryBackedSnapshotAssembler extends ProductSnapshotAssembler {
   }
 
   /** Explicit reconciliation must remain a real provider enumeration. */
-  override assembleFull(runId?: number): Promise<AssembledPlanningInput> {
-    return super.assembleFull(runId);
+  override async assembleFull(runId?: number): Promise<AssembledPlanningInput> {
+    const assembly = await super.assembleFull(runId);
+    // Full observation authorizes reconciliation of current reality, not
+    // invention of a missing edge in retained durable Changes history. Keep
+    // the prior cursor until the ordinary verified feed can close that edge.
+    // First pairing/no-history explicit reconciliation retains its existing
+    // cursor behavior. No learned batches or authority records are discarded.
+    if (assembly.input.state.status === "trusted") {
+      const state = assembly.input.state.state as Partial<DurableSynchronizationAuthorityState>;
+      if (state.authoritySchemaVersion === 2 && state.learnedRemoteBatches?.length &&
+          state.changeCursor && assembly.nextCursor && state.changeCursor !== assembly.nextCursor &&
+          !durableCursorCanAdvance(state.learnedRemoteBatches, state.changeCursor, assembly.nextCursor))
+        return { ...assembly, nextCursor: state.changeCursor };
+    }
+    return assembly;
   }
 
   /** Reconstruction must never take absence evidence from persisted inventory. */

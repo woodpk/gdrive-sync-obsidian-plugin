@@ -71,6 +71,13 @@ async function publication(device: VirtualProductionDevice) {
   if (authority.status !== "trusted") throw new Error("canonical authority unavailable");
   assert.equal(value.value.canonicalCursor, authority.state.changeCursor);
   assert.equal(value.value.persistenceRevision, authority.state.persistenceRevision);
+  for (const intent of authority.state.operationIntents) {
+    assert.ok(intent.effects.every(effect => effect.stage === "state-committed"));
+    assert.equal(intent.semanticAuthority.generation, authority.state.semanticGeneration, "atomic publication must retain completed journal generation consistency");
+  }
+  for (const convergence of authority.state.pathConvergence) {
+    if (convergence.state.status === "converged") assert.equal(convergence.state.generation, authority.state.semanticGeneration);
+  }
   return { inventory, fence, value: value.value, authority: authority.state };
 }
 async function established(enabled: boolean) {
@@ -396,4 +403,39 @@ test("BU02 matched nested steady-state cost scales independently of unchanged re
   assert.equal(inventory[0].requests, inventory[1].requests);
   // Cursor token lengths vary with synthetic provider object counts.
   // Only inventory planning request count is the invariant; report total execution and actual response bytes separately.
+});
+
+
+test("BU02 completed intent evidence survives atomic post-effect Changes publication and explicit full cursor preservation", async () => {
+  const { world, a, b } = await established(true);
+  try {
+    await a.backing.local.createFile(path, source("first"));
+    await automatic(a);
+    const committed = await a.backing.loadAuthority();
+    assert.equal(committed.status, "trusted");
+    const journal = committed.state.operationIntents.filter(intent => intent.effects.every(effect => effect.stage === "state-committed"));
+    assert.ok(journal.length > 0, "exercise real persisted completed effects");
+    await automatic(a);
+    const before = await publication(a);
+    assert.notEqual(before.authority.semanticGeneration, committed.state.semanticGeneration);
+    assert.ok(before.authority.learnedRemoteBatches.length > 0);
+    for (const old of journal) {
+      const retained = before.authority.operationIntents.find(intent => intent.operationId === old.operationId);
+      assert.ok(retained, "publication cannot silently erase completed journal evidence");
+      assert.deepEqual(retained.effects.map(effect => [effect.effectId, effect.stage, effect.verificationEvidenceRef]), old.effects.map(effect => [effect.effectId, effect.stage, effect.verificationEvidenceRef]));
+    }
+    const id = await remoteId(world);
+    assert.ok((await world.drive.update({ remoteObjectId: id, path, content: source("second") })).ok);
+    await manual(a, true);
+    assert.equal(await contents(a), "second");
+    const reconciled = await a.backing.loadAuthority();
+    assert.equal(reconciled.status, "trusted");
+    assert.equal(reconciled.state.changeCursor, before.value.canonicalCursor, "full physical reconciliation cannot invent a missing Changes edge");
+    assert.deepEqual(reconciled.state.learnedRemoteBatches, before.authority.learnedRemoteBatches);
+    await automatic(a);
+    const refreshed = await publication(a);
+    assert.notEqual(refreshed.value.canonicalCursor, before.value.canonicalCursor);
+    assert.equal(await remoteId(world), id);
+    assert.equal(await contents(a), "second");
+  } finally { await a.dispose(); await b.dispose(); }
 });

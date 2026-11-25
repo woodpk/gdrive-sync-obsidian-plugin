@@ -11,7 +11,6 @@ import {
   type LocalTransactionalMutationPort,
   type LocalVaultPort,
   type PersistenceRevision,
-  type RecoverableMutationEffectV1_1,
   type SemanticStateGeneration,
   type StateLoadContext,
   type StateLoadResult,
@@ -26,6 +25,8 @@ import {
 import { ObsidianLocalMutationTransactions } from "../local/local-vault-access-boundary";
 import {
   createInitialAuthorityState,
+  rebaseCompletedIntentSemanticAuthority,
+  rebaseConvergenceGeneration,
   type DurableSynchronizationAuthorityState,
   MemoryStateByteStorage,
   PersistentSynchronizationStateStore,
@@ -48,18 +49,7 @@ export function semanticStateRevision(generation: SemanticStateGeneration): Stat
   return contractId<"StateRevision">(`semantic-cas:${String(generation)}`) as StateRevision;
 }
 
-/** Carry unchanged converged-path authority through one exact semantic CAS. */
-export function rebaseConvergenceGeneration(
-  state: DurableSynchronizationAuthorityState,
-  generation: SemanticStateGeneration,
-): DurableSynchronizationAuthorityState {
-  return {
-    ...state,
-    pathConvergence: state.pathConvergence.map(entry => entry.state.status === "converged"
-      ? { ...entry, state: { ...entry.state, generation } }
-      : entry),
-  };
-}
+export { rebaseConvergenceGeneration } from "../state/persistent-state-store";
 
 function physicalArtifactPath(target: VaultPath, role: "stage" | "backup", seed: VaultPath): VaultPath {
   const raw = normalize(String(target));
@@ -258,95 +248,6 @@ function authorityState(value: TrustedSynchronizationState): value is DurableSyn
     && Array.isArray(candidate.operationIntents)
     && Array.isArray(candidate.localTransactions)
     && Array.isArray(candidate.baseAuthority);
-}
-
-function rebaseCompletedEffectSemanticAuthority(
-  effect: RecoverableMutationEffectV1_1,
-  generation: SemanticStateGeneration,
-): RecoverableMutationEffectV1_1 {
-  const descriptor = effect.descriptor;
-  if (descriptor.kind === "remote-file" && descriptor.remoteMutation.kind === "existing-file-content-update") {
-    return {
-      ...effect,
-      descriptor: {
-        ...descriptor,
-        remoteMutation: {
-          ...descriptor.remoteMutation,
-          identityAuthority: { ...descriptor.remoteMutation.identityAuthority, generation },
-        },
-      },
-    };
-  }
-  if (descriptor.kind === "move") {
-    return {
-      ...effect,
-      descriptor: {
-        ...descriptor,
-        identityAuthority: { ...descriptor.identityAuthority, generation },
-      },
-    };
-  }
-  if (descriptor.kind === "trash") {
-    return {
-      ...effect,
-      descriptor: {
-        ...descriptor,
-        baseAuthority: { ...descriptor.baseAuthority, generation },
-        ...(descriptor.identityAuthority
-          ? { identityAuthority: { ...descriptor.identityAuthority, generation } }
-          : {}),
-      },
-    };
-  }
-  if (descriptor.kind === "local-folder-create" || descriptor.kind === "remote-folder-create") {
-    return {
-      ...effect,
-      descriptor: {
-        ...descriptor,
-        pathAuthority: { ...descriptor.pathAuthority, generation },
-      },
-    };
-  }
-  return effect;
-}
-
-/**
- * A fully state-committed intent is inert: its physical effects are already
- * independently verified and its canonical state is already durable. When the
- * split-domain state adapter advances the semantic generation for that canonical commit,
- * keep only that completed journal record aligned with the new generation so a
- * later restart treats it as idempotently complete rather than stale work. Never
- * rebase an intent that could still authorize or recover a physical mutation.
- */
-function rebaseCompletedIntentSemanticAuthority(
-  state: DurableSynchronizationAuthorityState,
-  generation: SemanticStateGeneration,
-): DurableSynchronizationAuthorityState {
-  let changed = false;
-  const operationIntents = state.operationIntents.map(intent => {
-    if (intent.semanticAuthority.generation === generation
-      || intent.effects.length === 0
-      || !intent.effects.every(effect => effect.stage === "state-committed")) return intent;
-    changed = true;
-    if (intent.logicalKind === "single-effect") {
-      return {
-        ...intent,
-        semanticAuthority: { ...intent.semanticAuthority, generation },
-        effects: [rebaseCompletedEffectSemanticAuthority(intent.effects[0], generation)] as const,
-      };
-    }
-    const [first, second, ...rest] = intent.effects;
-    return {
-      ...intent,
-      semanticAuthority: { ...intent.semanticAuthority, generation },
-      effects: [
-        rebaseCompletedEffectSemanticAuthority(first, generation),
-        rebaseCompletedEffectSemanticAuthority(second, generation),
-        ...rest.map(effect => rebaseCompletedEffectSemanticAuthority(effect, generation)),
-      ] as const,
-    };
-  });
-  return changed ? { ...state, operationIntents } : state;
 }
 
 /**
