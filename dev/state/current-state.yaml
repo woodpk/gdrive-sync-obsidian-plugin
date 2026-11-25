@@ -2595,30 +2595,44 @@ dec339_step5_gated_planner_cutover_2026_11_23:
   f01_builder_closeout_next_authority: "OWNER_APPROVAL_REQUIRED_FOR_STEP6_OR_MERGE_INSTALLATION_PHYSICAL_LIVE_RELEASE"
 
 dec339_step6_metadata_bvp_2026_11_24:
-  status: "BU01_F03_PHXCI_PREVIOUS_PASS_PERFORMANCE_REGRESSION_CORRECTION_AUTHORED_UNVERIFIED"
+  status: "BU01_F03_BUILDER_QUALIFIED_PHXCI_PASS_INDEPENDENT_REVIEW_PENDING"
   owner_authorization: "2026-11-24_EXPLICIT_TWO_BU_TESTING_WORKSTREAM_APPROVAL"
   branch: "build/dec339-step6-metadata-bvp-20261124"
   starting_source_sha: "62fb2632017c0744f16fe95467d39d35ae655b16"
   predecessor_accepted_source: "540b27848853d5af4625f254c6159877a7e14ae0"
   planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-metadata-bvp-2026-11-24.md"
   active_build_unit: "BU-01_PAIRED_PLANNING_MEASUREMENT"
-  handoff-count: 0
+  handoff-count: 1
   handoff-owner-role: BUILDER
-  handoff-recipient-role: BUILDER
+  handoff-recipient-role: REVIEWER
+  handoff-sender-role: BUILDER
+  handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP6_BU01_F03"
+  handoff-source-sha: "c6dac8033567cb617f598b2340c5ee61ccb9dd9e"
   baseline_unique_tests_passed: 634
   baseline_s09_reconciled: true
   baseline_diagnostic_gate_failure: "DEFAULT_PROMOTION_ARTIFACT_CHECK_NOT_DEVELOPMENT"
   baseline_diagnostic_run_id: "4d79b517-a8bc-41ce-a6db-1d9aff41854d"
   baseline_diagnostic_evidence_local_commit: "a69f2cc1d8b7677ee1fb90d58aa5c3bb26d4ec22"
-  phxci_status: "F03_PREVIOUS_SOURCE_636423_PASSED_ALL_GATES_BUT_REQUEST_PAYLOAD_REGRESSION_UNACCEPTABLE"
-  reviewer_status: "NOT_REQUESTED"
-  bu01_source_readiness: "F03_ORIGINAL_TESTS_FAILED_CORRECTIONS_AUTHORED_REQUALIFICATION_REQUIRED"
-  bu01_next_action: "OWNER_EXECUTE_PHXCI_ON_PROOF_REUSE_PERFORMANCE_CORRECTION_EXACT_SHA"
+  phxci_status: "F03_EXACT_SOURCE_c6dac803_PHXCI_PASS_13_OF_13_FOCUSED_638_FULL_1403_EXIT_0"
+  reviewer_status: "HANDOFF_COUNT_1_INDEPENDENT_BLIND_FIRST_REVIEW_PENDING"
+  bu01_source_readiness: "F03_BUILDER_QUALIFIED_13_STAGES_PASS_INDEPENDENT_ACCEPTANCE_PENDING"
+  bu01_next_action: "INDEPENDENT_REVIEWER_BLIND_SOURCE_FIRST_THEN_TEST_AND_PHXCI_EVIDENCE_REVIEW"
+  bu01_f03_qualified_source_sha: "c6dac8033567cb617f598b2340c5ee61ccb9dd9e"
+  bu01_f03_qualified_tree_sha: "eb725a2c17c00449b3213d72047b8e25bda6ff50"
+  bu01_f03_pass_run_id: "284f768b-9b6d-40bc-b99a-619c66e39f9f"
+  bu01_f03_pass_evidence_commit: "257fed676f44371ef6fc88b5c0c510d8a024a6ad"
+  bu01_f03_pass_evidence_path: "dev/test-results/284f768b-9b6d-40bc-b99a-619c66e39f9f/result.json"
+  bu01_f03_pass_focused: "638/638"
+  bu01_f03_pass_full: "1403/1403"
+  bu01_f03_pass_metrics: "SIMULATED_UNCHANGED_12_1562_VS_LEGACY_15_2696_LEAF_13_2480_VS_LEGACY_17_3434"
+  bu01_f03_review_assignment: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-independent-review-2026-11-24.md"
+  bu01_f03_handoff_artifact: "dev/state/handoffs/dec339-step6-bu01-f03-builder-to-reviewer-2026-11-24.md"
+  bu01_acceptance_status: "PENDING_INDEPENDENT_REVIEW"
   bu01_f03_owner_direction: "2026-11-24_FIX_REPEATED_REMOTE_REDISCOVERY_BEFORE_MEASUREMENT"
-  bu01_f03_status: "PROOF_CARRYING_NETWORK_OPTIMIZATION_AND_PERFORMANCE_TESTS_AUTHORED_UNVERIFIED"
+  bu01_f03_status: "EXACT_SOURCE_SOFTWARE_ONLY_QUALIFIED_PERFORMANCE_GOAL_MET_REVIEW_PENDING"
   bu01_f03_readiness: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-pre-phxci-readiness-2026-11-24.md"
   bu01_f03_static_source_commit: "4613cb2c4e81e796f714a147b95bbe19b6f2b7d2"
-  bu01_f03_phxci_candidate_status: "PREVIOUS_PHXCI_PASS_WITH_UNACCEPTABLE_39_VS_15_AND_40_VS_17_REQUEST_REGRESSIONS_NEXT_SOURCE_UNVERIFIED"
+  bu01_f03_phxci_candidate_status: "CORRECTED_SOURCE_c6dac803_13_OF_13_PHXCI_PASS_PERFORMANCE_12_VS_15_AND_13_VS_17_REQUESTS"
   bu01_f03_previous_pass_source_sha: "6364239198438f549fa0562efad0c6da3eee31cb"
   bu01_f03_previous_pass_run_id: "6e7923b7-1527-4590-a6fd-7ce07310ecc1"
   bu01_f03_previous_pass_evidence_commit: "b09d223b92458349931dac1b4e81ba2c9f0083c9"
@@ -2634,7 +2648,7 @@ dec339_step6_metadata_bvp_2026_11_24:
   bu01_f03_owner_implementation_authorization: "2026-11-24_EXPLICIT_RESEARCH_SUPPORTED_APPROACH_APPROVED"
   bu01_f03_provider_proof_status: "DOCUMENTED_SCOPED_CHANGES_RELIANCE_APPROVED_RESIDUAL_SILENT_VISIBILITY_LIMIT_RECORDED_NO_RESEARCH_HOLD"
   bu01_f03_analysis_source: "5167004edacf46e90aa79f1ca898f5b51824da0b"
-  bu01_f03_benchmarking: "MEASURED_REQUEST_REGRESSION_CORRECTION_AND_STRICT_COMPARISON_GATE_PENDING_PHXCI"
+  bu01_f03_benchmarking: "PHXCI_MEASURED_SIMULATED_CONTINUITY_STEADY_12_VS_15_LEAF_13_VS_17_MARKED_CENSUS_ZERO"
   bu01_f03_production_change_authorized: true
   bu01_f02_cause: "REPEATED_ACCOUNT_ROOT_DOMAIN_PROOFS_AND_VAULT_WIDE_CENSUS"
   bu01_f02_analysis_source: "facd8db72a26a7d2706f1134008f7c59bcf1a61e"
