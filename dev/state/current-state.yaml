@@ -2602,10 +2602,10 @@ dec339_step6_metadata_bvp_2026_11_24:
   predecessor_accepted_source: "540b27848853d5af4625f254c6159877a7e14ae0"
   planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-metadata-bvp-2026-11-24.md"
   active_build_unit: "BU-01_PAIRED_PLANNING_MEASUREMENT"
-  handoff-count: 1
-  handoff-owner-role: BUILDER
-  handoff-recipient-role: REVIEWER
-  handoff-sender-role: BUILDER
+  handoff-count: 2
+  handoff-owner-role: REVIEWER
+  handoff-recipient-role: BUILDER
+  handoff-sender-role: REVIEWER
   handoff-feature-id: "woodpk/gdrive-sync-obsidian-plugin/WS-05/DEC339_STEP6_BU01_F03"
   handoff-source-sha: "c6dac8033567cb617f598b2340c5ee61ccb9dd9e"
   baseline_unique_tests_passed: 634
@@ -2614,9 +2614,15 @@ dec339_step6_metadata_bvp_2026_11_24:
   baseline_diagnostic_run_id: "4d79b517-a8bc-41ce-a6db-1d9aff41854d"
   baseline_diagnostic_evidence_local_commit: "a69f2cc1d8b7677ee1fb90d58aa5c3bb26d4ec22"
   phxci_status: "F03_EXACT_SOURCE_c6dac803_PHXCI_PASS_13_OF_13_FOCUSED_638_FULL_1403_EXIT_0"
-  reviewer_status: "HANDOFF_COUNT_1_INDEPENDENT_BLIND_FIRST_REVIEW_PENDING"
-  bu01_source_readiness: "F03_BUILDER_QUALIFIED_13_STAGES_PASS_INDEPENDENT_ACCEPTANCE_PENDING"
-  bu01_next_action: "INDEPENDENT_REVIEWER_BLIND_SOURCE_FIRST_THEN_TEST_AND_PHXCI_EVIDENCE_REVIEW"
+  reviewer_status: "PASS_WITH_MINOR_FINDINGS_REVIEWER_TO_BUILDER_HANDOFF_COUNT_2"
+  reviewer_verdict: "PASS_WITH_MINOR_FINDINGS"
+  reviewer_blind_report: "dev/reviews/dec339-step6-bu01-blind-source-review-2026-11-24.md"
+  reviewer_blind_report_commit: "08afc41c43b80dcadcc450828298dac0596ffb79"
+  reviewer_final_report: "dev/reviews/dec339-step6-bu01-final-independent-review-2026-11-24.md"
+  reviewer_final_report_commit: "35a4573d94d2f89757bb2d482833d5e32df7956b"
+  reviewer_minor_findings: "M01_SCOPED_CHANGES_VISIBILITY_RESIDUAL;M02_NONUNIVERSAL_COST_AND_BU02_SCOPE"
+  bu01_source_readiness: "F03_SOFTWARE_QUALIFIED_INDEPENDENT_REVIEW_PASS_WITH_MINOR_FINDINGS"
+  bu01_next_action: "BUILDER_OWNER_ACCEPTANCE_CLOSEOUT_NO_BU02_WITHOUT_SEPARATE_AUTHORIZATION"
   bu01_f03_qualified_source_sha: "c6dac8033567cb617f598b2340c5ee61ccb9dd9e"
   bu01_f03_qualified_tree_sha: "eb725a2c17c00449b3213d72047b8e25bda6ff50"
   bu01_f03_pass_run_id: "284f768b-9b6d-40bc-b99a-619c66e39f9f"
@@ -2627,9 +2633,9 @@ dec339_step6_metadata_bvp_2026_11_24:
   bu01_f03_pass_metrics: "SIMULATED_UNCHANGED_12_1562_VS_LEGACY_15_2696_LEAF_13_2480_VS_LEGACY_17_3434"
   bu01_f03_review_assignment: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-independent-review-2026-11-24.md"
   bu01_f03_handoff_artifact: "dev/state/handoffs/dec339-step6-bu01-f03-builder-to-reviewer-2026-11-24.md"
-  bu01_acceptance_status: "PENDING_INDEPENDENT_REVIEW"
+  bu01_acceptance_status: "REVIEWER_ACCEPTANCE_RECOMMENDED_PENDING_OWNER_BUILDER_CLOSEOUT"
   bu01_f03_owner_direction: "2026-11-24_FIX_REPEATED_REMOTE_REDISCOVERY_BEFORE_MEASUREMENT"
-  bu01_f03_status: "EXACT_SOURCE_SOFTWARE_ONLY_QUALIFIED_PERFORMANCE_GOAL_MET_REVIEW_PENDING"
+  bu01_f03_status: "SOFTWARE_ONLY_QUALIFIED_REVIEWER_PASS_WITH_MINOR_FINDINGS"
   bu01_f03_readiness: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu01-f03-pre-phxci-readiness-2026-11-24.md"
   bu01_f03_static_source_commit: "4613cb2c4e81e796f714a147b95bbe19b6f2b7d2"
   bu01_f03_phxci_candidate_status: "CORRECTED_SOURCE_c6dac803_13_OF_13_PHXCI_PASS_PERFORMANCE_12_VS_15_AND_13_VS_17_REQUESTS"
