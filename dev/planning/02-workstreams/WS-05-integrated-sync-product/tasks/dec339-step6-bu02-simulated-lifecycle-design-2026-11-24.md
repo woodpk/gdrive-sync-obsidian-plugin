@@ -23,3 +23,6 @@ Date: 2026-11-24. Owner explicitly authorized immediate execution of BU-02. Buil
 
 ## Status
 Adopted and source-grounded; BVP frozen-seam architecture gate is the first blocking dependency. No production, BVP executable or test edits; no PHX-CI execution; no Reviewer handoff. Owner's BU-02 direction is recorded, not revoked. Next action is narrowly approve existing-seam extension and related bounded core composition, then implement within budgets. No physical/live action, activation, migration, merge, installation, promotion or release.
+
+## DEC-366 — approval and implementation increment
+Owner approved the exact proposed re-export surface and bounded core edits within existing budgets. The earlier authorization blocker is resolved. The following first increment changes only declarative exports; runtime composition and required test coverage remain pending. Qualification class is authorized-governance for the frozen seam only; existing limits and PHX-CI pin unchanged.

@@ -2699,7 +2699,7 @@ dec339_step6_metadata_bvp_2026_11_24:
   bu01_builder_closeout_source_changes: "NONE"
   bu01_builder_closeout_handoff_count: 2
   bu01_builder_closeout_retained_findings: "M01_SCOPED_CHANGES_VISIBILITY_RESIDUAL;M02_NONUNIVERSAL_COST_AND_BU02_SCOPE"
-  bu02_status: "OWNER_AUTHORIZED_ADOPTED_ARCHITECTURE_APPROVAL_REQUIRED"
+  bu02_status: "OWNER_AUTHORIZED_ARCHITECTURE_APPROVED_IMPLEMENTING"
   bu02_next_scope: "FULL_SIMULATED_MULTI_DEVICE_SYNC_LIFECYCLE_AND_PAIRED_SCENARIO_CAMPAIGN"
   approved_build_unit_count: 2
   inventory_activation_authorized: false
@@ -2710,7 +2710,7 @@ dec339_step6_metadata_bvp_2026_11_24:
   installation_promotion_release_authorized: false
 
 dec339_step6_bu02_2026_11_24:
-  status: "OWNER_AUTHORIZED_ADOPTED_BLOCKED_FROZEN_BVP_SEAM_AUTHORIZATION"
+  status: "OWNER_AUTHORIZED_ARCHITECTURE_APPROVED_IMPLEMENTING"
   active_workstream: "WS-05-integrated-sync-product"
   active_build_unit: "BU-02_FULL_SIMULATED_SYNC_LIFECYCLE"
   handoff-count: 0
@@ -2726,13 +2726,13 @@ dec339_step6_bu02_2026_11_24:
   builder_session: "build-brain-72"
   planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-metadata-bvp-2026-11-24.md"
   technical_design: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-step6-bu02-simulated-lifecycle-design-2026-11-24.md"
-  architecture_blocker: "BVP_APPROVED_FROZEN_SEAM_DOES_NOT_EXPOSE_VERIFIED_INVENTORY_COMPOSITION"
-  required_owner_decision: "AUTHORIZE_NARROW_EXISTING_LOCAL_VAULT_BOUNDARY_SEAM_EXPORT_EXTENSION_AND_RELATED_CORE_COMPOSITION_WITHIN_EXISTING_BUDGETS"
+  architecture_authorization: "DEC-366_OWNER_APPROVED_NARROW_SEAM_AND_BOUNDED_CORE"
+  architecture_blocker: "RESOLVED_BY_DEC_366"
   prior_core_logical_loc: 4760
   core_limit: 4850
   prior_seam_logical_loc: 187
   seam_limit: 350
-  source_implementation: "NOT_STARTED_FROZEN_ARCHITECTURE_GATE"
+  source_implementation: "SEAM_EXPORTS_ADDED_RUNTIME_AND_TESTS_PENDING"
   phxci_status: "NOT_RUN_BU02"
   phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   reviewer_status: "NOT_ELIGIBLE"

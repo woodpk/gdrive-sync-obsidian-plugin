@@ -121,3 +121,15 @@ export type { MutationIntentId, RemoteRevisionId } from "../contracts/common";
 export { ObsidianLocalMutationTransactions } from "../local/local-vault-access-boundary";
 export { CanonicalEvidenceLocalVault } from "./canonical-local-vault";
 export { MemoryTextVersionPersistence, ProductTextVersionStore } from "./text-version-store";
+
+// DEC-366: expose existing production inventory composition, not a second authority.
+export { IndexedDbInventoryAwareStateByteStorage } from "../state/indexeddb-inventory-authority-storage";
+export { IndexedDbInventoryObservationStore } from "../state/indexeddb-inventory-storage";
+export { VerifiedInventoryBaselineCoordinator } from "../state/verified-inventory-integration";
+export { VerifiedLocalInventoryCoordinator } from "../state/verified-local-inventory";
+export { InventoryBackedSnapshotAssembler } from "./inventory-backed-snapshot-assembler";
+export { selectPlanningAssembler, buildInventoryPlanningBoundary } from "./inventory-planning-cutover";
+export { inventoryContinuityFingerprint } from "../contracts/verified-metadata-inventory";
+export { createObsidianGoogleDriveBoundary } from "../drive/runtime";
+export type { InventoryGeneration, InventoryIdentityFence } from "../contracts/verified-metadata-inventory";
+export type { ObsidianGoogleDriveBoundaryOptions } from "../drive/runtime";
