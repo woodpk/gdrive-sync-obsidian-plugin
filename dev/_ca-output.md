@@ -9,12 +9,12 @@ STATUS: BLOCKED
 - Overall verification: BLOCKED; TEST FAILURE; Promotion requires PASS for both change-set and repository verification.
 
 - Framework version: 0.2.0-dev.2
-- Run ID: 1ea13dfb-d226-49ec-90d0-f521614db147
-- Repository: C:/temp/1ad50448b33f4640bfd1acdf6ad979dd/phx-4fd8edce6a864bef/w
+- Run ID: 23148c48-73c2-4640-a076-e5c24cc178a1
+- Repository: C:/temp/4811be0e87d6416499a7fdb742070dca/phx-d5a90529a37a41eb/w
 - Branch:
-- Verified HEAD: 8a863151c7b2e62faa38135970b6d1e60380791a
-- Verified tree: 086b4da019bae1985bf12971a19002cb5cd6071c
-- Expected HEAD: 8a863151c7b2e62faa38135970b6d1e60380791a
+- Verified HEAD: a7e1132b06b08df9395af54d0e2374bad5f5d975
+- Verified tree: 7e0e6debb8a47768943febad491d355a3efb5c68
+- Expected HEAD: a7e1132b06b08df9395af54d0e2374bad5f5d975
 - Base SHA: f507cbcc669568d1cb480abca469bdb1a7d184b8
 - Task version: 3.53.1
 - OS: Microsoft Windows NT 10.0.26200.0
@@ -24,24 +24,24 @@ STATUS: BLOCKED
 - npm: 10.9.8
 - nodeExecutable: C:\Program Files\nodejs\node.exe
 - npmExecutable: C:\Program Files\nodejs\npm.cmd
-- Started: 2026-11-25T05:43:53.8488332Z
-- Ended: 2026-11-25T05:46:43.6134085Z
+- Started: 2026-11-25T05:58:16.0957514Z
+- Ended: 2026-11-25T06:02:21.1265502Z
 
 ## Ordered stages
 
-- authority-check: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- preflight: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- node-preflight: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- node-project-files: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- install: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- typecheck: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- test-focused: FAIL (exit 2; TEST FAILURE; run 1ea13dfb-d226-49ec-90d0-f521614db147; reason: Stage 'test-focused' exited unsuccessfully.)
-- test: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- artifact-preparation: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 1ea13dfb-d226-49ec-90d0-f521614db147; reason: Dependent stage was not executed: test-focused (prerequisite is not an executed PASS with native exit 0))
-- build: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 1ea13dfb-d226-49ec-90d0-f521614db147; reason: Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0))
-- artifacts: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 1ea13dfb-d226-49ec-90d0-f521614db147; reason: Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0))
-- check: PASS (exit 0; NONE; run 1ea13dfb-d226-49ec-90d0-f521614db147)
-- repository-check: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 1ea13dfb-d226-49ec-90d0-f521614db147; reason: Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0))
+- authority-check: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- preflight: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- node-preflight: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- node-project-files: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- install: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- typecheck: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- test-focused: FAIL (exit 1; TEST FAILURE; run 23148c48-73c2-4640-a076-e5c24cc178a1; reason: Stage 'test-focused' exited unsuccessfully.)
+- test: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- artifact-preparation: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 23148c48-73c2-4640-a076-e5c24cc178a1; reason: Dependent stage was not executed: test-focused (prerequisite is not an executed PASS with native exit 0))
+- build: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 23148c48-73c2-4640-a076-e5c24cc178a1; reason: Dependent stage was not executed: artifact-preparation (prerequisite is not an executed PASS with native exit 0))
+- artifacts: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 23148c48-73c2-4640-a076-e5c24cc178a1; reason: Dependent stage was not executed: build (prerequisite is not an executed PASS with native exit 0))
+- check: PASS (exit 0; NONE; run 23148c48-73c2-4640-a076-e5c24cc178a1)
+- repository-check: BLOCKED (exit not executed; DEPENDENCY FAILURE; run 23148c48-73c2-4640-a076-e5c24cc178a1; reason: Dependent stage was not executed: artifacts (prerequisite is not an executed PASS with native exit 0))
 
 ## Artifacts
 
