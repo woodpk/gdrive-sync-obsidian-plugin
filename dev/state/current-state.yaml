@@ -2788,7 +2788,7 @@ dec339_step6_bu02_2026_11_24:
   reviewer_final_report_commit: "11650afb0cb4db14ead82a37874d30aca13bac1c"
   reviewer_minor_findings: "M01_SIMULATION_NETWORK_ACCOUNTING;M02_MIXED_END_TO_END_COST;M03_SCOPED_VISIBILITY_AND_CORE_HEADROOM"
   bu02_acceptance_recommendation: "ACCEPT_BU02_SOFTWARE_ONLY_PENDING_OWNER_BUILDER_CLOSEOUT"
-  bu02_next_action: "OWNER_AUTHORIZE_BOUNDED_DEC362_INCORPORATION_PLANNING_BEFORE_TARGET_RUNTIME_INTEGRATION"
+  bu02_next_action: "OWNER_AUTHORIZE_DEDICATED_COMBINED_INTEGRATION_CANDIDATE_EXECUTION_AND_SOFTWARE_QUALIFICATION"
   builder_closeout_status: "COMPLETE_ACCEPTED_SOFTWARE_ONLY_NO_PROMOTION"
   builder_closeout_session: "build-brain-72"
   builder_closeout_received_state_commit: "f87c43190e6f46cf39a0f444f8211599143fd7dc"
@@ -2799,7 +2799,8 @@ dec339_step6_bu02_2026_11_24:
   builder_closeout_retained_findings: "M01_SIMULATION_NETWORK_ACCOUNTING;M02_MIXED_END_TO_END_COST;M03_SCOPED_VISIBILITY_AND_CORE_HEADROOM"
   step6_authorized_two_bu_software_scope: "COMPLETE_BOTH_ACCEPTED"
   step6_operational_live_and_release_scope: "NOT_ACCEPTED_NOT_AUTHORIZED"
-  next_integration_planning_authorized: false
+  next_integration_planning_authorized: true
+  next_integration_planning_status: "COMPLETE_SOURCE_RECONCILIATION_DEC362_ALREADY_PRESENT_IN_ACCEPTED_DEVELOPMENT"
   dec362_runtime_incorporation_authorized: false
   d339_06_activation_authorized: false
   inventory_activation_authorized: false
@@ -2808,3 +2809,32 @@ dec339_step6_bu02_2026_11_24:
   live_drive_vault_device_operations_authorized: false
   master_merge_authorized: false
   installation_promotion_release_authorized: false
+
+dec339_final_integration_planning_2026_11_25:
+  status: "OWNER_AUTHORIZED_PLANNING_COMPLETE_EXECUTION_NOT_AUTHORIZED"
+  builder_session: "build-brain-72"
+  planning: "dev/planning/02-workstreams/WS-05-integrated-sync-product/tasks/dec339-dec362-final-integration-technical-plan-2026-11-25.md"
+  owner_authorization: "2026-11-25_EXPLICIT_TECHNICAL_INTEGRATION_PLANNING_ONLY"
+  adopted_closeout_sha: "439440133843d512cec715c0c8c210c43b018f05"
+  accepted_combined_source_sha: "0bae5189c46b0afa14e96bab14ebbedc53db61a1"
+  accepted_combined_source_tree: "4be1f50418008b376d1067f7dffdef2fe1a6930b"
+  dec362_accepted_source_sha: "640845815dc85672c2411b1b7d3ae48f17a86bc2"
+  dec362_development_incorporation: "VERIFIED_ANCESTRY_PRODUCTION_SOURCE_AND_COMBINED_PHXCI_EVIDENCE"
+  dec362_master_incorporation: "NOT_DONE"
+  observed_master_sha: "08cb4a2a861f4fd697fca1c740c03b6671668715"
+  observed_pr157_head_sha: "807d3749f9c2f901f2e17c464f3c2581193ff8c9"
+  pr157_role: "PLANNING_ONLY_OWNER_POLICY_RECONCILED"
+  proposed_integration_branch: "integration/dec339-final-candidate-20261125"
+  integration_branch_created: false
+  integration_candidate_execution_authorized: false
+  integration_candidate_qualification: "PENDING"
+  final_integration_review: "PENDING"
+  direct_operational_verification: "PENDING_SEPARATE_AUTHORIZATION"
+  d339_06_activation_authorized: false
+  master_merge_authorized: false
+  inventory_activation_authorized: false
+  live_migration_authorized: false
+  physical_testing_authorized: false
+  live_drive_vault_device_operations_authorized: false
+  installation_promotion_release_authorized: false
+  next_action: "OWNER_AUTHORIZE_BOUNDED_INTEGRATION_BRANCH_ASSEMBLY_AND_SOFTWARE_QUALIFICATION"
