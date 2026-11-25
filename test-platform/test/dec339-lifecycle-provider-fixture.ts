@@ -92,7 +92,7 @@ class SyntheticProvider {
     const url = new URL(request.url), start = performance.now();
     assert.equal(url.origin, "https://www.googleapis.com");
     assert.equal(request.method ?? "GET", "GET", "fixture must never perform an HTTP mutation");
-    assert.equal(request.headers?.authorization, "Bearer bu02-synthetic-token");
+    assert.ok(request.headers?.authorization === "Bearer bu02-synthetic-token", "synthetic authorization missing");
     const path = url.pathname, query = url.searchParams.get("q") ?? "";
     let purpose: ProviderSample["purpose"];
     let response: Awaited<ReturnType<ObsidianGoogleDriveBoundaryOptions["requestUrl"]>>;
@@ -129,8 +129,9 @@ class SyntheticProvider {
         const observed = await this.world.drive.download(virtualRemoteObjectId(id));
         if (!observed.ok) response = this.error(statusFor(observed.signal));
         else {
-          const chunks: number[] = [];
-          for await (const bytes of observed.value.content.openChunks()) chunks.push(...bytes);
+          const parts: Uint8Array[] = [];
+          for await (const bytes of observed.value.content.openChunks()) parts.push(bytes);
+          const chunks = Buffer.concat(parts);
           const first = Number(range[1]), last = Math.min(Number(range[2]), chunks.length - 1);
           if (first > last) response = this.error(416);
           else response = { status: 206, headers: {
@@ -205,7 +206,7 @@ export function lifecycleFixture(enabled: boolean) {
       return table.records;
     };
     return {
-      enabled, indexedDb: db.openFactory(),
+      get enabled() { return enabled; }, indexedDb: db.openFactory(),
       readStateBytes: () => records().get(JSON.stringify("current-state")) as Uint8Array | undefined,
       replaceStateBytes: bytes => {
         const key = JSON.stringify("current-state");
@@ -221,7 +222,7 @@ export function lifecycleFixture(enabled: boolean) {
       },
     };
   };
-  return { forDevice, databases,
+  return { forDevice, databases, setEnabled: (value: boolean) => { enabled = value; },
     samples: () => provider!.samples,
     changeAccount: (account: string) => { provider!.account = account; },
     storageBytes: () => [...databases.values()].map(db => ({

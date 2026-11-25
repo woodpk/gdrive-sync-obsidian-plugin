@@ -2732,8 +2732,9 @@ dec339_step6_bu02_2026_11_24:
   core_limit: 4850
   prior_seam_logical_loc: 187
   seam_limit: 350
-  source_implementation: "PROVIDER_FIXTURE_AND_INITIAL_PAIRED_LIFECYCLE_TESTS_AUTHORED_UNQUALIFIED"
-  phxci_status: "NOT_RUN_BU02"
+  source_implementation: "BU02_IMPLEMENTATION_AND_INITIAL_TEN_FAMILY_CAMPAIGN_AUTHORED_AWAITING_PHXCI"
+  source_readiness: "STATIC_INSPECTION_COMPLETE_EXECUTABLE_READINESS_UNVERIFIED"
+  phxci_status: "NOT_RUN_BU02_AWAITING_OWNER_WINDOWS_LAUNCHER"
   phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   reviewer_status: "NOT_ELIGIBLE"
   dec362_runtime_incorporation_authorized: false

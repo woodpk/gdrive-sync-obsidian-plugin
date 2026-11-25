@@ -13,6 +13,9 @@ import { cancelBeforeEffectScenario } from "../scenarios/07c/cancel-before-effec
 import { cancelAfterEffectScenario } from "../scenarios/07c/cancel-after-effect";
 import { ambiguousAppliedScenario } from "../scenarios/07a/ambiguous-applied";
 import { clonedStateDetectedScenario } from "../scenarios/07c/cloned-state-detected";
+import { localDeletionScenario } from "../scenarios/06c/local-deletion";
+import { remoteSourceChangedAfterPreviewScenario } from "../scenarios/07d/remote-source-changed-after-preview";
+import { destructiveThresholdBlockedScenario } from "../scenarios/07e/destructive-threshold-blocked";
 
 const path = virtualVaultPath("note.bin");
 function source(text: string) {
@@ -26,21 +29,25 @@ async function contents(device: VirtualProductionDevice): Promise<string> {
   return new TextDecoder().decode(Uint8Array.from(bytes));
 }
 async function manual(device: VirtualProductionDevice, full = false) {
+  const priorRun = device.controller.latestProductionRunReceipt()?.runId;
   const plan = await (full ? device.controller.previewVerifyReconcile() : device.controller.previewManual());
-  assert.ok(plan, JSON.stringify(device.controller.currentSurface().status));
+  assert.ok(plan, device.controller.currentSurface().status.kind);
   const result = await device.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
   assert.equal(result.status, "accepted");
   const receipt = device.controller.latestProductionRunReceipt();
   assert.ok(receipt, "fresh terminal run receipt required");
+  assert.notEqual(receipt.runId, priorRun, "a previous receipt is not proof of this run");
   assert.equal(receipt?.terminal, "complete");
   assert.equal(receipt?.requiredEffectsCommittedAndVerified, true);
   return { plan, receipt };
 }
 async function automatic(device: VirtualProductionDevice, periodic = false) {
+  const priorRun = device.controller.latestProductionRunReceipt()?.runId;
   await device.controller.runAutomatic(periodic ? "periodic" : "local-change");
   const receipt = device.controller.latestProductionRunReceipt();
   assert.ok(receipt, "fresh terminal run receipt required");
-  assert.equal(receipt?.terminal, "complete", JSON.stringify(device.controller.currentSurface().status));
+  assert.notEqual(receipt.runId, priorRun, "a previous receipt is not proof of this run");
+  assert.equal(receipt?.terminal, "complete", device.controller.currentSurface().status.kind);
   assert.equal(receipt?.requiredEffectsCommittedAndVerified, true);
   return receipt;
 }
@@ -240,7 +247,8 @@ test("BU02 nonempty first sync preserves strict inventory cursor gate and explic
 });
 
 for (const scenario of [remoteRenameScenario, binaryConflictScenario, cancelBeforeEffectScenario,
-  cancelAfterEffectScenario, ambiguousAppliedScenario, clonedStateDetectedScenario]) {
+  cancelAfterEffectScenario, ambiguousAppliedScenario, clonedStateDetectedScenario,
+  localDeletionScenario, remoteSourceChangedAfterPreviewScenario, destructiveThresholdBlockedScenario]) {
   test("BU02 paired canonical scenario " + scenario.id, async t => {
     const warm: ScenarioDefinition = { ...scenario, steps: [
       { id: "bu02-establish-empty", kind: "production", device: "device-a", operation: "synchronize" },
@@ -263,3 +271,118 @@ for (const scenario of [remoteRenameScenario, binaryConflictScenario, cancelBefo
     }
   });
 }
+
+
+test("BU02 atomic inventory publication failure leaves both authority and active generation intact, then safely retries", async () => {
+  const { world, fixture, a, b } = await established(true);
+  try {
+    const prior = await publication(a);
+    const created = await world.drive.create(world.managedRemote.rootId, { path, entityKind: "file", content: source("new-remote") });
+    assert.ok(created.ok);
+    fixture.databases.get("device-a")!.abortNextPublication = true;
+    assert.equal(await a.controller.previewManual(), undefined);
+    const after = await publication(a);
+    assert.equal(after.value.activeGeneration, prior.value.activeGeneration);
+    assert.equal(after.value.canonicalCursor, prior.value.canonicalCursor);
+    assert.equal(after.value.persistenceRevision, prior.value.persistenceRevision);
+    assert.equal((await a.backing.local.observe(path)).status, "absent");
+    await manual(a);
+    assert.equal(await contents(a), "new-remote");
+    await publication(a);
+  } finally { await a.dispose(); await b.dispose(); }
+});
+
+test("BU02 rollback to legacy and re-enable on the same established v2 device preserves synchronized identity", async () => {
+  const { world, fixture, a, b } = await established(true);
+  try {
+    await a.backing.local.createFile(path, source("rollback-safe"));
+    await automatic(a); await automatic(b); await automatic(a);
+    const id = await remoteId(world);
+    await a.dispose();
+    fixture.setEnabled(false);
+    const legacy = await world.reconstructDevice("device-a");
+    try {
+      assert.equal(legacy.localInventory, undefined);
+      await automatic(legacy);
+      assert.equal(await contents(legacy), "rollback-safe");
+    } finally { await legacy.dispose(); }
+    fixture.setEnabled(true);
+    const reopened = await world.reconstructDevice("device-a");
+    try {
+      await automatic(reopened);
+      await publication(reopened);
+      assert.equal(await contents(reopened), "rollback-safe");
+      assert.equal(await remoteId(world), id);
+    } finally { await reopened.dispose(); }
+  } finally { await a.dispose(); await b.dispose(); }
+});
+
+test("BU02 a changed account after manual preview cannot authorize the simulated remote create", async () => {
+  const { world, fixture, a, b } = await established(true);
+  try {
+    await a.backing.local.createFile(path, source("preserved"));
+    const plan = await a.controller.previewManual();
+    assert.ok(plan);
+    assert.ok(plan.operations.some(op => op.kind === "upload-create"));
+    fixture.changeAccount("different-synthetic-account");
+    await a.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
+    assert.notEqual(a.controller.latestProductionRunReceipt()?.terminal, "complete");
+    const seen = await world.drive.observe(world.managedRemote.rootId, path);
+    assert.ok(seen.ok && seen.value.status === "absent");
+    assert.equal(await contents(a), "preserved");
+  } finally { await a.dispose(); await b.dispose(); }
+});
+
+test("BU02 unknown externally removed identity blocks enabled planning without authorizing local trash", async () => {
+  const { world, a, b } = await established(true);
+  try {
+    await a.backing.local.createFile(path, source("preserve-copy"));
+    await automatic(a); await automatic(b); await automatic(a);
+    const id = await remoteId(world), before = await publication(b);
+    world.drive.removeExternally(id);
+    assert.equal(await b.controller.previewManual(), undefined);
+    const after = await publication(b);
+    assert.equal(after.value.activeGeneration, before.value.activeGeneration);
+    assert.equal(after.value.canonicalCursor, before.value.canonicalCursor);
+    assert.equal(await contents(b), "preserve-copy");
+  } finally { await a.dispose(); await b.dispose(); }
+});
+
+test("BU02 matched nested steady-state cost scales independently of unchanged remote object count", async t => {
+  const measurements: Array<{ enabled: boolean; size: number; requests: number; responseBytes: number }> = [];
+  for (const size of [24, 128]) {
+    for (const enabled of [false, true]) {
+      const fixture = lifecycleFixture(enabled);
+      const world = await VirtualSynchronizationWorld.create(["device-a", "device-b"], fixture.forDevice);
+      const a = await world.reconstructDevice("device-a");
+      try {
+        for (let i = 0; i < size; i++) {
+          const name = "folder-" + (i % 4) + "/leaf-" + i + ".bin";
+          const content = "synthetic-" + i;
+          const remote = await world.drive.create(world.managedRemote.rootId, { path: virtualDrivePath(name), entityKind: "file", content: source(content) });
+          assert.ok(remote.ok);
+          a.backing.local.seedFile(name, content);
+        }
+        const setup = await measure(fixture, () => manual(a, true));
+        await automatic(a);
+        const runs = [];
+        for (let iteration = 0; iteration < 3; iteration++) {
+          const result = await measure(fixture, () => automatic(a));
+          assert.equal(result.result.committedOperationCount, 0);
+          if (enabled) {
+            assert.equal(result.metrics.categories["marked-census"] ?? 0, 0);
+            assert.equal(result.metrics.categories["parent-list"] ?? 0, 0);
+            assert.equal(result.metrics.categories.changes, 1);
+          }
+          runs.push(result.metrics);
+        }
+        measurements.push({ enabled, size, requests: runs[0].requests, responseBytes: runs[0].responsePayloadBytes });
+        t.diagnostic("BU02_NESTED_STEADY " + JSON.stringify({ enabled, size, setup: setup.metrics, runs }));
+      } finally { await a.dispose(); }
+    }
+  }
+  const inventory = measurements.filter(x => x.enabled);
+  assert.equal(inventory[0].requests, inventory[1].requests);
+  // Cursor token lengths vary with synthetic provider object counts.
+  // Only request count is the invariant; report actual response bytes without manufacturing equality.
+});

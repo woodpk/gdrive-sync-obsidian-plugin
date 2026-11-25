@@ -94,7 +94,7 @@ export class FakeDatabase {
           for (const [key, value] of this.tables.get(name)!.records) snapshot.records.set(key, value);
         }
       });
-      const completed = new Promise<void>(resolve => { release = resolve; });
+      const completed = new Promise<void>(resolve => { release = () => resolve(); });
       this.transactionTail = ready.then(() => completed);
     }
     const dispatch = (action: () => void) => { if (this.serializeTransactions) void ready.then(() => queueMicrotask(action)); else queueMicrotask(action); };
