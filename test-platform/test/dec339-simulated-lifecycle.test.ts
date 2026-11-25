@@ -58,8 +58,7 @@ async function publication(device: VirtualProductionDevice) {
   const fence = await inventory.continuityRootHint();
   assert.ok(fence, "actual enabled planning must publish the inventory");
   const value = await inventory.publicationSnapshot(fence);
-  assert.equal(value.status, "trusted-fence");
-  if (value.status !== "trusted-fence") throw new Error(value.reason);
+  assert.equal(value.status, "trusted-fence", value.status !== "trusted-fence" ? value.reason : undefined);
   assert.ok(value.value.activeGeneration);
   assert.equal(fence.deviceIdentity, backing.deviceIdentity);
   assert.equal(value.value.canonicalCursor, value.value.activeManifest?.terminalCursor);
