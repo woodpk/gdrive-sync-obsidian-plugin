@@ -91,3 +91,7 @@ Canonical prospective design: `dev/planning/02-workstreams/WS-05-integrated-sync
 
 ### DEC-365 — operative research-supported design
 Research hold resolved; implementation authorized, not started. Begin increment A contract freeze, then provider, durable integration and planning, then test/metrics and qualification. BU-02 remains after acceptance. See canonical F03 design §2.1. Earlier pending-proof and documentation-only restrictions are superseded for implementation; activation, live use and release remain unauthorized.
+
+## Step 6 BU-01 accepted and closed — 2026-11-24
+
+Current status superseding the preceding implementation-not-started checkpoint: **BU-01 software-only PASS WITH MINOR FINDINGS, Builder closeout complete**, exact accepted source `c6dac8033567cb617f598b2340c5ee61ccb9dd9e`, original PHX-CI `284f768b-9b6d-40bc-b99a-619c66e39f9f`, final independent review `35a4573d94d2f89757bb2d482833d5e32df7956b`, handoff-count 2 retained. See [canonical Step 6 plan and closeout](tasks/dec339-step6-metadata-bvp-2026-11-24.md). M01 scoped Changes residual and M02 limited simulated planning measurements remain nonblocking and must carry forward. BU-02 full simulated multi-device lifecycle is not started and awaits separate Owner authorization; Step 6 remains incomplete. DEC-362 incorporation, D339-06, activation, migration, live/physical operations, installation, merge, promotion and release remain independently gated.
