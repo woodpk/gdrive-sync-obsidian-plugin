@@ -10,6 +10,11 @@ import {
   ScopedLocalTransactionalMutationPort,
   ScopedLocalVault,
   ProductSnapshotAssembler,
+  IndexedDbInventoryObservationStore,
+  VerifiedInventoryBaselineCoordinator,
+  InventoryBackedSnapshotAssembler,
+  selectPlanningAssembler, buildInventoryPlanningBoundary,
+  inventoryContinuityFingerprint, createObsidianGoogleDriveBoundary,
   ProductSynchronizationExecutor,
   ProductTextVersionStore,
   ProductionSynchronizationPlanner,
@@ -53,6 +58,7 @@ import {
   VirtualDeviceRuntime,
   deterministicDeviceIdentity,
   virtualDeviceVaultIdentity,
+  type VirtualInventoryDeviceOptions,
 } from "./per-device-runtime";
 
 function cancelled(signal?: SynchronizationCancellationSignal): boolean {
@@ -797,6 +803,7 @@ export class VirtualSynchronizationWorld {
 
   static async create(
     deviceNames: readonly string[] = ["device-a", "device-b"],
+    inventoryForDevice?: (name: string, world: VirtualSynchronizationWorld) => VirtualInventoryDeviceOptions,
   ): Promise<VirtualSynchronizationWorld> {
     if (deviceNames.length < 2) {
       throw new Error("virtual synchronization world requires at least two devices");
@@ -822,6 +829,7 @@ export class VirtualSynchronizationWorld {
       const backing = new VirtualDeviceBacking({
         deviceIdentity: deterministicDeviceIdentity(index + 1),
         vaultIdentity,
+        inventory: inventoryForDevice?.(name, world),
       });
       await backing.initializeAuthority();
       world.devices.set(name, backing);
@@ -853,7 +861,11 @@ export class VirtualSynchronizationWorld {
     const crash = this.crashController(name);
     const state = crash.wrapStateStore(runtime.stateStore());
     const context = runtime.loadContext();
-    let recoveryActive = (await state.load(context)).status === "recovery-required";
+    const loaded = await state.load(context);
+    let recoveryActive = loaded.status === "recovery-required";
+    let firstSync = !!backing.inventory?.enabled && loaded.status === "trusted" && !loaded.state.changeCursor;
+    const boundary = backing.inventory && createObsidianGoogleDriveBoundary(backing.inventory.boundary);
+    const readDrive = boundary?.drive ?? this.drive;
     const remoteMutations = crash.wrapRemote(new InMemoryReliableRemoteMutationPort(
       this.drive,
       this.managedRemote,
@@ -873,18 +885,37 @@ export class VirtualSynchronizationWorld {
       { staleRetryDelayMs: 0 },
       localTransactions,
     );
-    const snapshots = new ProductSnapshotAssembler(
-      canonicalLocal,
-      this.drive,
-      state,
-      context,
-      async () => this.managedRemote,
-      path => scope.isManagedLogical(path),
-      () => false,
-      undefined,
-      this.drive,
-      state,
-    );
+    const remoteIdentity = async () => this.managedRemote;
+    const pathIncluded = (path: VaultPath) => scope.isManagedLogical(path);
+    const snapshots = selectPlanningAssembler(backing.inventory?.enabled === true,
+      () => new ProductSnapshotAssembler(canonicalLocal, readDrive, state, context, remoteIdentity, pathIncluded, () => false, undefined, readDrive, state),
+      () => {
+        if (!boundary || !backing.inventory) throw new Error("inventory device composition unavailable");
+        const inventory = new IndexedDbInventoryObservationStore(backing.databaseName, backing.inventory.indexedDb, { allowSchemaUpgrade: false });
+        const fingerprint = () => {
+          const grant = boundary.oauth.inventoryGrantBinding();
+          if (!grant) throw new Error("inventory authorization binding unavailable");
+          return inventoryContinuityFingerprint(grant, scope.inventoryScopeFingerprint());
+        };
+        const observePlanningBoundary = async () => {
+          const policy = fingerprint(), prior = await inventory.continuityRootHint();
+          const knownDomains = prior && prior.deviceIdentity === backing.deviceIdentity && prior.vaultIdentity === backing.vaultIdentity &&
+            prior.managedRootId === this.managedRemote.rootId && prior.protocolVersion === this.managedRemote.protocolVersion &&
+            prior.scopePolicyFingerprint === policy ? { contentRootId: prior.contentDomainRootId, configRootId: prior.configDomainRootId } : undefined;
+          const observed = await buildInventoryPlanningBoundary({ drive: boundary.drive, remoteIdentity: this.managedRemote,
+            deviceIdentity: backing.deviceIdentity, vaultIdentity: backing.vaultIdentity, scopePolicyFingerprint: policy, knownDomains });
+          if (fingerprint() !== policy) throw new Error("inventory boundary grant changed");
+          return observed;
+        };
+        return new InventoryBackedSnapshotAssembler({ local: canonicalLocal, drive: boundary.drive, state, stateContext: context,
+          remoteIdentity, inventory, currentFence: async () => (await observePlanningBoundary()).fence,
+          observePlanningBoundary, observePlanningHorizon: async () => {
+            const policy = fingerprint(), horizon = await boundary.drive.observeInventoryPlanningHorizon();
+            if (!horizon.ok || fingerprint() !== policy) throw new Error("inventory final horizon unproven");
+            return { ...horizon.value, scopePolicyFingerprint: policy };
+          }, refresh: new VerifiedInventoryBaselineCoordinator(boundary.metadataReader, inventory), provenanceReader: boundary.metadataReader,
+          pathIncluded, fullReconcileRequired: () => firstSync, reliableChanges: boundary.drive, authorityStore: state });
+      });
     let textPersistence = this.textVersionPersistence.get(name);
     if (!textPersistence) {
       textPersistence = new MemoryTextVersionPersistence();
@@ -933,7 +964,10 @@ export class VirtualSynchronizationWorld {
       leasePort: this.leasePort,
       audit: new BoundedAuditHistory(new MemoryAuditPersistence()),
       holderId: `virtual-world:${name}`,
-      firstSyncActive: () => false,
+      firstSyncActive: () => firstSync,
+      inventoryContinuityEnabled: () => backing.inventory?.enabled === true,
+      automaticExecutionAllowed: () => ({ allowed: !firstSync }),
+      onTrustedBaselineEstablished: async () => { firstSync = false; },
       recoveryActive: () => recoveryActive,
       onRecoveryGateChanged: async active => { recoveryActive = active; },
       onFullReconciliationCompleted: async () => undefined,

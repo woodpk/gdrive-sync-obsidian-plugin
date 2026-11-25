@@ -26,3 +26,6 @@ Adopted and source-grounded; BVP frozen-seam architecture gate is the first bloc
 
 ## DEC-366 — approval and implementation increment
 Owner approved the exact proposed re-export surface and bounded core edits within existing budgets. The earlier authorization blocker is resolved. The following first increment changes only declarative exports; runtime composition and required test coverage remain pending. Qualification class is authorized-governance for the frozen seam only; existing limits and PHX-CI pin unchanged.
+
+### Runtime composition increment
+The existing virtual world now accepts explicit isolated device backing/transport fixtures, constructs the actual inventory-aware authority and inventory-backed assembler in core, preserves raw-byte fault access on the same backing, retains the legacy default, and passes the continuity gate to the existing controller. Scenario runner accepts the same optional composition without a second runner. The synthetic provider fixture and lifecycle tests are still required. Existing executor physical observation and mutation ports remain unchanged, so measurements must separate HTTP planning reads from simulated executor boundary calls. This is an intermediate unqualified source increment.

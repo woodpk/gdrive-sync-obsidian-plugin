@@ -1,6 +1,10 @@
 import {
   contractId,
   MemoryStateByteStorage,
+  IndexedDbInventoryAwareStateByteStorage,
+  IndexedDbInventoryObservationStore,
+  type StateByteStorage,
+  type ObsidianGoogleDriveBoundaryOptions,
   PersistentSynchronizationStateStore,
   SynchronizationStateAuthorityAdapter,
   TombstoneRetentionPolicy,
@@ -145,7 +149,7 @@ export class VirtualDeviceRuntime {
     readonly vaultIdentity: VaultIdentity,
     readonly local: InMemoryLocalVault,
     readonly drive: InMemoryGoogleDriveCore,
-    storage: MemoryStateByteStorage,
+    storage: StateByteStorage,
   ) {
     this.raw = new PersistentSynchronizationStateStore(storage);
     this.authority = new SynchronizationStateAuthorityAdapter(this.raw);
@@ -197,7 +201,17 @@ export class VirtualDeviceRuntime {
   }
 }
 
+/** Isolated fixture owns only database bytes and synthetic provider transport. */
+export interface VirtualInventoryDeviceOptions {
+  readonly indexedDb: IDBFactory;
+  readonly readStateBytes: () => Uint8Array | undefined;
+  readonly replaceStateBytes: (bytes: Uint8Array | undefined) => void;
+  readonly boundary: ObsidianGoogleDriveBoundaryOptions;
+  readonly enabled: boolean;
+}
+
 export interface VirtualDeviceBackingOptions {
+  readonly inventory?: VirtualInventoryDeviceOptions;
   readonly deviceIdentity?: DeviceIdentity;
   readonly vaultIdentity: VaultIdentity;
   readonly local?: InMemoryLocalVault;
@@ -208,7 +222,9 @@ export class VirtualDeviceBacking {
   readonly deviceIdentity: DeviceIdentity;
   readonly vaultIdentity: VaultIdentity;
   readonly local: InMemoryLocalVault;
-  readonly storage = new MemoryStateByteStorage();
+  readonly storage: StateByteStorage;
+  readonly inventory?: VirtualInventoryDeviceOptions;
+  get databaseName(): string { return "virtual-device:" + String(this.deviceIdentity); }
   readonly clock: DeterministicClock;
   private nextRuntimeGeneration = 1;
 
@@ -217,11 +233,14 @@ export class VirtualDeviceBacking {
     this.vaultIdentity = options.vaultIdentity;
     this.local = options.local ?? new InMemoryLocalVault();
     this.clock = options.clock ?? new DeterministicClock();
+    this.inventory = options.inventory;
+    this.storage = this.inventory ? new IndexedDbInventoryAwareStateByteStorage(this.databaseName, this.inventory.indexedDb) : new MemoryStateByteStorage();
   }
 
   async initializeAuthority(
     changeCursor?: ChangeCursor,
   ): Promise<DurableSynchronizationAuthorityState> {
+    if (this.inventory?.enabled) await new IndexedDbInventoryObservationStore(this.databaseName, this.inventory.indexedDb, { allowSchemaUpgrade: true }).continuityRootHint();
     const state = createInitialAuthorityState({
       persistenceRevision: persistenceRevision("state:1"),
       semanticGeneration: semanticGeneration("semantic:1"),
@@ -244,7 +263,7 @@ export class VirtualDeviceBacking {
       this.vaultIdentity,
       this.local,
       drive,
-      this.storage,
+      this.inventory ? new IndexedDbInventoryAwareStateByteStorage(this.databaseName, this.inventory.indexedDb) : this.storage,
     );
   }
 
@@ -291,12 +310,12 @@ export class VirtualDeviceBacking {
   }
 
   clearStateBytes(): void {
-    this.storage.bytes = undefined;
+    this.replaceBytes(undefined);
   }
 
   truncateStateBytes(): void {
     const bytes = this.requireBytes();
-    this.storage.bytes = bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2)));
+    this.replaceBytes(bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2))));
   }
 
   corruptChecksum(): void {
@@ -307,9 +326,7 @@ export class VirtualDeviceBacking {
     }
     const original = match[2];
     const replacement = `${original[0] === "0" ? "1" : "0"}${original.slice(1)}`;
-    this.storage.bytes = encoder.encode(
-      raw.replace(match[0], `"checksum":"${match[1]}${replacement}"`),
-    );
+    this.replaceBytes(encoder.encode(raw.replace(match[0], `"checksum":"${match[1]}${replacement}"`)));
   }
 
   async installIncompatibleSchemaVersion(schemaVersion: number): Promise<void> {
@@ -373,11 +390,16 @@ export class VirtualDeviceBacking {
   }
 
   persistedBytes(): Uint8Array | undefined {
-    return this.storage.bytes?.slice();
+    return (this.inventory ? this.inventory.readStateBytes() : (this.storage as MemoryStateByteStorage).bytes)?.slice();
+  }
+
+  private replaceBytes(bytes: Uint8Array | undefined): void {
+    if (this.inventory) this.inventory.replaceStateBytes(bytes);
+    else (this.storage as MemoryStateByteStorage).bytes = bytes;
   }
 
   private requireBytes(): Uint8Array {
-    const bytes = this.storage.bytes;
+    const bytes = this.persistedBytes();
     if (!bytes || bytes.byteLength === 0) {
       throw new Error("virtual device has no persisted state bytes");
     }

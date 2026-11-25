@@ -73,7 +73,7 @@ export class DeterministicScenarioRunner {
 
   static canonical(): DeterministicScenarioRunner { return new DeterministicScenarioRunner(createScenarioEvidenceHooks()); }
 
-  async run(scenario: ScenarioDefinition): Promise<ScenarioExecutionResult> {
+  async run(scenario: ScenarioDefinition, inventoryForDevice?: Parameters<typeof VirtualSynchronizationWorld.create>[1]): Promise<ScenarioExecutionResult> {
     const safeDispose = async(devices:Iterable<VirtualProductionDevice>=[]):Promise<BvpDiagnostic|undefined>=>{
       let failed:BvpDiagnostic|undefined;
       for(const device of devices){
@@ -123,7 +123,7 @@ export class DeterministicScenarioRunner {
 
     const names = new Set(["device-a", "device-b"]);
     for (const step of scenario.steps) if ("device" in step && typeof step.device === "string") names.add(step.device);
-    const world = this.executor ? undefined : await VirtualSynchronizationWorld.create([...names]);
+    const world = this.executor ? undefined : await VirtualSynchronizationWorld.create([...names], inventoryForDevice);
     const devices = new Map<string, VirtualProductionDevice>(), captures = new Map<string, unknown>();
     const steps: ScenarioStepExecution[] = [];
     const context: ScenarioRunnerHookContext | undefined = world ? {
