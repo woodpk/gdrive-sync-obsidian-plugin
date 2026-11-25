@@ -98,6 +98,7 @@ export class FakeDatabase {
       this.transactionTail = ready.then(() => completed);
     }
     const dispatch = (action: () => void) => { if (this.serializeTransactions) void ready.then(() => queueMicrotask(action)); else queueMicrotask(action); };
+    const written = new Set<string>();
     let pending = 0, aborted = false, closed = false;
     const tx: {
       db: IDBDatabase; oncomplete?: () => void; onabort?: () => void;
@@ -139,6 +140,7 @@ export class FakeDatabase {
           const encoded = keyOf(chosen);
           if (onlyNew && data.records.has(encoded)) throw new Error("ConstraintError");
           data.records.set(encoded, value);
+          written.add(name);
           return chosen;
         };
         const selectByPrimaryRange = (
@@ -181,8 +183,8 @@ export class FakeDatabase {
     const finish = () => {
       if (aborted || closed || pending !== 0) return;
       if (this.abortNextPublication && mode === "readwrite" &&
-          names.includes("sync-state") && names.includes("inventory-control") &&
-          names.includes("inventory-generations")) {
+          written.has("sync-state") && written.has("inventory-control") &&
+          written.has("inventory-generations")) {
         this.abortNextPublication = false;
         this.abortedPublicationStores = [...names];
         tx.abort();

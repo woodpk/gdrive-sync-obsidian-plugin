@@ -187,6 +187,7 @@ class SyntheticProvider {
 export function lifecycleFixture(enabled: boolean) {
   withRangeOnly();
   const databases = new Map<string, FakeDatabase>();
+  const surfaces = new Map<string, string[]>();
   let provider: SyntheticProvider | undefined;
   const forDevice = (name: string, world: VirtualSynchronizationWorld): VirtualInventoryDeviceOptions => {
     provider ??= new SyntheticProvider(world);
@@ -207,6 +208,11 @@ export function lifecycleFixture(enabled: boolean) {
     };
     return {
       get enabled() { return enabled; }, indexedDb: db.openFactory(),
+      observeSurface: surface => {
+        const history = surfaces.get(name) ?? [];
+        history.push(JSON.stringify(surface.status));
+        surfaces.set(name, history.slice(-12));
+      },
       readStateBytes: () => records().get(JSON.stringify("current-state")) as Uint8Array | undefined,
       replaceStateBytes: bytes => {
         const key = JSON.stringify("current-state");
@@ -222,7 +228,7 @@ export function lifecycleFixture(enabled: boolean) {
       },
     };
   };
-  return { forDevice, databases, setEnabled: (value: boolean) => { enabled = value; },
+  return { forDevice, databases, surfaces, setEnabled: (value: boolean) => { enabled = value; },
     samples: () => provider!.samples,
     changeAccount: (account: string) => { provider!.account = account; },
     storageBytes: () => [...databases.values()].map(db => ({

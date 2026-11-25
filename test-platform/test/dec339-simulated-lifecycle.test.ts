@@ -31,12 +31,12 @@ async function contents(device: VirtualProductionDevice): Promise<string> {
 async function manual(device: VirtualProductionDevice, full = false) {
   const priorRun = device.controller.latestProductionRunReceipt()?.runId;
   const plan = await (full ? device.controller.previewVerifyReconcile() : device.controller.previewManual());
-  assert.ok(plan, device.controller.currentSurface().status.kind);
+  assert.ok(plan, JSON.stringify({ device: device.backing.deviceIdentity, status: device.controller.currentSurface().status }));
   const result = await device.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
   assert.equal(result.status, "accepted");
   const receipt = device.controller.latestProductionRunReceipt();
   assert.ok(receipt, "fresh terminal run receipt required");
-  assert.notEqual(receipt.runId, priorRun, "a previous receipt is not proof of this run");
+  assert.notEqual(receipt.runId, priorRun, "a previous receipt is not proof of this run: " + JSON.stringify({ device: device.backing.deviceIdentity, status: device.controller.currentSurface().status }));
   assert.equal(receipt?.terminal, "complete");
   assert.equal(receipt?.requiredEffectsCommittedAndVerified, true);
   return { plan, receipt };
@@ -46,10 +46,14 @@ async function automatic(device: VirtualProductionDevice, periodic = false) {
   await device.controller.runAutomatic(periodic ? "periodic" : "local-change");
   const receipt = device.controller.latestProductionRunReceipt();
   assert.ok(receipt, "fresh terminal run receipt required");
-  assert.notEqual(receipt.runId, priorRun, "a previous receipt is not proof of this run");
-  assert.equal(receipt?.terminal, "complete", device.controller.currentSurface().status.kind);
+  assert.notEqual(receipt.runId, priorRun, "a previous receipt is not proof of this run: " + JSON.stringify({ device: device.backing.deviceIdentity, status: device.controller.currentSurface().status }));
+  assert.equal(receipt?.terminal, "complete", JSON.stringify({ device: device.backing.deviceIdentity, status: device.controller.currentSurface().status, receipt }));
   assert.equal(receipt?.requiredEffectsCommittedAndVerified, true);
-  return receipt;
+  const plan = device.controller.currentSurface().planPreview;
+  assert.ok(plan && plan.planId === receipt.planId, "completed receipt must bind the current exact plan");
+  assert.equal(receipt.committedOperationCount, plan.operations.length, "every operation including noops must be committed");
+  const effectKinds = plan.operations.filter(op => op.kind !== "noop").map(op => op.kind);
+  return { ...receipt, effectKinds, physicalOperationCount: effectKinds.length };
 }
 async function publication(device: VirtualProductionDevice) {
   const backing = device.backing;
@@ -114,18 +118,20 @@ test("BU02 actual enabled multi-device lifecycle: upload, download, same-ID edit
         assert.notEqual(a.backing.inventory?.indexedDb, b.backing.inventory?.indexedDb);
       } else assert.equal(setupStorage.every(x => x.inventory === 0), true);
       const steady = await measure(fixture, () => automatic(a));
+      const steadyPreview = await measure(fixture, () => a.controller.previewManual());
+      assert.ok(steadyPreview.result && steadyPreview.result.operations.every(op => op.kind === "noop"));
       await a.backing.local.createFile(path, source("first"));
       const upload = await measure(fixture, () => automatic(a));
       const id = await remoteId(world);
       const download = await measure(fixture, () => automatic(b));
       assert.equal(await contents(b), "first");
-      assert.equal(upload.result.committedOperationCount, 1);
-      assert.equal(download.result.committedOperationCount, 1);
+      assert.deepEqual(upload.result.effectKinds, ["upload-create"]);
+      assert.deepEqual(download.result.effectKinds, ["download-create"]);
       await automatic(a); // consume the actual provider's post-effect Changes
       await b.backing.local.replaceFile(path, source("second"));
       const edit = await measure(fixture, () => automatic(b));
       assert.equal(await remoteId(world), id);
-      assert.equal(edit.result.committedOperationCount, 1);
+      assert.deepEqual(edit.result.effectKinds, ["upload-update"]);
       await a.dispose();
       const reopened = await world.reconstructDevice("device-a");
       try {
@@ -134,7 +140,8 @@ test("BU02 actual enabled multi-device lifecycle: upload, download, same-ID edit
         assert.equal(await remoteId(world), id);
         await automatic(b);
         const final = await measure(fixture, () => automatic(reopened));
-        assert.equal(final.result.committedOperationCount, 0);
+        assert.deepEqual(receive.result.effectKinds, ["download-update"]);
+        assert.deepEqual(final.result.effectKinds, []);
         if (enabled) {
           const persisted = await publication(reopened), other = await publication(b);
           assert.equal(persisted.authority.remoteMappings.find(row => row.path === path)?.remoteObjectId, id);
@@ -142,14 +149,14 @@ test("BU02 actual enabled multi-device lifecycle: upload, download, same-ID edit
           assert.ok(reopened.localInventory);
           // LOCAL hints are advisory and may be stale after canonical BASE commits.
           assert.notEqual((await reopened.localInventory.readAdvisoryHint(persisted.fence, path)).status, "advisory");
-          assert.equal(steady.metrics.categories["marked-census"] ?? 0, 0);
-          assert.equal(steady.metrics.categories["parent-list"] ?? 0, 0);
-          assert.equal(steady.metrics.categories.changes, 1);
+          assert.equal(steadyPreview.metrics.categories["marked-census"] ?? 0, 0);
+          assert.equal(steadyPreview.metrics.categories["parent-list"] ?? 0, 0);
+          assert.equal(steadyPreview.metrics.categories.changes, 1);
           assert.equal(final.metrics.categories["marked-census"] ?? 0, 0);
         }
         outcomes.push({ stableIdentity: (await remoteId(world)) === id, contents: await contents(reopened),
-          committed: [upload.result.committedOperationCount, download.result.committedOperationCount, edit.result.committedOperationCount, receive.result.committedOperationCount, final.result.committedOperationCount] });
-        t.diagnostic("BU02_SIMULATED_LIFECYCLE " + JSON.stringify({ enabled, setupStorage, steady: steady.metrics, upload: upload.metrics,
+          committed: [upload.result.effectKinds, download.result.effectKinds, edit.result.effectKinds, receive.result.effectKinds, final.result.effectKinds] });
+        t.diagnostic("BU02_SIMULATED_LIFECYCLE " + JSON.stringify({ enabled, setupStorage, steady: steady.metrics, steadyPreview: steadyPreview.metrics, upload: upload.metrics,
           download: download.metrics, edit: edit.metrics, receive: receive.metrics, final: final.metrics }));
       } finally { await reopened.dispose(); }
     } finally { await a.dispose(); await b.dispose(); }
@@ -257,7 +264,7 @@ for (const scenario of [remoteRenameScenario, binaryConflictScenario, cancelBefo
     for (const enabled of [false, true]) {
       const fixture = lifecycleFixture(enabled);
       const result = await DeterministicScenarioRunner.canonical().run(warm, fixture.forDevice);
-      assert.equal(result.status, "completed", JSON.stringify({ classification: result.classification, steps: result.steps.map(x => ({ id: x.stepId, matched: x.matchedExpectation })) }));
+      assert.equal(result.status, "completed", JSON.stringify({ enabled, classification: result.classification, reason: result.reason, steps: result.steps.map(x => ({ id: x.stepId, matched: x.matchedExpectation, classification: x.classification, reason: x.reason })), syntheticSurfaceHistory: Object.fromEntries(fixture.surfaces) }));
       assert.ok(result.steps.every(x => x.matchedExpectation));
       if (enabled) assert.ok(fixture.samples().some(x => x.purpose === "changes"), "actual enabled transport must execute");
       if (scenario === remoteRenameScenario || scenario === ambiguousAppliedScenario) {
@@ -278,8 +285,11 @@ test("BU02 atomic inventory publication failure leaves both authority and active
     const prior = await publication(a);
     const created = await world.drive.create(world.managedRemote.rootId, { path, entityKind: "file", content: source("new-remote") });
     assert.ok(created.ok);
-    fixture.databases.get("device-a")!.abortNextPublication = true;
+    const db = fixture.databases.get("device-a")!;
+    db.abortNextPublication = true;
     assert.equal(await a.controller.previewManual(), undefined);
+    assert.equal(db.abortNextPublication, false, "fault must reach the actual atomic publication");
+    assert.ok(db.abortedPublicationStores?.includes("inventory-generations"));
     const after = await publication(a);
     assert.equal(after.value.activeGeneration, prior.value.activeGeneration);
     assert.equal(after.value.canonicalCursor, prior.value.canonicalCursor);
@@ -367,15 +377,17 @@ test("BU02 matched nested steady-state cost scales independently of unchanged re
         const runs = [];
         for (let iteration = 0; iteration < 3; iteration++) {
           const result = await measure(fixture, () => automatic(a));
-          assert.equal(result.result.committedOperationCount, 0);
+          assert.deepEqual(result.result.effectKinds, []);
+          const preview = await measure(fixture, () => a.controller.previewManual());
+          assert.ok(preview.result && preview.result.operations.every(op => op.kind === "noop"));
           if (enabled) {
-            assert.equal(result.metrics.categories["marked-census"] ?? 0, 0);
-            assert.equal(result.metrics.categories["parent-list"] ?? 0, 0);
-            assert.equal(result.metrics.categories.changes, 1);
+            assert.equal(preview.metrics.categories["marked-census"] ?? 0, 0);
+            assert.equal(preview.metrics.categories["parent-list"] ?? 0, 0);
+            assert.equal(preview.metrics.categories.changes, 1);
           }
-          runs.push(result.metrics);
+          runs.push({ completeAutomatic: result.metrics, manualPlanning: preview.metrics });
         }
-        measurements.push({ enabled, size, requests: runs[0].requests, responseBytes: runs[0].responsePayloadBytes });
+        measurements.push({ enabled, size, requests: runs[0].manualPlanning.requests, responseBytes: runs[0].manualPlanning.responsePayloadBytes });
         t.diagnostic("BU02_NESTED_STEADY " + JSON.stringify({ enabled, size, setup: setup.metrics, runs }));
       } finally { await a.dispose(); }
     }
@@ -383,5 +395,5 @@ test("BU02 matched nested steady-state cost scales independently of unchanged re
   const inventory = measurements.filter(x => x.enabled);
   assert.equal(inventory[0].requests, inventory[1].requests);
   // Cursor token lengths vary with synthetic provider object counts.
-  // Only request count is the invariant; report actual response bytes without manufacturing equality.
+  // Only inventory planning request count is the invariant; report total execution and actual response bytes separately.
 });

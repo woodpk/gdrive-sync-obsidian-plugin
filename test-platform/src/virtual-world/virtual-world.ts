@@ -978,12 +978,13 @@ export class VirtualSynchronizationWorld {
       onRecoveryGateChanged: async active => { recoveryActive = active; },
       onFullReconciliationCompleted: async () => undefined,
     });
+    const unsubscribeSurface = backing.inventory?.observeSurface && controller.onSurface(backing.inventory.observeSurface);
     return new VirtualProductionDevice(
       backing,
       runtime,
       controller,
       remoteMutations,
-      canonicalLocal, localInventory, unsubscribeLocalInventory,
+      canonicalLocal, localInventory, () => { unsubscribeLocalInventory?.(); unsubscribeSurface?.(); },
     );
   }
 

@@ -4,7 +4,7 @@ import {
   IndexedDbInventoryAwareStateByteStorage,
   IndexedDbInventoryObservationStore,
   type StateByteStorage,
-  type ObsidianGoogleDriveBoundaryOptions,
+  type ObsidianGoogleDriveBoundaryOptions, type ProductController,
   PersistentSynchronizationStateStore,
   SynchronizationStateAuthorityAdapter,
   TombstoneRetentionPolicy,
@@ -208,6 +208,7 @@ export interface VirtualInventoryDeviceOptions {
   readonly replaceStateBytes: (bytes: Uint8Array | undefined) => void;
   readonly boundary: ObsidianGoogleDriveBoundaryOptions;
   readonly enabled: boolean;
+  readonly observeSurface?: Parameters<ProductController["onSurface"]>[0];
 }
 
 export interface VirtualDeviceBackingOptions {
