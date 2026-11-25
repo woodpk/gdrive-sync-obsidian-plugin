@@ -5,6 +5,14 @@ import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
 import { virtualDrivePath } from "../src/virtual-world/in-memory-google-drive";
 import { IndexedDbInventoryObservationStore } from "../../src/product/local-vault-boundary-seam";
 import { lifecycleFixture } from "./dec339-lifecycle-provider-fixture";
+import { DeterministicScenarioRunner } from "../src/scenario/scenario-runner";
+import type { ScenarioDefinition } from "../src/scenario/scenario-contract";
+import { remoteRenameScenario } from "../scenarios/06d/remote-rename";
+import { binaryConflictScenario } from "../scenarios/06b/binary-conflict";
+import { cancelBeforeEffectScenario } from "../scenarios/07c/cancel-before-effect";
+import { cancelAfterEffectScenario } from "../scenarios/07c/cancel-after-effect";
+import { ambiguousAppliedScenario } from "../scenarios/07a/ambiguous-applied";
+import { clonedStateDetectedScenario } from "../scenarios/07c/cloned-state-detected";
 
 const path = virtualVaultPath("note.bin");
 function source(text: string) {
@@ -23,6 +31,7 @@ async function manual(device: VirtualProductionDevice, full = false) {
   const result = await device.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
   assert.equal(result.status, "accepted");
   const receipt = device.controller.latestProductionRunReceipt();
+  assert.ok(receipt, "fresh terminal run receipt required");
   assert.equal(receipt?.terminal, "complete");
   assert.equal(receipt?.requiredEffectsCommittedAndVerified, true);
   return { plan, receipt };
@@ -30,6 +39,7 @@ async function manual(device: VirtualProductionDevice, full = false) {
 async function automatic(device: VirtualProductionDevice, periodic = false) {
   await device.controller.runAutomatic(periodic ? "periodic" : "local-change");
   const receipt = device.controller.latestProductionRunReceipt();
+  assert.ok(receipt, "fresh terminal run receipt required");
   assert.equal(receipt?.terminal, "complete", JSON.stringify(device.controller.currentSurface().status));
   assert.equal(receipt?.requiredEffectsCommittedAndVerified, true);
   return receipt;
@@ -76,6 +86,7 @@ async function measure<T>(fixture: ReturnType<typeof lifecycleFixture>, action: 
   return { result, metrics: {
     requests: observed.length, categories: Object.fromEntries([...new Set(observed.map(x => x.purpose))].map(p => [p, observed.filter(x => x.purpose === p).length])),
     responsePayloadBytes: observed.reduce((n, x) => n + x.responseBytes, 0),
+    contentResponseBytes: observed.filter(x => x.purpose === "content-range").reduce((n, x) => n + x.responseBytes, 0),
     requestUrlBytes: observed.reduce((n, x) => n + x.urlBytes, 0),
     providerElapsedMs: observed.reduce((n, x) => n + x.elapsedMs, 0), wallMs: performance.now() - wall,
     cpuMs: (cpuUsed.user + cpuUsed.system) / 1000, heapBefore: memory.heapUsed, heapAfter: finalMemory.heapUsed,
@@ -123,9 +134,8 @@ test("BU02 actual enabled multi-device lifecycle: upload, download, same-ID edit
           assert.equal(persisted.authority.remoteMappings.find(row => row.path === path)?.remoteObjectId, id);
           assert.equal(other.authority.remoteMappings.find(row => row.path === path)?.remoteObjectId, id);
           assert.ok(reopened.localInventory);
-          const hint = await reopened.localInventory.refresh(persisted.fence);
-          assert.equal(hint.status, "recorded");
-          assert.equal((await reopened.localInventory.readAdvisoryHint(persisted.fence, path)).status, "verified-observation");
+          // LOCAL hints are advisory and may be stale after canonical BASE commits.
+          assert.notEqual((await reopened.localInventory.readAdvisoryHint(persisted.fence, path)).status, "advisory");
           assert.equal(steady.metrics.categories["marked-census"] ?? 0, 0);
           assert.equal(steady.metrics.categories["parent-list"] ?? 0, 0);
           assert.equal(steady.metrics.categories.changes, 1);
@@ -184,3 +194,72 @@ test("BU02 independent account/root proof refuses changed pairing; no new remote
     assert.equal(await contents(a), "not-uploaded");
   } finally { await a.dispose(); await b.dispose(); }
 });
+
+
+test("BU02 fresh provider delta enables an advisory local hint; a subsequent local edit revokes it", async () => {
+  const { world, a, b } = await established(true);
+  try {
+    await a.backing.local.createFile(path, source("initial"));
+    await automatic(a); await automatic(b); await automatic(a);
+    const id = await remoteId(world);
+    const updated = await world.drive.update({ remoteObjectId: id, path, content: source("external") });
+    assert.ok(updated.ok);
+    const plan = await b.controller.previewManual();
+    assert.ok(plan);
+    const persisted = await publication(b);
+    assert.ok(b.localInventory);
+    const hint = await b.localInventory.refresh(persisted.fence);
+    assert.equal(hint.status, "recorded");
+    assert.equal((await b.localInventory.readAdvisoryHint(persisted.fence, path)).status, "advisory");
+    await b.backing.local.replaceFile(path, source("new-local"));
+    assert.notEqual((await b.localInventory.readAdvisoryHint(persisted.fence, path)).status, "advisory");
+    await b.controller.requestPreviewAction({ kind: "execute-plan", planId: plan.planId });
+    assert.equal(await contents(b), "new-local", "stale preview cannot overwrite a changed local file");
+    assert.equal(await remoteId(world), id);
+  } finally { await a.dispose(); await b.dispose(); }
+});
+
+test("BU02 nonempty first sync preserves strict inventory cursor gate and explicitly reconciles before rebaseline", async () => {
+  const fixture = lifecycleFixture(true);
+  const world = await VirtualSynchronizationWorld.create(["device-a", "device-b"], fixture.forDevice);
+  const a = await world.reconstructDevice("device-a");
+  try {
+    await a.backing.local.createFile(path, source("first-sync"));
+    await manual(a, true);
+    const id = await remoteId(world);
+    const first = await a.backing.loadAuthority();
+    assert.equal(first.status, "trusted");
+    assert.equal(await a.controller.previewManual(), undefined,
+      "a full baseline cannot skip the unlearned post-effect Changes horizon");
+    await manual(a, true);
+    await automatic(a);
+    await publication(a);
+    assert.equal(await remoteId(world), id);
+    assert.equal(await contents(a), "first-sync");
+  } finally { await a.dispose(); }
+});
+
+for (const scenario of [remoteRenameScenario, binaryConflictScenario, cancelBeforeEffectScenario,
+  cancelAfterEffectScenario, ambiguousAppliedScenario, clonedStateDetectedScenario]) {
+  test("BU02 paired canonical scenario " + scenario.id, async t => {
+    const warm: ScenarioDefinition = { ...scenario, steps: [
+      { id: "bu02-establish-empty", kind: "production", device: "device-a", operation: "synchronize" },
+      { id: "bu02-establish-observation", kind: "production", device: "device-a", operation: "synchronize" },
+      ...scenario.steps,
+    ] };
+    for (const enabled of [false, true]) {
+      const fixture = lifecycleFixture(enabled);
+      const result = await DeterministicScenarioRunner.canonical().run(warm, fixture.forDevice);
+      assert.equal(result.status, "completed", JSON.stringify({ classification: result.classification, steps: result.steps.map(x => ({ id: x.stepId, matched: x.matchedExpectation })) }));
+      assert.ok(result.steps.every(x => x.matchedExpectation));
+      if (enabled) assert.ok(fixture.samples().some(x => x.purpose === "changes"), "actual enabled transport must execute");
+      if (scenario === remoteRenameScenario || scenario === ambiguousAppliedScenario) {
+        const first = result.captures["remote-before"] as { remoteObjectId?: string };
+        const last = result.captures[scenario === remoteRenameScenario ? "remote-moved" : "remote-final"] as { remoteObjectId?: string };
+        assert.ok(first.remoteObjectId); assert.equal(last.remoteObjectId, first.remoteObjectId);
+      }
+      t.diagnostic("BU02_PAIRED_SCENARIO " + JSON.stringify({ scenario: scenario.id, enabled, steps: result.steps.length,
+        requests: fixture.samples().length, responseBytes: fixture.samples().reduce((n, x) => n + x.responseBytes, 0) }));
+    }
+  });
+}

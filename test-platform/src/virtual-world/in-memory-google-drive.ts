@@ -40,6 +40,7 @@ interface InMemoryRemoteObject {
   path: VaultPath;
   readonly entityKind: EntityKind;
   readonly providerDomain: "content" | "portable-config";
+  readonly providerStructuralConfig?: boolean;
   bytes?: Uint8Array;
   revision: number;
   trashed: boolean;
@@ -90,6 +91,7 @@ export interface InMemoryRemoteObjectSnapshot {
   readonly parentPath: VaultPath;
   readonly entityKind: EntityKind;
   readonly providerDomain: "content" | "portable-config";
+  readonly providerStructuralConfig?: boolean;
   readonly revision: string;
   readonly trashed: boolean;
   readonly evidence?: ContentEvidence;
@@ -943,7 +945,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
       path: object.path,
       parentPath: parentPath(object.path),
       entityKind: object.entityKind,
-      providerDomain: object.providerDomain,
+      providerDomain: object.providerDomain, providerStructuralConfig: object.providerStructuralConfig,
       revision: String(object.revision),
       trashed: object.trashed,
       ...(object.entityKind === "file"
@@ -1088,7 +1090,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
         continue;
       }
 
-      this.createObject(root, virtualDrivePath(current), "folder");
+      this.createObject(root, virtualDrivePath(current), "folder", undefined, undefined, current === "__brain_sync_portable_config__");
     }
     return { ok: true, value: undefined };
   }
@@ -1098,7 +1100,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
     path: VaultPath,
     entityKind: EntityKind,
     bytes?: Uint8Array,
-    exactRemoteObjectId?: RemoteObjectId,
+    exactRemoteObjectId?: RemoteObjectId, providerStructuralConfig = false,
   ): InMemoryRemoteObject {
     const remoteObjectId =
       exactRemoteObjectId ?? this.reserveProviderObjectId();
@@ -1107,7 +1109,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
       rootId: root.identity.rootId,
       path,
       entityKind,
-      providerDomain: String(path) === "__brain_sync_portable_config__" || String(path).startsWith("__brain_sync_portable_config__/") ? "portable-config" : "content",
+      providerDomain: providerStructuralConfig || String(path).startsWith("__brain_sync_portable_config__/") ? "portable-config" : "content", providerStructuralConfig,
       ...(entityKind === "file"
         ? { bytes: copyBytes(bytes ?? new Uint8Array()) }
         : {}),

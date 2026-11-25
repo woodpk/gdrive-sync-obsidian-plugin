@@ -930,7 +930,7 @@ export class VirtualSynchronizationWorld {
     const textVersions = new ProductTextVersionStore(
       textPersistence,
       canonicalLocal,
-      this.drive,
+      readDrive,
     );
     const conflicts = new ThreeWayConflictResolver(
       textVersions,
@@ -941,7 +941,7 @@ export class VirtualSynchronizationWorld {
     let controller!: ProductController;
     const executor = new ProductSynchronizationExecutor(
       canonicalLocal,
-      this.drive,
+      readDrive,
       state,
       context,
       () => controller.currentRunEvidence(),

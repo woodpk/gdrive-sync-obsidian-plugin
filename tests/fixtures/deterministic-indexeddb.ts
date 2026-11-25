@@ -11,6 +11,8 @@ const clone = (value: StoredTable): StoredTable => ({
 const getField = (value: unknown, path: string): unknown => (value as Record<string, unknown>)[path];
 
 export class FakeDatabase {
+  constructor(private readonly serializeTransactions = false) {}
+  private transactionTail: Promise<void> = Promise.resolve();
   version = 0;
   /** Capture the last opened connection for versionchange lifecycle tests. */
   lastOpened?: IDBDatabase;
@@ -83,6 +85,19 @@ export class FakeDatabase {
       if (!t) throw new Error("NotFoundError");
       snapshots.set(name, clone(t));
     }
+    let release = () => {};
+    let ready = Promise.resolve();
+    if (this.serializeTransactions) {
+      ready = this.transactionTail.then(() => {
+        for (const [name, snapshot] of snapshots) {
+          snapshot.records.clear();
+          for (const [key, value] of this.tables.get(name)!.records) snapshot.records.set(key, value);
+        }
+      });
+      const completed = new Promise<void>(resolve => { release = resolve; });
+      this.transactionTail = ready.then(() => completed);
+    }
+    const dispatch = (action: () => void) => { if (this.serializeTransactions) void ready.then(() => queueMicrotask(action)); else queueMicrotask(action); };
     let pending = 0, aborted = false, closed = false;
     const tx: {
       db: IDBDatabase; oncomplete?: () => void; onabort?: () => void;
@@ -90,7 +105,7 @@ export class FakeDatabase {
       abort: () => void; objectStore: (name: string) => IDBObjectStore;
     } = {
       db: this.handle(),
-      abort: () => { if (closed || aborted) return; aborted = true; queueMicrotask(() => tx.onabort?.()); },
+      abort: () => { if (closed || aborted) return; aborted = true; dispatch(() => { release(); tx.onabort?.(); }); },
       objectStore: (name: string) => {
         const data = snapshots.get(name);
         if (!data) throw new Error("NotFoundError");
@@ -98,7 +113,7 @@ export class FakeDatabase {
           if (closed || aborted) throw new Error("TransactionInactiveError");
           const req: { result?: unknown; error?: Error; onsuccess?: () => void; onerror?: () => void } = {};
           pending++;
-          queueMicrotask(() => {
+          dispatch(() => {
             if (aborted) { pending--; return; }
             try { req.result = action(); req.onsuccess?.(); }
             catch (e) {
@@ -175,8 +190,9 @@ export class FakeDatabase {
       }
       closed = true;
       if (mode === "readwrite") for (const [name, data] of snapshots) this.tables.set(name, data);
-      tx.oncomplete?.();
+      release(); tx.oncomplete?.();
     };
+    if (this.serializeTransactions) void ready.then(() => setImmediate(finish));
     return tx as unknown as IDBTransaction;
   }
 }

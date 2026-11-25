@@ -21,7 +21,7 @@ type FileMetadata = {
   size?: string; sha256Checksum?: string;
 };
 export type ProviderSample = {
-  readonly purpose: "account" | "exact-id" | "domain-list" | "parent-list" | "marked-census" | "cursor" | "changes";
+  readonly purpose: "account" | "exact-id" | "domain-list" | "parent-list" | "marked-census" | "cursor" | "changes" | "content-range";
   readonly responseBytes: number; readonly urlBytes: number; readonly elapsedMs: number;
 };
 const statusFor = (signal: DriveSignal): number => {
@@ -65,17 +65,15 @@ class SyntheticProvider {
   private isStructuralConfig(snapshot: InMemoryRemoteObjectSnapshot): boolean {
     // Logical core creates this structural parent on demand. REST domain root
     // already exists and is not a synchronized object or a user-created file.
-    return snapshot.entityKind === "folder" && String(snapshot.path) === CONFIG;
+    return snapshot.providerStructuralConfig === true && !snapshot.trashed && snapshot.entityKind === "folder" && String(snapshot.path) === CONFIG;
   }
 
   private metadata(snapshot: InMemoryRemoteObjectSnapshot): FileMetadata {
     const parent = String(snapshot.parentPath);
-    const isConfig = parent === CONFIG || parent.startsWith(CONFIG + "/");
     const parents = parent === "" ? [this.contentId] : parent === CONFIG ? [this.configId] :
       this.world.drive.inspectObjectsAtPath(snapshot.rootId, snapshot.parentPath, true)
         .filter(x => x.entityKind === "folder" && !x.trashed)
         .map(x => String(x.remoteObjectId));
-    assert.ok(isConfig || parent !== CONFIG);
     return {
       id: String(snapshot.remoteObjectId), name: String(snapshot.path).split("/").at(-1)!,
       mimeType: snapshot.entityKind === "folder" ? FOLDER : "application/octet-stream",
@@ -97,7 +95,7 @@ class SyntheticProvider {
     assert.equal(request.headers?.authorization, "Bearer bu02-synthetic-token");
     const path = url.pathname, query = url.searchParams.get("q") ?? "";
     let purpose: ProviderSample["purpose"];
-    let response: ReturnType<typeof json>;
+    let response: Awaited<ReturnType<ObsidianGoogleDriveBoundaryOptions["requestUrl"]>>;
     const rootId = this.world.managedRemote.rootId;
     if (path === "/drive/v3/about") {
       purpose = "account"; response = json({ user: { permissionId: this.account } });
@@ -123,15 +121,32 @@ class SyntheticProvider {
         response = json({ changes: [...latest.values()], newStartPageToken: observed.value.nextCursor });
       }
     } else if (path.startsWith("/drive/v3/files/")) {
-      purpose = "exact-id";
-      assert.equal(url.searchParams.has("alt"), false, "content transfers use the existing virtual effect port");
       const id = decodeURIComponent(path.slice("/drive/v3/files/".length));
-      const root = this.roots().find(file => file.id === id);
-      if (root) response = json(root);
-      else {
-        const observed = this.world.drive.providerObject(rootId, virtualRemoteObjectId(id));
-        response = observed.ok && !this.isStructuralConfig(observed.value)
-          ? json(this.metadata(observed.value)) : this.error(observed.ok ? 404 : statusFor(observed.signal));
+      if (url.searchParams.get("alt") === "media") {
+        purpose = "content-range";
+        const range = /^bytes=(\d+)-(\d+)$/.exec(request.headers?.range ?? "");
+        assert.ok(range, "production content reads must use a bounded range");
+        const observed = await this.world.drive.download(virtualRemoteObjectId(id));
+        if (!observed.ok) response = this.error(statusFor(observed.signal));
+        else {
+          const chunks: number[] = [];
+          for await (const bytes of observed.value.content.openChunks()) chunks.push(...bytes);
+          const first = Number(range[1]), last = Math.min(Number(range[2]), chunks.length - 1);
+          if (first > last) response = this.error(416);
+          else response = { status: 206, headers: {
+            "content-type": "application/octet-stream",
+            "content-range": "bytes " + first + "-" + last + "/" + chunks.length,
+          }, arrayBuffer: Uint8Array.from(chunks.slice(first, last + 1)).buffer as ArrayBuffer };
+        }
+      } else {
+        purpose = "exact-id";
+        const root = this.roots().find(file => file.id === id);
+        if (root) response = json(root);
+        else {
+          const observed = this.world.drive.providerObject(rootId, virtualRemoteObjectId(id));
+          response = observed.ok && !this.isStructuralConfig(observed.value)
+            ? json(this.metadata(observed.value)) : this.error(observed.ok ? 404 : statusFor(observed.signal));
+        }
       }
     } else if (path === "/drive/v3/files") {
       const parent = /^'((?:\\.|[^'\\])*)' in parents/.exec(query);
@@ -174,7 +189,7 @@ export function lifecycleFixture(enabled: boolean) {
   let provider: SyntheticProvider | undefined;
   const forDevice = (name: string, world: VirtualSynchronizationWorld): VirtualInventoryDeviceOptions => {
     provider ??= new SyntheticProvider(world);
-    const db = new FakeDatabase();
+    const db = new FakeDatabase(true);
     databases.set(name, db);
     const secrets = new Map<string, string>([
       ["brain-gdrive-paired-account", ACCOUNT],
