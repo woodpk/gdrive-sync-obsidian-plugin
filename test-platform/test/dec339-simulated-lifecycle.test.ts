@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { VirtualSynchronizationWorld, type VirtualProductionDevice } from "../src/virtual-world/virtual-world";
 import { virtualVaultPath } from "../src/virtual-world/in-memory-local-vault";
@@ -180,7 +180,7 @@ test("BU02 periodic and reviewed explicit reconciliation actually enumerate the 
   const { fixture, a, b } = await established(true);
   try {
     for (const run of [() => automatic(a, true), () => manual(a, true)]) {
-      const observed = await measure(fixture, run);
+      const observed = await measure<unknown>(fixture, run);
       assert.ok((observed.metrics.categories["parent-list"] ?? 0) > 0);
       assert.ok((observed.metrics.categories["marked-census"] ?? 0) > 0);
     }

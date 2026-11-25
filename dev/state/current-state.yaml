@@ -2734,7 +2734,15 @@ dec339_step6_bu02_2026_11_24:
   seam_limit: 350
   source_implementation: "BU02_IMPLEMENTATION_AND_INITIAL_TEN_FAMILY_CAMPAIGN_AUTHORED_AWAITING_PHXCI"
   source_readiness: "STATIC_INSPECTION_COMPLETE_EXECUTABLE_READINESS_UNVERIFIED"
-  phxci_status: "NOT_RUN_BU02_AWAITING_OWNER_WINDOWS_LAUNCHER"
+  phxci_status: "FIRST_RUN_BLOCKED_FOCUSED_TYPESCRIPT_COMPILATION_CORRECTION_AWAITING_REVERIFICATION"
+  bu02_first_verified_source: "0e38f14d67dae95b3a3465d4da2df6687bb74b5d"
+  bu02_first_verified_tree: "4dea704a02bb52dec92a492d8e0f668e59d9856c"
+  bu02_first_run_id: "ca1fab98-0c7e-4740-b156-2f613d744f9d"
+  bu02_first_evidence_commit: "f99bc1629083d17f244bd1c4b6fb4194c4f5b5a1"
+  bu02_first_focused: "COMPILATION_FAILED_36_DIAGNOSTICS_NO_BVP_TEST_EXECUTION"
+  bu02_first_full: "1403/1403_PASS"
+  bu02_first_repository_check: "BLOCKED_NOT_EXECUTED"
+  bu02_first_correction: "COMMONJS_COMPATIBLE_ASSERT_NAMESPACE_IMPORTS_AND_MEASURE_UNKNOWN_RESULT_TYPE_NO_ORACLE_CHANGE"
   phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   reviewer_status: "NOT_ELIGIBLE"
   dec362_runtime_incorporation_authorized: false

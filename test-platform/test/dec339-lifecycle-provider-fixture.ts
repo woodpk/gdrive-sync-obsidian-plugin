@@ -2,7 +2,7 @@
  * DEC-366 BU-02 test-only synthetic REST responses. No separate remote
  * database, synchronization decision, state authority, runner, or effect.
  */
-import assert from "node:assert/strict";
+import * as assert from "node:assert/strict";
 import {
   type ObsidianGoogleDriveBoundaryOptions,
   type DriveSignal,
