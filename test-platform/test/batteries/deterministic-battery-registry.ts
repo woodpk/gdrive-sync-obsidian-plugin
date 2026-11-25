@@ -52,6 +52,7 @@ const S07_FAULT_RECOVERY_SAFETY = [
 
 const DEC339_METADATA_CONTINUITY = [
   "dec339-continuity-safety.test.js",
+  "dec339-simulated-lifecycle.test.js",
 ] as const;
 
 const S08_LIVE_PLATFORM_INFRASTRUCTURE = [
@@ -110,7 +111,7 @@ const DETERMINISTIC_BATTERIES: Readonly<Record<string, DeterministicBatteryDefin
     },
     "dec339-metadata-continuity": {
       name: "dec339-metadata-continuity",
-      description: "Deterministic BVP safety controls for verified metadata inventory continuity; real product composition is qualified by native tests.",
+      description: "Deterministic BVP safety controls and actual inventory-backed virtual-device lifecycle, with native production transport and storage regression coverage.",
       testFiles: DEC339_METADATA_CONTINUITY,
     },
     "s08-live-platform-infrastructure": {

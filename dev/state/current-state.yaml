@@ -2732,7 +2732,7 @@ dec339_step6_bu02_2026_11_24:
   core_limit: 4850
   prior_seam_logical_loc: 187
   seam_limit: 350
-  source_implementation: "INVENTORY_RUNTIME_COMPOSITION_ADDED_PROVIDER_FIXTURE_AND_TESTS_PENDING"
+  source_implementation: "PROVIDER_FIXTURE_AND_INITIAL_PAIRED_LIFECYCLE_TESTS_AUTHORED_UNQUALIFIED"
   phxci_status: "NOT_RUN_BU02"
   phxci_runtime_pin: "4cf0c865c7b189641e2acebc0a6ad757b6f01992"
   reviewer_status: "NOT_ELIGIBLE"

@@ -39,6 +39,7 @@ interface InMemoryRemoteObject {
   readonly rootId: RemoteObjectId;
   path: VaultPath;
   readonly entityKind: EntityKind;
+  readonly providerDomain: "content" | "portable-config";
   bytes?: Uint8Array;
   revision: number;
   trashed: boolean;
@@ -88,6 +89,7 @@ export interface InMemoryRemoteObjectSnapshot {
   readonly path: VaultPath;
   readonly parentPath: VaultPath;
   readonly entityKind: EntityKind;
+  readonly providerDomain: "content" | "portable-config";
   readonly revision: string;
   readonly trashed: boolean;
   readonly evidence?: ContentEvidence;
@@ -909,6 +911,29 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
     return object ? this.snapshotFor(object) : undefined;
   }
 
+  /** Raw provider observations preserve the actual shared state and existing scripted faults. */
+  providerRoot(rootId: RemoteObjectId): ManagedRemoteIdentity | undefined {
+    return this.roots.get(String(rootId))?.identity;
+  }
+
+  providerObject(rootId: RemoteObjectId, id: RemoteObjectId): DriveResult<InMemoryRemoteObjectSnapshot> {
+    const fault = this.takeBoundaryFault("observe");
+    if (fault) return { ok: false, signal: fault.signal };
+    const root = this.roots.get(String(rootId)), object = root?.objects.get(String(id));
+    return root && object && (object.trashed || this.isVisible(root, object)) ? { ok: true, value: this.snapshotFor(object) } : notFound(id);
+  }
+
+  providerListing(rootId: RemoteObjectId, parent?: VaultPath): DriveResult<readonly InMemoryRemoteObjectSnapshot[]> {
+    const fault = this.takeBoundaryFault("list");
+    if (fault) return { ok: false, signal: fault.signal };
+    const root = this.roots.get(String(rootId));
+    if (!root) return notFound(rootId);
+    const control = this.nextListingControl; this.nextListingControl = undefined;
+    if (control && control.completeness.status !== "complete") return recoveryRequired("provider-listing-incomplete");
+    return { ok: true, value: [...root.objects.values()].filter(object => this.isVisible(root, object) &&
+      (parent === undefined || parentPath(object.path) === parent)).map(object => this.snapshotFor(object)) };
+  }
+
   private snapshotFor(
     object: InMemoryRemoteObject,
   ): InMemoryRemoteObjectSnapshot {
@@ -918,6 +943,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
       path: object.path,
       parentPath: parentPath(object.path),
       entityKind: object.entityKind,
+      providerDomain: object.providerDomain,
       revision: String(object.revision),
       trashed: object.trashed,
       ...(object.entityKind === "file"
@@ -1081,6 +1107,7 @@ export class InMemoryGoogleDriveCore implements GoogleDriveCorePort, ReliableRem
       rootId: root.identity.rootId,
       path,
       entityKind,
+      providerDomain: String(path) === "__brain_sync_portable_config__" || String(path).startsWith("__brain_sync_portable_config__/") ? "portable-config" : "content",
       ...(entityKind === "file"
         ? { bytes: copyBytes(bytes ?? new Uint8Array()) }
         : {}),

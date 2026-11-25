@@ -11,7 +11,7 @@ import {
   ScopedLocalVault,
   ProductSnapshotAssembler,
   IndexedDbInventoryObservationStore,
-  VerifiedInventoryBaselineCoordinator,
+  VerifiedInventoryBaselineCoordinator, VerifiedLocalInventoryCoordinator,
   InventoryBackedSnapshotAssembler,
   selectPlanningAssembler, buildInventoryPlanningBoundary,
   inventoryContinuityFingerprint, createObsidianGoogleDriveBoundary,
@@ -778,10 +778,13 @@ export class VirtualProductionDevice {
     readonly controller: ProductController,
     readonly remoteMutations: InMemoryReliableRemoteMutationPort,
     readonly productionLocal: CanonicalEvidenceLocalVault,
+    readonly localInventory?: VerifiedLocalInventoryCoordinator,
+    private readonly unsubscribeLocalInventory?: () => void,
   ) {}
 
   async dispose(): Promise<void> {
     await this.controller.beginRuntimeDisposal();
+    this.unsubscribeLocalInventory?.();
     this.runtime.destroy();
   }
 }
@@ -887,6 +890,7 @@ export class VirtualSynchronizationWorld {
     );
     const remoteIdentity = async () => this.managedRemote;
     const pathIncluded = (path: VaultPath) => scope.isManagedLogical(path);
+    let localInventory: VerifiedLocalInventoryCoordinator | undefined, unsubscribeLocalInventory: (() => void) | undefined;
     const snapshots = selectPlanningAssembler(backing.inventory?.enabled === true,
       () => new ProductSnapshotAssembler(canonicalLocal, readDrive, state, context, remoteIdentity, pathIncluded, () => false, undefined, readDrive, state),
       () => {
@@ -907,6 +911,8 @@ export class VirtualSynchronizationWorld {
           if (fingerprint() !== policy) throw new Error("inventory boundary grant changed");
           return observed;
         };
+        localInventory = new VerifiedLocalInventoryCoordinator(canonicalLocal, inventory, pathIncluded);
+        unsubscribeLocalInventory = localInventory.subscribe();
         return new InventoryBackedSnapshotAssembler({ local: canonicalLocal, drive: boundary.drive, state, stateContext: context,
           remoteIdentity, inventory, currentFence: async () => (await observePlanningBoundary()).fence,
           observePlanningBoundary, observePlanningHorizon: async () => {
@@ -977,7 +983,7 @@ export class VirtualSynchronizationWorld {
       runtime,
       controller,
       remoteMutations,
-      canonicalLocal,
+      canonicalLocal, localInventory, unsubscribeLocalInventory,
     );
   }
 
